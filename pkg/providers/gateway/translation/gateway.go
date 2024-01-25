@@ -20,6 +20,7 @@ import (
 	"errors"
 
 	"go.uber.org/zap"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
@@ -43,7 +44,7 @@ func (t *translator) TranslateGatewayV1beta1(gateway *gatewayv1beta1.Gateway) (m
 			continue
 		}
 
-		err = validateListenerConfigurations(gateway, i, allowedKinds, listener)
+		err = validateListenerConfigurationsV1beta1(gateway, i, allowedKinds, listener)
 		if err != nil {
 			// TODO: Update CRD status
 			log.Warnw("invalid listener conf",
@@ -70,7 +71,7 @@ func (t *translator) TranslateGatewayV1beta1(gateway *gatewayv1beta1.Gateway) (m
 			conf.RouteNamespace = listener.AllowedRoutes.Namespaces
 		} else {
 			// This is restricted to the namespace of this Gateway by default.
-			sameNamespace := gatewayv1beta1.NamespacesFromSame
+			sameNamespace := gatewayv1.NamespacesFromSame
 			conf.RouteNamespace = &gatewayv1beta1.RouteNamespaces{
 				From: &sameNamespace,
 			}
@@ -81,37 +82,91 @@ func (t *translator) TranslateGatewayV1beta1(gateway *gatewayv1beta1.Gateway) (m
 
 	return listeners, nil
 }
+func (t *translator) TranslateGatewayV1(gateway *gatewayv1.Gateway) (map[string]*types.ListenerConf, error) {
+	listeners := make(map[string]*types.ListenerConf)
 
-func validateListenerConfigurations(gateway *gatewayv1beta1.Gateway, idx int, allowedKinds []gatewayv1beta1.RouteGroupKind,
+	for i, listener := range gateway.Spec.Listeners {
+		allowedKinds, err := getAllowedKinds(listener)
+		if err != nil {
+			return nil, err
+		}
+		if len(allowedKinds) == 0 {
+			log.Warnw("listener allowed kinds is empty",
+				zap.String("gateway", gateway.Name),
+				zap.String("namespace", gateway.Namespace),
+				zap.Int("listener_index", i),
+			)
+			continue
+		}
+
+		err = validateListenerConfigurationsV1(gateway, i, allowedKinds, listener)
+		if err != nil {
+			// TODO: Update CRD status
+			log.Warnw("invalid listener conf",
+				zap.Error(err),
+				zap.String("gateway", gateway.Name),
+				zap.String("namespace", gateway.Namespace),
+				zap.Int("listener_index", i),
+			)
+			continue
+		}
+
+		conf := &types.ListenerConf{
+			Namespace:      gateway.Namespace,
+			Name:           gateway.Name,
+			SectionName:    string(listener.Name),
+			Protocol:       listener.Protocol,
+			Port:           listener.Port,
+			Hostname:       listener.Hostname,
+			RouteNamespace: nil,
+			AllowedKinds:   allowedKinds,
+		}
+
+		if listener.AllowedRoutes.Namespaces != nil {
+			conf.RouteNamespace = listener.AllowedRoutes.Namespaces
+		} else {
+			// This is restricted to the namespace of this Gateway by default.
+			sameNamespace := gatewayv1.NamespacesFromSame
+			conf.RouteNamespace = &gatewayv1beta1.RouteNamespaces{
+				From: &sameNamespace,
+			}
+		}
+
+		listeners[conf.SectionName] = conf
+	}
+
+	return listeners, nil
+}
+func validateListenerConfigurationsV1(gateway *gatewayv1.Gateway, idx int, allowedKinds []gatewayv1beta1.RouteGroupKind,
 	listener gatewayv1beta1.Listener) error {
 	// Check protocols and allowedKinds
 	protocol := listener.Protocol
-	if protocol == gatewayv1beta1.HTTPProtocolType || protocol == gatewayv1beta1.TCPProtocolType || protocol == gatewayv1beta1.UDPProtocolType {
+	if protocol == gatewayv1.HTTPProtocolType || protocol == gatewayv1.TCPProtocolType || protocol == gatewayv1.UDPProtocolType {
 		// Non-TLS
 		if listener.TLS != nil {
 			return errors.New("non-empty TLS conf for protocol " + string(protocol))
 		}
-		if protocol == gatewayv1beta1.HTTPProtocolType {
+		if protocol == gatewayv1.HTTPProtocolType {
 			if len(allowedKinds) != 1 || allowedKinds[0].Kind != types.KindHTTPRoute {
 				return errors.New("HTTP protocol must allow route type HTTPRoute")
 			}
-		} else if protocol == gatewayv1beta1.TCPProtocolType {
+		} else if protocol == gatewayv1.TCPProtocolType {
 			if len(allowedKinds) != 1 || allowedKinds[0].Kind != types.KindTCPRoute {
 				return errors.New("TCP protocol must allow route type TCPRoute")
 			}
-		} else if protocol == gatewayv1beta1.UDPProtocolType {
+		} else if protocol == gatewayv1.UDPProtocolType {
 			if len(allowedKinds) != 1 || allowedKinds[0].Kind != types.KindUDPRoute {
 				return errors.New("UDP protocol must allow route type UDPRoute")
 			}
 		}
 
-	} else if protocol == gatewayv1beta1.HTTPSProtocolType || protocol == gatewayv1beta1.TLSProtocolType {
+	} else if protocol == gatewayv1.HTTPSProtocolType || protocol == gatewayv1.TLSProtocolType {
 		// TLS
 		if listener.TLS == nil {
 			return errors.New("empty TLS conf for protocol " + string(protocol))
 		}
 
-		if *listener.TLS.Mode == gatewayv1beta1.TLSModeTerminate {
+		if *listener.TLS.Mode == gatewayv1.TLSModeTerminate {
 			if len(listener.TLS.CertificateRefs) == 0 {
 				return errors.New("TLS mode Terminate requires CertificateRefs")
 			}
@@ -133,14 +188,83 @@ func validateListenerConfigurations(gateway *gatewayv1beta1.Gateway, idx int, al
 			}
 		}
 
-		if protocol == gatewayv1beta1.HTTPSProtocolType {
-			if *listener.TLS.Mode != gatewayv1beta1.TLSModeTerminate {
+		if protocol == gatewayv1.HTTPSProtocolType {
+			if *listener.TLS.Mode != gatewayv1.TLSModeTerminate {
 				return errors.New("TLS mode for HTTPS protocol must be Terminate")
 			}
 			if len(allowedKinds) != 1 || allowedKinds[0].Kind != types.KindHTTPRoute {
 				return errors.New("HTTP protocol must allow route type HTTPRoute")
 			}
-		} else if protocol == gatewayv1beta1.TLSProtocolType {
+		} else if protocol == gatewayv1.TLSProtocolType {
+			for _, kind := range allowedKinds {
+				if kind.Kind != types.KindTLSRoute && kind.Kind != types.KindTCPRoute {
+					return errors.New("TLS protocol only support route type TLSRoute and TCPRoute")
+				}
+			}
+		}
+	}
+
+	return nil
+}
+func validateListenerConfigurationsV1beta1(gateway *gatewayv1beta1.Gateway, idx int, allowedKinds []gatewayv1beta1.RouteGroupKind,
+	listener gatewayv1beta1.Listener) error {
+	// Check protocols and allowedKinds
+	protocol := listener.Protocol
+	if protocol == gatewayv1.HTTPProtocolType || protocol == gatewayv1.TCPProtocolType || protocol == gatewayv1.UDPProtocolType {
+		// Non-TLS
+		if listener.TLS != nil {
+			return errors.New("non-empty TLS conf for protocol " + string(protocol))
+		}
+		if protocol == gatewayv1.HTTPProtocolType {
+			if len(allowedKinds) != 1 || allowedKinds[0].Kind != types.KindHTTPRoute {
+				return errors.New("HTTP protocol must allow route type HTTPRoute")
+			}
+		} else if protocol == gatewayv1.TCPProtocolType {
+			if len(allowedKinds) != 1 || allowedKinds[0].Kind != types.KindTCPRoute {
+				return errors.New("TCP protocol must allow route type TCPRoute")
+			}
+		} else if protocol == gatewayv1.UDPProtocolType {
+			if len(allowedKinds) != 1 || allowedKinds[0].Kind != types.KindUDPRoute {
+				return errors.New("UDP protocol must allow route type UDPRoute")
+			}
+		}
+
+	} else if protocol == gatewayv1.HTTPSProtocolType || protocol == gatewayv1.TLSProtocolType {
+		// TLS
+		if listener.TLS == nil {
+			return errors.New("empty TLS conf for protocol " + string(protocol))
+		}
+
+		if *listener.TLS.Mode == gatewayv1.TLSModeTerminate {
+			if len(listener.TLS.CertificateRefs) == 0 {
+				return errors.New("TLS mode Terminate requires CertificateRefs")
+			}
+
+			if len(listener.TLS.CertificateRefs) > 1 {
+				log.Warnw("only the first CertificateRefs take effect",
+					zap.String("gateway", gateway.Name),
+					zap.String("namespace", gateway.Namespace),
+					zap.Int("listener_index", idx),
+				)
+			}
+		} else {
+			if len(listener.TLS.CertificateRefs) != 0 {
+				log.Warnw("no CertificateRefs will take effect in non-terminate TLS mode",
+					zap.String("gateway", gateway.Name),
+					zap.String("namespace", gateway.Namespace),
+					zap.Int("listener_index", idx),
+				)
+			}
+		}
+
+		if protocol == gatewayv1.HTTPSProtocolType {
+			if *listener.TLS.Mode != gatewayv1.TLSModeTerminate {
+				return errors.New("TLS mode for HTTPS protocol must be Terminate")
+			}
+			if len(allowedKinds) != 1 || allowedKinds[0].Kind != types.KindHTTPRoute {
+				return errors.New("HTTP protocol must allow route type HTTPRoute")
+			}
+		} else if protocol == gatewayv1.TLSProtocolType {
 			for _, kind := range allowedKinds {
 				if kind.Kind != types.KindTLSRoute && kind.Kind != types.KindTCPRoute {
 					return errors.New("TLS protocol only support route type TLSRoute and TCPRoute")
@@ -158,13 +282,13 @@ func getAllowedKinds(listener gatewayv1beta1.Listener) ([]gatewayv1beta1.RouteGr
 
 	var kind gatewayv1beta1.Kind
 	switch listener.Protocol {
-	case gatewayv1beta1.HTTPProtocolType, gatewayv1beta1.HTTPSProtocolType:
+	case gatewayv1.HTTPProtocolType, gatewayv1.HTTPSProtocolType:
 		kind = types.KindHTTPRoute
-	case gatewayv1beta1.TLSProtocolType:
+	case gatewayv1.TLSProtocolType:
 		kind = types.KindTLSRoute
-	case gatewayv1beta1.TCPProtocolType:
+	case gatewayv1.TCPProtocolType:
 		kind = types.KindTCPRoute
-	case gatewayv1beta1.UDPProtocolType:
+	case gatewayv1.UDPProtocolType:
 		kind = types.KindUDPRoute
 	default:
 		// TODO: If an implementation does not support or recognize this resource type,

@@ -28,6 +28,7 @@ import (
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
@@ -197,8 +198,8 @@ func CoreV1ToNetworkV1beta1LB(lbips []corev1.LoadBalancerIngress) []networkingv1
 	return t
 }
 
-func CoreV1ToGatewayV1beta1Addr(lbips []corev1.LoadBalancerIngress) []gatewayv1beta1.GatewayStatusAddress {
-	t := make([]gatewayv1beta1.GatewayStatusAddress, 0, len(lbips))
+func CoreV1ToGatewayV1beta1Addr(lbips []corev1.LoadBalancerIngress) []gatewayv1.GatewayStatusAddress {
+	t := make([]gatewayv1.GatewayStatusAddress, 0, len(lbips))
 
 	// In the definition, there is also an address type called NamedAddress,
 	// which we currently do not implement
@@ -207,14 +208,14 @@ func CoreV1ToGatewayV1beta1Addr(lbips []corev1.LoadBalancerIngress) []gatewayv1b
 
 	for _, lbip := range lbips {
 		if v := lbip.Hostname; v != "" {
-			t = append(t, gatewayv1beta1.GatewayStatusAddress{
+			t = append(t, gatewayv1.GatewayStatusAddress{
 				Type:  &HostnameAddressType,
 				Value: v,
 			})
 		}
 
 		if v := lbip.IP; v != "" {
-			t = append(t, gatewayv1beta1.GatewayStatusAddress{
+			t = append(t, gatewayv1.GatewayStatusAddress{
 				Type:  &IPAddressType,
 				Value: v,
 			})

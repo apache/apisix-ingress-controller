@@ -17,6 +17,7 @@
 package translation
 
 import (
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
@@ -35,6 +36,8 @@ type translator struct {
 type Translator interface {
 	// TranslateGatewayV1beta1 translates Gateway to internal configurations
 	TranslateGatewayV1beta1(gateway *gatewayv1beta1.Gateway) (map[string]*types.ListenerConf, error)
+	// TranslateGatewayV1 translates Gateway to internal configurations
+	TranslateGatewayV1(gateway *gatewayv1.Gateway) (map[string]*types.ListenerConf, error)
 	// TranslateGatewayHTTPRouteV1beta1 translates Gateway API HTTPRoute to APISIX resources
 	TranslateGatewayHTTPRouteV1beta1(httpRoute *gatewayv1beta1.HTTPRoute) (*translation.TranslateContext, error)
 	// TranslateGatewayTLSRouteV1Alpha2 translates Gateway API TLSRoute to APISIX resources

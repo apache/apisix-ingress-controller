@@ -27,6 +27,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/config"
@@ -173,29 +174,29 @@ func TestTranslateGatewayHTTPRouteExactMatch(t *testing.T) {
 					Matches: []gatewayv1beta1.HTTPRouteMatch{
 						{
 							Path: &gatewayv1beta1.HTTPPathMatch{
-								Type:  utils.PtrOf(gatewayv1beta1.PathMatchPathPrefix),
+								Type:  utils.PtrOf(gatewayv1.PathMatchPathPrefix),
 								Value: utils.PtrOf("/path"),
 							},
 							Headers: []gatewayv1beta1.HTTPHeaderMatch{
 								{
-									Type:  utils.PtrOf(gatewayv1beta1.HeaderMatchExact),
+									Type:  utils.PtrOf(gatewayv1.HeaderMatchExact),
 									Name:  "REFERER",
 									Value: "api7.com",
 								},
 							},
 							QueryParams: []gatewayv1beta1.HTTPQueryParamMatch{
 								{
-									Type:  utils.PtrOf(gatewayv1beta1.QueryParamMatchExact),
+									Type:  utils.PtrOf(gatewayv1.QueryParamMatchExact),
 									Name:  "user",
 									Value: "api7",
 								},
 								{
-									Type:  utils.PtrOf(gatewayv1beta1.QueryParamMatchExact),
+									Type:  utils.PtrOf(gatewayv1.QueryParamMatchExact),
 									Name:  "title",
 									Value: "ingress",
 								},
 							},
-							Method: utils.PtrOf(gatewayv1beta1.HTTPMethodGet),
+							Method: utils.PtrOf(gatewayv1.HTTPMethodGet),
 						},
 					},
 					Filters: []gatewayv1beta1.HTTPRouteFilter{
@@ -282,29 +283,29 @@ func TestTranslateGatewayHTTPRouteRegexMatch(t *testing.T) {
 					Matches: []gatewayv1beta1.HTTPRouteMatch{
 						{
 							Path: &gatewayv1beta1.HTTPPathMatch{
-								Type:  utils.PtrOf(gatewayv1beta1.PathMatchRegularExpression),
+								Type:  utils.PtrOf(gatewayv1.PathMatchRegularExpression),
 								Value: utils.PtrOf("/path"),
 							},
 							Headers: []gatewayv1beta1.HTTPHeaderMatch{
 								{
-									Type:  utils.PtrOf(gatewayv1beta1.HeaderMatchRegularExpression),
+									Type:  utils.PtrOf(gatewayv1.HeaderMatchRegularExpression),
 									Name:  "REFERER",
 									Value: "api7.com",
 								},
 							},
 							QueryParams: []gatewayv1beta1.HTTPQueryParamMatch{
 								{
-									Type:  utils.PtrOf(gatewayv1beta1.QueryParamMatchRegularExpression),
+									Type:  utils.PtrOf(gatewayv1.QueryParamMatchRegularExpression),
 									Name:  "user",
 									Value: "api7",
 								},
 								{
-									Type:  utils.PtrOf(gatewayv1beta1.QueryParamMatchRegularExpression),
+									Type:  utils.PtrOf(gatewayv1.QueryParamMatchRegularExpression),
 									Name:  "title",
 									Value: "ingress",
 								},
 							},
-							Method: utils.PtrOf(gatewayv1beta1.HTTPMethodGet),
+							Method: utils.PtrOf(gatewayv1.HTTPMethodGet),
 						},
 					},
 					Filters: []gatewayv1beta1.HTTPRouteFilter{
@@ -393,7 +394,7 @@ func TestTranslateGatewayHTTPRouteMultipleBackendRefs(t *testing.T) {
 					Matches: []gatewayv1beta1.HTTPRouteMatch{
 						{
 							Path: &gatewayv1beta1.HTTPPathMatch{
-								Type:  utils.PtrOf(gatewayv1beta1.PathMatchPathPrefix),
+								Type:  utils.PtrOf(gatewayv1.PathMatchPathPrefix),
 								Value: utils.PtrOf("/path"),
 							},
 						},
@@ -422,7 +423,7 @@ func TestTranslateGatewayHTTPRouteMultipleBackendRefs(t *testing.T) {
 					Matches: []gatewayv1beta1.HTTPRouteMatch{
 						{
 							Path: &gatewayv1beta1.HTTPPathMatch{
-								Type:  utils.PtrOf(gatewayv1beta1.PathMatchPathPrefix),
+								Type:  utils.PtrOf(gatewayv1.PathMatchPathPrefix),
 								Value: utils.PtrOf("/path2"),
 							},
 						},

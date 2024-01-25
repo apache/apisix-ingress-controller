@@ -66,7 +66,9 @@ type ListerInformer struct {
 	ConfigMapLister   listerscorev1.ConfigMapLister
 	ConfigMapInformer cache.SharedIndexInformer
 
-	IngressLister   kube.IngressLister
+	IngressLister kube.IngressLister
+	GatewayLister kube.GatewayLister
+
 	IngressInformer cache.SharedIndexInformer
 
 	ApisixUpstreamInformer      cache.SharedIndexInformer

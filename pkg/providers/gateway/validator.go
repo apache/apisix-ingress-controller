@@ -20,15 +20,15 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/gateway/types"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
-
-	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/gateway/types"
 )
 
 type Validator struct {
@@ -54,11 +54,11 @@ func (r *commonRoute) hasParentRefs() bool {
 }
 
 func (r *commonRoute) isHTTPProtocol() bool {
-	return r.routeProtocol == gatewayv1beta1.HTTPProtocolType
+	return r.routeProtocol == gatewayv1.HTTPProtocolType
 }
 
 func (r *commonRoute) isHTTPSProtocol() bool {
-	return r.routeProtocol == gatewayv1beta1.HTTPSProtocolType
+	return r.routeProtocol == gatewayv1.HTTPSProtocolType
 }
 
 func ConvertParentRefsToV1beta1(parentRefs []gatewayv1alpha2.ParentReference) []gatewayv1beta1.ParentReference {
@@ -91,7 +91,7 @@ func parseToCommentRoute(route any) (*commonRoute, error) {
 	case *gatewayv1beta1.HTTPRoute:
 		r.routeNamespace = route.Namespace
 		r.parentRefs = route.Spec.ParentRefs
-		r.routeProtocol = gatewayv1beta1.HTTPProtocolType
+		r.routeProtocol = gatewayv1.HTTPProtocolType
 		r.routeHostnames = route.Spec.Hostnames
 		r.routeGroupKind = gatewayv1beta1.RouteGroupKind{
 			Group: &group,
@@ -100,7 +100,7 @@ func parseToCommentRoute(route any) (*commonRoute, error) {
 	case *gatewayv1alpha2.TLSRoute:
 		r.routeNamespace = route.Namespace
 		r.parentRefs = ConvertParentRefsToV1beta1(route.Spec.ParentRefs)
-		r.routeProtocol = gatewayv1beta1.HTTPSProtocolType
+		r.routeProtocol = gatewayv1.HTTPSProtocolType
 		r.routeHostnames = ConvertHostnamesToV1beta1(route.Spec.Hostnames)
 		r.routeGroupKind = gatewayv1beta1.RouteGroupKind{
 			Group: &group,
@@ -109,7 +109,7 @@ func parseToCommentRoute(route any) (*commonRoute, error) {
 	case *gatewayv1alpha2.TCPRoute:
 		r.routeNamespace = route.Namespace
 		r.parentRefs = ConvertParentRefsToV1beta1(route.Spec.ParentRefs)
-		r.routeProtocol = gatewayv1beta1.TCPProtocolType
+		r.routeProtocol = gatewayv1.TCPProtocolType
 		r.routeGroupKind = gatewayv1beta1.RouteGroupKind{
 			Group: &group,
 			Kind:  types.KindTCPRoute,
@@ -117,7 +117,7 @@ func parseToCommentRoute(route any) (*commonRoute, error) {
 	case *gatewayv1alpha2.UDPRoute:
 		r.routeNamespace = route.Namespace
 		r.parentRefs = ConvertParentRefsToV1beta1(route.Spec.ParentRefs)
-		r.routeProtocol = gatewayv1beta1.UDPProtocolType
+		r.routeProtocol = gatewayv1.UDPProtocolType
 		r.routeGroupKind = gatewayv1beta1.RouteGroupKind{
 			Group: &group,
 			Kind:  types.KindUDPRoute,
@@ -205,11 +205,11 @@ func (v *Validator) validateParentRef(r *commonRoute) ([]*types.ListenerConf, er
 
 			// match listener by AllowRoute.Namespaces
 			switch *listenerConf.RouteNamespace.From {
-			case gatewayv1beta1.NamespacesFromSame:
+			case gatewayv1.NamespacesFromSame:
 				if r.routeNamespace != listenerConf.Namespace {
 					continue
 				}
-			case gatewayv1beta1.NamespacesFromSelector:
+			case gatewayv1.NamespacesFromSelector:
 				// get listener namespace with selector labeled namespace
 				selector, err := metav1.LabelSelectorAsSelector(listenerConf.RouteNamespace.Selector)
 				if err != nil {
