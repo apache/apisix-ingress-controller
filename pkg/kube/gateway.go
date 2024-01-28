@@ -15,6 +15,8 @@
 package kube
 
 import (
+	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
@@ -91,18 +93,19 @@ func (ing *gateway) ResourceVersion() string {
 // MustNewIngress creates a kube.Ingress object according to the
 // type of obj.
 func MustNewGateway(obj interface{}) Gateway {
-	switch ing := obj.(type) {
+	switch gate := obj.(type) {
 	case *gatewayv1.Gateway:
 		return &gateway{
 			groupVersion: GatewayV1,
-			v1:           ing,
-			Object:       ing,
+			v1:           gate,
+			Object:       gate,
 		}
 	case *gatewayv1beta1.Gateway:
+		fmt.Println("gateway ", gate)
 		return &gateway{
 			groupVersion: GatewayV1beta1,
-			v1beta1:      ing,
-			Object:       ing,
+			v1beta1:      gate,
+			Object:       gate,
 		}
 	default:
 		panic("invalid gateway type")
@@ -138,6 +141,7 @@ func (l *gatewayLister) V1beta1(namespace, name string) (Gateway, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("gate: ", gate)
 	return &gateway{
 		groupVersion: GatewayV1beta1,
 		v1beta1:      gate,
