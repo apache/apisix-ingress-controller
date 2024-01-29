@@ -19,11 +19,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	"github.com/apache/apisix-ingress-controller/pkg/log"
-	gatewaytypes "github.com/apache/apisix-ingress-controller/pkg/providers/gateway/types"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
-	"github.com/apache/apisix-ingress-controller/pkg/types"
 	"go.uber.org/zap"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -32,6 +27,12 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
+	"github.com/apache/apisix-ingress-controller/pkg/log"
+	gatewaytypes "github.com/apache/apisix-ingress-controller/pkg/providers/gateway/types"
+	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
+	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
 
 type gatewayController struct {
