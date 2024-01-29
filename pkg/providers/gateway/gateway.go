@@ -31,21 +31,20 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 type gatewayController struct {
-	controller    *Provider
-	gatewaylister kube.GatewayLister
-	workqueue     workqueue.RateLimitingInterface
-	workers       int
+	controller *Provider
+	workqueue  workqueue.RateLimitingInterface
+	workers    int
 }
 
-func newGatewayController(c *Provider, gl kube.GatewayLister) *gatewayController {
+func newGatewayController(c *Provider) *gatewayController {
 	ctl := &gatewayController{
-		controller:    c,
-		gatewaylister: gl,
-		workqueue:     workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "Gateway"),
-		workers:       1,
+		controller: c,
+		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "Gateway"),
+		workers:    1,
 	}
 
 	ctl.controller.gatewayInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -94,23 +93,24 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 		)
 		return err
 	}
-	var gate kube.Gateway
+	var gatev1 *gatewayv1.Gateway
+	var gatev1beta *gatewayv1beta1.Gateway
 	var generation int64
 	switch gatewayEvent.GroupVersion {
 	case kube.GatewayV1:
-		gate, err = c.gatewaylister.V1(namespace, name)
+		gatev1, err = c.controller.gatewayListerV1.Gateways(namespace).Get(name)
 		if err != nil {
 			return err
 		}
-		generation = gate.V1().Generation
+		generation = gatev1.Generation
 	case kube.GatewayV1beta1:
-		gate, err = c.gatewaylister.V1beta1(namespace, name)
+		gatev1beta, err = c.controller.gatewayListerV1beta1.Gateways(namespace).Get(name)
 		if err != nil {
 			return err
 		}
 
-		fmt.Println("gateway returned by gatewaylister for v1beta1 ", gate.V1beta1())
-		generation = gate.V1beta1().Generation
+		fmt.Println("gateway returned by gatewaylister for v1beta1 ", gatev1beta)
+		generation = gatev1beta.Generation
 	}
 
 	if err != nil {
@@ -131,7 +131,7 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 	}
 
 	if ev.Type == types.EventDelete {
-		if gate != nil {
+		if gatev1 != nil && gatev1beta != nil {
 			// We still find the resource while we are processing the DELETE event,
 			// that means object with same namespace and name was created, discarding
 			// this stale DELETE event.
@@ -143,9 +143,9 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 
 		switch gatewayEvent.GroupVersion {
 		case kube.GatewayV1:
-			err = c.controller.RemoveListeners(gate.V1().Namespace, gate.V1().Namespace)
+			err = c.controller.RemoveListeners(gatev1.Namespace, gatev1.Namespace)
 		case kube.GatewayV1beta1:
-			err = c.controller.RemoveListeners(gate.V1beta1().Namespace, gate.V1beta1().Namespace)
+			err = c.controller.RemoveListeners(gatev1beta.Namespace, gatev1beta.Namespace)
 		}
 		if err != nil {
 			return err
@@ -154,9 +154,9 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 		var gatewayClassName string
 		switch gatewayEvent.GroupVersion {
 		case kube.GatewayV1:
-			gatewayClassName = string(gate.V1().Spec.GatewayClassName)
+			gatewayClassName = string(gatev1.Spec.GatewayClassName)
 		case kube.GatewayV1beta1:
-			gatewayClassName = string(gate.V1beta1().Spec.GatewayClassName)
+			gatewayClassName = string(gatev1beta.Spec.GatewayClassName)
 		}
 
 		if c.controller.HasGatewayClass(gatewayClassName) {
@@ -164,7 +164,7 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 			var listeners map[string]*gatewaytypes.ListenerConf
 			switch gatewayEvent.GroupVersion {
 			case kube.GatewayV1:
-				gateway := gate.V1()
+				gateway := gatev1
 				listeners, err = c.controller.translator.TranslateGatewayV1(gateway)
 				if err != nil {
 					return err
@@ -175,7 +175,7 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 					return err
 				}
 			case kube.GatewayV1beta1:
-				gateway := gate.V1beta1()
+				gateway := gatev1beta
 				listeners, err = c.controller.translator.TranslateGatewayV1beta1(gateway)
 				if err != nil {
 					return err
@@ -203,7 +203,12 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 	// We can update `spec.addresses` with the current data plane information.
 	// At present, we choose to directly update `GatewayStatus.Addresses`
 	// to indicate that we have picked the Gateway resource.
-	c.recordStatus(gate, string(gatewayv1.ListenerReasonReady), metav1.ConditionTrue, generation)
+	switch gatewayEvent.GroupVersion {
+	case kube.GatewayV1:
+		c.recordStatusv1(gatev1, string(gatewayv1.ListenerReasonReady), metav1.ConditionTrue, generation)
+	case kube.GatewayV1beta1:
+		c.recordStatusv1beta(gatev1beta, string(gatewayv1.ListenerReasonReady), metav1.ConditionTrue, generation)
+	}
 	return nil
 }
 
@@ -279,75 +284,72 @@ func (c *gatewayController) OnDelete(obj interface{}) {
 	})
 }
 
-// recordStatus record resources status
-func (c *gatewayController) recordStatus(gateway kube.Gateway, reason string, status metav1.ConditionStatus, generation int64) {
-	switch gateway.GroupVersion() {
-	case kube.GatewayV1:
-		v := gateway.V1().DeepCopy()
+func (c *gatewayController) recordStatusv1beta(v *gatewayv1beta1.Gateway, reason string, status metav1.ConditionStatus, generation int64) {
+	v = v.DeepCopy()
 
-		gatewayCondition := metav1.Condition{
-			Type:               string(gatewayv1.ListenerConditionReady),
-			Reason:             reason,
-			Status:             status,
-			Message:            "Gateway's status has been successfully updated",
-			ObservedGeneration: generation,
-		}
-
-		if v.Status.Conditions == nil {
-			conditions := make([]metav1.Condition, 0)
-			v.Status.Conditions = conditions
-		} else {
-			meta.SetStatusCondition(&v.Status.Conditions, gatewayCondition)
-		}
-
-		lbips, err := utils.IngressLBStatusIPs(c.controller.Cfg.IngressPublishService, c.controller.Cfg.IngressStatusAddress, c.controller.ListerInformer.SvcLister)
-		if err != nil {
-			log.Errorw("failed to get APISIX gateway external IPs",
-				zap.Error(err),
-			)
-		}
-
-		v.Status.Addresses = utils.CoreV1ToGatewayV1beta1Addr(lbips)
-		if _, errRecord := c.controller.gatewayClient.GatewayV1().Gateways(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
-			log.Errorw("failed to record status change for Gateway resource",
-				zap.Error(errRecord),
-				zap.String("name", v.Name),
-				zap.String("namespace", v.Namespace),
-			)
-		}
-	case kube.GatewayV1beta1:
-		v := gateway.V1beta1().DeepCopy()
-
-		gatewayCondition := metav1.Condition{
-			Type:               string(gatewayv1.ListenerConditionReady),
-			Reason:             reason,
-			Status:             status,
-			Message:            "Gateway's status has been successfully updated",
-			ObservedGeneration: generation,
-		}
-
-		if v.Status.Conditions == nil {
-			conditions := make([]metav1.Condition, 0)
-			v.Status.Conditions = conditions
-		} else {
-			meta.SetStatusCondition(&v.Status.Conditions, gatewayCondition)
-		}
-
-		lbips, err := utils.IngressLBStatusIPs(c.controller.Cfg.IngressPublishService, c.controller.Cfg.IngressStatusAddress, c.controller.ListerInformer.SvcLister)
-		if err != nil {
-			log.Errorw("failed to get APISIX gateway external IPs",
-				zap.Error(err),
-			)
-		}
-
-		v.Status.Addresses = utils.CoreV1ToGatewayV1beta1Addr(lbips)
-		if _, errRecord := c.controller.gatewayClient.GatewayV1beta1().Gateways(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
-			log.Errorw("failed to record status change for Gateway resource",
-				zap.Error(errRecord),
-				zap.String("name", v.Name),
-				zap.String("namespace", v.Namespace),
-			)
-		}
+	gatewayCondition := metav1.Condition{
+		Type:               string(gatewayv1.ListenerConditionReady),
+		Reason:             reason,
+		Status:             status,
+		Message:            "Gateway's status has been successfully updated",
+		ObservedGeneration: generation,
 	}
 
+	if v.Status.Conditions == nil {
+		conditions := make([]metav1.Condition, 0)
+		v.Status.Conditions = conditions
+	} else {
+		meta.SetStatusCondition(&v.Status.Conditions, gatewayCondition)
+	}
+
+	lbips, err := utils.IngressLBStatusIPs(c.controller.Cfg.IngressPublishService, c.controller.Cfg.IngressStatusAddress, c.controller.ListerInformer.SvcLister)
+	if err != nil {
+		log.Errorw("failed to get APISIX gateway external IPs",
+			zap.Error(err),
+		)
+	}
+
+	v.Status.Addresses = utils.CoreV1ToGatewayV1beta1Addr(lbips)
+	if _, errRecord := c.controller.gatewayClient.GatewayV1beta1().Gateways(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+		log.Errorw("failed to record status change for Gateway resource",
+			zap.Error(errRecord),
+			zap.String("name", v.Name),
+			zap.String("namespace", v.Namespace),
+		)
+	}
+}
+
+func (c *gatewayController) recordStatusv1(v *gatewayv1.Gateway, reason string, status metav1.ConditionStatus, generation int64) {
+	v = v.DeepCopy()
+
+	gatewayCondition := metav1.Condition{
+		Type:               string(gatewayv1.ListenerConditionReady),
+		Reason:             reason,
+		Status:             status,
+		Message:            "Gateway's status has been successfully updated",
+		ObservedGeneration: generation,
+	}
+
+	if v.Status.Conditions == nil {
+		conditions := make([]metav1.Condition, 0)
+		v.Status.Conditions = conditions
+	} else {
+		meta.SetStatusCondition(&v.Status.Conditions, gatewayCondition)
+	}
+
+	lbips, err := utils.IngressLBStatusIPs(c.controller.Cfg.IngressPublishService, c.controller.Cfg.IngressStatusAddress, c.controller.ListerInformer.SvcLister)
+	if err != nil {
+		log.Errorw("failed to get APISIX gateway external IPs",
+			zap.Error(err),
+		)
+	}
+
+	v.Status.Addresses = utils.CoreV1ToGatewayV1beta1Addr(lbips)
+	if _, errRecord := c.controller.gatewayClient.GatewayV1().Gateways(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+		log.Errorw("failed to record status change for Gateway resource",
+			zap.Error(errRecord),
+			zap.String("name", v.Name),
+			zap.String("namespace", v.Namespace),
+		)
+	}
 }

@@ -42,6 +42,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
 	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
+	gatewaylistersv1 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1"
 )
 
 const (
@@ -69,9 +70,10 @@ type Provider struct {
 	translator gatewaytranslation.Translator
 	validator  Validator
 
-	gatewayController *gatewayController
-	gatewayInformer   cache.SharedIndexInformer
-	gatewayLister     gatewaylistersv1beta1.GatewayLister
+	gatewayController    *gatewayController
+	gatewayInformer      cache.SharedIndexInformer
+	gatewayListerV1      gatewaylistersv1.GatewayLister
+	gatewayListerV1beta1 gatewaylistersv1beta1.GatewayLister
 
 	gatewayClassController *gatewayClassController
 	gatewayClassInformer   cache.SharedIndexInformer
@@ -144,7 +146,8 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 
 	gatewayFactory := gatewayexternalversions.NewSharedInformerFactory(p.gatewayClient, p.Cfg.Kubernetes.ResyncInterval.Duration)
 
-	p.gatewayLister = gatewayFactory.Gateway().V1beta1().Gateways().Lister()
+	p.gatewayListerV1beta1 = gatewayFactory.Gateway().V1beta1().Gateways().Lister()
+	p.gatewayListerV1 = gatewayFactory.Gateway().V1().Gateways().Lister()
 	p.gatewayInformer = gatewayFactory.Gateway().V1beta1().Gateways().Informer()
 
 	p.gatewayClassLister = gatewayFactory.Gateway().V1beta1().GatewayClasses().Lister()
@@ -162,7 +165,7 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 	p.gatewayUDPRouteLister = gatewayFactory.Gateway().V1alpha2().UDPRoutes().Lister()
 	p.gatewayUDPRouteInformer = gatewayFactory.Gateway().V1alpha2().UDPRoutes().Informer()
 
-	p.gatewayController = newGatewayController(p, opts.ListerInformer.GatewayLister)
+	p.gatewayController = newGatewayController(p)
 	p.validator = *newValidator(p)
 
 	p.gatewayClassController, err = newGatewayClassController(p)

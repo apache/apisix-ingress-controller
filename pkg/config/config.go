@@ -43,6 +43,12 @@ const (
 	IngressNetworkingV1 = "networking/v1"
 	// IngressNetworkingV1beta1 represents ingress.networking/v1beta1
 	IngressNetworkingV1beta1 = "networking/v1beta1"
+
+	// GatewayV1 represents gateway.networking/v1
+	GatewayNetworkingV1 = "gateway/v1"
+	// GatewayV1beta1 represents gateway.networking/v1beta1
+	GatewayNetworkingV1beta1 = "gateway/v1beta1"
+
 	// IngressExtensionsV1beta1 represents ingress.extensions/v1beta1
 	// WARNING: ingress.extensions/v1beta1 is deprecated in v1.14+, and will be unavilable
 	// in v1.22.
@@ -110,6 +116,7 @@ type KubernetesConfig struct {
 	ElectionID           string             `json:"election_id" yaml:"election_id"`
 	IngressClass         string             `json:"ingress_class" yaml:"ingress_class"`
 	IngressVersion       string             `json:"ingress_version" yaml:"ingress_version"`
+	GatewayVersion       string             `json:"gateway_version" yaml:"gateway_version"`
 	WatchEndpointSlices  bool               `json:"watch_endpoint_slices" yaml:"watch_endpoint_slices"`
 	APIVersion           string             `json:"api_version" yaml:"api_version"`
 	EnableGatewayAPI     bool               `json:"enable_gateway_api" yaml:"enable_gateway_api"`
@@ -155,6 +162,7 @@ func NewDefaultConfig() *Config {
 			ElectionID:           IngressAPISIXLeader,
 			IngressClass:         IngressClassApisixAndAll,
 			IngressVersion:       IngressNetworkingV1,
+			GatewayVersion:       GatewayNetworkingV1,
 			APIVersion:           DefaultAPIVersion,
 			WatchEndpointSlices:  false,
 			EnableGatewayAPI:     false,
@@ -229,6 +237,12 @@ func (cfg *Config) Validate() error {
 		break
 	default:
 		return errors.New("unsupported ingress version")
+	}
+	switch cfg.Kubernetes.GatewayVersion {
+	case GatewayNetworkingV1, GatewayNetworkingV1beta1:
+		break
+	default:
+		return errors.New("unsupported gateway version")
 	}
 	ok, err := cfg.verifyNamespaceSelector()
 	if !ok {

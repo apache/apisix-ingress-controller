@@ -223,3 +223,29 @@ func CoreV1ToGatewayV1beta1Addr(lbips []corev1.LoadBalancerIngress) []gatewayv1.
 	}
 	return t
 }
+
+func CoreV1ToGatewayV1Addr(lbips []corev1.LoadBalancerIngress) []gatewayv1.GatewayStatusAddress {
+	t := make([]gatewayv1.GatewayStatusAddress, 0, len(lbips))
+
+	// In the definition, there is also an address type called NamedAddress,
+	// which we currently do not implement
+	HostnameAddressType := gatewayv1.HostnameAddressType
+	IPAddressType := gatewayv1.IPAddressType
+
+	for _, lbip := range lbips {
+		if v := lbip.Hostname; v != "" {
+			t = append(t, gatewayv1.GatewayStatusAddress{
+				Type:  &HostnameAddressType,
+				Value: v,
+			})
+		}
+
+		if v := lbip.IP; v != "" {
+			t = append(t, gatewayv1.GatewayStatusAddress{
+				Type:  &IPAddressType,
+				Value: v,
+			})
+		}
+	}
+	return t
+}

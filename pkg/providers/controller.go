@@ -277,6 +277,7 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 		ingressListerV1      networkingv1.IngressLister
 		ingressListerV1beta1 networkingv1beta1.IngressLister
 
+		gatewayInformer      cache.SharedIndexInformer
 		gatewayListerV1      gatewayv1listers.GatewayLister
 		gatewayListerV1beta1 gatewayv1beta1listers.GatewayLister
 	)
@@ -346,11 +347,18 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 	case config.IngressNetworkingV1beta1:
 		ingressInformer = kubeFactory.Networking().V1beta1().Ingresses().Informer()
 		ingressListerV1beta1 = kubeFactory.Networking().V1beta1().Ingresses().Lister()
-		gatewayListerV1beta1 = c.kubeClient.NewGatewaySharedIndexInformerFactory().Gateway().V1beta1().Gateways().Lister()
 
 	default:
 		ingressInformer = kubeFactory.Networking().V1().Ingresses().Informer()
 		ingressListerV1 = kubeFactory.Networking().V1().Ingresses().Lister()
+	}
+
+	switch c.cfg.Kubernetes.GatewayVersion {
+	case config.GatewayNetworkingV1beta1:
+		gatewayInformer = c.kubeClient.NewGatewaySharedIndexInformerFactory().Gateway().V1beta1().Gateways().Informer()
+		gatewayListerV1beta1 = c.kubeClient.NewGatewaySharedIndexInformerFactory().Gateway().V1beta1().Gateways().Lister()
+	default:
+		gatewayInformer = c.kubeClient.NewGatewaySharedIndexInformerFactory().Gateway().V1().Gateways().Informer()
 		gatewayListerV1 = c.kubeClient.NewGatewaySharedIndexInformerFactory().Gateway().V1().Gateways().Lister()
 	}
 
@@ -358,22 +366,22 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 	fmt.Println("gateway lister v1beta1 ", gatewayListerV1beta1, " and gateway lister v1 ", gatewayListerV1)
 	gatewayLister := kube.NewGatewayLister(gatewayListerV1, gatewayListerV1beta1)
 	listerInformer := &providertypes.ListerInformer{
-		ApisixFactory:     apisixFactory,
-		KubeFactory:       kubeFactory,
-		GatewayLister:     gatewayLister,
-		EpLister:          epLister,
-		EpInformer:        epInformer,
-		SvcLister:         svcLister,
-		SvcInformer:       svcInformer,
-		SecretLister:      secretLister,
-		SecretInformer:    secretInformer,
-		PodLister:         podLister,
-		PodInformer:       podInformer,
-		ConfigMapInformer: configmapInformer,
-		ConfigMapLister:   configmapLister,
-		IngressInformer:   ingressInformer,
-		IngressLister:     ingressLister,
-
+		ApisixFactory:             apisixFactory,
+		KubeFactory:               kubeFactory,
+		EpLister:                  epLister,
+		EpInformer:                epInformer,
+		SvcLister:                 svcLister,
+		SvcInformer:               svcInformer,
+		SecretLister:              secretLister,
+		SecretInformer:            secretInformer,
+		PodLister:                 podLister,
+		PodInformer:               podInformer,
+		ConfigMapInformer:         configmapInformer,
+		ConfigMapLister:           configmapLister,
+		IngressInformer:           ingressInformer,
+		IngressLister:             ingressLister,
+		GatewayLister:             gatewayLister,
+		GatewayInformer:           gatewayInformer,
 		ApisixUpstreamLister:      apisixUpstreamLister,
 		ApisixRouteLister:         apisixRouteLister,
 		ApisixConsumerLister:      apisixConsumerLister,

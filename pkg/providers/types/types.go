@@ -69,8 +69,8 @@ type ListerInformer struct {
 	IngressLister kube.IngressLister
 	GatewayLister kube.GatewayLister
 
-	IngressInformer cache.SharedIndexInformer
-
+	IngressInformer             cache.SharedIndexInformer
+	GatewayInformer             cache.SharedIndexInformer
 	ApisixUpstreamInformer      cache.SharedIndexInformer
 	ApisixRouteInformer         cache.SharedIndexInformer
 	ApisixPluginConfigInformer  cache.SharedIndexInformer
