@@ -29,7 +29,7 @@ import (
 
 var _ = ginkgo.Describe("suite-gateway: HTTPRoute v1", func() {
 	s := scaffold.NewScaffold(&scaffold.Options{
-		GatewayAPIVersion: "v1",
+		GatewayAPIVersion: "gateway/v1",
 	})
 
 	ginkgo.It("Basic HTTPRoute with 1 Hosts 1 Rule 1 Match 1 BackendRef", func() {

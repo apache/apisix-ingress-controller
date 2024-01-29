@@ -242,7 +242,7 @@ func (cfg *Config) Validate() error {
 	case GatewayNetworkingV1, GatewayNetworkingV1beta1:
 		break
 	default:
-		return errors.New("unsupported gateway version")
+		return errors.New("unsupported gateway version: " + cfg.Kubernetes.GatewayVersion)
 	}
 	ok, err := cfg.verifyNamespaceSelector()
 	if !ok {

@@ -136,7 +136,7 @@ func NewScaffold(o *Options) *Scaffold {
 	}
 
 	if o.GatewayAPIVersion == "" {
-		o.GatewayAPIVersion = "v1beta1"
+		o.GatewayAPIVersion = "gateway/v1beta1"
 	}
 
 	if o.IngressAPISIXReplicas <= 0 {
