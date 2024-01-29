@@ -62,10 +62,10 @@ type Options struct {
 	DisableStatus                bool
 	IngressClass                 string
 	EnableEtcdServer             bool
-
-	NamespaceSelectorLabel   map[string][]string
-	DisableNamespaceSelector bool
-	DisableNamespaceLabel    bool
+	GatewayAPIVersion            string
+	NamespaceSelectorLabel       map[string][]string
+	DisableNamespaceSelector     bool
+	DisableNamespaceLabel        bool
 }
 
 type Scaffold struct {
@@ -134,9 +134,15 @@ func NewScaffold(o *Options) *Scaffold {
 	if o.Name == "" {
 		o.Name = "default"
 	}
+
+	if o.GatewayAPIVersion == "" {
+		o.GatewayAPIVersion = "v1beta1"
+	}
+
 	if o.IngressAPISIXReplicas <= 0 {
 		o.IngressAPISIXReplicas = 1
 	}
+
 	if o.ApisixResourceVersion == "" {
 		o.ApisixResourceVersion = ApisixResourceVersion().Default
 	}
