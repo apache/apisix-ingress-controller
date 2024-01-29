@@ -217,7 +217,6 @@ func (c *gatewayController) handleSyncErr(obj interface{}, err error) {
 	if k8serrors.IsNotFound(err) && event.Type != types.EventDelete {
 		log.Infow("sync gateway but not found, ignore",
 			zap.String("event_type", event.Type.String()),
-			zap.String("gateway", event.Object.(string)),
 		)
 		c.workqueue.Forget(event)
 		return
