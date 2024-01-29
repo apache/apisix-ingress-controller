@@ -100,9 +100,17 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 	switch gatewayEvent.GroupVersion {
 	case kube.GatewayV1:
 		gate, err = c.gatewaylister.V1(namespace, name)
+		if err != nil {
+			return err
+		}
 		generation = gate.V1().Generation
 	case kube.GatewayV1beta1:
 		gate, err = c.gatewaylister.V1beta1(namespace, name)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("gateway returned by gatewaylister for v1beta1 ", gate.V1beta1())
 		generation = gate.V1beta1().Generation
 	}
 

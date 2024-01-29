@@ -76,6 +76,7 @@ func (ing *gateway) V1beta1() *gatewayv1beta1.Gateway {
 	if ing.groupVersion != GatewayV1beta1 {
 		panic("not a networking/v1beta1 ingress")
 	}
+	fmt.Println("v1beta1 ", ing.v1beta1)
 	return ing.v1beta1
 }
 
@@ -101,7 +102,7 @@ func MustNewGateway(obj interface{}) Gateway {
 			Object:       gate,
 		}
 	case *gatewayv1beta1.Gateway:
-		fmt.Println("gateway ", gate)
+		fmt.Println("gateway v1beta1 is ", gate)
 		return &gateway{
 			groupVersion: GatewayV1beta1,
 			v1beta1:      gate,
@@ -141,7 +142,7 @@ func (l *gatewayLister) V1beta1(namespace, name string) (Gateway, error) {
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("gate: ", gate)
+	fmt.Println("gate from here: ", gate)
 	return &gateway{
 		groupVersion: GatewayV1beta1,
 		v1beta1:      gate,
