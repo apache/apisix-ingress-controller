@@ -162,7 +162,7 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 	p.gatewayUDPRouteLister = gatewayFactory.Gateway().V1alpha2().UDPRoutes().Lister()
 	p.gatewayUDPRouteInformer = gatewayFactory.Gateway().V1alpha2().UDPRoutes().Informer()
 
-	p.gatewayController = newGatewayController(p)
+	p.gatewayController = newGatewayController(p, opts.ListerInformer.GatewayLister)
 	p.validator = *newValidator(p)
 
 	p.gatewayClassController, err = newGatewayClassController(p)

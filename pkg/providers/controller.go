@@ -355,6 +355,7 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 	}
 
 	ingressLister := kube.NewIngressLister(ingressListerV1, ingressListerV1beta1)
+	fmt.Println("gateway lister v1beta1 ", gatewayListerV1beta1, " and gateway lister v1 ", gatewayListerV1)
 	gatewayLister := kube.NewGatewayLister(gatewayListerV1, gatewayListerV1beta1)
 	listerInformer := &providertypes.ListerInformer{
 		ApisixFactory:     apisixFactory,

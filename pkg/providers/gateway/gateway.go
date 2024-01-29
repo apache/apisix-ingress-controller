@@ -41,11 +41,12 @@ type gatewayController struct {
 	workers       int
 }
 
-func newGatewayController(c *Provider) *gatewayController {
+func newGatewayController(c *Provider, gl kube.GatewayLister) *gatewayController {
 	ctl := &gatewayController{
-		controller: c,
-		workqueue:  workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "Gateway"),
-		workers:    1,
+		controller:    c,
+		gatewaylister: gl,
+		workqueue:     workqueue.NewNamedRateLimitingQueue(workqueue.NewItemFastSlowRateLimiter(1*time.Second, 60*time.Second, 5), "Gateway"),
+		workers:       1,
 	}
 
 	ctl.controller.gatewayInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -99,9 +100,6 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 	switch gatewayEvent.GroupVersion {
 	case kube.GatewayV1:
 		gate, err = c.gatewaylister.V1(namespace, name)
-		if err != nil {
-
-		}
 		generation = gate.V1().Generation
 	case kube.GatewayV1beta1:
 		gate, err = c.gatewaylister.V1beta1(namespace, name)
