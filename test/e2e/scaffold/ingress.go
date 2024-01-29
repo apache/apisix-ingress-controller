@@ -471,7 +471,7 @@ spec:
             - --etcd-server-listen-address
             - ":2379"
             - --gateway-version
-            - "gateway/v1beta1"
+            - "%s"
           volumeMounts:
             - name: admission-webhook
               mountPath: /etc/webhook/certs
@@ -509,7 +509,7 @@ func (s *Scaffold) genIngressDeployment(replicas int, adminAPIVersion,
 		apisixContainer = _apisixContainer
 	}
 	return s.FormatRegistry(fmt.Sprintf(_ingressAPISIXDeploymentTemplate, replicas, initContainers, adminAPIVersion, syncInterval, syncComparison,
-		apisixBaseURL, label, resourceVersion, publishAddr, webhooks, ingressClass, disableStatus, etcdserverEnabled, apisixContainer))
+		apisixBaseURL, label, resourceVersion, publishAddr, webhooks, ingressClass, disableStatus, etcdserverEnabled, s.opts.GatewayAPIVersion, apisixContainer))
 
 }
 
