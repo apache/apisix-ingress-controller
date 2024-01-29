@@ -31,7 +31,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 type gatewayController struct {
@@ -269,22 +268,14 @@ func (c *gatewayController) OnDelete(obj interface{}) {
 		return
 	}
 
-	gateway, ok := obj.(*gatewayv1beta1.Gateway)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			log.Errorw("Gateway in bad tombstone state",
-				zap.String("key", key),
-				zap.Any("obj", obj),
-			)
-			return
-		}
-		gateway = tombstone.Obj.(*gatewayv1beta1.Gateway)
-	}
+	gateway := kube.MustNewGateway(obj)
 
 	c.workqueue.Add(&types.Event{
-		Type:      types.EventDelete,
-		Object:    key,
+		Type: types.EventDelete,
+		Object: kube.GatewayEvent{
+			Key:          key,
+			GroupVersion: gateway.GroupVersion(),
+		},
 		Tombstone: gateway,
 	})
 }
