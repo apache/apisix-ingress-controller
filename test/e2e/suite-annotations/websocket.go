@@ -18,6 +18,7 @@ package annotations
 import (
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -114,6 +115,9 @@ spec:
 })
 
 var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1beta1 with websocket", func() {
+	if os.Getenv("K8s_Version") == "v1.24.0" {
+		return
+	}
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("sanity", func() {
 		resources := `

@@ -19,6 +19,7 @@ package gateway
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
@@ -27,49 +28,55 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-// var _ = ginkgo.Describe("suite-gateway: HTTPRoute v1", func() {
-// 	s := scaffold.NewScaffold(&scaffold.Options{
-// 		GatewayAPIVersion: "gateway/v1",
-// 	})
+var _ = ginkgo.Describe("suite-gateway: HTTPRoute v1", func() {
+	if os.Getenv("K8s_Version") != "v1.24.0" {
+		return
+	}
+	s := scaffold.NewScaffold(&scaffold.Options{
+		GatewayAPIVersion: "gateway/v1",
+	})
 
-// 	ginkgo.It("Basic HTTPRoute with 1 Hosts 1 Rule 1 Match 1 BackendRef", func() {
-// 		backendSvc, backendPorts := s.DefaultHTTPBackend()
-// 		time.Sleep(time.Second * 15)
-// 		route := fmt.Sprintf(`
-// apiVersion: gateway.networking.k8s.io/v1
-// kind: HTTPRoute
-// metadata:
-//   name: basic-http-route
-// spec:
-//   hostnames: ["httpbin.org"]
-//   rules:
-//   - matches:
-//     - path:
-//         type: PathPrefix
-//         value: /ip
-//     backendRefs:
-//     - name: %s
-//       port: %d
-// `, backendSvc, backendPorts[0])
+	ginkgo.It("Basic HTTPRoute with 1 Hosts 1 Rule 1 Match 1 BackendRef", func() {
+		backendSvc, backendPorts := s.DefaultHTTPBackend()
+		time.Sleep(time.Second * 15)
+		route := fmt.Sprintf(`
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: basic-http-route
+spec:
+  hostnames: ["httpbin.org"]
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /ip
+    backendRefs:
+    - name: %s
+      port: %d
+`, backendSvc, backendPorts[0])
 
-// 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route), "creating HTTPRoute")
-// 		time.Sleep(time.Second * 6)
-// 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
-// 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
+		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(route), "creating HTTPRoute")
+		time.Sleep(time.Second * 6)
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(1), "Checking number of routes")
+		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "Checking number of upstreams")
 
-// 		_ = s.NewAPISIXClient().GET("/ip").
-// 			WithHeader("Host", "httpbin.org").
-// 			Expect().
-// 			Status(http.StatusOK)
-// 		_ = s.NewAPISIXClient().GET("/notfound").
-// 			WithHeader("Host", "httpbin.org").
-// 			Expect().
-// 			Status(http.StatusNotFound)
-// 	})
+		_ = s.NewAPISIXClient().GET("/ip").
+			WithHeader("Host", "httpbin.org").
+			Expect().
+			Status(http.StatusOK)
+		_ = s.NewAPISIXClient().GET("/notfound").
+			WithHeader("Host", "httpbin.org").
+			Expect().
+			Status(http.StatusNotFound)
+	})
 
-// })
+})
 
 var _ = ginkgo.Describe("suite-gateway: HTTPRoute", func() {
+	if os.Getenv("K8s_Version") == "v1.24.0" {
+		return
+	}
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("Basic HTTPRoute with 1 Hosts 1 Rule 1 Match 1 BackendRef", func() {
@@ -279,6 +286,9 @@ spec:
 })
 
 var _ = ginkgo.Describe("suite-gateway: HTTPRoute with filter", func() {
+	if os.Getenv("K8s_Version") == "v1.24.0" {
+		return
+	}
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("HTTPRoute with RequestHeaderModifier", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()

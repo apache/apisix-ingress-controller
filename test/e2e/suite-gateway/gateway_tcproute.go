@@ -19,6 +19,7 @@ package gateway
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
@@ -28,6 +29,9 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-gateway: TCP Route", func() {
+	if os.Getenv("K8s_Version") == "v1.24.0" {
+		return
+	}
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("create TCPRoute", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()

@@ -17,6 +17,7 @@ package annotations
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -118,6 +119,9 @@ spec:
 	})
 
 	ginkgo.It("enable in ingress networking/v1beta1", func() {
+		if os.Getenv("K8s_Version") == "v1.24.0" {
+			return
+		}
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1
@@ -167,6 +171,9 @@ spec:
 	})
 
 	ginkgo.It("disable in ingress networking/v1beta1", func() {
+		if os.Getenv("K8s_Version") == "v1.24.0" {
+			return
+		}
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1

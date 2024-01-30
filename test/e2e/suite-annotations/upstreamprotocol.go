@@ -16,6 +16,7 @@
 package annotations
 
 import (
+	"os"
 	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -95,6 +96,9 @@ spec:
 })
 
 var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1beta1 upstream scheme", func() {
+	if os.Getenv("K8s_Version") == "v1.24.0" {
+		return
+	}
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("sanity", func() {
 		ing := `

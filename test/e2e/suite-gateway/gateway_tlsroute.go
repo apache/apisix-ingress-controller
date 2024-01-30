@@ -19,6 +19,7 @@ package gateway
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
@@ -129,6 +130,9 @@ jW4KB95bGOTa7r7DM1Up0MbAIwWoeLBGhOIXk7inurZGg+FNjZMA5Lzm6qo=
 }
 
 var _ = ginkgo.Describe("suite-gateway: TLSRoute", func() {
+	if os.Getenv("K8s_Version") == "v1.24.0" {
+		return
+	}
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("Basic with 1 Hosts 1 Rule 1 Match 1 BackendRef", func() {

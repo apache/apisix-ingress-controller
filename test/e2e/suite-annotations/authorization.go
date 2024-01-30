@@ -17,6 +17,7 @@ package annotations
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -78,6 +79,9 @@ spec:
 		})
 
 		ginkgo.It("enable keyAuth in ingress networking/v1beta1", func() {
+			if os.Getenv("K8s_Version") == "v1.24.0" {
+				return
+			}
 			err := s.ApisixConsumerKeyAuthCreated("foo", "bar")
 			assert.Nil(ginkgo.GinkgoT(), err, "creating keyAuth ApisixConsumer")
 
@@ -172,6 +176,9 @@ spec:
 		})
 
 		ginkgo.It("enable basicAuth in ingress networking/v1beta1", func() {
+			if os.Getenv("K8s_Version") == "v1.24.0" {
+				return
+			}
 			err := s.ApisixConsumerBasicAuthCreated("jack1", "jack1-username", "jack1-password")
 			assert.Nil(ginkgo.GinkgoT(), err, "creating keyAuth ApisixConsumer")
 

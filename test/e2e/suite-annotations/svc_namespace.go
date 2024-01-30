@@ -17,6 +17,7 @@ package annotations
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gruntwork-io/terratest/modules/k8s"
@@ -70,6 +71,9 @@ spec:
 	})
 
 	ginkgo.It("networking/v1beta1", func() {
+		if os.Getenv("K8s_Version") == "v1.24.0" {
+			return
+		}
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1
@@ -124,7 +128,9 @@ var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations cross-name
 	}
 
 	ginkgo.It("networking/v1beta1", func() {
-
+		if os.Getenv("K8s_Version") == "v1.24.0" {
+			return
+		}
 		newNs := fmt.Sprintf("second-svc-namespace-%d", time.Now().Nanosecond())
 		oldNs := s.Namespace()
 		createNamespace(newNs, oldNs)

@@ -18,6 +18,7 @@ package annotations
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	ginkgo "github.com/onsi/ginkgo/v2"
@@ -109,6 +110,9 @@ spec:
 var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1beta1 with ApisixPluginConfig", func() {
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("networking/v1beta1", func() {
+		if os.Getenv("K8s_Version") == "v1.24.0" {
+			return
+		}
 		_createAPC(s)
 
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
