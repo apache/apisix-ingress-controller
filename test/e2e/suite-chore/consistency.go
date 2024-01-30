@@ -183,7 +183,7 @@ var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and the Ingress
 	})
 
 	ginkgo.It("Ingress V1beta1 and APISIX of route and upstream", func() {
-		if os.Getenv("K8s_Version") == "v1.24.0" {
+		if os.Getenv("K8s_Version") == "v1.25.1" {
 			return
 		}
 		httpService := fmt.Sprintf(_httpServiceConfig, "port1", 9080, 9080)

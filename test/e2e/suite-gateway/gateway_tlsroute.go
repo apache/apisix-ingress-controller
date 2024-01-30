@@ -130,7 +130,7 @@ jW4KB95bGOTa7r7DM1Up0MbAIwWoeLBGhOIXk7inurZGg+FNjZMA5Lzm6qo=
 }
 
 var _ = ginkgo.Describe("suite-gateway: TLSRoute", func() {
-	if os.Getenv("K8s_Version") == "v1.24.0" {
+	if os.Getenv("K8s_Version") == "v1.25.1" {
 		return
 	}
 	s := scaffold.NewDefaultScaffold()

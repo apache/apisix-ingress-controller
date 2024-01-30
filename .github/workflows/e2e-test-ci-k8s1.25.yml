@@ -16,7 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-name: e2e-test-ci-k8s-v1.24
+name: e2e-test-ci-k8s-v1.25
 
 on:
   push:
@@ -182,7 +182,7 @@ jobs:
       - name: Create K8s cluster
         shell: bash
         run: |
-          K8S_VERSION=v1.24.15 make kind-up
+          K8S_VERSION=v1.25.1 make kind-up
           kubectl wait --for=condition=Ready nodes --all
 
       - name: Load images from cache
@@ -202,7 +202,7 @@ jobs:
           E2E_SKIP_BUILD: "1"
           E2E_FLAKE_ATTEMPTS: "2"
           E2E_ENV: "ci"
-          K8S_VERSION: v1.24.0
+          K8S_VERSION: v1.25.1
         run: |
           echo ${E2E_FOCUS} | grep "suite-cluster" && export E2E_NODES=1
           GATEWAY_API_VERSION=v1.0.0 make e2e-test

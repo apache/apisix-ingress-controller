@@ -87,7 +87,7 @@ spec:
 	})
 
 	ginkgo.It("enable csrf in ingress networking/v1beta1", func() {
-		if os.Getenv("K8s_Version") == "v1.24.0" {
+		if os.Getenv("K8s_Version") == "v1.25.1" {
 			return
 		}
 		backendSvc, backendPort := s.DefaultHTTPBackend()
