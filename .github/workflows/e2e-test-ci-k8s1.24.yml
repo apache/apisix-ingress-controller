@@ -182,7 +182,7 @@ jobs:
       - name: Create K8s cluster
         shell: bash
         run: |
-          K8S_VERSION=v1.24.0 make kind-up
+          K8S_VERSION=v1.24.15 make kind-up
           kubectl wait --for=condition=Ready nodes --all
 
       - name: Load images from cache
