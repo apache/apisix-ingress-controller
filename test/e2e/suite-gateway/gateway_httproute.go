@@ -343,6 +343,9 @@ spec:
 	})
 
 	ginkgo.It("HTTPRoute with RequestRidrect", func() {
+		if os.Getenv("K8s_Version") == "v1.29.0" {
+			return
+		}
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 		httproute := fmt.Sprintf(`

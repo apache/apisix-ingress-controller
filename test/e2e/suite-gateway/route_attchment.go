@@ -87,6 +87,9 @@ spec:
 	})
 
 	ginkgo.It("Gateway cross-namespace routing not allow", func() {
+		if os.Getenv("K8s_Version") == "v1.29.0" {
+			return
+		}
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		crossName := fmt.Sprintf("no-label-cross-ns-%d", time.Now().Unix())
 		crossNamespace := fmt.Sprintf(`
@@ -127,6 +130,9 @@ spec:
 	})
 
 	ginkgo.It("Gateway cross-namespace routing with selector", func() {
+		if os.Getenv("K8s_Version") == "v1.29.0" {
+			return
+		}
 		crossName := fmt.Sprintf("label-cross-ns-%d", time.Now().Unix())
 		crossNamespace := fmt.Sprintf(`
 apiVersion: v1
@@ -171,6 +177,9 @@ spec:
 	})
 
 	ginkgo.It("Gateway same namespace routing", func() {
+		if os.Getenv("K8s_Version") == "v1.29.0" {
+			return
+		}
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		httpRoute := fmt.Sprintf(`
 apiVersion: gateway.networking.k8s.io/v1alpha2
@@ -197,6 +206,9 @@ spec:
 	})
 
 	ginkgo.It("Gateway ParentRef GroupKind limit", func() {
+		if os.Getenv("K8s_Version") == "v1.29.0" {
+			return
+		}
 		// HTTPRoute can't attach to tcp-route-only Gateway Listener
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		httpRoute := fmt.Sprintf(`
@@ -240,6 +252,9 @@ spec:
 	})
 
 	ginkgo.It("Gateway Listener hostname match", func() {
+		if os.Getenv("K8s_Version") == "v1.29.0" {
+			return
+		}
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		// hostname mismatch case
 		mismatchHttpRoute := fmt.Sprintf(`

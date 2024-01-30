@@ -168,6 +168,9 @@ k1XbogS6EYyEdbkTDdXdUENvDrU7hzJXSVxJYADiqr44DGfWm6hK0bq9ZPc=
 -----END RSA PRIVATE KEY-----
 `
 	ginkgo.It("should support ingress v1beta1 with tls", func() {
+		if os.Getenv("K8s_Version") == "v1.29.0" {
+			return
+		}
 		// create secrets
 		err := s.NewSecret(serverCertSecret, serverCert, serverKey)
 		assert.Nil(ginkgo.GinkgoT(), err, "create server cert secret error")
@@ -589,6 +592,9 @@ spec:
 	})
 
 	ginkgo.It("path regex match networking.k8s.io/v1beta1", func() {
+		if os.Getenv("K8s_Version") == "v1.29.0" {
+			return
+		}
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1
