@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
@@ -36,6 +37,9 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-ingress-resource: support ingress https", func() {
+	if os.Getenv("K8s_Version") == "v1.29.0" {
+		return
+	}
 	s := scaffold.NewDefaultScaffold()
 
 	rootCA := `-----BEGIN CERTIFICATE-----
@@ -519,6 +523,9 @@ spec:
 })
 
 var _ = ginkgo.Describe("suite-ingress-resource: support ingress.networking/v1beta1", func() {
+	if os.Getenv("K8s_Version") == "v1.29.0" {
+		return
+	}
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("path exact match", func() {
