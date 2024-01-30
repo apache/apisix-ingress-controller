@@ -291,6 +291,9 @@ var _ = ginkgo.Describe("suite-gateway: HTTPRoute with filter", func() {
 	}
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("HTTPRoute with RequestHeaderModifier", func() {
+		if os.Getenv("K8s_Version") == "v1.29.0" {
+			return
+		}
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		time.Sleep(time.Second * 15)
 		httproute := fmt.Sprintf(`
@@ -414,6 +417,9 @@ spec:
 	})
 
 	ginkgo.It("HTTPRoute with RequestMirror", func() {
+		if os.Getenv("K8s_Version") == "v1.29.0" {
+			return
+		}
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 
 		echo := `

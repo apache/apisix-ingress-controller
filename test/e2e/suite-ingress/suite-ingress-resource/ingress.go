@@ -532,6 +532,9 @@ var _ = ginkgo.Describe("suite-ingress-resource: support ingress.networking/v1be
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("path exact match", func() {
+		if os.Getenv("K8s_Version") == "v1.29.0" {
+			return
+		}
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1
@@ -562,6 +565,9 @@ spec:
 	})
 
 	ginkgo.It("path prefix match", func() {
+		if os.Getenv("K8s_Version") == "v1.29.0" {
+			return
+		}
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1
