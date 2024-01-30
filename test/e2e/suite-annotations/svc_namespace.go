@@ -71,7 +71,7 @@ spec:
 	})
 
 	ginkgo.It("networking/v1beta1", func() {
-		if os.Getenv("K8s_Version") == "v1.25.1" {
+		if os.Getenv("K8s_Version") == "v1.29.0" {
 			return
 		}
 		backendSvc, backendPort := s.DefaultHTTPBackend()
@@ -128,7 +128,7 @@ var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations cross-name
 	}
 
 	ginkgo.It("networking/v1beta1", func() {
-		if os.Getenv("K8s_Version") == "v1.25.1" {
+		if os.Getenv("K8s_Version") == "v1.29.0" {
 			return
 		}
 		newNs := fmt.Sprintf("second-svc-namespace-%d", time.Now().Nanosecond())

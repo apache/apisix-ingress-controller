@@ -28,7 +28,7 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-gateway: Route Attachment", func() {
-	if os.Getenv("K8s_Version") == "v1.25.1" {
+	if os.Getenv("K8s_Version") == "v1.29.0" {
 		return
 	}
 	s := scaffold.NewDefaultScaffold()
