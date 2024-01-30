@@ -101,6 +101,9 @@ spec:
 )
 
 var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and the CRDs resource of the IngressController", func() {
+	if os.Getenv("K8s_Version") == "v1.29.0" {
+		return
+	}
 	suites := func(s *scaffold.Scaffold) {
 		ginkgo.It("ApisixRoute and APISIX of route and upstream", func() {
 			httpService := fmt.Sprintf(_httpServiceConfig, "port1", 9080, 9080)

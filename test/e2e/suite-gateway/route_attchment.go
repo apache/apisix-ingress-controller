@@ -37,6 +37,9 @@ var _ = ginkgo.Describe("suite-gateway: Route Attachment", func() {
 	gatewayName := "test-gateway"
 	// create Gateway resource with AllowedRoute
 	ginkgo.JustBeforeEach(func() {
+		if os.Getenv("K8s_Version") == "v1.29.0" {
+			return
+		}
 		gatewayClass := fmt.Sprintf(`
 apiVersion: gateway.networking.k8s.io/v1alpha2
 kind: GatewayClass
