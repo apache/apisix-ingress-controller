@@ -16,7 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-name: e2e-test-ci
+name: e2e-test-ci-k8s-v1.24
 
 on:
   push:
