@@ -213,7 +213,7 @@ func (c *Controller) Run(ctx context.Context) error {
 					zap.String("pod", c.name),
 				)
 				// rootCancel might be to slow, and controllers may have bugs that cause them to not yield
-				// the safest way to step down is to simply cause a pod restart, making
+				// the safest way to step down is to simply cause a pod restart
 				os.Exit(0)
 			},
 		},
@@ -226,7 +226,7 @@ func (c *Controller) Run(ctx context.Context) error {
 	if leaderElectionConfig.WatchDog != nil {
 		leaderElectionConfig.WatchDog.SetLeaderElection(leaderElector)
 	}
-	// todo: this should never be neccessary
+	// todo: this should never be necessary if only one controller runs
 	c.elector = leaderElector
 
 	leaderElector.Run(rootCtx)
