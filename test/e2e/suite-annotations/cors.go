@@ -119,7 +119,7 @@ spec:
 	})
 
 	ginkgo.It("enable in ingress networking/v1beta1", func() {
-		if os.Getenv("K8S_Version") == "v1.29.0" {
+		if os.Getenv("K8S_VERSION") == "v1.29.0" {
 			return
 		}
 		backendSvc, backendPort := s.DefaultHTTPBackend()
@@ -171,7 +171,7 @@ spec:
 	})
 
 	ginkgo.It("disable in ingress networking/v1beta1", func() {
-		if os.Getenv("K8S_Version") == "v1.29.0" {
+		if os.Getenv("K8S_VERSION") == "v1.29.0" {
 			return
 		}
 		backendSvc, backendPort := s.DefaultHTTPBackend()

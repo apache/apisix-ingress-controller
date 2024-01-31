@@ -101,7 +101,7 @@ spec:
 )
 
 var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and the CRDs resource of the IngressController", func() {
-	if os.Getenv("K8S_Version") == "v1.29.0" {
+	if os.Getenv("K8S_VERSION") == "v1.29.0" {
 		return
 	}
 	suites := func(s *scaffold.Scaffold) {
@@ -148,7 +148,7 @@ var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and the CRDs re
 })
 
 var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and the Ingress resource of the IngressController", func() {
-	if os.Getenv("K8S_Version") == "v1.29.0" {
+	if os.Getenv("K8S_VERSION") == "v1.29.0" {
 		return
 	}
 	s := scaffold.NewDefaultScaffold()
@@ -187,15 +187,15 @@ var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and the Ingress
 
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 	})
-	if os.Getenv("K8S_Version") == "v1.29.0" {
+	if os.Getenv("K8S_VERSION") == "v1.29.0" {
 		return
 	}
-	fmt.Println("K8S_Version", os.Getenv("K8S_Version"))
+	fmt.Println("K8S_VERSION", os.Getenv("K8S_VERSION"))
 	ginkgo.It("Ingress V1beta1 and APISIX of route and upstream", func() {
-		if os.Getenv("K8S_Version") == "v1.29.0" {
+		if os.Getenv("K8S_VERSION") == "v1.29.0" {
 			return
 		}
-		fmt.Println("K8S_Version", os.Getenv("K8S_Version"))
+		fmt.Println("K8S_VERSION", os.Getenv("K8S_VERSION"))
 		httpService := fmt.Sprintf(_httpServiceConfig, "port1", 9080, 9080)
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(httpService))
 

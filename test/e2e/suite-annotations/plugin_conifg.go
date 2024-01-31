@@ -110,7 +110,7 @@ spec:
 var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1beta1 with ApisixPluginConfig", func() {
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("networking/v1beta1", func() {
-		if os.Getenv("K8S_Version") == "v1.29.0" {
+		if os.Getenv("K8S_VERSION") == "v1.29.0" {
 			return
 		}
 		_createAPC(s)

@@ -130,13 +130,13 @@ jW4KB95bGOTa7r7DM1Up0MbAIwWoeLBGhOIXk7inurZGg+FNjZMA5Lzm6qo=
 }
 
 var _ = ginkgo.Describe("suite-gateway: TLSRoute", func() {
-	if os.Getenv("K8S_Version") == "v1.29.0" {
+	if os.Getenv("K8S_VERSION") == "v1.29.0" {
 		return
 	}
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("Basic with 1 Hosts 1 Rule 1 Match 1 BackendRef", func() {
-		if os.Getenv("K8S_Version") == "v1.29.0" {
+		if os.Getenv("K8S_VERSION") == "v1.29.0" {
 			return
 		}
 		createSSL(s)
@@ -178,7 +178,7 @@ spec:
 	})
 
 	ginkgo.It("Basic with 2 Hosts 1 Rule 1 Match 1 BackendRef", func() {
-		if os.Getenv("K8S_Version") == "v1.29.0" {
+		if os.Getenv("K8S_VERSION") == "v1.29.0" {
 			return
 		}
 		createSSL(s)

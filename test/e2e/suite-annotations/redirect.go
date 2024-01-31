@@ -63,7 +63,7 @@ spec:
 	})
 
 	ginkgo.It("redirect http-to-https in ingress networking/v1beta1", func() {
-		if os.Getenv("K8S_Version") == "v1.29.0" {
+		if os.Getenv("K8S_VERSION") == "v1.29.0" {
 			return
 		}
 		backendSvc, backendPort := s.DefaultHTTPBackend()
@@ -129,7 +129,7 @@ spec:
 	})
 
 	ginkgo.It("redirect http-redirect in ingress networking/v1beta1", func() {
-		if os.Getenv("K8S_Version") == "v1.29.0" {
+		if os.Getenv("K8S_VERSION") == "v1.29.0" {
 			return
 		}
 		backendSvc, backendPort := s.DefaultHTTPBackend()
@@ -199,7 +199,7 @@ spec:
 	})
 
 	ginkgo.It("redirect http-redirect external link in ingress networking/v1beta1", func() {
-		if os.Getenv("K8S_Version") == "v1.29.0" {
+		if os.Getenv("K8S_VERSION") == "v1.29.0" {
 			return
 		}
 		backendSvc, backendPort := s.DefaultHTTPBackend()

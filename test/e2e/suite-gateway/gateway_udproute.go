@@ -28,13 +28,13 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-gateway: UDP Route", func() {
-	if os.Getenv("K8S_Version") == "v1.29.0" {
+	if os.Getenv("K8S_VERSION") == "v1.29.0" {
 		return
 	}
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("UDPRoute", func() {
-		if os.Getenv("K8S_Version") == "v1.29.0" {
+		if os.Getenv("K8S_VERSION") == "v1.29.0" {
 			return
 		}
 		// setup udp test service
