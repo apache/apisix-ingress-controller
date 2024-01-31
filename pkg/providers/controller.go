@@ -16,6 +16,7 @@ package providers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -158,6 +159,9 @@ func (c *Controller) Run(ctx context.Context) error {
 		}
 	}()
 
+	// warm up informers
+	c.informers = c.initSharedInformers()
+
 	c.MetricsCollector.ResetLeader(false)
 
 	leaderElectionLeaseLock := &resourcelock.LeaseLock{
@@ -172,7 +176,7 @@ func (c *Controller) Run(ctx context.Context) error {
 		},
 	}
 
-	leaderelection.RunOrDie(rootCtx, leaderelection.LeaderElectionConfig{
+	leaderElectionConfig := leaderelection.LeaderElectionConfig{
 		ReleaseOnCancel: true,
 		Name:            "ingress-apisix",
 		Lock:            leaderElectionLeaseLock,
@@ -186,7 +190,11 @@ func (c *Controller) Run(ctx context.Context) error {
 					zap.String("namespace", c.namespace),
 					zap.String("pod", c.name),
 				)
-				c.run(rootCtx)
+				err := c.run(rootCtx)
+				if err != nil {
+					log.Errorf("controller run failed: %v", err)
+				}
+				rootCancel()
 			},
 			OnNewLeader: func(identity string) {
 				log.Warnf("found a new leader %s", identity)
@@ -205,11 +213,23 @@ func (c *Controller) Run(ctx context.Context) error {
 					zap.String("pod", c.name),
 				)
 				// rootCancel might be to slow, and controllers may have bugs that cause them to not yield
-				// the safest way to step down is to simply cause a pod restart
+				// the safest way to step down is to simply cause a pod restart, making
 				os.Exit(0)
 			},
 		},
-	})
+	}
+
+	leaderElector, err := leaderelection.NewLeaderElector(leaderElectionConfig)
+	if err != nil {
+		panic(err)
+	}
+	if leaderElectionConfig.WatchDog != nil {
+		leaderElectionConfig.WatchDog.SetLeaderElection(leaderElector)
+	}
+	// todo: this should never be neccessary
+	c.elector = leaderElector
+
+	leaderElector.Run(rootCtx)
 
 	return nil
 }
@@ -334,7 +354,7 @@ func (c *Controller) initSharedInformers() *providertypes.ListerInformer {
 	return listerInformer
 }
 
-func (c *Controller) run(ctx context.Context) {
+func (c *Controller) run(ctx context.Context) error {
 	log.Infow("controller tries to leading ...",
 		zap.String("namespace", c.namespace),
 		zap.String("pod", c.name),
@@ -358,30 +378,23 @@ func (c *Controller) run(ctx context.Context) {
 		CacheSynced:       !c.cfg.EtcdServer.Enabled,
 		SSLKeyEncryptSalt: c.cfg.EtcdServer.SSLKeyEncryptSalt,
 	}
+
+	// TODO: needs retry logic
 	err := c.apisix.AddCluster(ctx, clusterOpts)
 	if err != nil && err != apisix.ErrDuplicatedCluster {
-		// TODO give up the leader role
 		log.Errorf("failed to add default cluster: %s", err)
-		return
+		return err
 	}
 
 	if err := c.apisix.Cluster(c.cfg.APISIX.DefaultClusterName).HasSynced(ctx); err != nil {
-		// TODO give up the leader role
 		log.Errorf("failed to wait the default cluster to be ready: %s", err)
-
-		// re-create apisix cluster, used in next c.run
-		if err = c.apisix.UpdateCluster(ctx, clusterOpts); err != nil {
-			log.Errorf("failed to update default cluster: %s", err)
-			return
-		}
-		return
+		return err
 	}
 
 	// Creation Phase
 
 	log.Info("creating controller")
 
-	c.informers = c.initSharedInformers()
 	common := &providertypes.Common{
 		ControllerNamespace: c.namespace,
 		ListerInformer:      c.informers,
@@ -395,13 +408,11 @@ func (c *Controller) run(ctx context.Context) {
 
 	c.namespaceProvider, err = namespace.NewWatchingNamespaceProvider(ctx, c.kubeClient, c.cfg, c.resourceSyncCh)
 	if err != nil {
-		ctx.Done()
 		return
 	}
 
 	c.podProvider, err = pod.NewProvider(common, c.namespaceProvider)
 	if err != nil {
-		ctx.Done()
 		return
 	}
 
@@ -418,20 +429,17 @@ func (c *Controller) run(ctx context.Context) {
 
 	c.apisixProvider, c.apisixTranslator, err = apisixprovider.NewProvider(common, c.namespaceProvider, c.translator)
 	if err != nil {
-		ctx.Done()
-		return
+		return err
 	}
 
 	c.ingressProvider, err = ingressprovider.NewProvider(common, c.namespaceProvider, c.translator, c.apisixTranslator)
 	if err != nil {
-		ctx.Done()
-		return
+		return err
 	}
 
 	c.kubeProvider, err = k8s.NewProvider(common, c.translator, c.namespaceProvider, c.apisixProvider, c.ingressProvider)
 	if err != nil {
-		ctx.Done()
-		return
+		return err
 	}
 
 	if c.cfg.Kubernetes.EnableGatewayAPI {
@@ -447,8 +455,7 @@ func (c *Controller) run(ctx context.Context) {
 			ListerInformer:    common.ListerInformer,
 		})
 		if err != nil {
-			ctx.Done()
-			return
+			return err
 		}
 	}
 
@@ -457,16 +464,14 @@ func (c *Controller) run(ctx context.Context) {
 	log.Info("init namespaces")
 
 	if err = c.namespaceProvider.Init(ctx); err != nil {
-		ctx.Done()
-		return
+		return err
 	}
 
 	log.Info("wait for resource sync")
 
 	// Wait for resource sync
 	if ok := c.informers.StartAndWaitForCacheSync(ctx); !ok {
-		ctx.Done()
-		return
+		return errors.New("StartAndWaitForCacheSync failed")
 	}
 
 	log.Info("init providers")
@@ -474,8 +479,7 @@ func (c *Controller) run(ctx context.Context) {
 	// Compare resource
 	if !c.cfg.EtcdServer.Enabled {
 		if err = c.apisixProvider.Init(ctx); err != nil {
-			ctx.Done()
-			return
+			return err
 		}
 	}
 
@@ -525,6 +529,8 @@ func (c *Controller) run(ctx context.Context) {
 		log.Error("Start failed, abort...")
 		cancelFunc()
 	}
+
+	return nil
 }
 
 func (c *Controller) checkClusterHealth(ctx context.Context, cancelFunc context.CancelFunc) {
