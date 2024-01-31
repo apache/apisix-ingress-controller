@@ -408,12 +408,12 @@ func (c *Controller) run(ctx context.Context) error {
 
 	c.namespaceProvider, err = namespace.NewWatchingNamespaceProvider(ctx, c.kubeClient, c.cfg, c.resourceSyncCh)
 	if err != nil {
-		return
+		return err
 	}
 
 	c.podProvider, err = pod.NewProvider(common, c.namespaceProvider)
 	if err != nil {
-		return
+		return err
 	}
 
 	c.translator = translation.NewTranslator(&translation.TranslatorOptions{
