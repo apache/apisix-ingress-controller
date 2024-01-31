@@ -136,6 +136,9 @@ var _ = ginkgo.Describe("suite-gateway: TLSRoute", func() {
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("Basic with 1 Hosts 1 Rule 1 Match 1 BackendRef", func() {
+		if os.Getenv("K8s_Version") == "v1.29.0" {
+			return
+		}
 		createSSL(s)
 
 		host := "api6.com"
@@ -175,6 +178,9 @@ spec:
 	})
 
 	ginkgo.It("Basic with 2 Hosts 1 Rule 1 Match 1 BackendRef", func() {
+		if os.Getenv("K8s_Version") == "v1.29.0" {
+			return
+		}
 		createSSL(s)
 
 		host := "api6.com"

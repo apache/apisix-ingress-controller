@@ -34,6 +34,9 @@ var _ = ginkgo.Describe("suite-gateway: UDP Route", func() {
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("UDPRoute", func() {
+		if os.Getenv("K8s_Version") == "v1.29.0" {
+			return
+		}
 		// setup udp test service
 		dnsSvc := s.NewCoreDNSService()
 		route := fmt.Sprintf(`

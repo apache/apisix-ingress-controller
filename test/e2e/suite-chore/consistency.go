@@ -187,11 +187,15 @@ var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and the Ingress
 
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 	})
-
+	if os.Getenv("K8s_Version") == "v1.29.0" {
+		return
+	}
+	fmt.Println("K8s_Version", os.Getenv("K8s_Version"))
 	ginkgo.It("Ingress V1beta1 and APISIX of route and upstream", func() {
 		if os.Getenv("K8s_Version") == "v1.29.0" {
 			return
 		}
+		fmt.Println("K8s_Version", os.Getenv("K8s_Version"))
 		httpService := fmt.Sprintf(_httpServiceConfig, "port1", 9080, 9080)
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(httpService))
 

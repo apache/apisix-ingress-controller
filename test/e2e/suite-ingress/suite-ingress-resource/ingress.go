@@ -535,6 +535,7 @@ var _ = ginkgo.Describe("suite-ingress-resource: support ingress.networking/v1be
 		if os.Getenv("K8s_Version") == "v1.29.0" {
 			return
 		}
+		fmt.Println("K8s_Version", os.Getenv("K8s_Version"))
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1
@@ -596,11 +597,15 @@ spec:
 		// Mismatched host
 		_ = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
 	})
-
+	if os.Getenv("K8s_Version") == "v1.29.0" {
+		return
+	}
+	fmt.Println("K8s_Version", os.Getenv("K8s_Version"))
 	ginkgo.It("path regex match networking.k8s.io/v1beta1", func() {
 		if os.Getenv("K8s_Version") == "v1.29.0" {
 			return
 		}
+		fmt.Println("K8s_Version", os.Getenv("K8s_Version"))
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1

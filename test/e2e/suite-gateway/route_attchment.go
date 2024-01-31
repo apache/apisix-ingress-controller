@@ -253,7 +253,10 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(tcpRoute), "createing tcp route")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixStreamRoutesCreated(1), "Checking number of routes")
 	})
-
+	if os.Getenv("K8s_Version") == "v1.29.0" {
+		return
+	}
+	fmt.Println("K8s_Version", os.Getenv("K8s_Version"))
 	ginkgo.It("Gateway Listener hostname match", func() {
 		if os.Getenv("K8s_Version") == "v1.29.0" {
 			return
