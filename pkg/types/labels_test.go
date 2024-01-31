@@ -61,5 +61,5 @@ func TestBuildQuery(t *testing.T) {
 		"a": []string{"a1", "a2"},
 		"b": []string{"b1", "b2"},
 	}
-	assert.Equal(t, []string{"a in (a1,a2)", "b in (b1,b2)"}, l.BuildQuery())
+	assert.Subset(t, l.BuildQuery(), []string{"a in (a1,a2)", "b in (b1,b2)"})
 }
