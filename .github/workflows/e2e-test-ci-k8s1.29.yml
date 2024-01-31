@@ -205,4 +205,4 @@ jobs:
           K8S_VERSION: v1.29.0
         run: |
           echo ${E2E_FOCUS} | grep "suite-cluster" && export E2E_NODES=1
-          GATEWAY_API_VERSION=v1.0.0 make e2e-test
+          GATEWAY_API_VERSION=v1.0.0 K8S_VERSION=v1.29.0 make e2e-test
