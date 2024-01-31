@@ -110,7 +110,6 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 			return err
 		}
 
-		fmt.Println("gateway returned by gatewaylister for v1beta1 ", gatev1beta)
 		generation = gatev1beta.Generation
 	}
 
