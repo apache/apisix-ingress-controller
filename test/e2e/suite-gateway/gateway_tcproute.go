@@ -29,12 +29,12 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-gateway: TCP Route", func() {
-	if os.Getenv("K8s_Version") == "v1.29.0" {
+	if os.Getenv("K8S_Version") == "v1.29.0" {
 		return
 	}
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("create TCPRoute", func() {
-		if os.Getenv("K8s_Version") == "v1.29.0" {
+		if os.Getenv("K8S_Version") == "v1.29.0" {
 			return
 		}
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
@@ -60,7 +60,7 @@ spec:
 	})
 
 	ginkgo.It("update TCPRoute", func() {
-		if os.Getenv("K8s_Version") == "v1.29.0" {
+		if os.Getenv("K8S_Version") == "v1.29.0" {
 			return
 		}
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
@@ -105,7 +105,7 @@ spec:
 	})
 
 	ginkgo.It("delete TCPRoute", func() {
-		if os.Getenv("K8s_Version") == "v1.29.0" {
+		if os.Getenv("K8S_Version") == "v1.29.0" {
 			return
 		}
 		backendSvc, backendPorts := s.DefaultHTTPBackend()

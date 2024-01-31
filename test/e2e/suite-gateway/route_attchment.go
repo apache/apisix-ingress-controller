@@ -28,7 +28,7 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-gateway: Route Attachment", func() {
-	if os.Getenv("K8s_Version") == "v1.29.0" {
+	if os.Getenv("K8S_Version") == "v1.29.0" {
 		return
 	}
 	s := scaffold.NewDefaultScaffold()
@@ -37,7 +37,7 @@ var _ = ginkgo.Describe("suite-gateway: Route Attachment", func() {
 	gatewayName := "test-gateway"
 	// create Gateway resource with AllowedRoute
 	ginkgo.JustBeforeEach(func() {
-		if os.Getenv("K8s_Version") == "v1.29.0" {
+		if os.Getenv("K8S_Version") == "v1.29.0" {
 			return
 		}
 		gatewayClass := fmt.Sprintf(`
@@ -90,7 +90,7 @@ spec:
 	})
 
 	ginkgo.It("Gateway cross-namespace routing not allow", func() {
-		if os.Getenv("K8s_Version") == "v1.29.0" {
+		if os.Getenv("K8S_Version") == "v1.29.0" {
 			return
 		}
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
@@ -133,7 +133,7 @@ spec:
 	})
 
 	ginkgo.It("Gateway cross-namespace routing with selector", func() {
-		if os.Getenv("K8s_Version") == "v1.29.0" {
+		if os.Getenv("K8S_Version") == "v1.29.0" {
 			return
 		}
 		crossName := fmt.Sprintf("label-cross-ns-%d", time.Now().Unix())
@@ -180,7 +180,7 @@ spec:
 	})
 
 	ginkgo.It("Gateway same namespace routing", func() {
-		if os.Getenv("K8s_Version") == "v1.29.0" {
+		if os.Getenv("K8S_Version") == "v1.29.0" {
 			return
 		}
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
@@ -209,7 +209,7 @@ spec:
 	})
 
 	ginkgo.It("Gateway ParentRef GroupKind limit", func() {
-		if os.Getenv("K8s_Version") == "v1.29.0" {
+		if os.Getenv("K8S_Version") == "v1.29.0" {
 			return
 		}
 		// HTTPRoute can't attach to tcp-route-only Gateway Listener
@@ -253,12 +253,12 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(tcpRoute), "createing tcp route")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixStreamRoutesCreated(1), "Checking number of routes")
 	})
-	if os.Getenv("K8s_Version") == "v1.29.0" {
+	if os.Getenv("K8S_Version") == "v1.29.0" {
 		return
 	}
-	fmt.Println("K8s_Version", os.Getenv("K8s_Version"))
+	fmt.Println("K8S_Version", os.Getenv("K8S_Version"))
 	ginkgo.It("Gateway Listener hostname match", func() {
-		if os.Getenv("K8s_Version") == "v1.29.0" {
+		if os.Getenv("K8S_Version") == "v1.29.0" {
 			return
 		}
 		backendSvc, backendPorts := s.DefaultHTTPBackend()

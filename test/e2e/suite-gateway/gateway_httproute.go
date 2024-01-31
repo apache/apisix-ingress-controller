@@ -29,7 +29,7 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-gateway: HTTPRoute v1", func() {
-	if os.Getenv("K8s_Version") != "v1.29.0" {
+	if os.Getenv("K8S_Version") != "v1.29.0" {
 		return
 	}
 	s := scaffold.NewScaffold(&scaffold.Options{
@@ -74,7 +74,7 @@ spec:
 })
 
 var _ = ginkgo.Describe("suite-gateway: HTTPRoute", func() {
-	if os.Getenv("K8s_Version") == "v1.29.0" {
+	if os.Getenv("K8S_Version") == "v1.29.0" {
 		return
 	}
 	s := scaffold.NewDefaultScaffold()
@@ -286,12 +286,12 @@ spec:
 })
 
 var _ = ginkgo.Describe("suite-gateway: HTTPRoute with filter", func() {
-	if os.Getenv("K8s_Version") == "v1.29.0" {
+	if os.Getenv("K8S_Version") == "v1.29.0" {
 		return
 	}
 	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("HTTPRoute with RequestHeaderModifier", func() {
-		if os.Getenv("K8s_Version") == "v1.29.0" {
+		if os.Getenv("K8S_Version") == "v1.29.0" {
 			return
 		}
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
@@ -346,7 +346,7 @@ spec:
 	})
 
 	ginkgo.It("HTTPRoute with RequestRidrect", func() {
-		if os.Getenv("K8s_Version") == "v1.29.0" {
+		if os.Getenv("K8S_Version") == "v1.29.0" {
 			return
 		}
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
@@ -417,7 +417,7 @@ spec:
 	})
 
 	ginkgo.It("HTTPRoute with RequestMirror", func() {
-		if os.Getenv("K8s_Version") == "v1.29.0" {
+		if os.Getenv("K8S_Version") == "v1.29.0" {
 			return
 		}
 		backendSvc, backendPorts := s.DefaultHTTPBackend()

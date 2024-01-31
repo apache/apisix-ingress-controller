@@ -79,7 +79,7 @@ spec:
 		})
 
 		ginkgo.It("enable keyAuth in ingress networking/v1beta1", func() {
-			if os.Getenv("K8s_Version") == "v1.29.0" {
+			if os.Getenv("K8S_Version") == "v1.29.0" {
 				return
 			}
 			err := s.ApisixConsumerKeyAuthCreated("foo", "bar")
@@ -176,7 +176,7 @@ spec:
 		})
 
 		ginkgo.It("enable basicAuth in ingress networking/v1beta1", func() {
-			if os.Getenv("K8s_Version") == "v1.29.0" {
+			if os.Getenv("K8S_Version") == "v1.29.0" {
 				return
 			}
 			err := s.ApisixConsumerBasicAuthCreated("jack1", "jack1-username", "jack1-password")
