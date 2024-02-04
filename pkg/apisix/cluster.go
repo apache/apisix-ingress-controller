@@ -198,7 +198,7 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 			return nil, err
 		}
 
-		fmt.Println("start etcd server")
+		log.Info("start etcd server")
 		ln, err := net.Listen("tcp", o.ListenAddress)
 		if err != nil {
 			return nil, err
