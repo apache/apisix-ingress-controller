@@ -114,7 +114,7 @@ spec:
 
 var _ = ginkgo.Describe("suite-annotations: svc-namespace annotations cross-namespace reference service", func() {
 	s := scaffold.NewDefaultScaffold()
-	if os.Getenv("K8S_VERSION") == "v1.29.0" {
+	if s.K8sMinorVersionMoreThan(25) {
 		return
 	}
 	createNamespace := func(namespace string, watch string) {

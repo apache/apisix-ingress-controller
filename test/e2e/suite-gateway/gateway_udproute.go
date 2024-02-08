@@ -28,11 +28,10 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-gateway: UDP Route", func() {
-	if os.Getenv("K8S_VERSION") == "v1.29.0" {
+	s := scaffold.NewDefaultScaffold()
+	if s.K8sMinorVersionMoreThan(25) {
 		return
 	}
-	s := scaffold.NewDefaultScaffold()
-
 	ginkgo.It("UDPRoute", func() {
 		if os.Getenv("K8S_VERSION") == "v1.29.0" {
 			return

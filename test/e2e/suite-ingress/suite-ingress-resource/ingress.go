@@ -37,11 +37,10 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-ingress-resource: support ingress https", func() {
-	if os.Getenv("K8S_VERSION") == "v1.29.0" {
+	s := scaffold.NewDefaultScaffold()
+	if s.K8sMinorVersionMoreThan(25) {
 		return
 	}
-	s := scaffold.NewDefaultScaffold()
-
 	rootCA := `-----BEGIN CERTIFICATE-----
 MIIF9zCCA9+gAwIBAgIUFKuzAJZgm/fsFS6JDrd+lcpVZr8wDQYJKoZIhvcNAQEL
 BQAwgZwxCzAJBgNVBAYTAkNOMREwDwYDVQQIDAhaaGVqaWFuZzERMA8GA1UEBwwI
@@ -526,11 +525,10 @@ spec:
 })
 
 var _ = ginkgo.Describe("suite-ingress-resource: support ingress.networking/v1beta1", func() {
-	if os.Getenv("K8S_VERSION") == "v1.29.0" {
+	s := scaffold.NewDefaultScaffold()
+	if s.K8sMinorVersionMoreThan(25) {
 		return
 	}
-	s := scaffold.NewDefaultScaffold()
-
 	ginkgo.It("path exact match", func() {
 		if os.Getenv("K8S_VERSION") == "v1.29.0" {
 			return
@@ -597,7 +595,7 @@ spec:
 		// Mismatched host
 		_ = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
 	})
-	if os.Getenv("K8S_VERSION") == "v1.29.0" {
+	if s.K8sMinorVersionMoreThan(25) {
 		return
 	}
 	fmt.Println("K8S_VERSION", os.Getenv("K8S_VERSION"))

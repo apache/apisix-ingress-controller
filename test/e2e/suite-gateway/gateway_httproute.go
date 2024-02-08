@@ -74,11 +74,10 @@ spec:
 })
 
 var _ = ginkgo.Describe("suite-gateway: HTTPRoute", func() {
-	if os.Getenv("K8S_VERSION") == "v1.29.0" {
+	s := scaffold.NewDefaultScaffold()
+	if s.K8sMinorVersionMoreThan(25) {
 		return
 	}
-	s := scaffold.NewDefaultScaffold()
-
 	ginkgo.It("Basic HTTPRoute with 1 Hosts 1 Rule 1 Match 1 BackendRef", func() {
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		time.Sleep(time.Second * 15)
@@ -286,10 +285,10 @@ spec:
 })
 
 var _ = ginkgo.Describe("suite-gateway: HTTPRoute with filter", func() {
-	if os.Getenv("K8S_VERSION") == "v1.29.0" {
+	s := scaffold.NewDefaultScaffold()
+	if s.K8sMinorVersionMoreThan(25) {
 		return
 	}
-	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("HTTPRoute with RequestHeaderModifier", func() {
 		if os.Getenv("K8S_VERSION") == "v1.29.0" {
 			return

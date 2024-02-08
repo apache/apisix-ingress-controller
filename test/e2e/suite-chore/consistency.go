@@ -101,10 +101,10 @@ spec:
 )
 
 var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and the CRDs resource of the IngressController", func() {
-	if os.Getenv("K8S_VERSION") == "v1.29.0" {
-		return
-	}
 	suites := func(s *scaffold.Scaffold) {
+		if s.K8sMinorVersionMoreThan(25) {
+			return
+		}
 		ginkgo.It("ApisixRoute and APISIX of route and upstream", func() {
 			httpService := fmt.Sprintf(_httpServiceConfig, "port1", 9080, 9080)
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(httpService))
@@ -148,10 +148,10 @@ var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and the CRDs re
 })
 
 var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and the Ingress resource of the IngressController", func() {
-	if os.Getenv("K8S_VERSION") == "v1.29.0" {
+	s := scaffold.NewDefaultScaffold()
+	if s.K8sMinorVersionMoreThan(25) {
 		return
 	}
-	s := scaffold.NewDefaultScaffold()
 	ginkgo.It("Ingress v1 and APISIX of route and upstream", func() {
 		httpService := fmt.Sprintf(_httpServiceConfig, "port1", 9080, 9080)
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(httpService))
@@ -187,7 +187,7 @@ var _ = ginkgo.Describe("suite-chore: Consistency between APISIX and the Ingress
 
 		s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 	})
-	if os.Getenv("K8S_VERSION") == "v1.29.0" {
+	if s.K8sMinorVersionMoreThan(25) {
 		return
 	}
 	fmt.Println("K8S_VERSION", os.Getenv("K8S_VERSION"))

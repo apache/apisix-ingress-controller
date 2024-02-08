@@ -28,11 +28,10 @@ import (
 )
 
 var _ = ginkgo.Describe("suite-gateway: Route Attachment", func() {
-	if os.Getenv("K8S_VERSION") == "v1.29.0" {
+	s := scaffold.NewDefaultScaffold()
+	if s.K8sMinorVersionMoreThan(25) {
 		return
 	}
-	s := scaffold.NewDefaultScaffold()
-
 	gatewayClassName := "test-gateway-class"
 	gatewayName := "test-gateway"
 	// create Gateway resource with AllowedRoute
@@ -253,7 +252,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(tcpRoute), "createing tcp route")
 		assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixStreamRoutesCreated(1), "Checking number of routes")
 	})
-	if os.Getenv("K8S_VERSION") == "v1.29.0" {
+	if s.K8sMinorVersionMoreThan(25) {
 		return
 	}
 	fmt.Println("K8S_VERSION", os.Getenv("K8S_VERSION"))
