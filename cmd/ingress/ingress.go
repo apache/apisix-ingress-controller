@@ -15,12 +15,12 @@
 package ingress
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
@@ -42,13 +42,19 @@ func dief(template string, args ...interface{}) {
 	os.Exit(1)
 }
 
-func waitForSignal(stopCh chan struct{}) {
-	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+func contextWithSignalCancel(ctx context.Context, signals ...os.Signal) context.Context {
+	newCtx, cancel := context.WithCancel(ctx)
+	go func() {
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, signals...)
 
-	sig := <-sigCh
-	log.Infof("signal %d (%s) received", sig, sig.String())
-	close(stopCh)
+		sig := <-sigCh
+		log.Infof("signal %d (%s) received", sig, sig.String())
+		signal.Stop(sigCh)
+		close(sigCh)
+		cancel()
+	}()
+	return newCtx
 }
 
 // NewIngressCommand creates the ingress sub command for apisix-ingress-controller.
@@ -118,8 +124,8 @@ the apisix cluster and others are created`,
 				dief("failed to initialize logging: %s", err)
 			}
 			log.DefaultLogger = logger
-			log.Info("init apisix ingress controller")
 
+			log.Info("init apisix ingress controller")
 			log.Info("version:\n", version.Long())
 
 			// We should make sure that the cfg that's logged out is sanitized.
@@ -132,25 +138,17 @@ the apisix cluster and others are created`,
 			}
 			log.Info("use configuration\n", string(data))
 
-			stop := make(chan struct{})
+			ctx := contextWithSignalCancel(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+
 			ingress, err := controller.NewController(cfg)
 			if err != nil {
 				dief("failed to create ingress controller: %s", err)
 			}
-			wg := sync.WaitGroup{}
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
 
-				log.Info("start ingress controller")
+			if err := ingress.Run(ctx); err != nil {
+				dief("failed to run ingress controller: %s", err)
+			}
 
-				if err := ingress.Run(stop); err != nil {
-					dief("failed to run ingress controller: %s", err)
-				}
-			}()
-
-			waitForSignal(stop)
-			wg.Wait()
 			log.Info("apisix ingress controller exited")
 		},
 	}
@@ -179,7 +177,7 @@ For example, no available LB exists in the bare metal environment.`)
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.IngressClass, "ingress-class", config.IngressClassApisixAndAll, "apisix-and-all is a special value, it handles Ingress resources with ingressClassName=apisix and all CRDs, the class of an Ingress object is set using the field IngressClassName in Kubernetes clusters version v1.18.0 or higher or the annotation \"kubernetes.io/ingress.class\" (deprecated)")
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.ElectionID, "election-id", config.IngressAPISIXLeader, "election id used for campaign the controller leader")
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.IngressVersion, "ingress-version", config.IngressNetworkingV1, "the supported ingress api group version, can be \"networking/v1beta1\", \"networking/v1\" (for Kubernetes version v1.19.0 or higher) and \"extensions/v1beta1\"")
-	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.GatewayVersion, "gateway-version", config.GatewayNetworkingV1, "the supported gateway api group version, can be \"gateway/v1beta1\", \"gateway/v1\"")
+	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.GatewayVersion, "gateway-api-version", config.GatewayNetworkingV1, "the supported gateway api group version, can be \"gateway/v1beta1\", \"gateway/v1\"")
 	cmd.PersistentFlags().StringVar(&cfg.Kubernetes.APIVersion, "api-version", config.DefaultAPIVersion, config.APIVersionDescribe)
 	cmd.PersistentFlags().BoolVar(&cfg.Kubernetes.WatchEndpointSlices, "watch-endpointslices", false, "whether to watch endpointslices rather than endpoints")
 	cmd.PersistentFlags().BoolVar(&cfg.Kubernetes.EnableGatewayAPI, "enable-gateway-api", false, "whether to enable support for Gateway API")

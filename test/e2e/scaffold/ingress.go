@@ -470,7 +470,7 @@ spec:
             - --etcd-server-enabled=%t
             - --etcd-server-listen-address
             - ":2379"
-            - --gateway-version
+            - --gateway-api-version
             - "%s"
           volumeMounts:
             - name: admission-webhook

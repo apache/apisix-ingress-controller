@@ -146,13 +146,10 @@ func (c *Controller) Eventf(_ runtime.Object, eventType string, reason string, m
 }
 
 // Run launches the controller.
-func (c *Controller) Run(stop chan struct{}) error {
-	rootCtx, rootCancel := context.WithCancel(context.Background())
+func (c *Controller) Run(ctx context.Context) error {
+	rootCtx, rootCancel := context.WithCancel(ctx)
 	defer rootCancel()
-	go func() {
-		<-stop
-		rootCancel()
-	}()
+
 	c.MetricsCollector.ResetLeader(false)
 
 	go func() {
