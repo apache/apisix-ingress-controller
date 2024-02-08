@@ -803,7 +803,12 @@ func (s *Scaffold) RunDigDNSClientFromK8s(args ...string) (string, error) {
 }
 
 func (s *Scaffold) K8sMinorVersionMoreThan(n int) bool {
-	info, err := s.GetKubernetesClient().DiscoveryClient.ServerVersion()
+	client := s.GetKubernetesClient()
+	if client.DiscoveryClient == nil {
+		fmt.Println("ERR: nil discovery client")
+		return false
+	}
+	info, err := client.DiscoveryClient.ServerVersion()
 	if err != nil {
 		fmt.Println("ERR GETTING k8s minor version", err.Error())
 		return false
