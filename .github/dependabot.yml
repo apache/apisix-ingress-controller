@@ -26,8 +26,6 @@ updates:
     labels:
       - "area/dependencies"
     reviewers:
-      - "tao12345666333"
-      - "lingsamuel"
       - "AlinsRan"
       - "Gallardot"
       - "Revolyssup"
@@ -38,8 +36,6 @@ updates:
     labels:
       - "area/dependencies"
     reviewers:
-      - "tao12345666333"
-      - "lingsamuel"
       - "AlinsRan"
       - "Gallardot"
       - "Revolyssup"
@@ -50,8 +46,6 @@ updates:
     labels:
       - "area/dependencies"
     reviewers:
-      - "tao12345666333"
-      - "lingsamuel"
       - "AlinsRan"
       - "Gallardot"
       - "Revolyssup"
