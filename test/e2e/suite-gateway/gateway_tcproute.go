@@ -19,6 +19,7 @@ package gateway
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
@@ -29,7 +30,13 @@ import (
 
 var _ = ginkgo.Describe("suite-gateway: TCP Route", func() {
 	s := scaffold.NewDefaultScaffold()
+	if s.K8sMinorVersionMoreThan(25) {
+		return
+	}
 	ginkgo.It("create TCPRoute", func() {
+		if os.Getenv("K8S_VERSION") == "v1.29.0" {
+			return
+		}
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		tcpRoute := fmt.Sprintf(`
 apiVersion: gateway.networking.k8s.io/v1alpha2
@@ -53,6 +60,9 @@ spec:
 	})
 
 	ginkgo.It("update TCPRoute", func() {
+		if os.Getenv("K8S_VERSION") == "v1.29.0" {
+			return
+		}
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		tcpRoute := fmt.Sprintf(`
 apiVersion: gateway.networking.k8s.io/v1alpha2
@@ -95,6 +105,9 @@ spec:
 	})
 
 	ginkgo.It("delete TCPRoute", func() {
+		if os.Getenv("K8S_VERSION") == "v1.29.0" {
+			return
+		}
 		backendSvc, backendPorts := s.DefaultHTTPBackend()
 		tcpRoute := fmt.Sprintf(`
 apiVersion: gateway.networking.k8s.io/v1alpha2

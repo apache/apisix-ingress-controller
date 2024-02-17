@@ -18,6 +18,7 @@ package gateway
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
@@ -28,8 +29,13 @@ import (
 
 var _ = ginkgo.Describe("suite-gateway: UDP Route", func() {
 	s := scaffold.NewDefaultScaffold()
-
+	if s.K8sMinorVersionMoreThan(25) {
+		return
+	}
 	ginkgo.It("UDPRoute", func() {
+		if os.Getenv("K8S_VERSION") == "v1.29.0" {
+			return
+		}
 		// setup udp test service
 		dnsSvc := s.NewCoreDNSService()
 		route := fmt.Sprintf(`

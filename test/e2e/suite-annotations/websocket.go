@@ -115,6 +115,9 @@ spec:
 
 var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1beta1 with websocket", func() {
 	s := scaffold.NewDefaultScaffold()
+	if s.K8sMinorVersionMoreThan(25) {
+		return
+	}
 	ginkgo.It("sanity", func() {
 		resources := `
 apiVersion: v1

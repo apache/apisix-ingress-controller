@@ -25,9 +25,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
+	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	"github.com/apache/apisix-ingress-controller/pkg/log"
+	gatewaytypes "github.com/apache/apisix-ingress-controller/pkg/providers/gateway/types"
 	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/types"
 )
@@ -82,28 +85,45 @@ func (c *gatewayController) runWorker(ctx context.Context) {
 }
 
 func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
-	key := ev.Object.(string)
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	gatewayEvent := ev.Object.(kube.GatewayEvent)
+	namespace, name, err := cache.SplitMetaNamespaceKey(gatewayEvent.Key)
 	if err != nil {
 		log.Errorw("found Gateway resource with invalid meta namespace key",
 			zap.Error(err),
-			zap.String("key", key),
+			zap.String("key", gatewayEvent.Key),
 		)
 		return err
 	}
+	var gatev1 *gatewayv1.Gateway
+	var gatev1beta *gatewayv1beta1.Gateway
+	var generation int64
+	switch gatewayEvent.GroupVersion {
+	case kube.GatewayV1:
+		gatev1, err = c.controller.gatewayListerV1.Gateways(namespace).Get(name)
+		if err != nil {
+			return err
+		}
+		generation = gatev1.Generation
+	case kube.GatewayV1beta1:
+		gatev1beta, err = c.controller.gatewayListerV1beta1.Gateways(namespace).Get(name)
+		if err != nil {
+			return err
+		}
 
-	gateway, err := c.controller.gatewayLister.Gateways(namespace).Get(name)
+		generation = gatev1beta.Generation
+	}
+
 	if err != nil {
 		if !k8serrors.IsNotFound(err) {
 			log.Errorw("failed to get Gateway",
 				zap.Error(err),
-				zap.String("key", key),
+				zap.String("key", gatewayEvent.Key),
 			)
 			return err
 		}
 		if ev.Type != types.EventDelete {
 			log.Warnw("Gateway was deleted before it can be delivered",
-				zap.String("key", key),
+				zap.String("key", gatewayEvent.Key),
 			)
 			// Don't need to retry.
 			return nil
@@ -111,34 +131,62 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 	}
 
 	if ev.Type == types.EventDelete {
-		if gateway != nil {
+		if gatev1 != nil && gatev1beta != nil {
 			// We still find the resource while we are processing the DELETE event,
 			// that means object with same namespace and name was created, discarding
 			// this stale DELETE event.
 			log.Warnw("discard the stale Gateway delete event since it exists",
-				zap.String("key", key),
+				zap.String("key", gatewayEvent.Key),
 			)
 			return nil
 		}
-		gateway = ev.Tombstone.(*gatewayv1beta1.Gateway)
 
-		err = c.controller.RemoveListeners(gateway.Namespace, gateway.Name)
+		switch gatewayEvent.GroupVersion {
+		case kube.GatewayV1:
+			err = c.controller.RemoveListeners(gatev1.Namespace, gatev1.Namespace)
+		case kube.GatewayV1beta1:
+			err = c.controller.RemoveListeners(gatev1beta.Namespace, gatev1beta.Namespace)
+		}
 		if err != nil {
 			return err
 		}
 	} else {
-		gatewayClassName := string(gateway.Spec.GatewayClassName)
+		var gatewayClassName string
+		switch gatewayEvent.GroupVersion {
+		case kube.GatewayV1:
+			gatewayClassName = string(gatev1.Spec.GatewayClassName)
+		case kube.GatewayV1beta1:
+			gatewayClassName = string(gatev1beta.Spec.GatewayClassName)
+		}
+
 		if c.controller.HasGatewayClass(gatewayClassName) {
 			// TODO: handle listeners
-			listeners, err := c.controller.translator.TranslateGatewayV1beta1(gateway)
-			if err != nil {
-				return err
+			var listeners map[string]*gatewaytypes.ListenerConf
+			switch gatewayEvent.GroupVersion {
+			case kube.GatewayV1:
+				gateway := gatev1
+				listeners, err = c.controller.translator.TranslateGatewayV1(gateway)
+				if err != nil {
+					return err
+				}
+
+				err = c.controller.AddListeners(gateway.Namespace, gateway.Name, listeners)
+				if err != nil {
+					return err
+				}
+			case kube.GatewayV1beta1:
+				gateway := gatev1beta
+				listeners, err = c.controller.translator.TranslateGatewayV1beta1(gateway)
+				if err != nil {
+					return err
+				}
+
+				err = c.controller.AddListeners(gateway.Namespace, gateway.Name, listeners)
+				if err != nil {
+					return err
+				}
 			}
 
-			err = c.controller.AddListeners(gateway.Namespace, gateway.Name, listeners)
-			if err != nil {
-				return err
-			}
 		} else {
 			gatewayClass, err := c.controller.gatewayClassLister.Get(gatewayClassName)
 			if err != nil {
@@ -155,8 +203,12 @@ func (c *gatewayController) sync(ctx context.Context, ev *types.Event) error {
 	// We can update `spec.addresses` with the current data plane information.
 	// At present, we choose to directly update `GatewayStatus.Addresses`
 	// to indicate that we have picked the Gateway resource.
-
-	c.recordStatus(gateway, string(gatewayv1beta1.ListenerReasonReady), metav1.ConditionTrue, gateway.Generation)
+	switch gatewayEvent.GroupVersion {
+	case kube.GatewayV1:
+		c.recordStatusv1(gatev1, string(gatewayv1.ListenerReasonReady), metav1.ConditionTrue, generation)
+	case kube.GatewayV1beta1:
+		c.recordStatusv1beta(gatev1beta, string(gatewayv1.ListenerReasonReady), metav1.ConditionTrue, generation)
+	}
 	return nil
 }
 
@@ -170,7 +222,6 @@ func (c *gatewayController) handleSyncErr(obj interface{}, err error) {
 	if k8serrors.IsNotFound(err) && event.Type != types.EventDelete {
 		log.Infow("sync gateway but not found, ignore",
 			zap.String("event_type", event.Type.String()),
-			zap.String("gateway", event.Object.(string)),
 		)
 		c.workqueue.Forget(event)
 		return
@@ -198,10 +249,13 @@ func (c *gatewayController) onAdd(obj interface{}) {
 	log.Debugw("gateway add event arrived",
 		zap.Any("object", obj),
 	)
-
+	gateway := kube.MustNewGateway(obj)
 	c.workqueue.Add(&types.Event{
-		Type:   types.EventAdd,
-		Object: key,
+		Type: types.EventAdd,
+		Object: kube.GatewayEvent{
+			Key:          key,
+			GroupVersion: gateway.GroupVersion(),
+		},
 	})
 }
 
@@ -218,32 +272,23 @@ func (c *gatewayController) OnDelete(obj interface{}) {
 		return
 	}
 
-	gateway, ok := obj.(*gatewayv1beta1.Gateway)
-	if !ok {
-		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-		if !ok {
-			log.Errorw("Gateway in bad tombstone state",
-				zap.String("key", key),
-				zap.Any("obj", obj),
-			)
-			return
-		}
-		gateway = tombstone.Obj.(*gatewayv1beta1.Gateway)
-	}
+	gateway := kube.MustNewGateway(obj)
 
 	c.workqueue.Add(&types.Event{
-		Type:      types.EventDelete,
-		Object:    key,
+		Type: types.EventDelete,
+		Object: kube.GatewayEvent{
+			Key:          key,
+			GroupVersion: gateway.GroupVersion(),
+		},
 		Tombstone: gateway,
 	})
 }
 
-// recordStatus record resources status
-func (c *gatewayController) recordStatus(v *gatewayv1beta1.Gateway, reason string, status metav1.ConditionStatus, generation int64) {
+func (c *gatewayController) recordStatusv1beta(v *gatewayv1beta1.Gateway, reason string, status metav1.ConditionStatus, generation int64) {
 	v = v.DeepCopy()
 
 	gatewayCondition := metav1.Condition{
-		Type:               string(gatewayv1beta1.ListenerConditionReady),
+		Type:               string(gatewayv1.ListenerConditionReady),
 		Reason:             reason,
 		Status:             status,
 		Message:            "Gateway's status has been successfully updated",
@@ -266,6 +311,41 @@ func (c *gatewayController) recordStatus(v *gatewayv1beta1.Gateway, reason strin
 
 	v.Status.Addresses = utils.CoreV1ToGatewayV1beta1Addr(lbips)
 	if _, errRecord := c.controller.gatewayClient.GatewayV1beta1().Gateways(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
+		log.Errorw("failed to record status change for Gateway resource",
+			zap.Error(errRecord),
+			zap.String("name", v.Name),
+			zap.String("namespace", v.Namespace),
+		)
+	}
+}
+
+func (c *gatewayController) recordStatusv1(v *gatewayv1.Gateway, reason string, status metav1.ConditionStatus, generation int64) {
+	v = v.DeepCopy()
+
+	gatewayCondition := metav1.Condition{
+		Type:               string(gatewayv1.ListenerConditionReady),
+		Reason:             reason,
+		Status:             status,
+		Message:            "Gateway's status has been successfully updated",
+		ObservedGeneration: generation,
+	}
+
+	if v.Status.Conditions == nil {
+		conditions := make([]metav1.Condition, 0)
+		v.Status.Conditions = conditions
+	} else {
+		meta.SetStatusCondition(&v.Status.Conditions, gatewayCondition)
+	}
+
+	lbips, err := utils.IngressLBStatusIPs(c.controller.Cfg.IngressPublishService, c.controller.Cfg.IngressStatusAddress, c.controller.ListerInformer.SvcLister)
+	if err != nil {
+		log.Errorw("failed to get APISIX gateway external IPs",
+			zap.Error(err),
+		)
+	}
+
+	v.Status.Addresses = utils.CoreV1ToGatewayV1beta1Addr(lbips)
+	if _, errRecord := c.controller.gatewayClient.GatewayV1().Gateways(v.Namespace).UpdateStatus(context.TODO(), v, metav1.UpdateOptions{}); errRecord != nil {
 		log.Errorw("failed to record status change for Gateway resource",
 			zap.Error(errRecord),
 			zap.String("name", v.Name),

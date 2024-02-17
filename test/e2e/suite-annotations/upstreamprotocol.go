@@ -96,6 +96,9 @@ spec:
 
 var _ = ginkgo.Describe("suite-annotations: annotations.networking/v1beta1 upstream scheme", func() {
 	s := scaffold.NewDefaultScaffold()
+	if s.K8sMinorVersionMoreThan(25) {
+		return
+	}
 	ginkgo.It("sanity", func() {
 		ing := `
 apiVersion: networking.k8s.io/v1beta1

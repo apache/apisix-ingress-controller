@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
+	v1 "sigs.k8s.io/gateway-api/apis/v1"
 	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/log"
@@ -84,7 +85,7 @@ func (c *gatewayClassController) markAsUpdated(gatewayClass *v1beta1.GatewayClas
 	gc := gatewayClass.DeepCopy()
 
 	condition := metav1.Condition{
-		Type:               string(v1beta1.GatewayClassConditionStatusAccepted),
+		Type:               string(v1.GatewayClassConditionStatusAccepted),
 		Status:             metav1.ConditionTrue,
 		Reason:             "Updated",
 		Message:            fmt.Sprintf("Updated by apisix-ingress-controller, sync at %v", time.Now()),

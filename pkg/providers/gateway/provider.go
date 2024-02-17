@@ -29,6 +29,7 @@ import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 	gatewayclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 	gatewayexternalversions "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions"
+	gatewaylistersv1 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1"
 	gatewaylistersv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1alpha2"
 	gatewaylistersv1beta1 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1beta1"
 
@@ -69,9 +70,10 @@ type Provider struct {
 	translator gatewaytranslation.Translator
 	validator  Validator
 
-	gatewayController *gatewayController
-	gatewayInformer   cache.SharedIndexInformer
-	gatewayLister     gatewaylistersv1beta1.GatewayLister
+	gatewayController    *gatewayController
+	gatewayInformer      cache.SharedIndexInformer
+	gatewayListerV1      gatewaylistersv1.GatewayLister
+	gatewayListerV1beta1 gatewaylistersv1beta1.GatewayLister
 
 	gatewayClassController *gatewayClassController
 	gatewayClassInformer   cache.SharedIndexInformer
@@ -144,7 +146,8 @@ func NewGatewayProvider(opts *ProviderOptions) (*Provider, error) {
 
 	gatewayFactory := gatewayexternalversions.NewSharedInformerFactory(p.gatewayClient, p.Cfg.Kubernetes.ResyncInterval.Duration)
 
-	p.gatewayLister = gatewayFactory.Gateway().V1beta1().Gateways().Lister()
+	p.gatewayListerV1beta1 = gatewayFactory.Gateway().V1beta1().Gateways().Lister()
+	p.gatewayListerV1 = gatewayFactory.Gateway().V1().Gateways().Lister()
 	p.gatewayInformer = gatewayFactory.Gateway().V1beta1().Gateways().Informer()
 
 	p.gatewayClassLister = gatewayFactory.Gateway().V1beta1().GatewayClasses().Lister()

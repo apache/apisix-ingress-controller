@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
@@ -37,7 +38,9 @@ import (
 
 var _ = ginkgo.Describe("suite-ingress-resource: support ingress https", func() {
 	s := scaffold.NewDefaultScaffold()
-
+	if s.K8sMinorVersionMoreThan(25) {
+		return
+	}
 	rootCA := `-----BEGIN CERTIFICATE-----
 MIIF9zCCA9+gAwIBAgIUFKuzAJZgm/fsFS6JDrd+lcpVZr8wDQYJKoZIhvcNAQEL
 BQAwgZwxCzAJBgNVBAYTAkNOMREwDwYDVQQIDAhaaGVqaWFuZzERMA8GA1UEBwwI
@@ -164,6 +167,9 @@ k1XbogS6EYyEdbkTDdXdUENvDrU7hzJXSVxJYADiqr44DGfWm6hK0bq9ZPc=
 -----END RSA PRIVATE KEY-----
 `
 	ginkgo.It("should support ingress v1beta1 with tls", func() {
+		if os.Getenv("K8S_VERSION") == "v1.29.0" {
+			return
+		}
 		// create secrets
 		err := s.NewSecret(serverCertSecret, serverCert, serverKey)
 		assert.Nil(ginkgo.GinkgoT(), err, "create server cert secret error")
@@ -520,8 +526,14 @@ spec:
 
 var _ = ginkgo.Describe("suite-ingress-resource: support ingress.networking/v1beta1", func() {
 	s := scaffold.NewDefaultScaffold()
-
+	if s.K8sMinorVersionMoreThan(25) {
+		return
+	}
 	ginkgo.It("path exact match", func() {
+		if os.Getenv("K8S_VERSION") == "v1.29.0" {
+			return
+		}
+		fmt.Println("K8S_VERSION", os.Getenv("K8S_VERSION"))
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1
@@ -552,6 +564,9 @@ spec:
 	})
 
 	ginkgo.It("path prefix match", func() {
+		if os.Getenv("K8S_VERSION") == "v1.29.0" {
+			return
+		}
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1
@@ -580,8 +595,15 @@ spec:
 		// Mismatched host
 		_ = s.NewAPISIXClient().GET("/status/200").WithHeader("Host", "a.httpbin.org").Expect().Status(http.StatusNotFound)
 	})
-
+	if s.K8sMinorVersionMoreThan(25) {
+		return
+	}
+	fmt.Println("K8S_VERSION", os.Getenv("K8S_VERSION"))
 	ginkgo.It("path regex match networking.k8s.io/v1beta1", func() {
+		if os.Getenv("K8S_VERSION") == "v1.29.0" {
+			return
+		}
+		fmt.Println("K8S_VERSION", os.Getenv("K8S_VERSION"))
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1beta1

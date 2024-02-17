@@ -22,6 +22,7 @@ import (
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/pkg/id"
@@ -36,15 +37,15 @@ func (t *translator) generatePluginsFromHTTPRouteFilter(namespace string, filter
 	plugins := apisixv1.Plugins{}
 	for _, filter := range filters {
 		switch filter.Type {
-		case gatewayv1beta1.HTTPRouteFilterRequestHeaderModifier:
+		case gatewayv1.HTTPRouteFilterRequestHeaderModifier:
 			t.generatePluginFromHTTPRequestHeaderFilter(plugins, filter.RequestHeaderModifier)
-		case gatewayv1beta1.HTTPRouteFilterRequestRedirect:
+		case gatewayv1.HTTPRouteFilterRequestRedirect:
 			t.generatePluginFromHTTPRequestRedirectFilter(plugins, filter.RequestRedirect)
-		case gatewayv1beta1.HTTPRouteFilterRequestMirror:
+		case gatewayv1.HTTPRouteFilterRequestMirror:
 			t.generatePluginFromHTTPRequestMirrorFilter(namespace, plugins, filter.RequestMirror)
-		case gatewayv1beta1.HTTPRouteFilterURLRewrite:
+		case gatewayv1.HTTPRouteFilterURLRewrite:
 			// TODO: Supported, to be implemented
-		case gatewayv1beta1.HTTPRouteFilterResponseHeaderModifier:
+		case gatewayv1.HTTPRouteFilterResponseHeaderModifier:
 			// TODO: Supported, to be implemented
 		}
 	}
@@ -232,7 +233,7 @@ func (t *translator) TranslateGatewayHTTPRouteV1beta1(httpRoute *gatewayv1beta1.
 
 		matches := rule.Matches
 		if len(matches) == 0 {
-			defaultType := gatewayv1beta1.PathMatchPathPrefix
+			defaultType := gatewayv1.PathMatchPathPrefix
 			defaultValue := "/"
 			matches = []gatewayv1beta1.HTTPRouteMatch{
 				{
@@ -284,11 +285,11 @@ func (t *translator) translateGatewayHTTPRouteMatch(match *gatewayv1beta1.HTTPRo
 
 	if match.Path != nil {
 		switch *match.Path.Type {
-		case gatewayv1beta1.PathMatchExact:
+		case gatewayv1.PathMatchExact:
 			route.Uri = *match.Path.Value
-		case gatewayv1beta1.PathMatchPathPrefix:
+		case gatewayv1.PathMatchPathPrefix:
 			route.Uri = *match.Path.Value + "*"
-		case gatewayv1beta1.PathMatchRegularExpression:
+		case gatewayv1.PathMatchRegularExpression:
 			var this []apisixv1.StringOrSlice
 			this = append(this, apisixv1.StringOrSlice{
 				StrVal: "uri",
@@ -317,11 +318,11 @@ func (t *translator) translateGatewayHTTPRouteMatch(match *gatewayv1beta1.HTTPRo
 			})
 
 			switch *header.Type {
-			case gatewayv1beta1.HeaderMatchExact:
+			case gatewayv1.HeaderMatchExact:
 				this = append(this, apisixv1.StringOrSlice{
 					StrVal: "==",
 				})
-			case gatewayv1beta1.HeaderMatchRegularExpression:
+			case gatewayv1.HeaderMatchRegularExpression:
 				this = append(this, apisixv1.StringOrSlice{
 					StrVal: "~~",
 				})
@@ -345,11 +346,11 @@ func (t *translator) translateGatewayHTTPRouteMatch(match *gatewayv1beta1.HTTPRo
 			})
 
 			switch *query.Type {
-			case gatewayv1beta1.QueryParamMatchExact:
+			case gatewayv1.QueryParamMatchExact:
 				this = append(this, apisixv1.StringOrSlice{
 					StrVal: "==",
 				})
-			case gatewayv1beta1.QueryParamMatchRegularExpression:
+			case gatewayv1.QueryParamMatchRegularExpression:
 				this = append(this, apisixv1.StringOrSlice{
 					StrVal: "~~",
 				})
