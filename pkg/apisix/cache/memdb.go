@@ -17,6 +17,7 @@ package cache
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/hashicorp/go-memdb"
 
@@ -31,7 +32,16 @@ var (
 )
 
 type dbCache struct {
-	db *memdb.MemDB
+	db                      *memdb.MemDB
+	routeLock               sync.Mutex
+	sslLock                 sync.Mutex
+	upstreamLock            sync.Mutex
+	streamRouteLock         sync.Mutex
+	globalRuleLock          sync.Mutex
+	consumerLock            sync.Mutex
+	schemeLock              sync.Mutex
+	pluginCfgLock           sync.Mutex
+	upstreamSrvRelationLock sync.Mutex
 }
 
 // NewMemDBCache creates a Cache object backs with a memory DB.
@@ -97,6 +107,8 @@ func (c *dbCache) GetRoute(id string) (*v1.Route, error) {
 	if err != nil {
 		return nil, err
 	}
+	c.routeLock.Lock()
+	defer c.routeLock.Unlock()
 	return obj.(*v1.Route).DeepCopy(), nil
 }
 
@@ -105,6 +117,8 @@ func (c *dbCache) GetSSL(id string) (*v1.Ssl, error) {
 	if err != nil {
 		return nil, err
 	}
+	c.sslLock.Lock()
+	defer c.sslLock.Unlock()
 	return obj.(*v1.Ssl).DeepCopy(), nil
 }
 
@@ -113,6 +127,8 @@ func (c *dbCache) GetUpstream(id string) (*v1.Upstream, error) {
 	if err != nil {
 		return nil, err
 	}
+	c.upstreamLock.Lock()
+	defer c.upstreamLock.Unlock()
 	return obj.(*v1.Upstream).DeepCopy(), nil
 }
 
@@ -121,6 +137,8 @@ func (c *dbCache) GetStreamRoute(id string) (*v1.StreamRoute, error) {
 	if err != nil {
 		return nil, err
 	}
+	c.streamRouteLock.Lock()
+	defer c.streamRouteLock.Unlock()
 	return obj.(*v1.StreamRoute).DeepCopy(), nil
 }
 
@@ -129,6 +147,8 @@ func (c *dbCache) GetGlobalRule(id string) (*v1.GlobalRule, error) {
 	if err != nil {
 		return nil, err
 	}
+	c.globalRuleLock.Lock()
+	defer c.globalRuleLock.Unlock()
 	return obj.(*v1.GlobalRule).DeepCopy(), nil
 }
 
@@ -137,6 +157,8 @@ func (c *dbCache) GetConsumer(username string) (*v1.Consumer, error) {
 	if err != nil {
 		return nil, err
 	}
+	c.consumerLock.Lock()
+	defer c.consumerLock.Unlock()
 	return obj.(*v1.Consumer).DeepCopy(), nil
 }
 
@@ -145,6 +167,8 @@ func (c *dbCache) GetSchema(name string) (*v1.Schema, error) {
 	if err != nil {
 		return nil, err
 	}
+	c.schemeLock.Lock()
+	defer c.schemeLock.Unlock()
 	return obj.(*v1.Schema).DeepCopy(), nil
 }
 
@@ -153,6 +177,8 @@ func (c *dbCache) GetPluginConfig(name string) (*v1.PluginConfig, error) {
 	if err != nil {
 		return nil, err
 	}
+	c.pluginCfgLock.Lock()
+	defer c.pluginCfgLock.Unlock()
 	return obj.(*v1.PluginConfig).DeepCopy(), nil
 }
 
@@ -161,6 +187,8 @@ func (c *dbCache) GetUpstreamServiceRelation(serviceName string) (*v1.UpstreamSe
 	if err != nil {
 		return nil, err
 	}
+	c.upstreamSrvRelationLock.Lock()
+	defer c.upstreamSrvRelationLock.Unlock()
 	return obj.(*v1.UpstreamServiceRelation).DeepCopy(), nil
 }
 
@@ -186,6 +214,8 @@ func (c *dbCache) ListRoutes() ([]*v1.Route, error) {
 		return nil, err
 	}
 	routes := make([]*v1.Route, 0, len(raws))
+	c.routeLock.Lock()
+	defer c.routeLock.Unlock()
 	for _, raw := range raws {
 		routes = append(routes, raw.(*v1.Route).DeepCopy())
 	}
@@ -198,6 +228,8 @@ func (c *dbCache) ListSSL() ([]*v1.Ssl, error) {
 		return nil, err
 	}
 	ssl := make([]*v1.Ssl, 0, len(raws))
+	c.sslLock.Lock()
+	defer c.sslLock.Unlock()
 	for _, raw := range raws {
 		ssl = append(ssl, raw.(*v1.Ssl).DeepCopy())
 	}
@@ -210,6 +242,8 @@ func (c *dbCache) ListUpstreams() ([]*v1.Upstream, error) {
 		return nil, err
 	}
 	upstreams := make([]*v1.Upstream, 0, len(raws))
+	c.upstreamLock.Lock()
+	defer c.upstreamLock.Unlock()
 	for _, raw := range raws {
 		upstreams = append(upstreams, raw.(*v1.Upstream).DeepCopy())
 	}
@@ -222,6 +256,8 @@ func (c *dbCache) ListStreamRoutes() ([]*v1.StreamRoute, error) {
 		return nil, err
 	}
 	streamRoutes := make([]*v1.StreamRoute, 0, len(raws))
+	c.streamRouteLock.Lock()
+	defer c.streamRouteLock.Unlock()
 	for _, raw := range raws {
 		streamRoutes = append(streamRoutes, raw.(*v1.StreamRoute).DeepCopy())
 	}
@@ -234,6 +270,8 @@ func (c *dbCache) ListGlobalRules() ([]*v1.GlobalRule, error) {
 		return nil, err
 	}
 	globalRules := make([]*v1.GlobalRule, 0, len(raws))
+	c.globalRuleLock.Lock()
+	defer c.globalRuleLock.Unlock()
 	for _, raw := range raws {
 		globalRules = append(globalRules, raw.(*v1.GlobalRule).DeepCopy())
 	}
@@ -246,6 +284,8 @@ func (c *dbCache) ListConsumers() ([]*v1.Consumer, error) {
 		return nil, err
 	}
 	consumers := make([]*v1.Consumer, 0, len(raws))
+	c.consumerLock.Lock()
+	defer c.consumerLock.Unlock()
 	for _, raw := range raws {
 		consumers = append(consumers, raw.(*v1.Consumer).DeepCopy())
 	}
@@ -258,6 +298,8 @@ func (c *dbCache) ListSchema() ([]*v1.Schema, error) {
 		return nil, err
 	}
 	schemaList := make([]*v1.Schema, 0, len(raws))
+	c.schemeLock.Lock()
+	defer c.schemeLock.Unlock()
 	for _, raw := range raws {
 		schemaList = append(schemaList, raw.(*v1.Schema).DeepCopy())
 	}
@@ -270,6 +312,8 @@ func (c *dbCache) ListPluginConfigs() ([]*v1.PluginConfig, error) {
 		return nil, err
 	}
 	pluginConfigs := make([]*v1.PluginConfig, 0, len(raws))
+	c.pluginCfgLock.Lock()
+	defer c.pluginCfgLock.Unlock()
 	for _, raw := range raws {
 		pluginConfigs = append(pluginConfigs, raw.(*v1.PluginConfig).DeepCopy())
 	}
@@ -282,6 +326,8 @@ func (c *dbCache) ListUpstreamServiceRelation() ([]*v1.UpstreamServiceRelation, 
 		return nil, err
 	}
 	upstreamServices := make([]*v1.UpstreamServiceRelation, 0, len(raws))
+	c.upstreamSrvRelationLock.Lock()
+	defer c.upstreamSrvRelationLock.Unlock()
 	for _, raw := range raws {
 		upstreamServices = append(upstreamServices, raw.(*v1.UpstreamServiceRelation).DeepCopy())
 	}
