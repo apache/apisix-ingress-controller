@@ -78,6 +78,7 @@ spec:
 				Raw()
 			assert.Contains(ginkgo.GinkgoT(), msg, "404 Route Not Found")
 		})
+
 		ginkgo.It("operator is equal (check with host and port)", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
