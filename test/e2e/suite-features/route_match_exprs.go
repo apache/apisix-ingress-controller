@@ -92,7 +92,7 @@ spec:
  - name: rule1
    match:
      hosts:
-     - httpbin.org
+     - httpbin.org:80
      paths:
        - /ip
      exprs:
