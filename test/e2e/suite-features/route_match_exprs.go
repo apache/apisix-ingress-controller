@@ -115,13 +115,13 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
 
 			_ = s.NewAPISIXClient().GET("/ip").
-				WithHeader("Host", "httpbin.org").
+				WithHeader("Host", "httpbin.org:80").
 				WithHeader("X-Foo", "bar").
 				Expect().
 				Status(http.StatusOK)
 
 			msg := s.NewAPISIXClient().GET("/ip").
-				WithHeader("Host", "httpbin.org").
+				WithHeader("Host", "httpbin.org:80").
 				WithHeader("X-Foo", "baz").
 				Expect().
 				Status(http.StatusNotFound).
