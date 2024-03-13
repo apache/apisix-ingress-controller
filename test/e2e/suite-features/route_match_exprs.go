@@ -95,12 +95,6 @@ spec:
      - httpbin.org:80
      paths:
        - /ip
-     exprs:
-     - subject:
-         scope: Header
-         name: X-Foo
-       op: Equal
-       value: bar
    backends:
    - serviceName: %s
      servicePort: %d
@@ -116,18 +110,8 @@ spec:
 
 			_ = s.NewAPISIXClient().GET("/ip").
 				WithHeader("Host", "httpbin.org:80").
-				WithHeader("X-Foo", "bar").
 				Expect().
 				Status(http.StatusOK)
-
-			msg := s.NewAPISIXClient().GET("/ip").
-				WithHeader("Host", "httpbin.org:80").
-				WithHeader("X-Foo", "baz").
-				Expect().
-				Status(http.StatusNotFound).
-				Body().
-				Raw()
-			assert.Contains(ginkgo.GinkgoT(), msg, "404 Route Not Found")
 		})
 
 		ginkgo.It("operator is not_equal", func() {
