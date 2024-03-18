@@ -35,9 +35,15 @@ import (
 func (t *translator) TranslateService(namespace, name, subset string, port int32) (*apisixv1.Upstream, error) {
 	endpoint, err := t.EndpointLister.GetEndpoint(namespace, name)
 	if err != nil {
-		return nil, &TranslateError{
-			Field:  "endpoints",
-			Reason: err.Error(),
+		if k8serrors.IsNotFound(err) {
+			//Do not error wrap so that IsNotFound error can be handled separately on upper level
+			//Reference https://github.com/apache/apisix-ingress-controller/issues/1625
+			return nil, err
+		} else {
+			return nil, &TranslateError{
+				Field:  "endpoints",
+				Reason: err.Error(),
+			}
 		}
 	}
 
@@ -90,6 +96,7 @@ func (t *translator) translateUpstreamV2(ep *kube.Endpoint, namespace, name, sub
 			}
 		}
 	}
+
 	// Filter nodes by subset.
 	nodes, err := t.TranslateEndpoint(*ep, port, labels)
 	if err != nil {
@@ -126,6 +133,9 @@ func (t *translator) TranslateEndpoint(endpoint kube.Endpoint, port int32, label
 	svcName := endpoint.ServiceName()
 	svc, err := t.ServiceLister.Services(namespace).Get(svcName)
 	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return apisixv1.UpstreamNodes{}, err
+		}
 		return nil, &TranslateError{
 			Field:  "service",
 			Reason: err.Error(),

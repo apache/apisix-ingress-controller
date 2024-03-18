@@ -473,16 +473,6 @@ func (c *apisixRouteController) handleSyncErr(obj interface{}, errOrigin error) 
 		c.MetricsCollector.IncrSyncOperation("route", "success")
 		return
 	}
-	ev := obj.(*types.Event)
-	event := ev.Object.(kube.ApisixRouteEvent)
-	if k8serrors.IsNotFound(errOrigin) && ev.Type != types.EventDelete {
-		log.Infow("sync ApisixRoute but not found, ignore",
-			zap.String("event_type", ev.Type.String()),
-			zap.String("ApisixRoute", event.Key),
-		)
-		c.workqueue.Forget(obj)
-		return
-	}
 	log.Warnw("sync ApisixRoute failed, will retry",
 		zap.Any("object", obj),
 		zap.Error(errOrigin),

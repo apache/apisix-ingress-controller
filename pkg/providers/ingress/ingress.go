@@ -243,16 +243,6 @@ func (c *ingressController) handleSyncErr(obj interface{}, err error) {
 		c.MetricsCollector.IncrSyncOperation("ingress", "success")
 		return
 	}
-	ev := obj.(*types.Event)
-	event := ev.Object.(kube.IngressEvent)
-	if k8serrors.IsNotFound(err) && ev.Type != types.EventDelete {
-		log.Infow("sync ingress but not found, ignore",
-			zap.String("event_type", ev.Type.String()),
-			zap.String("ingress", event.Key),
-		)
-		c.workqueue.Forget(obj)
-		return
-	}
 	log.Warnw("sync ingress failed, will retry",
 		zap.Any("object", obj),
 		zap.Error(err),

@@ -20,7 +20,6 @@ import (
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
@@ -123,14 +122,6 @@ func (c *namespaceController) sync(ctx context.Context, ev *types.Event) error {
 func (c *namespaceController) handleSyncErr(event *types.Event, err error) {
 	name := event.Object.(string)
 	if err != nil {
-		if k8serrors.IsNotFound(err) && event.Type != types.EventDelete {
-			log.Infow("sync namespace but not found, ignore",
-				zap.String("event_type", event.Type.String()),
-				zap.String("namespace", event.Object.(string)),
-			)
-			c.workqueue.Forget(event)
-			return
-		}
 		log.Warnw("sync namespace info failed, will retry",
 			zap.String("namespace", name),
 			zap.Error(err),

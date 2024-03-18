@@ -181,14 +181,6 @@ func (c *apisixGlobalRuleController) sync(ctx context.Context, ev *types.Event) 
 func (c *apisixGlobalRuleController) handleSyncErr(obj interface{}, errOrigin error) {
 	ev := obj.(*types.Event)
 	event := ev.Object.(kube.ApisixGlobalRuleEvent)
-	if k8serrors.IsNotFound(errOrigin) && ev.Type != types.EventDelete {
-		log.Infow("sync ApisixGlobalRule but not found, ignore",
-			zap.String("event_type", ev.Type.String()),
-			zap.String("ApisixGlobalRule", ev.Object.(kube.ApisixGlobalRuleEvent).Key),
-		)
-		c.workqueue.Forget(event)
-		return
-	}
 	if !c.Kubernetes.DisableStatusUpdates && c.Elector.IsLeader() {
 		namespace, name, errLocal := cache.SplitMetaNamespaceKey(event.Key)
 		if errLocal != nil {

@@ -476,16 +476,6 @@ func (c *apisixUpstreamController) handleSyncErr(obj interface{}, err error) {
 		c.MetricsCollector.IncrSyncOperation("upstream", "success")
 		return
 	}
-
-	event := obj.(*types.Event)
-	if k8serrors.IsNotFound(err) && event.Type != types.EventDelete {
-		log.Infow("sync ApisixUpstream but not found, ignore",
-			zap.String("event_type", event.Type.String()),
-			zap.Any("ApisixUpstream", event.Object.(kube.ApisixUpstreamEvent)),
-		)
-		c.workqueue.Forget(event)
-		return
-	}
 	log.Warnw("sync ApisixUpstream failed, will retry",
 		zap.Any("object", obj),
 		zap.Error(err),

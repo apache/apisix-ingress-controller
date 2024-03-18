@@ -183,15 +183,6 @@ func (c *gatewayTCPRouteController) handleSyncErr(obj interface{}, err error) {
 		c.controller.MetricsCollector.IncrSyncOperation("gateway_tcproute", "success")
 		return
 	}
-	event := obj.(*types.Event)
-	if k8serrors.IsNotFound(err) && event.Type != types.EventDelete {
-		log.Infow("sync gateway TCPRoute but not found, ignore",
-			zap.String("event_type", event.Type.String()),
-			zap.String("TCPRoute ", event.Object.(string)),
-		)
-		c.workqueue.Forget(event)
-		return
-	}
 	log.Warnw("sync gateway TCPRoute failed, will retry",
 		zap.Any("object", obj),
 		zap.Error(err),
