@@ -49,8 +49,8 @@ ADMIN_API_VERSION=v3
 helm install apisix apisix/apisix \
   --create-namespace \
   --namespace ingress-apisix \
-  --set service.type=LoadBalancer \
   --set ingress-controller.enabled=true \
+  --set ingress-controller.gateway.type=LoadBalancer \
   --set ingress-controller.config.apisix.serviceNamespace=ingress-apisix \
   --set ingress-controller.config.apisix.adminAPIVersion=$ADMIN_API_VERSION
 kubectl get service --namespace ingress-apisix
