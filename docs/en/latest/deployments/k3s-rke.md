@@ -63,7 +63,7 @@ kubectl get service --namespace ingress-apisix
 
 :::info IMPORTANT
 
-If you are using K3s, the default kube config file is located in `/etc/rancher/k3s/` and you make require root permission.
+If you are using K3s, the default kube config file is located in `/etc/rancher/k3s/` and you may require root permission.
 
 :::
 
