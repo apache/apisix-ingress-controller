@@ -108,31 +108,37 @@ First, we will update the `values.yaml` file to mount the custom Plugin we creat
 You can configure the Plugin under `customPlugins` as shown below:
 
 ```yaml {title="values.yaml"}
-customPlugins:
-  enabled: true
-  plugins:
-    - name: "custom-response"
-      attrs: {}
-      configMap:
-        name: "custom-response-config"
-        mounts:
-          - key: "custom-response.lua"
-            path: "/usr/local/apisix/apisix/plugins/custom-response.lua"
+apisix:
+  ...
+  ...
+  customPlugins:
+    enabled: true
+    plugins:
+      - name: "custom-response"
+        attrs: {}
+        configMap:
+          name: "custom-response-config"
+          mounts:
+            - key: "custom-response.lua"
+              path: "/usr/local/apisix/apisix/plugins/custom-response.lua"
 ```
 
 You should also enable the Plugin by adding it to the `plugins` list:
 
 ```yaml {title="values.yaml"}
-plugins:
-  - api-breaker
-  - authz-keycloak
-  - basic-auth
-  - batch-requests
-  - consumer-restriction
-  - cors
+apisix:
   ...
   ...
-  - custom-response
+  plugins:
+    - api-breaker
+    - authz-keycloak
+    - basic-auth
+    - batch-requests
+    - consumer-restriction
+    - cors
+    ...
+    ...
+    - custom-response
 ```
 
 Finally you can enable the Ingress controller and configure the gateway to be exposed to external traffic. For this, set `service.type=NodePort`, `ingress-controller.enabled=true`, and `ingress-controller.config.apisix.serviceNamespace=ingress-apisix` in your `values.yaml` file.
