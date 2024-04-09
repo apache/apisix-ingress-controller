@@ -1,6 +1,8 @@
 module github.com/apache/apisix-ingress-controller/test/e2e
 
-go 1.20
+go 1.21
+
+toolchain go1.21.1
 
 require (
 	github.com/apache/apisix-ingress-controller v0.0.0-20210105024109-72e53386de5a
@@ -21,7 +23,7 @@ require (
 	github.com/TylerBrock/colorjson v0.0.0-20200706003622-8a50f05110d2 // indirect
 	github.com/ajg/form v1.5.1 // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
-	github.com/api7/etcd-adapter v0.2.3 // indirect
+	github.com/api7/etcd-adapter v0.2.4 // indirect
 	github.com/api7/gopkg v0.2.0 // indirect
 	github.com/aws/aws-sdk-go v1.40.56 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
