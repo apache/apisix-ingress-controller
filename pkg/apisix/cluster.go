@@ -1161,7 +1161,7 @@ func (c *cluster) GetUpstream(ctx context.Context, baseUrl, id string) (*v1.Upst
 	resp, err := c.getResource(ctx, url, "upstream")
 	if err != nil {
 		if err == cache.ErrNotFound {
-			log.Warnw("upstream not found",
+			log.Debugw("upstream not found",
 				zap.String("id", id),
 				zap.String("url", url),
 				zap.String("cluster", c.name),
