@@ -460,7 +460,7 @@ func (in *Route) DeepCopyInto(out *Route) {
 	out.Uri = in.Uri
 	out.UpstreamId = in.UpstreamId
 	out.Priority = in.Priority
-	out.PluginConfigId	= in.PluginConfigId
+	out.PluginConfigId = in.PluginConfigId
 	*out = *in
 	in.Metadata.DeepCopyInto(&out.Metadata)
 	if in.Hosts != nil {
