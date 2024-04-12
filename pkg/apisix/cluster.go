@@ -849,6 +849,7 @@ func (c *cluster) updateResource(ctx context.Context, url, resource string, body
 }
 
 func (c *cluster) deleteResource(ctx context.Context, url, resource string) error {
+	url = url + "?force=true"
 	log.Debugw("deleting resource in cluster",
 		zap.String("cluster_name", c.name),
 		zap.String("name", resource),
