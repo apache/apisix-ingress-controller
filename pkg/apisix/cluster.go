@@ -849,6 +849,7 @@ func (c *cluster) updateResource(ctx context.Context, url, resource string, body
 }
 
 func (c *cluster) deleteResource(ctx context.Context, url, resource string) error {
+	url = url + "?force=true"
 	log.Debugw("deleting resource in cluster",
 		zap.String("cluster_name", c.name),
 		zap.String("name", resource),
@@ -1161,7 +1162,7 @@ func (c *cluster) GetUpstream(ctx context.Context, baseUrl, id string) (*v1.Upst
 	resp, err := c.getResource(ctx, url, "upstream")
 	if err != nil {
 		if err == cache.ErrNotFound {
-			log.Warnw("upstream not found",
+			log.Debugw("upstream not found",
 				zap.String("id", id),
 				zap.String("url", url),
 				zap.String("cluster", c.name),

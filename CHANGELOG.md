@@ -39,6 +39,37 @@
 - [0.2.0](#020)
 - [0.1.0](#010)
 
+# 1.8.1
+
+## What's New
+
+- chore: remove redundant logs and improve logs for users @Revolyssup (#2206)
+- fix: use force=true to hard delete the apisix resource @Revolyssup (#2210)
+- chore: upgrade etcd-adapter to latest version @Revolyssup (#2205)
+- chore(ci): remove tao12345666333 and lingsamuel in reviewers @AlinsRan (#2150)
+- test: failing flaky unit test @Revolyssup (#2151)
+- refactor(cmd/ingress): invert signal ctx logic @acuteaura (#2139)
+- chore: update NOTICE to 2024 @zll600 (#2149)
+- fix: remove path validation @Revolyssup (#2140)
+- feat: add plugin_config_namespace parameter to ApisixRoute @Revolyssup (#2137)
+- docs: clarify usage of external service discovery @Revolyssup (#2124)
+
+## 🧰 Maintenance
+
+- chore(deps): bump github.com/onsi/ginkgo/v2 from 2.16.0 to 2.17.1 in /test/e2e @dependabot (#2195)
+- chore(deps): bump github.com/spf13/cobra from 1.7.0 to 1.8.0 @dependabot (#2196)
+- chore(deps): bump k8s.io/apimachinery from 0.29.2 to 0.29.3 in /test/e2e @dependabot (#2185)
+- chore(deps): bump k8s.io/client-go from 0.29.0 to 0.29.2 in /test/e2e @dependabot (#2162)
+- chore(deps): bump go.uber.org/zap from 1.26.0 to 1.27.0 in /test/e2e @dependabot (#2172)
+- chore(deps): bump k8s.io/api from 0.29.0 to 0.29.2 in /test/e2e @dependabot (#2163)
+- chore(deps): bump k8s.io/apimachinery from 0.29.0 to 0.29.2 in /test/e2e @dependabot (#2161)
+- chore(deps): bump github.com/onsi/ginkgo/v2 from 2.13.2 to 2.16.0 in /test/e2e @dependabot (#2177)
+
+## 👨🏽‍💻 Contributors
+
+Thank you to our contributors for making this release possible:
+@AlinsRan, @Revolyssup, @acuteaura, @dependabot, @dependabot[bot] and @zll600
+
 # 1.8.0
 
 ## What's New

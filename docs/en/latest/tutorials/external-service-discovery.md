@@ -88,3 +88,18 @@ discovery:
 ```
 
 After applying the above configuration, we can try to access `httpbin.default.svc.cluster.local` directly through APISIX.
+
+:::note
+The above discovery configuration needs to be configured at the time of installation and cannot be edited later. For example, if you're installing via helm chart, make sure that you use the below configuration to override default helm values.
+
+```yaml
+apisix:
+  discovery:
+    enabled: true
+    registry:
+      dns:
+        servers:
+          - "172.17.0.11:53" # replace with your server addresses
+```
+
+:::

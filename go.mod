@@ -3,7 +3,7 @@ module github.com/apache/apisix-ingress-controller
 go 1.20
 
 require (
-	github.com/api7/etcd-adapter v0.2.3
+	github.com/api7/etcd-adapter v0.2.4
 	github.com/api7/gopkg v0.2.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/hashicorp/go-memdb v1.3.4
@@ -14,7 +14,7 @@ require (
 	github.com/prometheus/client_golang v1.16.0
 	github.com/prometheus/client_model v0.4.0
 	github.com/slok/kubewebhook/v2 v2.5.0
-	github.com/spf13/cobra v1.7.0
+	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.8.4
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.uber.org/multierr v1.11.0
