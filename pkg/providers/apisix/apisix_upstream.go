@@ -389,8 +389,8 @@ func (c *apisixUpstreamController) updateExternalNodes(ctx context.Context, au *
 				zap.String("upstream", upsName),
 			)
 			err = fmt.Errorf("%s", "upstream doesn't exist. It will be created after ApisixRoute is created referencing it.")
-			c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSynced, err)
-			c.recordStatus(au, utils.ResourceSynced, err, metav1.ConditionFalse, au.GetGeneration())
+			c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
 		} else {
 			c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
 			c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
