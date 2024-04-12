@@ -32,6 +32,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
+	"github.com/apache/apisix-ingress-controller/pkg/apisix"
 	"github.com/apache/apisix-ingress-controller/pkg/config"
 	"github.com/apache/apisix-ingress-controller/pkg/kube"
 	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
@@ -215,12 +216,15 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 			// for service discovery related configuration
 			if au.Spec.Discovery.ServiceName == "" || au.Spec.Discovery.Type == "" {
 				log.Error("If you setup Discovery for ApisixUpstream, you need to specify the ServiceName and Type fields.")
-				errRecord = fmt.Errorf("No ServiceName or Type fields found")
+				errRecord = fmt.Errorf("no ServiceName or Type fields found")
 				goto updateStatus
 			}
 			// updateUpstream for real
 			upsName := apisixv1.ComposeExternalUpstreamName(au.Namespace, au.Name)
 			errRecord = c.updateUpstream(ctx, upsName, &au.Spec.ApisixUpstreamConfig, ev.Type.IsSyncEvent())
+			if err == apisix.ErrNotFound {
+				errRecord = fmt.Errorf("%s", "upstream doesn't exist. It will be created after ApisixRoute is created referencing it.")
+			}
 			goto updateStatus
 		}
 
@@ -254,15 +258,22 @@ func (c *apisixUpstreamController) sync(ctx context.Context, ev *types.Event) er
 						cfg = au.Spec.ApisixUpstreamConfig
 					}
 				}
-
 				err := c.updateUpstream(ctx, apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port, types.ResolveGranularity.Endpoint), &cfg, ev.Type.IsSyncEvent())
 				if err != nil {
-					errRecord = err
+					if err == apisix.ErrNotFound {
+						errRecord = fmt.Errorf("%s", "upstream doesn't exist. It will be created after ApisixRoute is created referencing it.")
+					} else {
+						errRecord = err
+					}
 					goto updateStatus
 				}
 				err = c.updateUpstream(ctx, apisixv1.ComposeUpstreamName(namespace, name, subset.Name, port.Port, types.ResolveGranularity.Service), &cfg, ev.Type.IsSyncEvent())
 				if err != nil {
-					errRecord = err
+					if err == apisix.ErrNotFound {
+						errRecord = fmt.Errorf("%s", "upstream doesn't exist. It will be created after ApisixRoute is created referencing it.")
+					} else {
+						errRecord = err
+					}
 					goto updateStatus
 				}
 			}
@@ -330,8 +341,7 @@ func (c *apisixUpstreamController) updateUpstream(ctx context.Context, upsName s
 
 	ups, err := c.APISIX.Cluster(clusterName).Upstream().Get(ctx, upsName)
 	if err != nil {
-		log.Errorf("failed to get upstream %s: %s", upsName, err)
-		return err
+		return apisix.ErrNotFound
 	}
 	var newUps *apisixv1.Upstream
 	if cfg != nil {
@@ -373,9 +383,19 @@ func (c *apisixUpstreamController) updateExternalNodes(ctx context.Context, au *
 	upsName := apisixv1.ComposeExternalUpstreamName(ns, name)
 	ups, err := c.APISIX.Cluster(clusterName).Upstream().Get(ctx, upsName)
 	if err != nil {
-		log.Errorf("failed to get upstream %s: %s", upsName, err)
-		c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
-		c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
+		if err == apisix.ErrNotFound {
+			log.Debugw("upstream is not referenced",
+				zap.String("cluster", clusterName),
+				zap.String("upstream", upsName),
+			)
+			err = fmt.Errorf("%s", "upstream doesn't exist. It will be created after ApisixRoute is created referencing it.")
+			c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
+		} else {
+			c.RecordEvent(au, corev1.EventTypeWarning, utils.ResourceSyncAborted, err)
+			c.recordStatus(au, utils.ResourceSyncAborted, err, metav1.ConditionFalse, au.GetGeneration())
+			log.Errorf("failed to get upstream %s: %s", upsName, err)
+		}
 		return err
 	} else if ups != nil {
 		nodes, err := c.translator.TranslateApisixUpstreamExternalNodes(au)
