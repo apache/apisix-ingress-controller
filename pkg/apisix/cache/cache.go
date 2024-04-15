@@ -97,5 +97,7 @@ type Cache interface {
 	// DeletePluginConfig deletes the specified plugin_config in cache.
 	DeletePluginConfig(*v1.PluginConfig) error
 
+	CheckUpstreamReference(*v1.Upstream) error
+	CheckPluginConfigReference(*v1.PluginConfig) error
 	DeleteUpstreamServiceRelation(*v1.UpstreamServiceRelation) error
 }

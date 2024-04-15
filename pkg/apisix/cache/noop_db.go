@@ -172,3 +172,11 @@ func (c *noopCache) DeletePluginConfig(pc *v1.PluginConfig) error {
 func (c *noopCache) DeleteUpstreamServiceRelation(us *v1.UpstreamServiceRelation) error {
 	return nil
 }
+
+func (c *noopCache) CheckUpstreamReference(u *v1.Upstream) error {
+	return nil
+}
+
+func (c *noopCache) CheckPluginConfigReference(pc *v1.PluginConfig) error {
+	return nil
+}
