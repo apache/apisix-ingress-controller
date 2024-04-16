@@ -311,7 +311,7 @@ func (c *dbCache) DeleteSSL(ssl *v1.Ssl) error {
 }
 
 func (c *dbCache) DeleteUpstream(u *v1.Upstream) error {
-	if err := c.checkUpstreamReference(u); err != nil {
+	if err := c.CheckUpstreamReference(u); err != nil {
 		return err
 	}
 	return c.delete("upstream", u)
@@ -334,7 +334,7 @@ func (c *dbCache) DeleteSchema(schema *v1.Schema) error {
 }
 
 func (c *dbCache) DeletePluginConfig(pc *v1.PluginConfig) error {
-	if err := c.checkPluginConfigReference(pc); err != nil {
+	if err := c.CheckPluginConfigReference(pc); err != nil {
 		return err
 	}
 	return c.delete("plugin_config", pc)
@@ -357,7 +357,7 @@ func (c *dbCache) delete(table string, obj interface{}) error {
 	return nil
 }
 
-func (c *dbCache) checkUpstreamReference(u *v1.Upstream) error {
+func (c *dbCache) CheckUpstreamReference(u *v1.Upstream) error {
 	// Upstream is referenced by Route.
 	txn := c.db.Txn(false)
 	defer txn.Abort()
@@ -379,7 +379,7 @@ func (c *dbCache) checkUpstreamReference(u *v1.Upstream) error {
 	return nil
 }
 
-func (c *dbCache) checkPluginConfigReference(u *v1.PluginConfig) error {
+func (c *dbCache) CheckPluginConfigReference(u *v1.PluginConfig) error {
 	// PluginConfig is referenced by Route.
 	txn := c.db.Txn(false)
 	defer txn.Abort()

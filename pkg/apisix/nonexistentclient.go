@@ -400,3 +400,5 @@ func (c *dummyCache) DeleteConsumer(_ *v1.Consumer) error                       
 func (c *dummyCache) DeleteSchema(_ *v1.Schema) error                                   { return nil }
 func (c *dummyCache) DeletePluginConfig(_ *v1.PluginConfig) error                       { return nil }
 func (c *dummyCache) DeleteUpstreamServiceRelation(_ *v1.UpstreamServiceRelation) error { return nil }
+func (c *dummyCache) CheckUpstreamReference(_ *v1.Upstream) error                       { return nil }
+func (c *dummyCache) CheckPluginConfigReference(_ *v1.PluginConfig) error               { return nil }
