@@ -162,7 +162,11 @@ func (pc *pluginConfigClient) Delete(ctx context.Context, obj *v1.PluginConfig) 
 		zap.String("cluster", pc.cluster.name),
 		zap.String("url", pc.url),
 	)
-
+	err := pc.cluster.cache.CheckPluginConfigReference(obj)
+	if err != nil {
+		log.Warnw("deletion for plugin config: " + obj.Name + " aborted as it is still in use.")
+		return err
+	}
 	if err := pc.cluster.HasSynced(ctx); err != nil {
 		return err
 	}
