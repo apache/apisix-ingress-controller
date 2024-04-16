@@ -19,6 +19,7 @@
 
 # Table of Contents
 
+- [1.8.1](#181)
 - [1.8.0](#180)
 - [1.7.0](#170)
 - [1.6.0](#160)
@@ -43,6 +44,7 @@
 
 ## What's New
 
+- fix: deletion of references @Revolyssup (#2213)
 - chore: remove redundant logs and improve logs for users @Revolyssup (#2206)
 - fix: use force=true to hard delete the apisix resource @Revolyssup (#2210)
 - chore: upgrade etcd-adapter to latest version @Revolyssup (#2205)
