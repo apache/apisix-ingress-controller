@@ -158,7 +158,11 @@ func (u *upstreamClient) Delete(ctx context.Context, obj *v1.Upstream) error {
 		zap.String("cluster", u.cluster.name),
 		zap.String("url", u.url),
 	)
-
+	err := u.cluster.cache.CheckUpstreamReference(obj)
+	if err != nil {
+		log.Warnw("deletion for upstream: " + obj.Name + " aborted as it is still in use.")
+		return err
+	}
 	if err := u.cluster.HasSynced(ctx); err != nil {
 		return err
 	}
