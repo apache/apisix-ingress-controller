@@ -25,6 +25,7 @@ kind: ApisixConsumer
 metadata:
   name: %s
 spec:
+  description: %s
   authParameter:
     basicAuth:
       value:
@@ -37,6 +38,7 @@ kind: ApisixConsumer
 metadata:
   name: %s
 spec:
+  description: %s
   authParameter:
     basicAuth:
       secretRef:
@@ -48,6 +50,7 @@ spec:
   metadata:
     name: %s
   spec:
+    description: %s
     authParameter:
       keyAuth:
         value:
@@ -59,6 +62,7 @@ spec:
   metadata:
     name: %s
   spec:
+    description: %s
     authParameter:
       keyAuth:
         secretRef:
@@ -66,22 +70,22 @@ spec:
   `
 )
 
-func (s *Scaffold) ApisixConsumerBasicAuthCreated(name, username, password string) error {
-	ac := fmt.Sprintf(_apisixConsumerBasicAuth, s.opts.ApisixResourceVersion, name, username, password)
+func (s *Scaffold) ApisixConsumerBasicAuthCreated(name, desc, username, password string) error {
+	ac := fmt.Sprintf(_apisixConsumerBasicAuth, s.opts.ApisixResourceVersion, name, desc, username, password)
 	return s.CreateVersionedApisixResource(ac)
 }
 
-func (s *Scaffold) ApisixConsumerBasicAuthSecretCreated(name, secret string) error {
-	ac := fmt.Sprintf(_apisixConsumerBasicAuthSecret, s.opts.ApisixResourceVersion, name, secret)
+func (s *Scaffold) ApisixConsumerBasicAuthSecretCreated(name, desc, secret string) error {
+	ac := fmt.Sprintf(_apisixConsumerBasicAuthSecret, s.opts.ApisixResourceVersion, name, desc, secret)
 	return s.CreateVersionedApisixResource(ac)
 }
 
-func (s *Scaffold) ApisixConsumerKeyAuthCreated(name, key string) error {
-	ac := fmt.Sprintf(_apisixConsumerKeyAuth, s.opts.ApisixResourceVersion, name, key)
+func (s *Scaffold) ApisixConsumerKeyAuthCreated(name, desc, key string) error {
+	ac := fmt.Sprintf(_apisixConsumerKeyAuth, s.opts.ApisixResourceVersion, name, desc, key)
 	return s.CreateVersionedApisixResource(ac)
 }
 
-func (s *Scaffold) ApisixConsumerKeyAuthSecretCreated(name, secret string) error {
-	ac := fmt.Sprintf(_apisixConsumerKeyAuthSecret, s.opts.ApisixResourceVersion, name, secret)
+func (s *Scaffold) ApisixConsumerKeyAuthSecretCreated(name, desc, secret string) error {
+	ac := fmt.Sprintf(_apisixConsumerKeyAuthSecret, s.opts.ApisixResourceVersion, name, desc, secret)
 	return s.CreateVersionedApisixResource(ac)
 }

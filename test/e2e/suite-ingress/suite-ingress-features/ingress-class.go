@@ -432,6 +432,7 @@ kind: ApisixConsumer
 metadata:
   name: jack
 spec:
+  description: jack consumer
   authParameter:
     keyAuth:
       value:
@@ -444,6 +445,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err)
 		assert.Len(ginkgo.GinkgoT(), acs, 1)
 		assert.Contains(ginkgo.GinkgoT(), acs[0].Username, "jack")
+		assert.Contains(ginkgo.GinkgoT(), acs[0].Desc, "jack consumer")
 		assert.Equal(ginkgo.GinkgoT(), map[string]interface{}{"key": "jack-key"}, acs[0].Plugins["key-auth"])
 
 		// delete ApisixConsumer
@@ -461,6 +463,7 @@ metadata:
   name: james
 spec:
   ingressClassName: apisix
+  description: james consumer
   authParameter:
     keyAuth:
       value:
@@ -473,6 +476,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err)
 		assert.Len(ginkgo.GinkgoT(), acs, 1)
 		assert.Contains(ginkgo.GinkgoT(), acs[0].Username, "james")
+		assert.Contains(ginkgo.GinkgoT(), acs[0].Desc, "james consumer")
 		assert.Equal(ginkgo.GinkgoT(), map[string]interface{}{"key": "james-key"}, acs[0].Plugins["key-auth"])
 	})
 
@@ -884,6 +888,7 @@ kind: ApisixConsumer
 metadata:
   name: jack
 spec:
+  description: jack consumer
   authParameter:
     keyAuth:
       value:
@@ -896,6 +901,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err)
 		assert.Len(ginkgo.GinkgoT(), acs, 1)
 		assert.Contains(ginkgo.GinkgoT(), acs[0].Username, "jack")
+		assert.Contains(ginkgo.GinkgoT(), acs[0].Desc, "jack consumer")
 		assert.Equal(ginkgo.GinkgoT(), map[string]interface{}{"key": "jack-key"}, acs[0].Plugins["key-auth"])
 
 		// delete ApisixConsumer
@@ -913,6 +919,7 @@ metadata:
   name: james
 spec:
   ingressClassName: apisix
+  description: james consumer
   authParameter:
     keyAuth:
       value:
@@ -925,6 +932,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err)
 		assert.Len(ginkgo.GinkgoT(), acs, 1)
 		assert.Contains(ginkgo.GinkgoT(), acs[0].Username, "james")
+		assert.Contains(ginkgo.GinkgoT(), acs[0].Desc, "james consumer")
 		assert.Equal(ginkgo.GinkgoT(), map[string]interface{}{"key": "james-key"}, acs[0].Plugins["key-auth"])
 
 		// update ApisixConsumer resource with ingressClassName: watch
@@ -935,6 +943,7 @@ metadata:
   name: james
 spec:
   ingressClassName: watch
+  description: james consumer
   authParameter:
     keyAuth:
       value:
@@ -947,6 +956,7 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err)
 		assert.Len(ginkgo.GinkgoT(), acs, 1)
 		assert.Contains(ginkgo.GinkgoT(), acs[0].Username, "james")
+		assert.Contains(ginkgo.GinkgoT(), acs[0].Desc, "james consumer")
 		assert.Equal(ginkgo.GinkgoT(), map[string]interface{}{"key": "james-password"}, acs[0].Plugins["key-auth"])
 	})
 

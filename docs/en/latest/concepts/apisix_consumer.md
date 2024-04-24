@@ -44,6 +44,7 @@ kind: ApisixConsumer
 metadata:
   name: jack
 spec:
+  description: "Jack consumer"
   authParameter:
     keyAuth:
       value:

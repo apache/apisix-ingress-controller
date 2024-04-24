@@ -36,6 +36,7 @@ kind: ApisixConsumer
 metadata:
   name: foo
 spec:
+  description: foo consumer
   authParameter:
     jwtAuth:
       value:
@@ -49,6 +50,8 @@ spec:
 			grs, err := s.ListApisixConsumers()
 			assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
 			assert.Len(ginkgo.GinkgoT(), grs, 1)
+			assert.Contains(ginkgo.GinkgoT(), grs[0].Username, "foo")
+			assert.Contains(ginkgo.GinkgoT(), grs[0].Desc, "foo consumer")
 			assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
 			jwtAuth, _ := grs[0].Plugins["jwt-auth"].(map[string]interface{})
 			assert.Equal(ginkgo.GinkgoT(), jwtAuth["key"], "foo-key")
@@ -141,6 +144,7 @@ kind: ApisixConsumer
 metadata:
   name: foo
 spec:
+  description: foo consumer
   authParameter:
     jwtAuth:
       secretRef:
@@ -154,6 +158,8 @@ spec:
 			grs, err := s.ListApisixConsumers()
 			assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
 			assert.Len(ginkgo.GinkgoT(), grs, 1)
+			assert.Contains(ginkgo.GinkgoT(), grs[0].Username, "foo")
+			assert.Contains(ginkgo.GinkgoT(), grs[0].Desc, "foo consumer")
 			assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
 			jwtAuth, _ := grs[0].Plugins["jwt-auth"].(map[string]interface{})
 			assert.Equal(ginkgo.GinkgoT(), jwtAuth["key"], "foo-key")

@@ -36,6 +36,7 @@ kind: ApisixConsumer
 metadata:
   name: hmacvalue
 spec:
+  description: hmacvalue consumer
   authParameter:
     hmacAuth:
       value:
@@ -51,6 +52,8 @@ spec:
 			grs, err := s.ListApisixConsumers()
 			assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
 			assert.Len(ginkgo.GinkgoT(), grs, 1)
+			assert.Contains(ginkgo.GinkgoT(), grs[0].Username, "hmacvalue")
+			assert.Contains(ginkgo.GinkgoT(), grs[0].Desc, "hmacvalue consumer")
 			assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
 			hmacAuth, _ := grs[0].Plugins["hmac-auth"].(map[string]interface{})
 			assert.Equal(ginkgo.GinkgoT(), "papa", hmacAuth["access_key"])
@@ -142,6 +145,7 @@ kind: ApisixConsumer
 metadata:
   name: hmacvalue
 spec:
+  description: hmacvalue consumer
   authParameter:
     hmacAuth:
       secretRef:
@@ -155,6 +159,8 @@ spec:
 			grs, err := s.ListApisixConsumers()
 			assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
 			assert.Len(ginkgo.GinkgoT(), grs, 1)
+			assert.Contains(ginkgo.GinkgoT(), grs[0].Username, "hmacvalue")
+			assert.Contains(ginkgo.GinkgoT(), grs[0].Desc, "hmacvalue consumer")
 			assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
 			hmacAuth, _ := grs[0].Plugins["hmac-auth"].(map[string]interface{})
 			assert.Equal(ginkgo.GinkgoT(), "papa", hmacAuth["access_key"])

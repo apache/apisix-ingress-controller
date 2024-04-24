@@ -70,5 +70,11 @@ func (t *translator) TranslateApisixConsumerV2(ac *configv2.ApisixConsumer) (*ap
 	}
 	consumer.Username = apisixv1.ComposeConsumerName(ac.Namespace, ac.Name)
 	consumer.Plugins = plugins
+	if len(ac.Spec.Description) != 0 {
+		consumer.Desc = ac.Spec.Description
+	} else {
+		consumer.Desc = ""
+	}
+
 	return consumer, nil
 }

@@ -31,6 +31,7 @@ func TestTranslateApisixConsumerV2(t *testing.T) {
 			Namespace: "qa",
 		},
 		Spec: configv2.ApisixConsumerSpec{
+			Description: "Jack Consumer",
 			AuthParameter: configv2.ApisixConsumerAuthParameter{
 				BasicAuth: &configv2.ApisixConsumerBasicAuth{
 					Value: &configv2.ApisixConsumerBasicAuthValue{
@@ -43,6 +44,7 @@ func TestTranslateApisixConsumerV2(t *testing.T) {
 	}
 	consumer, err := (&translator{}).TranslateApisixConsumerV2(ac)
 	assert.Nil(t, err)
+	assert.Equal(t, "Jack Consumer", consumer.Desc)
 	assert.Len(t, consumer.Plugins, 1)
 	cfg := consumer.Plugins["basic-auth"].(*apisixv1.BasicAuthConsumerConfig)
 	assert.Equal(t, "jack", cfg.Username)
@@ -54,6 +56,7 @@ func TestTranslateApisixConsumerV2(t *testing.T) {
 			Namespace: "qa",
 		},
 		Spec: configv2.ApisixConsumerSpec{
+			Description: "Jack Consumer",
 			AuthParameter: configv2.ApisixConsumerAuthParameter{
 				KeyAuth: &configv2.ApisixConsumerKeyAuth{
 					Value: &configv2.ApisixConsumerKeyAuthValue{
@@ -65,6 +68,7 @@ func TestTranslateApisixConsumerV2(t *testing.T) {
 	}
 	consumer, err = (&translator{}).TranslateApisixConsumerV2(ac)
 	assert.Nil(t, err)
+	assert.Equal(t, "Jack Consumer", consumer.Desc)
 	assert.Len(t, consumer.Plugins, 1)
 	cfg2 := consumer.Plugins["key-auth"].(*apisixv1.KeyAuthConsumerConfig)
 	assert.Equal(t, "qwerty", cfg2.Key)
@@ -75,6 +79,7 @@ func TestTranslateApisixConsumerV2(t *testing.T) {
 			Namespace: "qa",
 		},
 		Spec: configv2.ApisixConsumerSpec{
+			Description: "Jack Consumer",
 			AuthParameter: configv2.ApisixConsumerAuthParameter{
 				JwtAuth: &configv2.ApisixConsumerJwtAuth{
 					Value: &configv2.ApisixConsumerJwtAuthValue{
@@ -92,6 +97,7 @@ func TestTranslateApisixConsumerV2(t *testing.T) {
 	}
 	consumer, err = (&translator{}).TranslateApisixConsumerV2(ac)
 	assert.Nil(t, err)
+	assert.Equal(t, "Jack Consumer", consumer.Desc)
 	assert.Len(t, consumer.Plugins, 1)
 	cfg3 := consumer.Plugins["jwt-auth"].(*apisixv1.JwtAuthConsumerConfig)
 	assert.Equal(t, "foo", cfg3.Key)
@@ -108,6 +114,7 @@ func TestTranslateApisixConsumerV2(t *testing.T) {
 			Namespace: "qa",
 		},
 		Spec: configv2.ApisixConsumerSpec{
+			Description: "Jack Consumer",
 			AuthParameter: configv2.ApisixConsumerAuthParameter{
 				WolfRBAC: &configv2.ApisixConsumerWolfRBAC{
 					Value: &configv2.ApisixConsumerWolfRBACValue{
@@ -120,6 +127,7 @@ func TestTranslateApisixConsumerV2(t *testing.T) {
 	}
 	consumer, err = (&translator{}).TranslateApisixConsumerV2(ac)
 	assert.Nil(t, err)
+	assert.Equal(t, "Jack Consumer", consumer.Desc)
 	assert.Len(t, consumer.Plugins, 1)
 	cfg4 := consumer.Plugins["wolf-rbac"].(*apisixv1.WolfRBACConsumerConfig)
 	assert.Equal(t, "https://httpbin.org", cfg4.Server)
@@ -131,6 +139,7 @@ func TestTranslateApisixConsumerV2(t *testing.T) {
 			Namespace: "qa",
 		},
 		Spec: configv2.ApisixConsumerSpec{
+			Description: "Jack Consumer",
 			AuthParameter: configv2.ApisixConsumerAuthParameter{
 				HMACAuth: &configv2.ApisixConsumerHMACAuth{
 					Value: &configv2.ApisixConsumerHMACAuthValue{
@@ -143,6 +152,7 @@ func TestTranslateApisixConsumerV2(t *testing.T) {
 	}
 	consumer, err = (&translator{}).TranslateApisixConsumerV2(ac)
 	assert.Nil(t, err)
+	assert.Equal(t, "Jack Consumer", consumer.Desc)
 	assert.Len(t, consumer.Plugins, 1)
 	cfg5 := consumer.Plugins["hmac-auth"].(*apisixv1.HMACAuthConsumerConfig)
 	assert.Equal(t, "foo", cfg5.AccessKey)
@@ -165,6 +175,7 @@ func TestTranslateApisixConsumerV2(t *testing.T) {
 	}
 	consumer, err = (&translator{}).TranslateApisixConsumerV2(ac)
 	assert.Nil(t, err)
+	assert.Equal(t, "", consumer.Desc)
 	assert.Len(t, consumer.Plugins, 1)
 	cfg6 := consumer.Plugins["ldap-auth"].(*apisixv1.LDAPAuthConsumerConfig)
 	assert.Equal(t, "cn=user01,ou=users,dc=example,dc=org", cfg6.UserDN)

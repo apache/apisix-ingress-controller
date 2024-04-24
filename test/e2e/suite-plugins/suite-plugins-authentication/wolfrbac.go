@@ -53,6 +53,7 @@ kind: ApisixConsumer
 metadata:
   name: wolf-user
 spec:
+  description: wolf-user consumer
   authParameter:
     wolfRBAC:
       value:
@@ -68,6 +69,8 @@ spec:
 				grs, err := s.ListApisixConsumers()
 				assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
 				assert.Len(ginkgo.GinkgoT(), grs, 1)
+				assert.Contains(ginkgo.GinkgoT(), grs[0].Username, "wolf-user")
+				assert.Contains(ginkgo.GinkgoT(), grs[0].Desc, "wolf-user consumer")
 				assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
 				wolfRBAC, _ := grs[0].Plugins["wolf-rbac"].(map[string]interface{})
 				assert.Equal(ginkgo.GinkgoT(), wolfRBAC, map[string]interface{}{
@@ -180,6 +183,7 @@ kind: ApisixConsumer
 metadata:
   name: wolf-user
 spec:
+  description: wolf-user consumer
   authParameter:
     wolfRBAC:
       secretRef:
@@ -193,6 +197,8 @@ spec:
 				grs, err := s.ListApisixConsumers()
 				assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
 				assert.Len(ginkgo.GinkgoT(), grs, 1)
+				assert.Contains(ginkgo.GinkgoT(), grs[0].Username, "wolf-user")
+				assert.Contains(ginkgo.GinkgoT(), grs[0].Desc, "wolf-user consumer")
 				assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
 				wolfRBAC, _ := grs[0].Plugins["wolf-rbac"].(map[string]interface{})
 				assert.Equal(ginkgo.GinkgoT(), wolfRBAC, map[string]interface{}{

@@ -132,7 +132,7 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(3), "Checking number of routes")
 
 			// Create ApisixConsumer resource
-			err := s.ApisixConsumerKeyAuthCreated("foo", "foo-key")
+			err := s.ApisixConsumerKeyAuthCreated("foo", "foo consumer", "foo-key")
 			assert.Nil(ginkgo.GinkgoT(), err)
 		})
 
@@ -171,12 +171,13 @@ spec:
 				_ = s.CreateApisixConsumerByApisixAdmin([]byte(fmt.Sprintf(`
 {
 	"username": "%s",
+	"desc", "%s",
 	"plugins": {
 		"key-auth": {
 			"key": "auth-one"
 		}
 	}
-}`, consumer.Username)))
+}`, consumer.Username, consumer.Desc)))
 			}
 
 			routes, _ = s.ListApisixRoutes()

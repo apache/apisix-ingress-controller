@@ -30,10 +30,10 @@ var _ = ginkgo.Describe("suite-plugins-security: consumer-restriction plugin", f
 		s := scaffoldFunc()
 
 		ginkgo.It("restrict consumer_name", func() {
-			err := s.ApisixConsumerBasicAuthCreated("jack1", "jack1-username", "jack1-password")
+			err := s.ApisixConsumerBasicAuthCreated("jack1", "", "jack1-username", "jack1-password")
 			assert.Nil(ginkgo.GinkgoT(), err, "creating basicAuth ApisixConsumer")
 
-			err = s.ApisixConsumerBasicAuthCreated("jack2", "jack2-username", "jack2-password")
+			err = s.ApisixConsumerBasicAuthCreated("jack2", "", "jack2-username", "jack2-password")
 			assert.Nil(ginkgo.GinkgoT(), err, "creating basicAuth ApisixConsumer")
 
 			// Wait until the ApisixConsumer create event was delivered.
@@ -117,10 +117,10 @@ spec:
 		})
 
 		ginkgo.It("restrict allowed_by_methods", func() {
-			err := s.ApisixConsumerBasicAuthCreated("jack1", "jack1-username", "jack1-password")
+			err := s.ApisixConsumerBasicAuthCreated("jack1", "", "jack1-username", "jack1-password")
 			assert.Nil(ginkgo.GinkgoT(), err, "creating basicAuth ApisixConsumer")
 
-			err = s.ApisixConsumerBasicAuthCreated("jack2", "jack2-username", "jack2-password")
+			err = s.ApisixConsumerBasicAuthCreated("jack2", "", "jack2-username", "jack2-password")
 			assert.Nil(ginkgo.GinkgoT(), err, "creating basicAuth ApisixConsumer")
 
 			// Wait until the ApisixConsumer create event was delivered.

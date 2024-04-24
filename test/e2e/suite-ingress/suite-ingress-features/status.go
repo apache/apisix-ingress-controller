@@ -235,7 +235,7 @@ wrw7im4TNSAdwVX4Y1F4svJ2as5SJn5QYGAzXDixNuwzXYrpP9rzA2s=
 	//TODO: ApisixGlobal
 	ginkgo.It("check ApisixConsumer status is recorded", func() {
 		// create ApisixConsumer resource
-		assert.Nil(ginkgo.GinkgoT(), s.ApisixConsumerBasicAuthCreated("test-apisix-consumer", "foo", "bar"), "create consumer error")
+		assert.Nil(ginkgo.GinkgoT(), s.ApisixConsumerBasicAuthCreated("test-apisix-consumer", "test-apisix-consumer consumer", "foo", "bar"), "create consumer error")
 		time.Sleep(6 * time.Second)
 
 		// status should be recorded as successful

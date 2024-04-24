@@ -375,6 +375,8 @@ type ApisixConsumerSpec struct {
 	// +optional
 	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
 
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+
 	AuthParameter ApisixConsumerAuthParameter `json:"authParameter" yaml:"authParameter"`
 }
 
