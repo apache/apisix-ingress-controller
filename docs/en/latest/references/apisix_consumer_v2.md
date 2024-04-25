@@ -31,7 +31,7 @@ See the [definition](../../../../samples/deploy/crd/v1/ApisixConsumer.yaml) on G
 
 | Field            | Type    | Description                                                                                                                                    |
 |------------------|---------|------------------------------------------------------------------------------------------------------------------------------------------------|
-| description          | string   | Description of the consumer 
+| description          | string   | Description of the consumer                                                                                                                              |
 | authParameter          | object   | Configuration of one of the available authentication plugins.                                                                                                   |
 | authParameter.basicAuth.value   | object   | Plugin configuration for [`basic-auth` plugin](https://apisix.apache.org/docs/apisix/plugins/basic-auth/)                                      |
 | authParameter.basicAuth.secretRef.name   | string   | You can store plugin configuration in Kubernetes secret and reference here with the secret name                                     |

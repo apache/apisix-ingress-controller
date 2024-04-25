@@ -46,7 +46,7 @@ spec:
               properties:
                 ingressClassName:
                   type: string
-                description: 
+                description:
                   type: string
                 authParameter:
                   type: object
