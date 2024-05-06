@@ -138,6 +138,8 @@ jW4KB95bGOTa7r7DM1Up0MbAIwWoeLBGhOIXk7inurZGg+FNjZMA5Lzm6qo=
 			err = s.NewApisixTls(tlsName, host, secretName)
 			assert.Nil(ginkgo.GinkgoT(), err, "create tls error")
 
+			time.Sleep(6 * time.Second)
+
 			// verify SSL resource
 			tls, err = s.ListApisixSsl()
 			assert.Nil(ginkgo.GinkgoT(), err, "list tls error")
@@ -1136,12 +1138,12 @@ spec:
 			// delete ingress
 			err = s.DeleteResource("ingress", "ingress-route")
 			assert.Nil(ginkgo.GinkgoT(), err, "delete ingress error")
+			// check ssl in APISIX
+			time.Sleep(20 * time.Second)
 			// check routes
 			routes, err = s.ListApisixRoutes()
 			assert.Nil(ginkgo.GinkgoT(), err, "list routes error")
 			assert.Len(ginkgo.GinkgoT(), routes, 0, "routes number not expect")
-			// check ssl in APISIX
-			time.Sleep(20 * time.Second)
 			ssls, err = s.ListApisixSsl()
 			assert.Nil(ginkgo.GinkgoT(), err, "list tlsUpdate error")
 			assert.Len(ginkgo.GinkgoT(), ssls, 0, "tls number not expect")

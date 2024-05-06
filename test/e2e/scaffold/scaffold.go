@@ -489,12 +489,6 @@ func (s *Scaffold) DeployAdminaAPIMode() {
 	})
 	assert.Nil(s.t, err, "creating apisix configmap")
 
-	s.etcdService, err = s.newEtcd()
-	assert.Nil(s.t, err, "initializing etcd")
-
-	err = s.waitAllEtcdPodsAvailable()
-	assert.Nil(s.t, err, "waiting for etcd ready")
-
 	s.apisixService, err = s.newAPISIX()
 	assert.Nil(s.t, err, "initializing Apache APISIX")
 

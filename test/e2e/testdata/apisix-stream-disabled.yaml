@@ -34,7 +34,7 @@ apisix:
 #      - 9200
 etcd:
   host:                           # it's possible to define multiple etcd hosts addresses of the same etcd cluster.
-    - "http://{{ .EtcdServiceFQDN }}:2379"     # multiple etcd address
+      - "http://192.168.31.50:7900"     # multiple etcd address
   prefix: "/apisix"               # apisix configurations prefix
   timeout: 30                     # 30 seconds
 plugin_attr:

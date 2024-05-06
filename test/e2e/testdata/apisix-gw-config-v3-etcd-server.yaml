@@ -29,7 +29,7 @@ deployment:
       port: 9180
   etcd:
     host:
-      - "http://{{ .EtcdServiceFQDN }}:2379"
+      - "http://192.168.31.50:7900"     # multiple etcd address
     prefix: "/apisix"
     timeout: 60
 
