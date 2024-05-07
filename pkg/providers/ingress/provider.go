@@ -21,13 +21,13 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	apisixtranslation "github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
-	ingresstranslation "github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
-	"github.com/apache/apisix-ingress-controller/pkg/types"
+	apisixtranslation "github.com/api7/apisix-ingress-controller/pkg/providers/apisix/translation"
+	ingresstranslation "github.com/api7/apisix-ingress-controller/pkg/providers/ingress/translation"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/k8s/namespace"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/translation"
+	providertypes "github.com/api7/apisix-ingress-controller/pkg/providers/types"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/utils"
+	"github.com/api7/apisix-ingress-controller/pkg/types"
 )
 
 const (

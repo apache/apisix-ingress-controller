@@ -21,11 +21,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/translation"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
+	"github.com/api7/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("suite-ingress-resource: SSL Testing", func() {

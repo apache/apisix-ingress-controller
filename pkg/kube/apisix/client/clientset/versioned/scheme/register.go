@@ -18,7 +18,7 @@
 package scheme
 
 import (
-	apisixv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
+	apisixv2 "github.com/api7/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

@@ -20,8 +20,8 @@ import (
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
-	"github.com/apache/apisix-ingress-controller/pkg/providers/gateway/types"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/gateway/types"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/translation"
 )
 
 type TranslatorOptions struct {

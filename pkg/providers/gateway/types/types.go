@@ -19,7 +19,7 @@ package types
 import (
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
-	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/utils"
 )
 
 const (

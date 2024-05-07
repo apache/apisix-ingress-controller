@@ -18,8 +18,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
+	apisixv1 "github.com/api7/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type redirect struct{}

@@ -42,7 +42,7 @@ This is a feature release.
 
 ## Highlights
 
-The API version of all custom resources has been upgraded to v2 in this release and mark v2beta3 as deprecated. We plan to remove the v2beta2 API version in the next release. Please go to [#707](https://github.com/apache/apisix-ingress-controller/issues/707) for detail.
+The API version of all custom resources has been upgraded to v2 in this release and mark v2beta3 as deprecated. We plan to remove the v2beta2 API version in the next release. Please go to [#707](https://github.com/api7/apisix-ingress-controller/issues/707) for detail.
 
 We have added partial support for Gateway API, which is not enabled by default, you can set `enable_gateway_api=true` to enable it.
 

@@ -21,13 +21,13 @@ set -e
 
 go install github.com/incu6us/goimports-reviser/v2@latest
 
-PROJECT_NAME=github.com/apache/apisix-ingress-controller
+PROJECT_NAME=github.com/api7/apisix-ingress-controller
 while IFS= read -r -d '' file; do
   goimports-reviser  -file-path "$file" -project-name $PROJECT_NAME
 done <   <(find . -name '*.go' -not -path "./test/*" -not -path "./pkg/kube/apisix/*" -print0)
 
 
-PROJECT_NAME=github.com/apache/apisix-ingress-controller/test/e2e
+PROJECT_NAME=github.com/api7/apisix-ingress-controller/test/e2e
 while IFS= read -r -d '' file; do
   goimports-reviser  -file-path "$file" -project-name $PROJECT_NAME
 done <   <(find . -name '*.go' -path "./test/*" -print0)

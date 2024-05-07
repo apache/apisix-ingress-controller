@@ -19,7 +19,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	apisix "github.com/api7/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 func TestTranslateContext(t *testing.T) {

@@ -28,10 +28,10 @@ import (
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
 
-	"github.com/apache/apisix-ingress-controller/pkg/config"
-	"github.com/apache/apisix-ingress-controller/pkg/log"
-	controller "github.com/apache/apisix-ingress-controller/pkg/providers"
-	"github.com/apache/apisix-ingress-controller/pkg/version"
+	"github.com/api7/apisix-ingress-controller/pkg/config"
+	"github.com/api7/apisix-ingress-controller/pkg/log"
+	controller "github.com/api7/apisix-ingress-controller/pkg/providers"
+	"github.com/api7/apisix-ingress-controller/pkg/version"
 )
 
 func dief(template string, args ...interface{}) {

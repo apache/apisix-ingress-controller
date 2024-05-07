@@ -1,4 +1,4 @@
-module github.com/apache/apisix-ingress-controller
+module github.com/api7/apisix-ingress-controller
 
 go 1.20
 

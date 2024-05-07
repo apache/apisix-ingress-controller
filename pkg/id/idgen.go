@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"hash/crc32"
 
-	"github.com/apache/apisix-ingress-controller/pkg/utils"
+	"github.com/api7/apisix-ingress-controller/pkg/utils"
 )
 
 // GenID generates an ID according to the raw material.

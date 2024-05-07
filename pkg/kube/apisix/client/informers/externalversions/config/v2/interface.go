@@ -18,7 +18,7 @@
 package v2
 
 import (
-	internalinterfaces "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/internalinterfaces"
+	internalinterfaces "github.com/api7/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to all the informers in this group version.

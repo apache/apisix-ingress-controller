@@ -35,11 +35,11 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/wait"
 
-	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
-	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
-	"github.com/apache/apisix-ingress-controller/pkg/types"
-	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	"github.com/api7/apisix-ingress-controller/pkg/apisix/cache"
+	"github.com/api7/apisix-ingress-controller/pkg/log"
+	"github.com/api7/apisix-ingress-controller/pkg/metrics"
+	"github.com/api7/apisix-ingress-controller/pkg/types"
+	v1 "github.com/api7/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 const (
@@ -427,7 +427,7 @@ func (c *cluster) HasSynced(ctx context.Context) error {
 		return ctx.Err()
 	case <-c.cacheSynced:
 		if c.cacheSyncErr != nil {
-			// See https://github.com/apache/apisix-ingress-controller/issues/448
+			// See https://github.com/api7/apisix-ingress-controller/issues/448
 			// for more details.
 			return c.cacheSyncErr
 		}

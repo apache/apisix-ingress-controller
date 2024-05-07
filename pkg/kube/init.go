@@ -20,9 +20,9 @@ import (
 	gatewayclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/versioned"
 	gatewayexternalversions "sigs.k8s.io/gateway-api/pkg/client/informers/externalversions"
 
-	"github.com/apache/apisix-ingress-controller/pkg/config"
-	clientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
-	"github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
+	"github.com/api7/apisix-ingress-controller/pkg/config"
+	clientset "github.com/api7/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
+	"github.com/api7/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
 )
 
 // KubeClient contains some objects used to communicate with Kubernetes API Server.

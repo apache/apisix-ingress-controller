@@ -44,17 +44,17 @@ This is a **GA** release.
 
 ### Roadmap
 
-In next release(v1.5), custom resource's API version v2 will be GA released. Please go to [#707](https://github.com/apache/apisix-ingress-controller/issues/707) for detail.
+In next release(v1.5), custom resource's API version v2 will be GA released. Please go to [#707](https://github.com/api7/apisix-ingress-controller/issues/707) for detail.
 
 ### Breaking Changes
 
-* In this release(v1.4), all custom resource's API version has been upgraded to `apisix.apache.org/v2beta3`, and we deleted `apisix.apache.org/v2beta3` and `apisix.apache.org/v2alpha1`. Please see [#746](https://github.com/apache/apisix-ingress-controller/pull/746)
+* In this release(v1.4), all custom resource's API version has been upgraded to `apisix.apache.org/v2beta3`, and we deleted `apisix.apache.org/v2beta3` and `apisix.apache.org/v2alpha1`. Please see [#746](https://github.com/api7/apisix-ingress-controller/pull/746)
 
 ### New Features
 
-* We have introduced the **`apisix.apache.org/v2beta3` API version for all custom resources** and deleted `v2alpha1` and `v1` API version  [#746](https://github.com/apache/apisix-ingress-controller/pull/746)
-* Initial support for Gateway API [#789](https://github.com/apache/apisix-ingress-controller/pull/789)
-* Add a new ApisixPluginConfig CRD for reuse common plugin configurations. [#638](https://github.com/apache/apisix-ingress-controller/issues/638)
-* Support regex in Ingress path [#779](https://github.com/apache/apisix-ingress-controller/pull/779)
-* We can update the load balancing IP of the Ingress, and it can work in various public cloud environments [#740](https://github.com/apache/apisix-ingress-controller/pull/740)
+* We have introduced the **`apisix.apache.org/v2beta3` API version for all custom resources** and deleted `v2alpha1` and `v1` API version  [#746](https://github.com/api7/apisix-ingress-controller/pull/746)
+* Initial support for Gateway API [#789](https://github.com/api7/apisix-ingress-controller/pull/789)
+* Add a new ApisixPluginConfig CRD for reuse common plugin configurations. [#638](https://github.com/api7/apisix-ingress-controller/issues/638)
+* Support regex in Ingress path [#779](https://github.com/api7/apisix-ingress-controller/pull/779)
+* We can update the load balancing IP of the Ingress, and it can work in various public cloud environments [#740](https://github.com/api7/apisix-ingress-controller/pull/740)
 """

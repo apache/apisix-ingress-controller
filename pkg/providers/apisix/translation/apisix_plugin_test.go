@@ -26,13 +26,13 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/apache/apisix-ingress-controller/pkg/config"
-	"github.com/apache/apisix-ingress-controller/pkg/id"
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	apisixfake "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
-	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
+	"github.com/api7/apisix-ingress-controller/pkg/config"
+	"github.com/api7/apisix-ingress-controller/pkg/id"
+	"github.com/api7/apisix-ingress-controller/pkg/kube"
+	configv2 "github.com/api7/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
+	apisixfake "github.com/api7/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
+	apisixinformers "github.com/api7/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/translation"
 )
 
 func TestTranslateTrafficSplitPlugin(t *testing.T) {

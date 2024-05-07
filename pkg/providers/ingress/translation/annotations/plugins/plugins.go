@@ -17,9 +17,9 @@ package plugins
 import (
 	"go.uber.org/zap"
 
-	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
-	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	"github.com/api7/apisix-ingress-controller/pkg/log"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
+	apisix "github.com/api7/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 // Handler abstracts the behavior so that the apisix-ingress-controller knows

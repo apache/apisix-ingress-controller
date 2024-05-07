@@ -24,15 +24,15 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/pkg/id"
-	kubev2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation"
+	"github.com/api7/apisix-ingress-controller/pkg/id"
+	kubev2 "github.com/api7/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/ingress/translation"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
+	"github.com/api7/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("suite-ingress-resource: support ingress https", func() {

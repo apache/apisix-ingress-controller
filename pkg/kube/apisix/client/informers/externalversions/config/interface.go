@@ -18,8 +18,8 @@
 package config
 
 import (
-	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v2"
-	internalinterfaces "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/internalinterfaces"
+	v2 "github.com/api7/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/config/v2"
+	internalinterfaces "github.com/api7/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to each of this group's versions.

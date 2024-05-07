@@ -21,7 +21,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
+	"github.com/api7/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _configmapConfigYAML = `

@@ -21,11 +21,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/api7/apisix-ingress-controller/pkg/log"
 	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
+	"github.com/api7/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = ginkgo.Describe("suite-features: sync comparison", func() {

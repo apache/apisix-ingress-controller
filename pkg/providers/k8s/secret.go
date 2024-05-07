@@ -26,12 +26,12 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/apache/apisix-ingress-controller/pkg/log"
-	apisixprovider "github.com/apache/apisix-ingress-controller/pkg/providers/apisix"
-	ingressprovider "github.com/apache/apisix-ingress-controller/pkg/providers/ingress"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
-	"github.com/apache/apisix-ingress-controller/pkg/types"
+	"github.com/api7/apisix-ingress-controller/pkg/log"
+	apisixprovider "github.com/api7/apisix-ingress-controller/pkg/providers/apisix"
+	ingressprovider "github.com/api7/apisix-ingress-controller/pkg/providers/ingress"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/k8s/namespace"
+	providertypes "github.com/api7/apisix-ingress-controller/pkg/providers/types"
+	"github.com/api7/apisix-ingress-controller/pkg/types"
 )
 
 type secretController struct {

@@ -21,7 +21,7 @@ import (
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/api7/apisix-ingress-controller/pkg/log"
 )
 
 type ConfigMapData struct {

@@ -18,8 +18,8 @@ package validation
 import (
 	"go.uber.org/zap"
 
-	v2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	"github.com/apache/apisix-ingress-controller/pkg/log"
+	v2 "github.com/api7/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
+	"github.com/api7/apisix-ingress-controller/pkg/log"
 )
 
 func ValidateApisixPluginConfigV2(apc *v2.ApisixPluginConfig) (valid bool, resultErr error) {

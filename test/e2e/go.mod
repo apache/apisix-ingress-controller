@@ -1,10 +1,10 @@
-module github.com/apache/apisix-ingress-controller/test/e2e
+module github.com/api7/apisix-ingress-controller/test/e2e
 
 go 1.20
 
 require (
-	github.com/apache/apisix-ingress-controller v0.0.0-20210105024109-72e53386de5a
-	github.com/apache/apisix-ingress-controller/test/e2e/testbackend v0.0.0
+	github.com/api7/apisix-ingress-controller v0.0.0-20210105024109-72e53386de5a
+	github.com/api7/apisix-ingress-controller/test/e2e/testbackend v0.0.0
 	github.com/eclipse/paho.mqtt.golang v1.4.3
 	github.com/gavv/httpexpect/v2 v2.16.0
 	github.com/gorilla/websocket v1.5.1
@@ -146,8 +146,8 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-replace github.com/apache/apisix-ingress-controller => ../../
+replace github.com/api7/apisix-ingress-controller => ../../
 
-replace github.com/apache/apisix-ingress-controller/test/e2e/testbackend => ./testbackend
+replace github.com/api7/apisix-ingress-controller/test/e2e/testbackend => ./testbackend
 
 replace github.com/gruntwork-io/terratest => github.com/api7/terratest v1.0.0

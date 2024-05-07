@@ -44,7 +44,7 @@ This is a **GA** release.
 
 ### Roadmap
 
-In next release(v1.4), all custom resource versions will be upgraded to version v2beta3, and version v2 will be GA released in version 1.5. Please go to [#707](https://github.com/apache/apisix-ingress-controller/issues/707) for detail.
+In next release(v1.4), all custom resource versions will be upgraded to version v2beta3, and version v2 will be GA released in version 1.5. Please go to [#707](https://github.com/api7/apisix-ingress-controller/issues/707) for detail.
 
 ### Breaking Changes
 
@@ -53,11 +53,11 @@ In next release(v1.4), all custom resource versions will be upgraded to version 
 
 ### New Features
 
-* We have introduced the **v2beta2 version of ApisixRoute** and will drop support for `v2alpha1` ApisixRoute [#698](https://github.com/apache/apisix-ingress-controller/pull/698)
-* Add cert-manager support [#685](https://github.com/apache/apisix-ingress-controller/pull/685)
-* Add full compare when APISIX Ingress startup [#680](https://github.com/apache/apisix-ingress-controller/pull/680)
-* Support TLS for Ingress v1 [#634](https://github.com/apache/apisix-ingress-controller/pull/634)
-* Add admission server and a validation webhook for plugins [#573](https://github.com/apache/apisix-ingress-controller/pull/573)
-* Add `timeout` field for ApisixRoute CR [#609](https://github.com/apache/apisix-ingress-controller/pull/609)
-* Add new metrics `apisix_ingress_controller_check_cluster_health` and `apisix_ingress_controller_sync_success_total` [#627](https://github.com/apache/apisix-ingress-controller/pull/627)
+* We have introduced the **v2beta2 version of ApisixRoute** and will drop support for `v2alpha1` ApisixRoute [#698](https://github.com/api7/apisix-ingress-controller/pull/698)
+* Add cert-manager support [#685](https://github.com/api7/apisix-ingress-controller/pull/685)
+* Add full compare when APISIX Ingress startup [#680](https://github.com/api7/apisix-ingress-controller/pull/680)
+* Support TLS for Ingress v1 [#634](https://github.com/api7/apisix-ingress-controller/pull/634)
+* Add admission server and a validation webhook for plugins [#573](https://github.com/api7/apisix-ingress-controller/pull/573)
+* Add `timeout` field for ApisixRoute CR [#609](https://github.com/api7/apisix-ingress-controller/pull/609)
+* Add new metrics `apisix_ingress_controller_check_cluster_health` and `apisix_ingress_controller_sync_success_total` [#627](https://github.com/api7/apisix-ingress-controller/pull/627)
 """

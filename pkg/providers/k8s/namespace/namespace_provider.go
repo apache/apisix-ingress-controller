@@ -27,12 +27,12 @@ import (
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/apache/apisix-ingress-controller/pkg/config"
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	"github.com/apache/apisix-ingress-controller/pkg/log"
-	provider "github.com/apache/apisix-ingress-controller/pkg/providers/types"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
-	"github.com/apache/apisix-ingress-controller/pkg/types"
+	"github.com/api7/apisix-ingress-controller/pkg/config"
+	"github.com/api7/apisix-ingress-controller/pkg/kube"
+	"github.com/api7/apisix-ingress-controller/pkg/log"
+	provider "github.com/api7/apisix-ingress-controller/pkg/providers/types"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/utils"
+	"github.com/api7/apisix-ingress-controller/pkg/types"
 )
 
 type WatchingNamespaceProvider interface {

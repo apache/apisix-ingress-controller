@@ -18,8 +18,8 @@ package router
 import (
 	"github.com/gin-gonic/gin"
 
-	"github.com/apache/apisix-ingress-controller/pkg/api/validation"
-	"github.com/apache/apisix-ingress-controller/pkg/apisix"
+	"github.com/api7/apisix-ingress-controller/pkg/api/validation"
+	"github.com/api7/apisix-ingress-controller/pkg/apisix"
 )
 
 // MountWebhooks mounts webhook related routes.

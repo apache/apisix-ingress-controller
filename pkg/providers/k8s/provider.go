@@ -22,14 +22,14 @@ import (
 	"github.com/pkg/errors"
 	"k8s.io/client-go/tools/cache"
 
-	apisixprovider "github.com/apache/apisix-ingress-controller/pkg/providers/apisix"
-	ingressprovider "github.com/apache/apisix-ingress-controller/pkg/providers/ingress"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/configmap"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/endpoint"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
+	apisixprovider "github.com/api7/apisix-ingress-controller/pkg/providers/apisix"
+	ingressprovider "github.com/api7/apisix-ingress-controller/pkg/providers/ingress"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/k8s/configmap"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/k8s/endpoint"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/k8s/namespace"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/translation"
+	providertypes "github.com/api7/apisix-ingress-controller/pkg/providers/types"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/utils"
 )
 
 var _ Provider = (*k8sProvider)(nil)

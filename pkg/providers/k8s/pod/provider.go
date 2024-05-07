@@ -21,11 +21,11 @@ import (
 
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/apache/apisix-ingress-controller/pkg/config"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
-	"github.com/apache/apisix-ingress-controller/pkg/types"
+	"github.com/api7/apisix-ingress-controller/pkg/config"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/k8s/namespace"
+	providertypes "github.com/api7/apisix-ingress-controller/pkg/providers/types"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/utils"
+	"github.com/api7/apisix-ingress-controller/pkg/types"
 )
 
 var _ Provider = (*podProvider)(nil)

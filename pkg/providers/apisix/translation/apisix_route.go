@@ -24,15 +24,15 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	"github.com/apache/apisix-ingress-controller/pkg/config"
-	"github.com/apache/apisix-ingress-controller/pkg/id"
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	_const "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/const"
-	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	"github.com/api7/apisix-ingress-controller/pkg/config"
+	"github.com/api7/apisix-ingress-controller/pkg/id"
+	"github.com/api7/apisix-ingress-controller/pkg/kube"
+	configv2 "github.com/api7/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
+	_const "github.com/api7/apisix-ingress-controller/pkg/kube/apisix/const"
+	"github.com/api7/apisix-ingress-controller/pkg/log"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/translation"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/utils"
+	apisixv1 "github.com/api7/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 func (t *translator) TranslateRouteV2(ar *configv2.ApisixRoute) (*translation.TranslateContext, error) {

@@ -44,20 +44,20 @@ This is a Patch version release.
 
 ### Roadmap
 
-In next release(v1.5), custom resource's API version v2 will be GA released. Please go to [#707](https://github.com/apache/apisix-ingress-controller/issues/707) for detail.
+In next release(v1.5), custom resource's API version v2 will be GA released. Please go to [#707](https://github.com/api7/apisix-ingress-controller/issues/707) for detail.
 
 ### Bug fixes
 
-* fix: consumer name contain "-" [#828](https://github.com/apache/apisix-ingress-controller/pull/828)
-* fix: fix typo in ApidixRoute CRD [#830](https://github.com/apache/apisix-ingress-controller/pull/830)
-* fix: add v2beta3 register resources [#833](https://github.com/apache/apisix-ingress-controller/pull/833)
-* fix: ApisixClusterConfig e2e test case [#859](https://github.com/apache/apisix-ingress-controller/pull/859)
-* fix: objects get from lister must be treated as read-only [#829](https://github.com/apache/apisix-ingress-controller/pull/829)
-* fix ingress delete panic [#872](https://github.com/apache/apisix-ingress-controller/pull/872)
-* fix json unmarshal error when list plguins [#888](https://github.com/apache/apisix-ingress-controller/pull/888)
-* fix: check if stream_routes is disabled [#868](https://github.com/apache/apisix-ingress-controller/pull/868)
-* fix: avoid create pluginconfig in the tranlsation of route [#845](https://github.com/apache/apisix-ingress-controller/pull/845)
-* fix: filter useless pod update event [#894](https://github.com/apache/apisix-ingress-controller/pull/894)
-* fix: fix ep resourceVersion comparison and clean up [#901](https://github.com/apache/apisix-ingress-controller/pull/901)
-* fix: ingress update event handler not filter by watching namespaces [#947](https://github.com/apache/apisix-ingress-controller/pull/)
+* fix: consumer name contain "-" [#828](https://github.com/api7/apisix-ingress-controller/pull/828)
+* fix: fix typo in ApidixRoute CRD [#830](https://github.com/api7/apisix-ingress-controller/pull/830)
+* fix: add v2beta3 register resources [#833](https://github.com/api7/apisix-ingress-controller/pull/833)
+* fix: ApisixClusterConfig e2e test case [#859](https://github.com/api7/apisix-ingress-controller/pull/859)
+* fix: objects get from lister must be treated as read-only [#829](https://github.com/api7/apisix-ingress-controller/pull/829)
+* fix ingress delete panic [#872](https://github.com/api7/apisix-ingress-controller/pull/872)
+* fix json unmarshal error when list plguins [#888](https://github.com/api7/apisix-ingress-controller/pull/888)
+* fix: check if stream_routes is disabled [#868](https://github.com/api7/apisix-ingress-controller/pull/868)
+* fix: avoid create pluginconfig in the tranlsation of route [#845](https://github.com/api7/apisix-ingress-controller/pull/845)
+* fix: filter useless pod update event [#894](https://github.com/api7/apisix-ingress-controller/pull/894)
+* fix: fix ep resourceVersion comparison and clean up [#901](https://github.com/api7/apisix-ingress-controller/pull/901)
+* fix: ingress update event handler not filter by watching namespaces [#947](https://github.com/api7/apisix-ingress-controller/pull/)
 """

@@ -22,10 +22,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
-	"github.com/apache/apisix-ingress-controller/pkg/types"
+	"github.com/api7/apisix-ingress-controller/pkg/metrics"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/k8s/namespace"
+	providertypes "github.com/api7/apisix-ingress-controller/pkg/providers/types"
+	"github.com/api7/apisix-ingress-controller/pkg/types"
 )
 
 func mockController() *podController {

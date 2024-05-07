@@ -42,7 +42,7 @@ This is a feature release.
 
 ## Highlights
 
-The API version of all custom resources has been upgraded to v2 in v1.5 release. In 1.6 we removed the v2beta2 API. Please go to [#707](https://github.com/apache/apisix-ingress-controller/issues/707) for detail.
+The API version of all custom resources has been upgraded to v2 in v1.5 release. In 1.6 we removed the v2beta2 API. Please go to [#707](https://github.com/api7/apisix-ingress-controller/issues/707) for detail.
 
 In this version we added more Gateway API support. e.g. TCPRoute/UDPRoute/HTTPRouteFilter etc.
 

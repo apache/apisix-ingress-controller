@@ -24,11 +24,11 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 
-	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/configmap/translation"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
-	"github.com/apache/apisix-ingress-controller/pkg/types"
+	"github.com/api7/apisix-ingress-controller/pkg/log"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/k8s/configmap/translation"
+	providertypes "github.com/api7/apisix-ingress-controller/pkg/providers/types"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/utils"
+	"github.com/api7/apisix-ingress-controller/pkg/types"
 )
 
 type subscripKey struct {

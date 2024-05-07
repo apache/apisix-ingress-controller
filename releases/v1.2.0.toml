@@ -44,6 +44,6 @@ This is a **GA** release.
 
 ### New Features
 
-* **Support ingress v1beta1 HTTPS** [#596](https://github.com/apache/apisix-ingress-controller/pull/596)
-* **Implement schema API** [#601](https://github.com/apache/apisix-ingress-controller/pull/601)
+* **Support ingress v1beta1 HTTPS** [#596](https://github.com/api7/apisix-ingress-controller/pull/596)
+* **Implement schema API** [#601](https://github.com/api7/apisix-ingress-controller/pull/601)
 """

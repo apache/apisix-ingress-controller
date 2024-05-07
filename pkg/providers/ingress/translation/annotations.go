@@ -18,15 +18,15 @@ import (
 	"github.com/imdario/mergo"
 	"go.uber.org/zap"
 
-	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/pluginconfig"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/plugins"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/regex"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/servicenamespace"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/upstream"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/websocket"
-	apisix "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	"github.com/api7/apisix-ingress-controller/pkg/log"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/pluginconfig"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/plugins"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/regex"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/servicenamespace"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/upstream"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/websocket"
+	apisix "github.com/api7/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 // Structure extracted by Ingress Resource

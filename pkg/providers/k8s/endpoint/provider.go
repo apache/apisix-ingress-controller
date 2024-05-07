@@ -19,11 +19,11 @@ package endpoint
 import (
 	"context"
 
-	"github.com/apache/apisix-ingress-controller/pkg/config"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
+	"github.com/api7/apisix-ingress-controller/pkg/config"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/k8s/namespace"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/translation"
+	providertypes "github.com/api7/apisix-ingress-controller/pkg/providers/types"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/utils"
 )
 
 var _ Provider = (*endpointProvider)(nil)

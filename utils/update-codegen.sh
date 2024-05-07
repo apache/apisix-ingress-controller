@@ -24,7 +24,7 @@ SCRIPT_ROOT=$(dirname "${BASH_SOURCE[0]}")
 PROJECT_ROOT="$SCRIPT_ROOT/.."
 GENERATED_ROOT="$PROJECT_ROOT/.generated"
 
-PKG_NAME="github.com/apache/apisix-ingress-controller"
+PKG_NAME="github.com/api7/apisix-ingress-controller"
 
 # Make sure no pollution
 rm -rf "$GENERATED_ROOT"

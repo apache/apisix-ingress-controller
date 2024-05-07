@@ -19,8 +19,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/upstream"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/ingress/translation/annotations"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/ingress/translation/annotations/upstream"
 )
 
 func TestIPRestrictionHandler(t *testing.T) {

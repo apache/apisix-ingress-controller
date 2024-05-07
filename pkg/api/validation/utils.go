@@ -26,8 +26,8 @@ import (
 	kwhvalidating "github.com/slok/kubewebhook/v2/pkg/webhook/validating"
 	"github.com/xeipuuv/gojsonschema"
 
-	"github.com/apache/apisix-ingress-controller/pkg/apisix"
-	"github.com/apache/apisix-ingress-controller/pkg/log"
+	"github.com/api7/apisix-ingress-controller/pkg/apisix"
+	"github.com/api7/apisix-ingress-controller/pkg/log"
 )
 
 var (

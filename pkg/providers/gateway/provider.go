@@ -32,16 +32,16 @@ import (
 	gatewaylistersv1alpha2 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1alpha2"
 	gatewaylistersv1beta1 "sigs.k8s.io/gateway-api/pkg/client/listers/apis/v1beta1"
 
-	"github.com/apache/apisix-ingress-controller/pkg/apisix"
-	"github.com/apache/apisix-ingress-controller/pkg/config"
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
-	gatewaytranslation "github.com/apache/apisix-ingress-controller/pkg/providers/gateway/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/gateway/types"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/k8s/namespace"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
+	"github.com/api7/apisix-ingress-controller/pkg/apisix"
+	"github.com/api7/apisix-ingress-controller/pkg/config"
+	"github.com/api7/apisix-ingress-controller/pkg/kube"
+	"github.com/api7/apisix-ingress-controller/pkg/metrics"
+	gatewaytranslation "github.com/api7/apisix-ingress-controller/pkg/providers/gateway/translation"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/gateway/types"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/k8s/namespace"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/translation"
+	providertypes "github.com/api7/apisix-ingress-controller/pkg/providers/types"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/utils"
 )
 
 const (

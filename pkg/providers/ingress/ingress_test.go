@@ -22,9 +22,9 @@ import (
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/apache/apisix-ingress-controller/pkg/config"
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
+	"github.com/api7/apisix-ingress-controller/pkg/config"
+	"github.com/api7/apisix-ingress-controller/pkg/kube"
+	providertypes "github.com/api7/apisix-ingress-controller/pkg/providers/types"
 )
 
 func TestIsIngressEffective(t *testing.T) {

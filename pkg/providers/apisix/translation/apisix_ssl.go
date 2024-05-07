@@ -15,10 +15,10 @@
 package translation
 
 import (
-	"github.com/apache/apisix-ingress-controller/pkg/id"
-	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	"github.com/api7/apisix-ingress-controller/pkg/id"
+	configv2 "github.com/api7/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/translation"
+	apisixv1 "github.com/api7/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 func (t *translator) TranslateSSLV2(tls *configv2.ApisixTls) (*apisixv1.Ssl, error) {

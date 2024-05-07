@@ -24,11 +24,11 @@ import (
 	"go.uber.org/zap"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
-	"github.com/apache/apisix-ingress-controller/pkg/id"
-	"github.com/apache/apisix-ingress-controller/pkg/log"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/types"
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	"github.com/api7/apisix-ingress-controller/pkg/id"
+	"github.com/api7/apisix-ingress-controller/pkg/log"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/translation"
+	"github.com/api7/apisix-ingress-controller/pkg/types"
+	apisixv1 "github.com/api7/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 func (t *translator) TranslateGatewayUDPRouteV1Alpha2(udpRoute *gatewayv1alpha2.UDPRoute) (*translation.TranslateContext, error) {

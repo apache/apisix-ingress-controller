@@ -29,13 +29,13 @@ import (
 	"k8s.io/client-go/tools/cache"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
-	"github.com/apache/apisix-ingress-controller/pkg/config"
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	fakeapisix "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
-	apisixinformers "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
-	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	"github.com/api7/apisix-ingress-controller/pkg/config"
+	"github.com/api7/apisix-ingress-controller/pkg/kube"
+	fakeapisix "github.com/api7/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/fake"
+	apisixinformers "github.com/api7/apisix-ingress-controller/pkg/kube/apisix/client/informers/externalversions"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/translation"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/utils"
+	v1 "github.com/api7/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 func refKind(str gatewayv1beta1.Kind) *gatewayv1beta1.Kind {

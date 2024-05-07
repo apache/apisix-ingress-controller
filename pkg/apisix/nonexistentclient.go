@@ -18,8 +18,8 @@ package apisix
 import (
 	"context"
 
-	"github.com/apache/apisix-ingress-controller/pkg/apisix/cache"
-	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	"github.com/api7/apisix-ingress-controller/pkg/apisix/cache"
+	v1 "github.com/api7/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type nonExistentCluster struct {

@@ -1,4 +1,4 @@
-module github.com/apache/apisix-ingress-controller/test/e2e/testbackend
+module github.com/api7/apisix-ingress-controller/test/e2e/testbackend
 
 go 1.17
 

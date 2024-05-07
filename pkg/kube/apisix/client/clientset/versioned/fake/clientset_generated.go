@@ -18,9 +18,9 @@
 package fake
 
 import (
-	clientset "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
-	apisixv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2"
-	fakeapisixv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2/fake"
+	clientset "github.com/api7/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
+	apisixv2 "github.com/api7/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2"
+	fakeapisixv2 "github.com/api7/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned/typed/config/v2/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"

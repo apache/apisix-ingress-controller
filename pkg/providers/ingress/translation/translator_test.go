@@ -25,7 +25,7 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/cache"
 
-	"github.com/apache/apisix-ingress-controller/pkg/providers/apisix/translation"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/apisix/translation"
 )
 
 const _ingressKey string = "kubernetes.io/ingress.class"

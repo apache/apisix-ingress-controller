@@ -44,6 +44,6 @@ This is a **GA** release.
 
 ### New Features
 
-* **Support EndpointSlices** [#563](https://github.com/apache/apisix-ingress-controller/pull/563) [#574](https://github.com/apache/apisix-ingress-controller/pull/574)
-* **Support UDP definition** [#572](https://github.com/apache/apisix-ingress-controller/pull/572) [#576](https://github.com/apache/apisix-ingress-controller/pull/576)
+* **Support EndpointSlices** [#563](https://github.com/api7/apisix-ingress-controller/pull/563) [#574](https://github.com/api7/apisix-ingress-controller/pull/574)
+* **Support UDP definition** [#572](https://github.com/api7/apisix-ingress-controller/pull/572) [#576](https://github.com/api7/apisix-ingress-controller/pull/576)
 """

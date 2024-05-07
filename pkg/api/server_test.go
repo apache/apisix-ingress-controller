@@ -23,7 +23,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/apache/apisix-ingress-controller/pkg/config"
+	"github.com/api7/apisix-ingress-controller/pkg/config"
 )
 
 const (

@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/nettest"
 
-	"github.com/apache/apisix-ingress-controller/pkg/metrics"
+	"github.com/api7/apisix-ingress-controller/pkg/metrics"
 )
 
 type fakeAPISIXSchemaSrv struct {

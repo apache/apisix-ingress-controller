@@ -19,11 +19,11 @@ package translation
 import (
 	listerscorev1 "k8s.io/client-go/listers/core/v1"
 
-	"github.com/apache/apisix-ingress-controller/pkg/apisix"
-	"github.com/apache/apisix-ingress-controller/pkg/kube"
-	configv2 "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/translation"
-	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	"github.com/api7/apisix-ingress-controller/pkg/apisix"
+	"github.com/api7/apisix-ingress-controller/pkg/kube"
+	configv2 "github.com/api7/apisix-ingress-controller/pkg/kube/apisix/apis/config/v2"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/translation"
+	apisixv1 "github.com/api7/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 type TranslatorOptions struct {

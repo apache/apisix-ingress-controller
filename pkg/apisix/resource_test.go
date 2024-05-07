@@ -20,7 +20,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	v1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
+	v1 "github.com/api7/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
 func TestItemUnmarshalJSON(t *testing.T) {

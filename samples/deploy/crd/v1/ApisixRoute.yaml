@@ -180,12 +180,6 @@ spec:
                             type: string
                       websocket:
                         type: boolean
-                      plugin_config_name:
-                        type: string
-                        minLength: 1
-                      plugin_config_namespace:
-                        type: string
-                        minLength: 1
                       upstreams:
                         description: Upstreams refer to ApisixUpstream CRD
                         type: array

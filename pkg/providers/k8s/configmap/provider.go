@@ -19,9 +19,9 @@ package configmap
 import (
 	"context"
 
-	"github.com/apache/apisix-ingress-controller/pkg/config"
-	providertypes "github.com/apache/apisix-ingress-controller/pkg/providers/types"
-	"github.com/apache/apisix-ingress-controller/pkg/providers/utils"
+	"github.com/api7/apisix-ingress-controller/pkg/config"
+	providertypes "github.com/api7/apisix-ingress-controller/pkg/providers/types"
+	"github.com/api7/apisix-ingress-controller/pkg/providers/utils"
 )
 
 var _ Provider = (*configmapProvider)(nil)

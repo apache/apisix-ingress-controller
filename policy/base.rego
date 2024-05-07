@@ -29,7 +29,7 @@ deny[msg] {
 	msg := _deny
 }
 
-# Base on https://github.com/apache/apisix-ingress-controller/blob/master/CHANGELOG.md#130
+# Base on https://github.com/api7/apisix-ingress-controller/blob/master/CHANGELOG.md#130
 # ApisixRoute under apisix.apache.org/v1, apisix.apache.org/v2alpha1
 # and apisix.apache.org/v2beta1 - use apisix.apache.org/v2beta3 instead
 _deny = msg {

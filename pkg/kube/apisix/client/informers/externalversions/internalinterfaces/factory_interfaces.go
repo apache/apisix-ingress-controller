@@ -20,7 +20,7 @@ package internalinterfaces
 import (
 	time "time"
 
-	versioned "github.com/apache/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
+	versioned "github.com/api7/apisix-ingress-controller/pkg/kube/apisix/client/clientset/versioned"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	cache "k8s.io/client-go/tools/cache"
