@@ -42,9 +42,9 @@ spec:
   - name: limit-count
     enable: true 
     config:
-      time_window": 60,
-      policy: "local",
-      count: 2,
-      key: "remote_addr",
+      time_window": 60
+      policy: "local"
+      count: 2
+      key: "remote_addr"
       rejected_code: 503
 ```
