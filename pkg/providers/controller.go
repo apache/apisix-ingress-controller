@@ -185,6 +185,9 @@ func (c *Controller) Run(ctx context.Context) error {
 
 	c.run(rootCtx)
 
+	// c.run should never be returning when there's no error or the context is cancelled
+	rootCancel()
+
 	wg.Wait()
 	return nil
 }
