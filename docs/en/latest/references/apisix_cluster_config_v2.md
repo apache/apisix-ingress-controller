@@ -36,10 +36,10 @@ See the [definition](https://github.com/apache/apisix-ingress-controller/blob/ma
 | monitoring                        | object  | Monitoring configurations.                     |
 | monitoring.prometheus             | object  | Prometheus configurations.                     |
 | monitoring.prometheus.enable      | boolean | When set to `true`, enables Prometheus.        |
+| monitoring.prometheus.prefer_name | boolean | When set to `true`, prints Route/Service name instead of their ID in Prometheus metrics. |
 | monitoring.skywalking             | object  | Apache SkyWalking configurations.              |
 | monitoring.skywalking.enable      | boolean | When set to `true`, enables SkyWalking.        |
 | monitoring.skywalking.sampleRatio | number  | Sample ratio for spans. Should be in `[0, 1]`. |
 | admin                             | object  | Admin configurations.                          |
 | admin.baseURL                     | string  | Base URL of the APISIX cluster.                |
 | admin.AdminKey                    | string  | Admin key to authenticate with APISIX cluster. |
-| prefer_name                       | boolean | When set to `true`, prints Route/Service name instead of their ID in Prometheus metrics. |
