@@ -42,3 +42,4 @@ See the [definition](https://github.com/apache/apisix-ingress-controller/blob/ma
 | admin                             | object  | Admin configurations.                          |
 | admin.baseURL                     | string  | Base URL of the APISIX cluster.                |
 | admin.AdminKey                    | string  | Admin key to authenticate with APISIX cluster. |
+| prefer_name                       | boolean | When set to `true`, prints Route/Service name instead of their ID in Prometheus metrics. |
