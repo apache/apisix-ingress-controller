@@ -185,6 +185,9 @@ func (c *Controller) Run(ctx context.Context) error {
 
 	c.run(rootCtx)
 
+	// c.run should never be returning when there's no error or the context is cancelled
+	rootCancel()
+
 	wg.Wait()
 	return nil
 }
@@ -231,6 +234,9 @@ func (c *Controller) setupLeaderElection() error {
 					zap.String("namespace", c.namespace),
 					zap.String("pod", c.name),
 				)
+				// rootCancel might be to slow, and controllers may have bugs that cause them to not yield
+				// the safest way to step down is to simply cause a pod restart
+				os.Exit(0)
 			},
 		},
 		ReleaseOnCancel: true,
