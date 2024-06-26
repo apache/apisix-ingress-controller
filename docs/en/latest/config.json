@@ -49,15 +49,11 @@
       "type": "category",
       "label": "References",
       "items": [
-        "references/apisix_route_v2beta3",
         "references/apisix_route_v2",
         "references/apisix_upstream",
         "references/apisix_tls_v2",
-        "references/apisix_tls_v2beta3",
         "references/apisix_cluster_config_v2",
-        "references/apisix_cluster_config_v2beta3",
         "references/apisix_pluginconfig_v2",
-        "references/apisix_pluginconfig_v2beta3",
         "references/v2",
         "references/apisix_global_rule_v2"
       ]

@@ -72,16 +72,6 @@ These CRDs are not templated but will be installed by default when running `helm
 
 :::
 
-## Why is there an error like "no matches for kind "ApisixRoute" in version "apisix.apache.org/v2beta3"" when I try to create a Route?
-
-Make sure that you have the correct version of the CRDs installed in your cluster (see [updating CRDs](#how-do-i-update-the-crds-when-updating-apisix-ingress-controller)). `ApisixRoute` has two versions: `v2beta3` and `v2`.
-
-Also check your `ApisixRoute` definition for the correct version by running:
-
-```shell
-kubectl get crd apisixroutes.apisix.apache.org -o jsonpath='{ .spec.versions[*].name }' -A
-```
-
 ## How do I modify the Admin API key in APISIX Ingress?
 
 You can change the Admin API key in two ways:

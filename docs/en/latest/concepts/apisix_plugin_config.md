@@ -35,7 +35,7 @@ spec:
 You can then configure a Route to use the `echo-and-cors-apc` Plugin configuration:
 
 ```yaml
-apiVersion: apisix.apache.org/v2beta3
+apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: httpbin-route
