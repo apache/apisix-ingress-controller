@@ -46,6 +46,9 @@ spec:
               properties:
                 ingressClassName:
                   type: string
+                description:
+                  type: string
+                  maxLength: 256
                 authParameter:
                   type: object
                   oneOf:
