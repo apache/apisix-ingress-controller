@@ -78,7 +78,7 @@ The table below describes each of the attributes in the spec. The fields `apiVer
 | stream[].name                        | string (required)  | Name of the rule.                                                                                                                                                                         |
 | stream[].match                       | object (required)  | Conditions to match the request with the Route.                                                                                                                                           |
 | stream[].match.ingressPort           | integer (required) | Listening port in the Ingress proxy server. This port should be defined in the [APISIX configuration](https://github.com/apache/apisix/blob/master/conf/config-default.yaml#L101).        |
-| stream[].match.host           | string | SNI.        |
+| stream[].match.host                  | string             | SNI.        |
 | stream[].backend                     | object             | Backend service (deprecated). Use `http[].backends` instead.                                                                                                                              |
 | stream[].backend.serviceName         | string             | Name of the backend service (depricated). The service and the `ApisixRoute` resource should be created in the same namespace.                                                             |
 | stream[].backend.servicePort         | integer or string  | Port number or the name defined in the service object of the backend (deprecated).                                                                                                        |
