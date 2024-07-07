@@ -79,6 +79,41 @@ spec:
 			assert.Contains(ginkgo.GinkgoT(), msg, "404 Route Not Found")
 		})
 
+		ginkgo.It("operator is equal (check with host and port)", func() {
+			backendSvc, backendPorts := s.DefaultHTTPBackend()
+
+			ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org:80
+     paths:
+       - /ip
+   backends:
+   - serviceName: %s
+     servicePort: %d
+`, backendSvc, backendPorts[0])
+
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+
+			time.Sleep(6 * time.Second)
+			err := s.EnsureNumApisixRoutesCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of routes")
+			err = s.EnsureNumApisixUpstreamsCreated(1)
+			assert.Nil(ginkgo.GinkgoT(), err, "Checking number of upstreams")
+
+			_ = s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org:80").
+				Expect().
+				Status(http.StatusOK)
+		})
+
 		ginkgo.It("operator is not_equal", func() {
 			backendSvc, backendPorts := s.DefaultHTTPBackend()
 
