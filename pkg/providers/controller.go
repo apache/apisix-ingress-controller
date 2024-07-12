@@ -434,7 +434,7 @@ func (c *Controller) run(ctx context.Context) error {
 	// Creation Phase
 
 	log.Info("creating controller")
-
+	c.informers = c.initSharedInformers()
 	common := &providertypes.Common{
 		ControllerNamespace: c.namespace,
 		ListerInformer:      c.informers,
