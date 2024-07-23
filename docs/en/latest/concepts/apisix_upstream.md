@@ -92,11 +92,10 @@ spec:
           - 503
           - 504
         httpFailures: 3
-        timeout: 5s
     active:
       type: http
       httpPath: /healthz
-      timeout: 5s
+      timeout: 5
       host: www.foo.com
       healthy:
         successes: 3
