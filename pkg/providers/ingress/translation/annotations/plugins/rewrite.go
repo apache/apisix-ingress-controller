@@ -38,8 +38,15 @@ func (i *rewrite) Handle(e annotations.Extractor) (interface{}, error) {
 	rewriteTarget := e.GetStringAnnotation(annotations.AnnotationsRewriteTarget)
 	rewriteTargetRegex := e.GetStringAnnotation(annotations.AnnotationsRewriteTargetRegex)
 	rewriteTemplate := e.GetStringAnnotation(annotations.AnnotationsRewriteTargetRegexTemplate)
-	if rewriteTarget != "" || rewriteTargetRegex != "" || rewriteTemplate != "" {
+
+	headers := make(apisixv1.Headers)
+	headers.Add(e.GetStringsAnnotation(annotations.AnnotationsRewriteHeaderAdd))
+	headers.Set(e.GetStringsAnnotation(annotations.AnnotationsRewriteHeaderSet))
+	headers.Remove(e.GetStringsAnnotation(annotations.AnnotationsRewriteHeaderRemove))
+
+	if rewriteTarget != "" || rewriteTargetRegex != "" || rewriteTemplate != "" || len(headers) > 0 {
 		plugin.RewriteTarget = rewriteTarget
+		plugin.Headers = headers
 		if rewriteTargetRegex != "" && rewriteTemplate != "" {
 			_, err := regexp.Compile(rewriteTargetRegex)
 			if err != nil {

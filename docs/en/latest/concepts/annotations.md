@@ -157,6 +157,33 @@ spec:
                   number: 80
 ```
 
+### Rewrite Headers
+
+### Add header
+
+This annotation configures to append the new headers in the upstream request.
+
+```yaml
+k8s.apisix.apache.org/rewrite-add-header: "testkey1:testval1,testkey2:testval2"
+```
+
+### Set header
+
+This annotation configures to rewrite the new headers in the upstream request.
+
+```yaml
+k8s.apisix.apache.org/rewrite-set-header: "testkey1:testval1,testkey2:testval2"
+```
+
+### Remove header
+
+This annotation configures to remove headers in the upstream request.
+
+```yaml
+k8s.apisix.apache.org/rewrite-remove-header: "testkey1,testkey2"
+```
+
+
 ## HTTP to HTTPS
 
 This annotation is used to redirect HTTP requests to HTTPS with a `301` status code and with the same URI as the original request.
