@@ -218,10 +218,8 @@ spec:
       - path: /sample
         pathType: Prefix
         backend:
-          service:
-            name: %s
-            port:
-              number: %d
+          serviceName: %s
+          servicePort: %d
 	`, backendSvc, backendPort[0])
 		err := s.CreateResourceFromString(ing)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")

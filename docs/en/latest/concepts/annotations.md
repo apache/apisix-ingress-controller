@@ -183,7 +183,6 @@ This annotation configures to remove headers in the upstream request.
 k8s.apisix.apache.org/rewrite-remove-header: "testkey1,testkey2"
 ```
 
-
 ## HTTP to HTTPS
 
 This annotation is used to redirect HTTP requests to HTTPS with a `301` status code and with the same URI as the original request.

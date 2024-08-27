@@ -39,12 +39,12 @@ func (i *rewrite) Handle(e annotations.Extractor) (interface{}, error) {
 	rewriteTargetRegex := e.GetStringAnnotation(annotations.AnnotationsRewriteTargetRegex)
 	rewriteTemplate := e.GetStringAnnotation(annotations.AnnotationsRewriteTargetRegexTemplate)
 
-	headers := make(apisixv1.Headers)
+	headers := apisixv1.RewriteConfigHeaders{}
 	headers.Add(e.GetStringsAnnotation(annotations.AnnotationsRewriteHeaderAdd))
 	headers.Set(e.GetStringsAnnotation(annotations.AnnotationsRewriteHeaderSet))
 	headers.Remove(e.GetStringsAnnotation(annotations.AnnotationsRewriteHeaderRemove))
 
-	if rewriteTarget != "" || rewriteTargetRegex != "" || rewriteTemplate != "" || len(headers) > 0 {
+	if rewriteTarget != "" || rewriteTargetRegex != "" || rewriteTemplate != "" || len(headers.Headers) > 0 {
 		plugin.RewriteTarget = rewriteTarget
 		plugin.Headers = headers
 		if rewriteTargetRegex != "" && rewriteTemplate != "" {

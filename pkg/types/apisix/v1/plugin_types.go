@@ -137,20 +137,20 @@ type WolfRBACConsumerConfig struct {
 // RewriteConfig is the rule config for proxy-rewrite plugin.
 // +k8s:deepcopy-gen=true
 type RewriteConfig struct {
-	RewriteTarget      string   `json:"uri,omitempty"`
-	RewriteTargetRegex []string `json:"regex_uri,omitempty"`
-	Headers            Headers  `json:"headers,omitempty"`
+	RewriteTarget      string               `json:"uri,omitempty"`
+	RewriteTargetRegex []string             `json:"regex_uri,omitempty"`
+	Headers            RewriteConfigHeaders `json:"headers,omitempty"`
 }
 
 // ResponseRewriteConfig is the rule config for response-rewrite plugin.
 // +k8s:deepcopy-gen=true
 type ResponseRewriteConfig struct {
-	StatusCode   int                 `json:"status_code,omitempty"`
-	Body         string              `json:"body,omitempty"`
-	BodyBase64   bool                `json:"body_base64,omitempty"`
-	Headers      Headers             `json:"headers,omitempty"`
-	LuaRestyExpr []expr.Expr         `json:"vars,omitempty"`
-	Filters      []map[string]string `json:"filters,omitempty"`
+	StatusCode   int                          `json:"status_code,omitempty"`
+	Body         string                       `json:"body,omitempty"`
+	BodyBase64   bool                         `json:"body_base64,omitempty"`
+	Headers      ResponseRewriteConfigHeaders `json:"headers,omitempty"`
+	LuaRestyExpr []expr.Expr                  `json:"vars,omitempty"`
+	Filters      []map[string]string          `json:"filters,omitempty"`
 }
 
 // RedirectConfig is the rule config for redirect plugin.
@@ -189,21 +189,43 @@ type RequestMirror struct {
 
 type Headers map[string]any
 
-func (p *Headers) DeepCopyInto(out *Headers) {
+type ResponseRewriteConfigHeaders struct {
+	Headers
+}
+
+type RewriteConfigHeaders struct {
+	Headers
+}
+
+func (p *ResponseRewriteConfigHeaders) DeepCopyInto(out *ResponseRewriteConfigHeaders) {
 	b, _ := json.Marshal(&p)
 	_ = json.Unmarshal(b, out)
 }
 
-func (p *Headers) DeepCopy() *Headers {
+func (p *ResponseRewriteConfigHeaders) DeepCopy() *ResponseRewriteConfigHeaders {
 	if p == nil {
 		return nil
 	}
-	out := new(Headers)
+	out := new(ResponseRewriteConfigHeaders)
 	p.DeepCopyInto(out)
 	return out
 }
 
-func (p *Headers) Add(headersToAdd []string) {
+func (p *RewriteConfigHeaders) DeepCopyInto(out *RewriteConfigHeaders) {
+	b, _ := json.Marshal(&p)
+	_ = json.Unmarshal(b, out)
+}
+
+func (p *RewriteConfigHeaders) DeepCopy() *RewriteConfigHeaders {
+	if p == nil {
+		return nil
+	}
+	out := new(RewriteConfigHeaders)
+	p.DeepCopyInto(out)
+	return out
+}
+
+func (p *ResponseRewriteConfigHeaders) Add(headersToAdd []string) {
 	if p == nil {
 		return
 	}
@@ -216,15 +238,43 @@ func (p *Headers) Add(headersToAdd []string) {
 			}
 			addedHeader = append(addedHeader, fmt.Sprintf("%s:%s", kv[0], kv[1]))
 		}
-		(*p)["add"] = addedHeader
+		(p.Headers)["add"] = addedHeader
 	}
 }
 
-func (p *Headers) GetAddedHeaders() []string {
-	if p == nil || (*p)["add"] == nil {
+func (p *ResponseRewriteConfigHeaders) GetAddedHeaders() []string {
+	if p == nil || (p.Headers)["add"] == nil {
 		return nil
 	}
-	addedheaders, ok := (*p)["add"].([]string)
+	addedheaders, ok := (p.Headers)["add"].([]string)
+	if ok {
+		return addedheaders
+	}
+	return nil
+}
+
+func (p *RewriteConfigHeaders) Add(headersToAdd []string) {
+	if p == nil {
+		return
+	}
+	if headersToAdd != nil {
+		addedHeader := make(map[string]string, 0)
+		for _, h := range headersToAdd {
+			kv := strings.Split(h, ":")
+			if len(kv) < 2 {
+				continue
+			}
+			addedHeader[kv[0]] = kv[1]
+		}
+		(p.Headers)["add"] = addedHeader
+	}
+}
+
+func (p *RewriteConfigHeaders) GetAddedHeaders() map[string]string {
+	if p == nil || (p.Headers)["add"] == nil {
+		return nil
+	}
+	addedheaders, ok := (p.Headers)["add"].(map[string]string)
 	if ok {
 		return addedheaders
 	}
