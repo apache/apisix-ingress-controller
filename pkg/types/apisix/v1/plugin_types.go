@@ -190,11 +190,11 @@ type RequestMirror struct {
 type Headers map[string]any
 
 type ResponseRewriteConfigHeaders struct {
-	Headers
+	Headers `json:"headers,omitempty"`
 }
 
 type RewriteConfigHeaders struct {
-	Headers
+	Headers `json:"headers,omitempty"`
 }
 
 func (p *ResponseRewriteConfigHeaders) DeepCopyInto(out *ResponseRewriteConfigHeaders) {

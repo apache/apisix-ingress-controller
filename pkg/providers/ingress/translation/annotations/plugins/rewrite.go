@@ -39,7 +39,9 @@ func (i *rewrite) Handle(e annotations.Extractor) (interface{}, error) {
 	rewriteTargetRegex := e.GetStringAnnotation(annotations.AnnotationsRewriteTargetRegex)
 	rewriteTemplate := e.GetStringAnnotation(annotations.AnnotationsRewriteTargetRegexTemplate)
 
-	headers := apisixv1.RewriteConfigHeaders{}
+	headers := apisixv1.RewriteConfigHeaders{
+		Headers: make(apisixv1.Headers),
+	}
 	headers.Add(e.GetStringsAnnotation(annotations.AnnotationsRewriteHeaderAdd))
 	headers.Set(e.GetStringsAnnotation(annotations.AnnotationsRewriteHeaderSet))
 	headers.Remove(e.GetStringsAnnotation(annotations.AnnotationsRewriteHeaderRemove))

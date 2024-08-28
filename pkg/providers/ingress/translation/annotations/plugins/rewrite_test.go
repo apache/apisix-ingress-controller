@@ -30,7 +30,7 @@ func TestRewriteHandler(t *testing.T) {
 		annotations.AnnotationsRewriteTargetRegexTemplate: "/$1",
 		annotations.AnnotationsRewriteHeaderAdd:           "testkey1:testval1,testkey2:testval2",
 		annotations.AnnotationsRewriteHeaderRemove:        "testkey1,testkey2",
-		annotations.AnnotationsRewriteHeaderSet:           "testkey1:testval1,testkey2:testval2",
+		annotations.AnnotationsRewriteHeaderSet:           "testsetkey1:testsetval1,testsetkey2:testsetval2",
 	}
 	p := NewRewriteHandler()
 	out, err := p.Handle(annotations.NewExtractor(anno))
@@ -39,10 +39,13 @@ func TestRewriteHandler(t *testing.T) {
 	assert.Equal(t, "/sample", config.RewriteTarget)
 	assert.Equal(t, []string{"/sample/(.*)", "/$1"}, config.RewriteTargetRegex)
 	assert.Equal(t, "proxy-rewrite", p.PluginName())
-	assert.Equal(t, []string{"testkey1:testval1", "testkey2:testval2"}, config.Headers.GetAddedHeaders())
-	assert.Equal(t, []string{"testkey1", "testkey2"}, config.Headers.GetRemovedHeaders())
 	assert.Equal(t, map[string]string{
 		"testkey1": "testval1",
 		"testkey2": "testval2",
+	}, config.Headers.GetAddedHeaders())
+	assert.Equal(t, []string{"testkey1", "testkey2"}, config.Headers.GetRemovedHeaders())
+	assert.Equal(t, map[string]string{
+		"testsetkey1": "testsetval1",
+		"testsetkey2": "testsetval2",
 	}, config.Headers.GetSetHeaders())
 }
