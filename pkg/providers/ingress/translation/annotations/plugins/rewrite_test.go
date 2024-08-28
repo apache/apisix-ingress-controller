@@ -42,7 +42,7 @@ func TestRewriteHandler(t *testing.T) {
 	assert.Equal(t, map[string]string{
 		"testkey1": "testval1",
 		"testkey2": "testval2",
-	}, config.Headers.GetAddedHeaders())
+	}, config.Headers.GetAddHeaders())
 	assert.Equal(t, []string{"testkey1", "testkey2"}, config.Headers.GetRemovedHeaders())
 	assert.Equal(t, map[string]string{
 		"testsetkey1": "testsetval1",

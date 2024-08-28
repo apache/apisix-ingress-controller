@@ -39,22 +39,27 @@ func (i *rewrite) Handle(e annotations.Extractor) (interface{}, error) {
 	rewriteTargetRegex := e.GetStringAnnotation(annotations.AnnotationsRewriteTargetRegex)
 	rewriteTemplate := e.GetStringAnnotation(annotations.AnnotationsRewriteTargetRegexTemplate)
 
-	headers := apisixv1.RewriteConfigHeaders{
-		Headers: make(apisixv1.Headers),
-	}
-	headers.Add(e.GetStringsAnnotation(annotations.AnnotationsRewriteHeaderAdd))
-	headers.Set(e.GetStringsAnnotation(annotations.AnnotationsRewriteHeaderSet))
-	headers.Remove(e.GetStringsAnnotation(annotations.AnnotationsRewriteHeaderRemove))
+	headersToAdd := e.GetStringsAnnotation(annotations.AnnotationsRewriteHeaderAdd)
+	headersToSet := e.GetStringsAnnotation(annotations.AnnotationsRewriteHeaderSet)
+	headersToRemove := e.GetStringsAnnotation(annotations.AnnotationsRewriteHeaderRemove)
 
-	if rewriteTarget != "" || rewriteTargetRegex != "" || rewriteTemplate != "" || len(headers.Headers) > 0 {
+	if rewriteTarget != "" || rewriteTargetRegex != "" || rewriteTemplate != "" || len(headersToAdd) > 0 || len(headersToSet) > 0 || len(headersToRemove) > 0 {
 		plugin.RewriteTarget = rewriteTarget
-		plugin.Headers = headers
 		if rewriteTargetRegex != "" && rewriteTemplate != "" {
 			_, err := regexp.Compile(rewriteTargetRegex)
 			if err != nil {
 				return nil, err
 			}
 			plugin.RewriteTargetRegex = []string{rewriteTargetRegex, rewriteTemplate}
+		}
+		if len(headersToAdd) > 0 {
+			plugin.Headers.SetAddHeaders(headersToAdd)
+		}
+		if len(headersToSet) > 0 {
+			plugin.Headers.SetSetHeaders(headersToSet)
+		}
+		if len(headersToAdd) > 0 {
+			plugin.Headers.SetRemoveHeaders(headersToRemove)
 		}
 		return &plugin, nil
 	}

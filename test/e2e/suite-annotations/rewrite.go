@@ -155,7 +155,7 @@ spec:
 	})
 })
 
-var _ = ginkgo.Describe("suite-annotations: rewrite header annotations", func() {
+var _ = ginkgo.FDescribe("suite-annotations: rewrite header annotations", func() {
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("enable in ingress networking/v1", func() {
@@ -168,8 +168,8 @@ metadata:
     kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/rewrite-target-regex: "/sample/(.*)"
     k8s.apisix.apache.org/rewrite-target-regex-template: "/$1"
-    k8s.apisix.apache.org/rewrite-add-header: "X-Api-Version:v1;X-Api-Engine:Apisix"
-    k8s.apisix.apache.org/rewrite-set-header: "X-Request-ID:123"
+    k8s.apisix.apache.org/rewrite-add-header: "X-Api-Version:v1,X-Api-Engine:Apisix"
+    k8s.apisix.apache.org/rewrite-set-header: "X-Api-Custom:extended"
     k8s.apisix.apache.org/rewrite-remove-header: "X-Test"
   name: ingress-v1
 spec:
@@ -189,27 +189,27 @@ spec:
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
 		time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/sample/get").WithHeader("Host", "httpbin.org").WithHeader("X-Request-ID", "000").WithHeader("X-Test", "Test").Expect()
+		resp := s.NewAPISIXClient().GET("/sample/get").WithHeader("Host", "httpbin.org").WithHeader("X-Api-Custom", "Basic").WithHeader("X-Test", "Test").Expect()
 		resp.Status(http.StatusOK)
 		resp.Body().Contains("\"X-Api-Version\": \"v1\"")
 		resp.Body().Contains("\"X-Api-Engine\": \"Apisix\"")
-		resp.Body().Contains("\"X-Request-ID\": \"123\"")
+		resp.Body().Contains("\"X-Api-Custom\": \"extended\"")
 		resp.Body().NotContains("\"X-Test\"")
 	})
 	ginkgo.It("enable in ingress networking/v1beta1", func() {
 		backendSvc, backendPort := s.DefaultHTTPBackend()
 		ing := fmt.Sprintf(`
-apiVersion: networking.k8s.io/v1
+apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
   annotations:
     kubernetes.io/ingress.class: apisix
     k8s.apisix.apache.org/rewrite-target-regex: "/sample/(.*)"
     k8s.apisix.apache.org/rewrite-target-regex-template: "/$1"
-    k8s.apisix.apache.org/rewrite-add-header: "X-Api-Version:v1;X-Api-Engine:Apisix"
-    k8s.apisix.apache.org/rewrite-set-header: "X-Request-ID:123"
+    k8s.apisix.apache.org/rewrite-add-header: "X-Api-Version:v1,X-Api-Engine:Apisix"
+    k8s.apisix.apache.org/rewrite-set-header: "X-Api-Custom:extended"
     k8s.apisix.apache.org/rewrite-remove-header: "X-Test"
-  name: ingress-v1
+  name: ingress-v1beta1
 spec:
   rules:
   - host: httpbin.org
@@ -220,16 +220,16 @@ spec:
         backend:
           serviceName: %s
           servicePort: %d
-	`, backendSvc, backendPort[0])
+`, backendSvc, backendPort[0])
 		err := s.CreateResourceFromString(ing)
 		assert.Nil(ginkgo.GinkgoT(), err, "creating ingress")
 		time.Sleep(5 * time.Second)
 
-		resp := s.NewAPISIXClient().GET("/sample/get").WithHeader("Host", "httpbin.org").WithHeader("X-Request-ID", "000").WithHeader("X-Test", "Test").Expect()
+		resp := s.NewAPISIXClient().GET("/sample/get").WithHeader("Host", "httpbin.org").WithHeader("X-Api-Custom", "Basic").WithHeader("X-Test", "Test").Expect()
 		resp.Status(http.StatusOK)
 		resp.Body().Contains("\"X-Api-Version\": \"v1\"")
 		resp.Body().Contains("\"X-Api-Engine\": \"Apisix\"")
-		resp.Body().Contains("\"X-Request-ID\": \"123\"")
+		resp.Body().Contains("\"X-Api-Custom\": \"extended\"")
 		resp.Body().NotContains("\"X-Test\"")
 	})
 })

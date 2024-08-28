@@ -41,7 +41,7 @@ func TestResponseRewriteHandler(t *testing.T) {
 	assert.Equal(t, "bar_body", config.Body)
 	assert.Equal(t, false, config.BodyBase64)
 	assert.Equal(t, "response-rewrite", p.PluginName())
-	assert.Equal(t, []string{"testkey1:testval1", "testkey2:testval2"}, config.Headers.GetAddedHeaders())
+	assert.Equal(t, []string{"testkey1:testval1", "testkey2:testval2"}, config.Headers.GetAddHeaders())
 	assert.Equal(t, []string{"testkey1", "testkey2"}, config.Headers.GetRemovedHeaders())
 	assert.Equal(t, map[string]string{
 		"testkey1": "testval1",
