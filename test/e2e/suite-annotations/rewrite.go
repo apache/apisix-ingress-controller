@@ -155,7 +155,7 @@ spec:
 	})
 })
 
-var _ = ginkgo.FDescribe("suite-annotations: rewrite header annotations", func() {
+var _ = ginkgo.Describe("suite-annotations: rewrite header annotations", func() {
 	s := scaffold.NewDefaultScaffold()
 
 	ginkgo.It("enable in ingress networking/v1", func() {
