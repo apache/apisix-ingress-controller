@@ -25,13 +25,10 @@ import (
 
 func TestResponseRewriteHandler(t *testing.T) {
 	anno := map[string]string{
-		annotations.AnnotationsEnableResponseRewrite:       "true",
-		annotations.AnnotationsResponseRewriteStatusCode:   "200",
-		annotations.AnnotationsResponseRewriteBody:         "bar_body",
-		annotations.AnnotationsResponseRewriteBodyBase64:   "false",
-		annotations.AnnotationsResponseRewriteHeaderAdd:    "testkey1:testval1,testkey2:testval2",
-		annotations.AnnotationsResponseRewriteHeaderRemove: "testkey1,testkey2",
-		annotations.AnnotationsResponseRewriteHeaderSet:    "testkey1:testval1,testkey2:testval2",
+		annotations.AnnotationsEnableResponseRewrite:     "true",
+		annotations.AnnotationsResponseRewriteStatusCode: "200",
+		annotations.AnnotationsResponseRewriteBody:       "bar_body",
+		annotations.AnnotationsResponseRewriteBodyBase64: "false",
 	}
 	p := NewResponseRewriteHandler()
 	out, err := p.Handle(annotations.NewExtractor(anno))
@@ -41,12 +38,21 @@ func TestResponseRewriteHandler(t *testing.T) {
 	assert.Equal(t, "bar_body", config.Body)
 	assert.Equal(t, false, config.BodyBase64)
 	assert.Equal(t, "response-rewrite", p.PluginName())
+	assert.Nil(t, config.Headers)
+
+	anno[annotations.AnnotationsResponseRewriteHeaderAdd] = "testkey1:testval1,testkey2:testval2"
+	anno[annotations.AnnotationsResponseRewriteHeaderRemove] = "testkey1,testkey2"
+	anno[annotations.AnnotationsResponseRewriteHeaderSet] = "testkey1:testval1,testkey2:testval2"
+	out, err = p.Handle(annotations.NewExtractor(anno))
+	assert.Nil(t, err, "checking given error")
+	config = out.(*apisixv1.ResponseRewriteConfig)
 	assert.Equal(t, []string{"testkey1:testval1", "testkey2:testval2"}, config.Headers.GetAddHeaders())
 	assert.Equal(t, []string{"testkey1", "testkey2"}, config.Headers.GetRemovedHeaders())
 	assert.Equal(t, map[string]string{
 		"testkey1": "testval1",
 		"testkey2": "testval2",
 	}, config.Headers.GetSetHeaders())
+
 	anno[annotations.AnnotationsEnableResponseRewrite] = "false"
 	out, err = p.Handle(annotations.NewExtractor(anno))
 	assert.Nil(t, err, "checking given error")

@@ -52,14 +52,12 @@ func (i *rewrite) Handle(e annotations.Extractor) (interface{}, error) {
 			}
 			plugin.RewriteTargetRegex = []string{rewriteTargetRegex, rewriteTemplate}
 		}
-		if len(headersToAdd) > 0 {
-			plugin.Headers.SetAddHeaders(headersToAdd)
-		}
-		if len(headersToSet) > 0 {
-			plugin.Headers.SetSetHeaders(headersToSet)
-		}
-		if len(headersToAdd) > 0 {
-			plugin.Headers.SetRemoveHeaders(headersToRemove)
+		if len(headersToAdd) > 0 || len(headersToSet) > 0 || len(headersToRemove) > 0 {
+			headers := apisixv1.RewriteConfigHeaders{}
+			headers.SetAddHeaders(headersToAdd)
+			headers.SetSetHeaders(headersToSet)
+			headers.SetRemoveHeaders(headersToRemove)
+			plugin.Headers = &headers
 		}
 		return &plugin, nil
 	}

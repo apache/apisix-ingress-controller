@@ -48,4 +48,14 @@ func TestRewriteHandler(t *testing.T) {
 		"testsetkey1": "testsetval1",
 		"testsetkey2": "testsetval2",
 	}, config.Headers.GetSetHeaders())
+
+	anno = map[string]string{
+		annotations.AnnotationsRewriteTarget: "/sample",
+	}
+	out, err = p.Handle(annotations.NewExtractor(anno))
+	assert.Nil(t, err, "checking given error")
+	config = out.(*apisixv1.RewriteConfig)
+	assert.Equal(t, "/sample", config.RewriteTarget)
+	assert.Nil(t, config.RewriteTargetRegex)
+	assert.Nil(t, config.Headers)
 }

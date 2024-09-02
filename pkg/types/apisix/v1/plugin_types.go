@@ -137,20 +137,20 @@ type WolfRBACConsumerConfig struct {
 // RewriteConfig is the rule config for proxy-rewrite plugin.
 // +k8s:deepcopy-gen=true
 type RewriteConfig struct {
-	RewriteTarget      string               `json:"uri,omitempty"`
-	RewriteTargetRegex []string             `json:"regex_uri,omitempty"`
-	Headers            RewriteConfigHeaders `json:"headers,omitempty"`
+	RewriteTarget      string                `json:"uri,omitempty"`
+	RewriteTargetRegex []string              `json:"regex_uri,omitempty"`
+	Headers            *RewriteConfigHeaders `json:"headers,omitempty"`
 }
 
 // ResponseRewriteConfig is the rule config for response-rewrite plugin.
 // +k8s:deepcopy-gen=true
 type ResponseRewriteConfig struct {
-	StatusCode   int                          `json:"status_code,omitempty"`
-	Body         string                       `json:"body,omitempty"`
-	BodyBase64   bool                         `json:"body_base64,omitempty"`
-	Headers      ResponseRewriteConfigHeaders `json:"headers,omitempty"`
-	LuaRestyExpr []expr.Expr                  `json:"vars,omitempty"`
-	Filters      []map[string]string          `json:"filters,omitempty"`
+	StatusCode   int                           `json:"status_code,omitempty"`
+	Body         string                        `json:"body,omitempty"`
+	BodyBase64   bool                          `json:"body_base64,omitempty"`
+	Headers      *ResponseRewriteConfigHeaders `json:"headers,omitempty"`
+	LuaRestyExpr []expr.Expr                   `json:"vars,omitempty"`
+	Filters      []map[string]string           `json:"filters,omitempty"`
 }
 
 // RedirectConfig is the rule config for redirect plugin.
