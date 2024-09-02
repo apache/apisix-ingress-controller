@@ -58,19 +58,23 @@ func (t *translator) generatePluginFromHTTPRequestHeaderFilter(plugins apisixv1.
 	// TODO: The current apisix plugin does not conform to the specification.
 	plugin := apisixv1.RewriteConfig{}
 
-	headersToAdd := make([]string, len(reqHeaderModifier.Add))
-	for i, header := range reqHeaderModifier.Add {
-		headersToAdd[i] = fmt.Sprintf("%s:%s", header.Name, header.Value)
-	}
-	plugin.Headers.SetAddHeaders(headersToAdd)
+	if len(reqHeaderModifier.Add) > 0 || len(reqHeaderModifier.Set) > 0 || len(reqHeaderModifier.Remove) > 0 {
+		headers := apisixv1.RewriteConfigHeaders{}
 
-	headersToSet := make([]string, len(reqHeaderModifier.Set))
-	for i, header := range reqHeaderModifier.Set {
-		headersToSet[i] = fmt.Sprintf("%s:%s", header.Name, header.Value)
-	}
-	plugin.Headers.SetSetHeaders(headersToSet)
+		headers.Add = make(map[string]string, len(reqHeaderModifier.Add))
+		for _, header := range reqHeaderModifier.Add {
+			headers.Add[string(header.Name)] = header.Value
+		}
 
-	plugin.Headers.SetRemoveHeaders(reqHeaderModifier.Remove)
+		headers.Set = make(map[string]string, len(reqHeaderModifier.Set))
+		for _, header := range reqHeaderModifier.Set {
+			headers.Set[string(header.Name)] = header.Value
+		}
+
+		headers.Remove = reqHeaderModifier.Remove
+
+		plugin.Headers = &headers
+	}
 
 	plugins["proxy-rewrite"] = plugin
 }
