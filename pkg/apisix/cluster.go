@@ -187,7 +187,7 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 		c.upstreamServiceRelation = newUpstreamServiceRelation(c)
 		c.pluginMetadata = newPluginMetadataMem(c)
 
-		c.validator, err = NewReferenceFile("conf/apisix-schema.json")
+		c.validator = newDummyValidator()
 		if err != nil {
 			return nil, err
 		}
@@ -204,6 +204,8 @@ func newCluster(ctx context.Context, o *ClusterOptions) (Cluster, error) {
 			return nil, err
 		}
 		go c.adapter.Serve(ctx, ln)
+		go c.syncSchema(ctx, o.SyncInterval.Duration)
+		
 	} else {
 		c.route = newRouteClient(c)
 		c.upstream = newUpstreamClient(c)
@@ -438,6 +440,17 @@ func (c *cluster) HasSynced(ctx context.Context) error {
 
 // syncSchema syncs schema from APISIX regularly according to the interval.
 func (c *cluster) syncSchema(ctx context.Context, interval time.Duration) {
+	for {
+		if err := c.syncSchemaOnce(ctx); err != nil {
+			log.Errorf("failed to sync schema on startup: %s", err)
+			c.metricsCollector.IncrSyncOperation("schema", "failure")
+			// 等待 2 秒后重试
+			time.Sleep(2 * time.Second)
+			continue // 继续重试
+		}
+	break // 如果同步成功，退出循环
+	}
+
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
