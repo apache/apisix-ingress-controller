@@ -455,7 +455,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    k8s.apisix.apache.org/upstream-read-timeout.: "5s"
+    k8s.apisix.apache.org/upstream-read-timeout: "5s"
     k8s.apisix.apache.org/upstream-connect-timeout: "10s"
     k8s.apisix.apache.org/upstream-send-timeout: "10s"
   name: ingress-ext-v1beta1
