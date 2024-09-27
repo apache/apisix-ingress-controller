@@ -114,11 +114,11 @@ It is recommended to change the default keys for security:
 ```
 
 ```shell
---set admin.credentials.admin=ADMIN_KEY_GENERATED_BY_YOURSELF
+--set apisix.admin.credentials.admin=ADMIN_KEY_GENERATED_BY_YOURSELF
 ```
 
 ```shell
---set admin.credentials.viewer=VIEWER_KEY_GENERATED_BY_YOURSELF
+--set apisix.admin.credentials.viewer=VIEWER_KEY_GENERATED_BY_YOURSELF
 ```
 
 :::note
