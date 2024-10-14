@@ -179,6 +179,13 @@ func (c *apisixGlobalRuleController) sync(ctx context.Context, ev *types.Event) 
 }
 
 func (c *apisixGlobalRuleController) handleSyncErr(obj interface{}, errOrigin error) {
+	if errOrigin == nil {
+		c.MetricsCollector.IncrSyncOperation("GlobalRule", "success")
+		c.workqueue.Forget(obj)
+	} else {
+		c.workqueue.AddRateLimited(obj)
+		c.MetricsCollector.IncrSyncOperation("GlobalRule", "failure")
+	}
 	ev := obj.(*types.Event)
 	event := ev.Object.(kube.ApisixGlobalRuleEvent)
 	if k8serrors.IsNotFound(errOrigin) && ev.Type != types.EventDelete {
@@ -219,8 +226,6 @@ func (c *apisixGlobalRuleController) handleSyncErr(obj interface{}, errOrigin er
 					)
 				}
 			}
-			c.workqueue.Forget(obj)
-			c.MetricsCollector.IncrSyncOperation("GlobalRule", "success")
 			return
 		}
 		log.Warnw("sync ApisixGlobalRule failed, will retry",
@@ -241,8 +246,6 @@ func (c *apisixGlobalRuleController) handleSyncErr(obj interface{}, errOrigin er
 			)
 		}
 	}
-	c.workqueue.AddRateLimited(obj)
-	c.MetricsCollector.IncrSyncOperation("GlobalRule", "failure")
 }
 
 func (c *apisixGlobalRuleController) onAdd(obj interface{}) {
