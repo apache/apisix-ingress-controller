@@ -55,7 +55,8 @@
         "references/apisix_cluster_config_v2",
         "references/apisix_pluginconfig_v2",
         "references/v2",
-        "references/apisix_global_rule_v2"
+        "references/apisix_global_rule_v2",
+        "references/apisix_consumer_v2"
       ]
     },
     {
@@ -68,7 +69,8 @@
         "concepts/apisix_cluster_config",
         "concepts/apisix_plugin_config",
         "concepts/annotations",
-        "concepts/apisix_global_rule"
+        "concepts/apisix_global_rule",
+        "concepts/apisix_consumer"
       ]
     },
     {
