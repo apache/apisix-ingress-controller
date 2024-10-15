@@ -19,6 +19,7 @@
 
 # Table of Contents
 
+- [1.8.3](#182)
 - [1.8.2](#182)
 - [1.8.1](#181)
 - [1.8.0](#180)
@@ -40,6 +41,18 @@
 - [0.3.0](#030)
 - [0.2.0](#020)
 - [0.1.0](#010)
+
+# 1.8.3
+
+## What's New
+
+- fix: candidate controllers missing Forget call in workqueue @Revolyssup (#2308)
+
+## 👨🏽‍💻 Contributors
+
+Thank you to our contributors for making this release possible:
+@Revolyssup
+
 
 # 1.8.2
 
