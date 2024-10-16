@@ -214,6 +214,9 @@ type Upstream struct {
 	TLS          *ClientTLS           `json:"tls,omitempty" yaml:"tls,omitempty"`
 	PassHost     string               `json:"pass_host,omitempty" yaml:"pass_host,omitempty"`
 	UpstreamHost string               `json:"upstream_host,omitempty" yaml:"upstream_host,omitempty"`
+	Size         int                  `json:"size,omitempty" yaml:"size,omitempty"`
+	IdleTimeout  int                  `json:"idle_timeout,omitempty" yaml:"idle_timeout,omitempty"`
+	Request      int                  `json:"request,omitempty" yaml:"request,omitempty"`
 
 	// for Service Discovery
 	ServiceName   string            `json:"service_name,omitempty" yaml:"service_name,omitempty"`
@@ -286,6 +289,9 @@ func (up Upstream) MarshalJSON() ([]byte, error) {
 			HostPass     string           `json:"pass_host,omitempty" yaml:"pass_host,omitempty"`
 			UpstreamHost string           `json:"upstream_host,omitempty" yaml:"upstream_host,omitempty"`
 			TLS          *ClientTLS       `json:"tls,omitempty" yaml:"tls,omitempty"`
+			Size         int              `json:"size,omitempty" yaml:"size,omitempty"`
+			IdleTimeout  int              `json:"idle_timeout,omitempty" yaml:"idle_timeout,omitempty"`
+			Request      int              `json:"request,omitempty" yaml:"request,omitempty"`
 
 			// for Service Discovery
 			ServiceName   string            `json:"service_name,omitempty" yaml:"service_name,omitempty"`
@@ -305,6 +311,9 @@ func (up Upstream) MarshalJSON() ([]byte, error) {
 			HostPass:     up.PassHost,
 			UpstreamHost: up.UpstreamHost,
 			TLS:          up.TLS,
+			Size:         up.Size,
+			IdleTimeout:  up.IdleTimeout,
+			Request:      up.Request,
 
 			ServiceName:   up.ServiceName,
 			DiscoveryType: up.DiscoveryType,
@@ -325,6 +334,9 @@ func (up Upstream) MarshalJSON() ([]byte, error) {
 			HostPass     string               `json:"pass_host,omitempty" yaml:"pass_host,omitempty"`
 			UpstreamHost string               `json:"upstream_host,omitempty" yaml:"upstream_host,omitempty"`
 			TLS          *ClientTLS           `json:"tls,omitempty" yaml:"tls,omitempty"`
+			Size         int                  `json:"size,omitempty" yaml:"size,omitempty"`
+			IdleTimeout  int                  `json:"idle_timeout,omitempty" yaml:"idle_timeout,omitempty"`
+			Request      int                  `json:"request,omitempty" yaml:"request,omitempty"`
 
 			// for Service Discovery
 			//ServiceName   string            `json:"service_name,omitempty" yaml:"service_name,omitempty"`
@@ -344,6 +356,9 @@ func (up Upstream) MarshalJSON() ([]byte, error) {
 			HostPass:     up.PassHost,
 			UpstreamHost: up.UpstreamHost,
 			TLS:          up.TLS,
+			Size:         up.Size,
+			IdleTimeout:  up.IdleTimeout,
+			Request:      up.Request,
 
 			//ServiceName:   up.ServiceName,
 			//DiscoveryType: up.DiscoveryType,

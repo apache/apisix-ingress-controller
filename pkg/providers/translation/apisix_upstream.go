@@ -34,6 +34,10 @@ func (t *translator) TranslateUpstreamConfigV2(au *configv2.ApisixUpstreamConfig
 	if err := t.translateUpstreamLoadBalancerV2(au.LoadBalancer, ups); err != nil {
 		return nil, err
 	}
+
+	if err := t.translateKeepAlivePool(au.KeepAlivePool, ups); err != nil {
+		return nil, err
+	}
 	if err := t.translateUpstreamHealthCheckV2(au.HealthCheck, ups); err != nil {
 		return nil, err
 	}
@@ -64,6 +68,40 @@ func (t *translator) translateUpstreamScheme(scheme string, ups *apisixv1.Upstre
 	default:
 		return &TranslateError{Field: "scheme", Reason: "invalid value"}
 	}
+}
+
+func (t *translator) translateKeepAlivePool(keepAlive *configv2.KeepAlivePool, ups *apisixv1.Upstream) error {
+
+	if keepAlive.Size < 1 {
+		return &TranslateError{
+			Field:  "size",
+			Reason: "invalid value, must be one or greater",
+		}
+	} else if keepAlive.Size >= 1 {
+		ups.Size = keepAlive.Size
+
+	}
+
+	if keepAlive.IdleTimeout < 0 {
+		return &TranslateError{
+			Field:  "idle_timeout",
+			Reason: "invalid value",
+		}
+	} else if keepAlive.IdleTimeout >= 0 {
+		ups.IdleTimeout = int(keepAlive.IdleTimeout)
+	}
+
+	if keepAlive.Request < 1 {
+		return &TranslateError{
+			Field:  "request",
+			Reason: "invalid value, must be one or greater",
+		}
+	} else if keepAlive.Request >= 1 {
+		ups.Request = keepAlive.Request
+	}
+
+	return nil
+
 }
 
 func (t *translator) translateUpstreamRetriesAndTimeoutV2(retries *int, timeout *configv2.UpstreamTimeout, ups *apisixv1.Upstream) error {

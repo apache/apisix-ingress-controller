@@ -619,11 +619,11 @@ type LoadBalancer struct {
 
 type KeepAlivePool struct {
 	// Represents the maximum number of connections that the pool can hold
-	Size int `json:"size" yaml:"size"`
+	Size int `json:"size,omitempty" yaml:"size,omitempty"`
 	// Specifies the duration for which a connection can remain idle (not in use) before it is closed
-	IdleTimeout time.Duration `json:"idle_timeout" yaml:"idle_timeout"`
+	IdleTimeout int `json:"idle_timeout,omitempty" yaml:"idle_timeout,omitempty"`
 	// number of requests that can be handled
-	Request int `json:"request" yaml:"request"`
+	Request int `json:"requests,omitempty" yaml:"requests,omitempty"`
 }
 
 // HealthCheck describes the upstream health check parameters.
