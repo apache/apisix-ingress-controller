@@ -410,6 +410,53 @@ func TestUpstreamRetriesAndTimeoutV2(t *testing.T) {
 	}, ups.Timeout)
 }
 
+func TestKeepAlivePoll(t *testing.T) {
+	tr := &translator{}
+
+	keepAlive := &configv2.KeepAlivePool{
+		Size: 0,
+	}
+	err := tr.translateKeepAlivePool(keepAlive, nil)
+	assert.Equal(t, &TranslateError{
+		Field:  "size",
+		Reason: "invalid value, must be one or greater",
+	}, err)
+
+	var ups apisixv1.Upstream
+
+	keepAlive = &configv2.KeepAlivePool{
+		Size:        100,
+		IdleTimeout: -1,
+	}
+	err = tr.translateKeepAlivePool(keepAlive, &ups)
+	assert.Equal(t, &TranslateError{
+		Field:  "idle_timeout",
+		Reason: "invalid value",
+	}, err)
+
+	keepAlive = &configv2.KeepAlivePool{
+		Size:    100,
+		Request: -10,
+	}
+	err = tr.translateKeepAlivePool(keepAlive, &ups)
+	assert.Equal(t, &TranslateError{
+		Field:  "request",
+		Reason: "invalid value, must be one or greater",
+	}, err)
+
+	keepAlive = &configv2.KeepAlivePool{
+		Size:        100,
+		Request:     320,
+		IdleTimeout: int(time.Second * 60),
+	}
+
+	err = tr.translateKeepAlivePool(keepAlive, &ups)
+	assert.Nil(t, err)
+	assert.Equal(t, keepAlive.IdleTimeout, ups.IdleTimeout)
+	assert.Equal(t, keepAlive.Size, ups.Size)
+	assert.Equal(t, keepAlive.Request, ups.Request)
+}
+
 func TestUpstreamPassHost(t *testing.T) {
 	tr := &translator{}
 	tests := []struct {
