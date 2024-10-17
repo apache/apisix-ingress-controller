@@ -16,7 +16,7 @@
 #
 default: help
 
-VERSION ?= 1.8.2
+VERSION ?= 1.8.3
 
 
 TARGET_APISIX_VERSION ?= "3.4.1-centos"
