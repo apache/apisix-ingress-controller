@@ -48,6 +48,7 @@ kind: ApisixConsumer
 metadata:
   name: jack
 spec:
+  description: jack consumer
   authParameter:
     ldapAuth:
       value:
@@ -61,6 +62,8 @@ spec:
 			grs, err := s.ListApisixConsumers()
 			assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
 			assert.Len(ginkgo.GinkgoT(), grs, 1)
+			assert.Contains(ginkgo.GinkgoT(), grs[0].Username, "jack")
+			assert.Contains(ginkgo.GinkgoT(), grs[0].Desc, "jack consumer")
 			assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
 			ldapAuth, _ := grs[0].Plugins["ldap-auth"].(map[string]interface{})
 			assert.Equal(ginkgo.GinkgoT(), ldapAuth["user_dn"], "cn=jack,ou=users,dc=ldap,dc=example,dc=org")
@@ -138,6 +141,7 @@ kind: ApisixConsumer
 metadata:
   name: jack
 spec:
+  description: jack consumer
   authParameter:
     ldapAuth:
       secretRef:
@@ -151,6 +155,8 @@ spec:
 			grs, err := s.ListApisixConsumers()
 			assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
 			assert.Len(ginkgo.GinkgoT(), grs, 1)
+			assert.Contains(ginkgo.GinkgoT(), grs[0].Username, "jack")
+			assert.Contains(ginkgo.GinkgoT(), grs[0].Desc, "jack consumer")
 			assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
 			ldapAuth, _ := grs[0].Plugins["ldap-auth"].(map[string]interface{})
 			assert.Equal(ginkgo.GinkgoT(), ldapAuth["user_dn"], "cn=jack,ou=users,dc=ldap,dc=example,dc=org")
