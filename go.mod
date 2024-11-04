@@ -18,7 +18,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.uber.org/multierr v1.11.0
-	go.uber.org/zap v1.26.0
+	go.uber.org/zap v1.27.0
 	golang.org/x/net v0.17.0
 	gopkg.in/go-playground/pool.v3 v3.1.1
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
