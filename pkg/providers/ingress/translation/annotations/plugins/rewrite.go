@@ -38,7 +38,12 @@ func (i *rewrite) Handle(e annotations.Extractor) (interface{}, error) {
 	rewriteTarget := e.GetStringAnnotation(annotations.AnnotationsRewriteTarget)
 	rewriteTargetRegex := e.GetStringAnnotation(annotations.AnnotationsRewriteTargetRegex)
 	rewriteTemplate := e.GetStringAnnotation(annotations.AnnotationsRewriteTargetRegexTemplate)
-	if rewriteTarget != "" || rewriteTargetRegex != "" || rewriteTemplate != "" {
+
+	headersToAdd := e.GetStringsAnnotation(annotations.AnnotationsRewriteHeaderAdd)
+	headersToSet := e.GetStringsAnnotation(annotations.AnnotationsRewriteHeaderSet)
+	headersToRemove := e.GetStringsAnnotation(annotations.AnnotationsRewriteHeaderRemove)
+
+	if rewriteTarget != "" || rewriteTargetRegex != "" || rewriteTemplate != "" || len(headersToAdd) > 0 || len(headersToSet) > 0 || len(headersToRemove) > 0 {
 		plugin.RewriteTarget = rewriteTarget
 		if rewriteTargetRegex != "" && rewriteTemplate != "" {
 			_, err := regexp.Compile(rewriteTargetRegex)
@@ -46,6 +51,13 @@ func (i *rewrite) Handle(e annotations.Extractor) (interface{}, error) {
 				return nil, err
 			}
 			plugin.RewriteTargetRegex = []string{rewriteTargetRegex, rewriteTemplate}
+		}
+		if len(headersToAdd) > 0 || len(headersToSet) > 0 || len(headersToRemove) > 0 {
+			headers := apisixv1.RewriteConfigHeaders{}
+			headers.SetAddHeaders(headersToAdd)
+			headers.SetSetHeaders(headersToSet)
+			headers.SetRemoveHeaders(headersToRemove)
+			plugin.Headers = &headers
 		}
 		return &plugin, nil
 	}

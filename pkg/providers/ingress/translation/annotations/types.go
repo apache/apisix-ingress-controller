@@ -57,6 +57,9 @@ const (
 	AnnotationsRewriteTarget              = AnnotationsPrefix + "rewrite-target"
 	AnnotationsRewriteTargetRegex         = AnnotationsPrefix + "rewrite-target-regex"
 	AnnotationsRewriteTargetRegexTemplate = AnnotationsPrefix + "rewrite-target-regex-template"
+	AnnotationsRewriteHeaderAdd           = AnnotationsPrefix + "rewrite-add-header"
+	AnnotationsRewriteHeaderSet           = AnnotationsPrefix + "rewrite-set-header"
+	AnnotationsRewriteHeaderRemove        = AnnotationsPrefix + "rewrite-remove-header"
 
 	// response-rewrite plugin
 	AnnotationsEnableResponseRewrite       = AnnotationsPrefix + "enable-response-rewrite"

@@ -137,20 +137,20 @@ type WolfRBACConsumerConfig struct {
 // RewriteConfig is the rule config for proxy-rewrite plugin.
 // +k8s:deepcopy-gen=true
 type RewriteConfig struct {
-	RewriteTarget      string   `json:"uri,omitempty"`
-	RewriteTargetRegex []string `json:"regex_uri,omitempty"`
-	Headers            Headers  `json:"headers,omitempty"`
+	RewriteTarget      string                `json:"uri,omitempty"`
+	RewriteTargetRegex []string              `json:"regex_uri,omitempty"`
+	Headers            *RewriteConfigHeaders `json:"headers,omitempty"`
 }
 
 // ResponseRewriteConfig is the rule config for response-rewrite plugin.
 // +k8s:deepcopy-gen=true
 type ResponseRewriteConfig struct {
-	StatusCode   int                 `json:"status_code,omitempty"`
-	Body         string              `json:"body,omitempty"`
-	BodyBase64   bool                `json:"body_base64,omitempty"`
-	Headers      Headers             `json:"headers,omitempty"`
-	LuaRestyExpr []expr.Expr         `json:"vars,omitempty"`
-	Filters      []map[string]string `json:"filters,omitempty"`
+	StatusCode   int                           `json:"status_code,omitempty"`
+	Body         string                        `json:"body,omitempty"`
+	BodyBase64   bool                          `json:"body_base64,omitempty"`
+	Headers      *ResponseRewriteConfigHeaders `json:"headers,omitempty"`
+	LuaRestyExpr []expr.Expr                   `json:"vars,omitempty"`
+	Filters      []map[string]string           `json:"filters,omitempty"`
 }
 
 // RedirectConfig is the rule config for redirect plugin.
@@ -187,23 +187,50 @@ type RequestMirror struct {
 	Host string `json:"host"`
 }
 
-type Headers map[string]any
+type Headers struct {
+	Set    map[string]string `json:"set,omitempty"`
+	Remove []string          `json:"remove,omitempty"`
+}
 
-func (p *Headers) DeepCopyInto(out *Headers) {
+type ResponseRewriteConfigHeaders struct {
+	Add []string `json:"add,omitempty"`
+	Headers
+}
+
+type RewriteConfigHeaders struct {
+	Add map[string]string `json:"add,omitempty"`
+	Headers
+}
+
+func (p *ResponseRewriteConfigHeaders) DeepCopyInto(out *ResponseRewriteConfigHeaders) {
 	b, _ := json.Marshal(&p)
 	_ = json.Unmarshal(b, out)
 }
 
-func (p *Headers) DeepCopy() *Headers {
+func (p *ResponseRewriteConfigHeaders) DeepCopy() *ResponseRewriteConfigHeaders {
 	if p == nil {
 		return nil
 	}
-	out := new(Headers)
+	out := new(ResponseRewriteConfigHeaders)
 	p.DeepCopyInto(out)
 	return out
 }
 
-func (p *Headers) Add(headersToAdd []string) {
+func (p *RewriteConfigHeaders) DeepCopyInto(out *RewriteConfigHeaders) {
+	b, _ := json.Marshal(&p)
+	_ = json.Unmarshal(b, out)
+}
+
+func (p *RewriteConfigHeaders) DeepCopy() *RewriteConfigHeaders {
+	if p == nil {
+		return nil
+	}
+	out := new(RewriteConfigHeaders)
+	p.DeepCopyInto(out)
+	return out
+}
+
+func (p *ResponseRewriteConfigHeaders) SetAddHeaders(headersToAdd []string) {
 	if p == nil {
 		return
 	}
@@ -216,22 +243,42 @@ func (p *Headers) Add(headersToAdd []string) {
 			}
 			addedHeader = append(addedHeader, fmt.Sprintf("%s:%s", kv[0], kv[1]))
 		}
-		(*p)["add"] = addedHeader
+		p.Add = addedHeader
 	}
 }
 
-func (p *Headers) GetAddedHeaders() []string {
-	if p == nil || (*p)["add"] == nil {
+func (p *ResponseRewriteConfigHeaders) GetAddHeaders() []string {
+	if p == nil || p.Add == nil {
 		return nil
 	}
-	addedheaders, ok := (*p)["add"].([]string)
-	if ok {
-		return addedheaders
-	}
-	return nil
+	return p.Add
 }
 
-func (p *Headers) Set(headersToSet []string) {
+func (p *RewriteConfigHeaders) SetAddHeaders(headersToAdd []string) {
+	if p == nil {
+		return
+	}
+	if headersToAdd != nil {
+		addedHeader := make(map[string]string, 0)
+		for _, h := range headersToAdd {
+			kv := strings.Split(h, ":")
+			if len(kv) < 2 {
+				continue
+			}
+			addedHeader[kv[0]] = kv[1]
+		}
+		p.Add = addedHeader
+	}
+}
+
+func (p *RewriteConfigHeaders) GetAddHeaders() map[string]string {
+	if p == nil || p.Add == nil {
+		return nil
+	}
+	return p.Add
+}
+
+func (p *Headers) SetSetHeaders(headersToSet []string) {
 	if p == nil {
 		return
 	}
@@ -244,39 +291,31 @@ func (p *Headers) Set(headersToSet []string) {
 			}
 			setHeaders[kv[0]] = kv[1]
 		}
-		(*p)["set"] = setHeaders
+		p.Set = setHeaders
 	}
 }
 
 func (p *Headers) GetSetHeaders() map[string]string {
-	if p == nil || (*p)["set"] == nil {
+	if p == nil || p.Set == nil {
 		return nil
 	}
-	addedheaders, ok := (*p)["set"].(map[string]string)
-	if ok {
-		return addedheaders
-	}
-	return nil
+	return p.Set
 }
 
-func (p *Headers) Remove(headersToRemove []string) {
+func (p *Headers) SetRemoveHeaders(headersToRemove []string) {
 	if p == nil {
 		return
 	}
 	if headersToRemove != nil {
 		removeHeaders := make([]string, 0)
 		removeHeaders = append(removeHeaders, headersToRemove...)
-		(*p)["remove"] = removeHeaders
+		p.Remove = removeHeaders
 	}
 }
 
 func (p *Headers) GetRemovedHeaders() []string {
-	if p == nil || (*p)["remove"] == nil {
+	if p == nil || p.Remove == nil {
 		return nil
 	}
-	removedHeaders, ok := (*p)["remove"].([]string)
-	if ok {
-		return removedHeaders
-	}
-	return nil
+	return p.Remove
 }

@@ -55,21 +55,28 @@ func (t *translator) generatePluginFromHTTPRequestHeaderFilter(plugins apisixv1.
 	if reqHeaderModifier == nil {
 		return
 	}
-	headers := map[string]any{}
 	// TODO: The current apisix plugin does not conform to the specification.
-	for _, header := range reqHeaderModifier.Add {
-		headers[string(header.Name)] = header.Value
-	}
-	for _, header := range reqHeaderModifier.Set {
-		headers[string(header.Name)] = header.Value
-	}
-	for _, header := range reqHeaderModifier.Remove {
-		headers[header] = ""
+	plugin := apisixv1.RewriteConfig{}
+
+	if len(reqHeaderModifier.Add) > 0 || len(reqHeaderModifier.Set) > 0 || len(reqHeaderModifier.Remove) > 0 {
+		headers := apisixv1.RewriteConfigHeaders{}
+
+		headers.Add = make(map[string]string, len(reqHeaderModifier.Add))
+		for _, header := range reqHeaderModifier.Add {
+			headers.Add[string(header.Name)] = header.Value
+		}
+
+		headers.Set = make(map[string]string, len(reqHeaderModifier.Set))
+		for _, header := range reqHeaderModifier.Set {
+			headers.Set[string(header.Name)] = header.Value
+		}
+
+		headers.Remove = reqHeaderModifier.Remove
+
+		plugin.Headers = &headers
 	}
 
-	plugins["proxy-rewrite"] = apisixv1.RewriteConfig{
-		Headers: headers,
-	}
+	plugins["proxy-rewrite"] = plugin
 }
 
 func (t *translator) generatePluginFromHTTPRequestMirrorFilter(namespace string, plugins apisixv1.Plugins, reqMirror *gatewayv1beta1.HTTPRequestMirrorFilter) {

@@ -23,38 +23,39 @@ import (
 	apisixv1 "github.com/apache/apisix-ingress-controller/pkg/types/apisix/v1"
 )
 
-func TestResponseRewriteHandler(t *testing.T) {
+func TestRewriteHandler(t *testing.T) {
 	anno := map[string]string{
-		annotations.AnnotationsEnableResponseRewrite:     "true",
-		annotations.AnnotationsResponseRewriteStatusCode: "200",
-		annotations.AnnotationsResponseRewriteBody:       "bar_body",
-		annotations.AnnotationsResponseRewriteBodyBase64: "false",
+		annotations.AnnotationsRewriteTarget:              "/sample",
+		annotations.AnnotationsRewriteTargetRegex:         "/sample/(.*)",
+		annotations.AnnotationsRewriteTargetRegexTemplate: "/$1",
+		annotations.AnnotationsRewriteHeaderAdd:           "testkey1:testval1,testkey2:testval2",
+		annotations.AnnotationsRewriteHeaderRemove:        "testkey1,testkey2",
+		annotations.AnnotationsRewriteHeaderSet:           "testsetkey1:testsetval1,testsetkey2:testsetval2",
 	}
-	p := NewResponseRewriteHandler()
+	p := NewRewriteHandler()
 	out, err := p.Handle(annotations.NewExtractor(anno))
 	assert.Nil(t, err, "checking given error")
-	config := out.(*apisixv1.ResponseRewriteConfig)
-	assert.Equal(t, 200, config.StatusCode)
-	assert.Equal(t, "bar_body", config.Body)
-	assert.Equal(t, false, config.BodyBase64)
-	assert.Equal(t, "response-rewrite", p.PluginName())
-	assert.Nil(t, config.Headers)
-
-	anno[annotations.AnnotationsResponseRewriteHeaderAdd] = "testkey1:testval1,testkey2:testval2"
-	anno[annotations.AnnotationsResponseRewriteHeaderRemove] = "testkey1,testkey2"
-	anno[annotations.AnnotationsResponseRewriteHeaderSet] = "testkey1:testval1,testkey2:testval2"
-	out, err = p.Handle(annotations.NewExtractor(anno))
-	assert.Nil(t, err, "checking given error")
-	config = out.(*apisixv1.ResponseRewriteConfig)
-	assert.Equal(t, []string{"testkey1:testval1", "testkey2:testval2"}, config.Headers.GetAddHeaders())
-	assert.Equal(t, []string{"testkey1", "testkey2"}, config.Headers.GetRemovedHeaders())
+	config := out.(*apisixv1.RewriteConfig)
+	assert.Equal(t, "/sample", config.RewriteTarget)
+	assert.Equal(t, []string{"/sample/(.*)", "/$1"}, config.RewriteTargetRegex)
+	assert.Equal(t, "proxy-rewrite", p.PluginName())
 	assert.Equal(t, map[string]string{
 		"testkey1": "testval1",
 		"testkey2": "testval2",
+	}, config.Headers.GetAddHeaders())
+	assert.Equal(t, []string{"testkey1", "testkey2"}, config.Headers.GetRemovedHeaders())
+	assert.Equal(t, map[string]string{
+		"testsetkey1": "testsetval1",
+		"testsetkey2": "testsetval2",
 	}, config.Headers.GetSetHeaders())
 
-	anno[annotations.AnnotationsEnableResponseRewrite] = "false"
+	anno = map[string]string{
+		annotations.AnnotationsRewriteTarget: "/sample",
+	}
 	out, err = p.Handle(annotations.NewExtractor(anno))
 	assert.Nil(t, err, "checking given error")
-	assert.Nil(t, out, "checking given output")
+	config = out.(*apisixv1.RewriteConfig)
+	assert.Equal(t, "/sample", config.RewriteTarget)
+	assert.Nil(t, config.RewriteTargetRegex)
+	assert.Nil(t, config.Headers)
 }
