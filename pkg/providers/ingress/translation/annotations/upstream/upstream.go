@@ -28,11 +28,12 @@ func NewParser() annotations.IngressAnnotationsParser {
 }
 
 type Upstream struct {
-	Scheme         string
-	Retry          int
-	TimeoutRead    int
-	TimeoutConnect int
-	TimeoutSend    int
+	Scheme             string
+	Retry              int
+	TimeoutRead        int
+	TimeoutConnect     int
+	TimeoutSend        int
+	ResolveGranularity string
 }
 
 func (u *Upstream) Parse(e annotations.Extractor) (interface{}, error) {
@@ -83,6 +84,11 @@ func (u *Upstream) Parse(e annotations.Extractor) (interface{}, error) {
 			return nil, fmt.Errorf("could not parse timeout as an integer: %s", err.Error())
 		}
 		u.TimeoutSend = t
+	}
+
+	resolveGranularity := strings.TrimSuffix(e.GetStringAnnotation(annotations.AnnotationsUpstreamResolveGranularity), "s")
+	if resolveGranularity != "" {
+		u.ResolveGranularity = resolveGranularity
 	}
 
 	return *u, nil
