@@ -519,6 +519,10 @@ type ApisixUpstreamConfig struct {
 	// The default strategy is round robin.
 	// +optional
 	LoadBalancer *LoadBalancer `json:"loadbalancer,omitempty" yaml:"loadbalancer,omitempty"`
+	// KeepAlivePool specifies the configuration for the connection pool
+	// that maintains persistent connections for efficient request handling.
+	// +optional
+	KeepAlivePool *KeepAlivePool `json:"keepalive_pool,omitempty" yaml:"keepalive_pool,omitempty"`
 	// The scheme used to talk with the upstream.
 	// Now value can be http, grpc.
 	// +optional
@@ -611,6 +615,15 @@ type LoadBalancer struct {
 	HashOn string `json:"hashOn,omitempty" yaml:"hashOn,omitempty"`
 	// Key represents the hash key.
 	Key string `json:"key,omitempty" yaml:"key,omitempty"`
+}
+
+type KeepAlivePool struct {
+	// Represents the maximum number of connections that the pool can hold
+	Size int `json:"size,omitempty" yaml:"size,omitempty"`
+	// Specifies the duration for which a connection can remain idle (not in use) before it is closed
+	IdleTimeout int `json:"idle_timeout,omitempty" yaml:"idle_timeout,omitempty"`
+	// number of requests that can be handled
+	Request int `json:"requests,omitempty" yaml:"requests,omitempty"`
 }
 
 // HealthCheck describes the upstream health check parameters.
