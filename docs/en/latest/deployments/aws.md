@@ -45,6 +45,7 @@ helm install apisix apisix/apisix \
   --set gateway.type=LoadBalancer \
   --set admin.allow.ipList="{0.0.0.0/0}" \
   --namespace ingress-apisix \
+  --create-namespace
 kubectl get service --namespace ingress-apisix
 ```
 
