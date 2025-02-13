@@ -30,7 +30,7 @@ var _ = ginkgo.Describe("suite-plugins-authentication: ApisixConsumer with basic
 		s := scaffoldFunc()
 
 		ginkgo.It("ApisixRoute with basicAuth consumer", func() {
-			assert.Nil(ginkgo.GinkgoT(), s.ApisixConsumerBasicAuthCreated("basicvalue", "foo", "bar"), "creating basicAuth ApisixConsumer")
+			assert.Nil(ginkgo.GinkgoT(), s.ApisixConsumerBasicAuthCreated("basicvalue", "basicvalue consumer", "foo", "bar"), "creating basicAuth ApisixConsumer")
 
 			// Wait until the ApisixConsumer create event was delivered.
 			time.Sleep(6 * time.Second)
@@ -114,7 +114,7 @@ data:
   username: Zm9v
 `
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating basic secret for ApisixConsumer")
-			assert.Nil(ginkgo.GinkgoT(), s.ApisixConsumerBasicAuthSecretCreated("basicvalue", "basic"), "creating basicAuth ApisixConsumer")
+			assert.Nil(ginkgo.GinkgoT(), s.ApisixConsumerBasicAuthSecretCreated("basicvalue", "basicvalue consumer", "basic"), "creating basicAuth ApisixConsumer")
 
 			// Wait until the ApisixConsumer create event was delivered.
 			time.Sleep(6 * time.Second)
