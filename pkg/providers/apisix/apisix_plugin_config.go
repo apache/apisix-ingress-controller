@@ -284,7 +284,7 @@ func (c *apisixPluginConfigController) handleSyncErr(obj interface{}, errOrigin 
 		zap.Any("object", obj),
 		zap.Error(errOrigin),
 	)
-	c.workqueue.Forget(obj)
+	c.workqueue.AddRateLimited(obj)
 	c.MetricsCollector.IncrSyncOperation("PluginConfig", "failure")
 }
 
