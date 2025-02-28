@@ -85,7 +85,7 @@ You can change the Admin API key in two ways:
 
 You will need to get the apisix-gateway service an external IP assigned for it to reflect on the Ingress's status.
 
-* While installing APISIX helm chart make sure to override gateway type with `--set gateway.type=LoadBalancer`.
+* While installing APISIX helm chart make sure to override gateway type with `--set service.type=LoadBalancer`.
 
 * Also make sure to pass ingressPublishService while installing Ingress controller with `--set ingress-controller.config.ingressPublishService=<namespace/service-name>`. If namespace is not specified then `default` namespace will be chosen.
 
