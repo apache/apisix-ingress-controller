@@ -6,7 +6,7 @@ require (
 	github.com/api7/etcd-adapter v0.2.5
 	github.com/api7/gopkg v0.2.0
 	github.com/gin-gonic/gin v1.9.1
-	github.com/hashicorp/go-memdb v1.3.4
+	github.com/hashicorp/go-memdb v1.3.5
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/imdario/mergo v0.3.15
 	github.com/incubator4/go-resty-expr v0.1.1
