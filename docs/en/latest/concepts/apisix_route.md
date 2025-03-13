@@ -349,7 +349,7 @@ spec:
 
 :::note
 
-The `ingressPort` (`9100` here) should be pre-defined in the [APISIX configuration](https://github.com/apache/apisix/blob/master/conf/config-default.yaml#L101).
+The `ingressPort` (`9100` here) should be pre-defined in the [APISIX configuration](https://github.com/apache/apisix/blob/master/conf/config.yaml.example#L100).
 
 :::
 
@@ -377,6 +377,6 @@ spec:
 
 :::note
 
-The `ingressPort` (`9200` here) should be pre-defined in the [APISIX configuration](https://github.com/apache/apisix/blob/master/conf/config-default.yaml#L105).
+The `ingressPort` (`9200` here) should be pre-defined in the [APISIX configuration](https://github.com/apache/apisix/blob/master/conf/config.yaml.example#L100).
 
 :::
