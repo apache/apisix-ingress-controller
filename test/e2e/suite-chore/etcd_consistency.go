@@ -54,11 +54,7 @@ spec:
 
 			s.NewAPISIXClient().GET("/ip").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 		})
-
-		ginkgo.By("restart ingress controller")
-		s.RestartIngressControllerDeploy()
-
-		ginkgo.By("apply route again and this should take effect", func() {
+		ginkgo.By("apply route again", func() {
 			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
 			ar := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -82,6 +78,35 @@ spec:
 			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "checking number of upstreams")
 
 			s.NewAPISIXClient().GET("/headers").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
+		})
+
+		ginkgo.By("restart ingress controller")
+		s.RestartIngressControllerDeploy()
+
+		ginkgo.By("apply route again and this should take effect", func() {
+			backendSvc, backendSvcPort := s.DefaultHTTPBackend()
+			ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: httpbin-route-3
+spec:
+  http:
+  - name: rule3
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+      - /get
+    backends:
+    - serviceName: %s
+      servicePort: %d
+`, backendSvc, backendSvcPort[0])
+			assert.Nil(ginkgo.GinkgoT(), s.CreateVersionedApisixResource(ar))
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixRoutesCreated(3), "checking number of routes")
+			assert.Nil(ginkgo.GinkgoT(), s.EnsureNumApisixUpstreamsCreated(1), "checking number of upstreams")
+
+			s.NewAPISIXClient().GET("/get").WithHeader("Host", "httpbin.org").Expect().Status(http.StatusOK)
 		})
 	})
 })
