@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var _ = ginkgo.FDescribe("suite-chore: etcd revision", func() {
+var _ = ginkgo.Describe("suite-chore: etcd revision", func() {
 	s := scaffold.NewScaffold(&scaffold.Options{
 		EnableEtcdServer: true,
 	})
