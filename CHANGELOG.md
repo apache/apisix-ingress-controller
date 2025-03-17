@@ -19,7 +19,6 @@
 
 # Table of Contents
 
-- [1.8.4](#184)
 - [1.8.3](#182)
 - [1.8.2](#182)
 - [1.8.1](#181)
@@ -43,21 +42,6 @@
 - [0.2.0](#020)
 - [0.1.0](#010)
 
-# 1.8.4
-
-## What's New
-
-- upgrade: etcd-adapter and add e2e test @Revolyssup (#2369)
-- chore: upgrade ubuntu from 20.04 to latest @Revolyssup (#2352)
-- chore: upgrade actions/upload-artifact and actions/download-artifact @nic-6443 (#2328)
-- docs: update http[].match.exprs any -> all @acuteaura (#2270)
-- fix: attempt to shut down when provider init fails @acuteaura (#2263)
-
-## 👨🏽‍💻 Contributors
-
-Thank you to our contributors for making this release possible:
-@Revolyssup, @acuteaura and @nic-6443
-
 # 1.8.3
 
 ## What's New
@@ -68,6 +52,7 @@ Thank you to our contributors for making this release possible:
 
 Thank you to our contributors for making this release possible:
 @Revolyssup
+
 
 # 1.8.2
 

@@ -33,7 +33,7 @@ concurrency:
 
 jobs:
   changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     outputs:
       docs: ${{ steps.filter.outputs.docs }}
       go: ${{ steps.filter.outputs.go }}
@@ -64,7 +64,7 @@ jobs:
               - ".github/**"
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     needs: changes
     if: needs.changes.outputs.go == 'true'
 
@@ -120,7 +120,7 @@ jobs:
             | pigz > docker.tar.gz
 
       - name: cache
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: docker.tar.gz
           path: docker.tar.gz
@@ -128,7 +128,7 @@ jobs:
   prepare:
     needs: changes
     if: needs.changes.outputs.go == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -151,7 +151,7 @@ jobs:
       - changes
       - prepare
       - build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     strategy:
       fail-fast: false # If false, GitHub will not cancels all in-progress jobs in the matrix if any matrix job fails.
       matrix:
@@ -175,7 +175,7 @@ jobs:
           sudo cp ~/go/bin/ginkgo /usr/local/bin
 
       - name: cache
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v3
         with:
           name: docker.tar.gz
 
