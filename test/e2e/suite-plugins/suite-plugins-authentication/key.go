@@ -30,7 +30,7 @@ var _ = ginkgo.Describe("suite-plugins-authentication: ApisixConsumer with keyAu
 		s := scaffoldFunc()
 
 		ginkgo.It("ApisixRoute with keyAuth consumer", func() {
-			assert.Nil(ginkgo.GinkgoT(), s.ApisixConsumerKeyAuthCreated("keyvalue", "foo"), "creating keyAuth ApisixConsumer")
+			assert.Nil(ginkgo.GinkgoT(), s.ApisixConsumerKeyAuthCreated("keyvalue", "keyvalue consumer", "foo"), "creating keyAuth ApisixConsumer")
 
 			// Wait until the ApisixConsumer create event was delivered.
 			time.Sleep(6 * time.Second)
@@ -38,6 +38,8 @@ var _ = ginkgo.Describe("suite-plugins-authentication: ApisixConsumer with keyAu
 			grs, err := s.ListApisixConsumers()
 			assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
 			assert.Len(ginkgo.GinkgoT(), grs, 1)
+			assert.Contains(ginkgo.GinkgoT(), grs[0].Username, "keyvalue")
+			assert.Contains(ginkgo.GinkgoT(), grs[0].Desc, "keyvalue consumer")
 			assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
 			basicAuth, _ := grs[0].Plugins["key-auth"]
 			assert.Equal(ginkgo.GinkgoT(), basicAuth, map[string]interface{}{
@@ -112,7 +114,7 @@ data:
   key: Zm9v
 `
 			assert.Nil(ginkgo.GinkgoT(), s.CreateResourceFromString(secret), "creating keyauth secret for ApisixConsumer")
-			assert.Nil(ginkgo.GinkgoT(), s.ApisixConsumerKeyAuthSecretCreated("keyvalue", "keyauth"), "creating keyAuth ApisixConsumer")
+			assert.Nil(ginkgo.GinkgoT(), s.ApisixConsumerKeyAuthSecretCreated("keyvalue", "keyvalue consumer", "keyauth"), "creating keyAuth ApisixConsumer")
 
 			// Wait until the ApisixConsumer create event was delivered.
 			time.Sleep(6 * time.Second)
@@ -120,6 +122,8 @@ data:
 			grs, err := s.ListApisixConsumers()
 			assert.Nil(ginkgo.GinkgoT(), err, "listing consumer")
 			assert.Len(ginkgo.GinkgoT(), grs, 1)
+			assert.Contains(ginkgo.GinkgoT(), grs[0].Username, "keyvalue")
+			assert.Contains(ginkgo.GinkgoT(), grs[0].Desc, "keyvalue consumer")
 			assert.Len(ginkgo.GinkgoT(), grs[0].Plugins, 1)
 			basicAuth, _ := grs[0].Plugins["key-auth"]
 			assert.Equal(ginkgo.GinkgoT(), basicAuth, map[string]interface{}{

@@ -30,7 +30,7 @@ var _ = ginkgo.Describe("suite-annotations: authorization annotations", func() {
 		s := scaffoldFunc()
 
 		ginkgo.It("enable keyAuth in ingress networking/v1", func() {
-			err := s.ApisixConsumerKeyAuthCreated("foo", "bar")
+			err := s.ApisixConsumerKeyAuthCreated("foo", "foo consumer", "bar")
 			assert.Nil(ginkgo.GinkgoT(), err, "creating keyAuth ApisixConsumer")
 
 			// Wait until the ApisixConsumer create event was delivered.
@@ -78,7 +78,7 @@ spec:
 		})
 
 		ginkgo.It("enable keyAuth in ingress networking/v1beta1", func() {
-			err := s.ApisixConsumerKeyAuthCreated("foo", "bar")
+			err := s.ApisixConsumerKeyAuthCreated("foo", "foo consumer", "bar")
 			assert.Nil(ginkgo.GinkgoT(), err, "creating keyAuth ApisixConsumer")
 
 			// Wait until the ApisixConsumer create event was delivered.
@@ -124,7 +124,7 @@ spec:
 		})
 
 		ginkgo.It("enable basicAuth in ingress networking/v1", func() {
-			err := s.ApisixConsumerBasicAuthCreated("jack1", "jack1-username", "jack1-password")
+			err := s.ApisixConsumerBasicAuthCreated("jack1", "jack1 consumer", "jack1-username", "jack1-password")
 			assert.Nil(ginkgo.GinkgoT(), err, "creating keyAuth ApisixConsumer")
 
 			// Wait until the ApisixConsumer create event was delivered.
@@ -172,7 +172,7 @@ spec:
 		})
 
 		ginkgo.It("enable basicAuth in ingress networking/v1beta1", func() {
-			err := s.ApisixConsumerBasicAuthCreated("jack1", "jack1-username", "jack1-password")
+			err := s.ApisixConsumerBasicAuthCreated("jack1", "jack1 consumer", "jack1-username", "jack1-password")
 			assert.Nil(ginkgo.GinkgoT(), err, "creating keyAuth ApisixConsumer")
 
 			// Wait until the ApisixConsumer create event was delivered.
