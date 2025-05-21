@@ -1,0 +1,13 @@
+apiVersion: apisix.apache.org/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: httpbin
+spec:
+  targetRefs:
+  - name: httpbin
+    kind: Service
+    group: ""
+  timeout:
+    send: 10s
+    read: 10s
+    connect: 10s

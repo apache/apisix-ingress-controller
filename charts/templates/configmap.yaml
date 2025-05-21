@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-ingress-config
+  namespace: {{ .Release.Namespace }}
+data:
+  config.yaml: |
+    log_level: {{ .Values.config.logLevel | default "info" }}
+
+    controller_name: {{ .Values.config.controllerName | default "apisix.apache.org/apisix-ingress-controller" }}
+    
+    leader_election_id: {{ .Values.config.leaderElection.id | default "apisix-ingress-controller-leader" }}
+    
+    leader_election:
+      
+      leaseDuration: {{ .Values.config.leaderElection.leaseDuration | default "15s" }}
+      
+      renewDeadline: {{ .Values.config.leaderElection.renewDeadline | default "10s" }}
+      
+      retryPeriod: {{ .Values.config.leaderElection.retryPeriod | default "2s" }}
+      
+      disable: {{ .Values.config.leaderElection.disable | default false }}
+      
+    metrics_addr: {{ .Values.config.metricsAddr | default ":8080" }}
+    
+    enable_http2: {{ .Values.config.enableHTTP2 | default false }}
+    
+    probe_addr: {{ .Values.config.probeAddr | default ":8081" }}
+    
+    secure_metrics: {{ .Values.config.secureMetrics | default "" }}
+    
+    exec_adc_timeout: {{ .Values.config.execADCTimeout | default "15s" }}
+
+    provider:
+      sync_period: {{ .Values.config.provider.syncPeriod | default "0s" }}
+
+      init_sync_delay: {{ .Values.config.provider.initSyncDelay | default "20m" }}

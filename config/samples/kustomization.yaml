@@ -1,0 +1,5 @@
+## Append samples of your project ##
+configMapGenerator:
+  - name: controller-config
+    files:
+      - config.yaml

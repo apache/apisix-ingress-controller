@@ -1,0 +1,158 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.15.0
+  name: gatewayproxies.apisix.apache.org
+spec:
+  group: apisix.apache.org
+  names:
+    kind: GatewayProxy
+    listKind: GatewayProxyList
+    plural: gatewayproxies
+    singular: gatewayproxy
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: GatewayProxy is the Schema for the gatewayproxies API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              GatewayProxySpec defines the desired state and configuration of a GatewayProxy,
+              including networking settings, global plugins, and plugin metadata.
+            properties:
+              pluginMetadata:
+                additionalProperties:
+                  x-kubernetes-preserve-unknown-fields: true
+                description: PluginMetadata configures common configurations shared
+                  by all plugin instances of the same name.
+                type: object
+              plugins:
+                description: Plugins configure global plugins.
+                items:
+                  description: GatewayProxyPlugin contains plugin configurations.
+                  properties:
+                    config:
+                      description: Config defines the plugin's configuration details.
+                      x-kubernetes-preserve-unknown-fields: true
+                    enabled:
+                      description: Enabled defines whether the plugin is enabled.
+                      type: boolean
+                    name:
+                      description: Name is the name of the plugin.
+                      type: string
+                  type: object
+                type: array
+              provider:
+                description: Provider configures the provider details.
+                properties:
+                  controlPlane:
+                    description: ControlPlane specifies the configuration for control
+                      plane provider.
+                    properties:
+                      auth:
+                        description: Auth specifies the authentication configurations.
+                        properties:
+                          adminKey:
+                            description: AdminKey specifies the admin key authentication
+                              configuration.
+                            properties:
+                              value:
+                                description: Value sets the admin key value explicitly
+                                  (not recommended for production).
+                                type: string
+                              valueFrom:
+                                description: ValueFrom specifies the source of the
+                                  admin key.
+                                properties:
+                                  secretKeyRef:
+                                    description: SecretKeyRef references a key in
+                                      a Secret.
+                                    properties:
+                                      key:
+                                        description: Key is the key in the secret
+                                          to retrieve the secret from.
+                                        type: string
+                                      name:
+                                        description: Name is the name of the secret.
+                                        type: string
+                                    required:
+                                    - key
+                                    - name
+                                    type: object
+                                type: object
+                            type: object
+                          type:
+                            description: |-
+                              Type specifies the type of authentication.
+                              Can only be `AdminKey`.
+                            enum:
+                            - AdminKey
+                            type: string
+                        required:
+                        - type
+                        type: object
+                      endpoints:
+                        description: Endpoints specifies the list of control plane
+                          endpoints.
+                        items:
+                          type: string
+                        minItems: 1
+                        type: array
+                      tlsVerify:
+                        description: TlsVerify specifies whether to verify the TLS
+                          certificate of the control plane.
+                        type: boolean
+                    required:
+                    - auth
+                    - endpoints
+                    type: object
+                  type:
+                    description: Type specifies the type of provider. Can only be
+                      `ControlPlane`.
+                    enum:
+                    - ControlPlane
+                    type: string
+                required:
+                - type
+                type: object
+                x-kubernetes-validations:
+                - message: controlPlane must be specified when type is ControlPlane
+                  rule: 'self.type == ''ControlPlane'' ? has(self.controlPlane) :
+                    true'
+              publishService:
+                description: |-
+                  PublishService specifies the LoadBalancer-type Service whose external address the controller uses to
+                  update the status of Ingress resources.
+                type: string
+              statusAddress:
+                description: |-
+                  StatusAddress specifies the external IP addresses that the controller uses to populate the status field
+                  of GatewayProxy or Ingress resources for developers to access.
+                items:
+                  type: string
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true

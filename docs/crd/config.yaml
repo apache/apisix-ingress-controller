@@ -1,0 +1,13 @@
+processor:
+  # RE2 regular expressions describing types that should be excluded from the generated documentation.
+  ignoreTypes:
+    - "List$"
+  # RE2 regular expressions describing type fields that should be excluded from the generated documentation.
+  ignoreFields:
+    - "status$"
+    - "TypeMeta$"
+
+render:
+  # Version of Kubernetes to use when generating links to Kubernetes API documentation.
+  # NOTE: Quotes are required, otherwise the value will be intepreted as a number so versions ending with `0` like 1.30 would be covreted to "1.3" in results.
+  kubernetesVersion: "1.30"

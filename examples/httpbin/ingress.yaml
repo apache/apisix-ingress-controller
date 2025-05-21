@@ -1,0 +1,50 @@
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  name: apisix-proxy-config
+  namespace: default
+spec:
+  provider:
+    type: ControlPlane
+    controlPlane:
+      endpoints:
+      - ${ADMIN_ENDPOINT}   # https://127.0.0.1:7443
+      auth:
+        type: AdminKey
+        adminKey:
+          value: "${ADMIN_KEY}"
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: apisix
+spec:
+  controller: "apisix.apache.org/apisix-ingress-controller"
+  parameters:
+    apiGroup: "apisix.apache.org"
+    kind: "GatewayProxy"
+    name: "apisix-proxy-config"
+    namespace: "default"
+    scope: "Namespace"
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: apisix-ingress
+spec:
+  ingressClassName: apisix
+  rules:
+  - host: httpbin.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: httpbin
+            port:
+              number: 80

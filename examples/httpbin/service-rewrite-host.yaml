@@ -1,0 +1,11 @@
+apiVersion: apisix.apache.org/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: httpbin
+spec:
+  targetRefs:
+  - name: httpbin
+    kind: Service
+    group: ""
+  passHost: rewrite
+  upstreamHost: httpbin.example.com

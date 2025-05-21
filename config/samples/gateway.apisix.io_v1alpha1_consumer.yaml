@@ -1,0 +1,19 @@
+apiVersion: apisix.apache.org/v1alpha1
+kind: Consumer
+metadata:
+  name: consumer-sample
+spec:
+  credentials:
+    - type: basic-auth
+      name: basic-auth-sample
+      secretRef:
+        name: basic-auth-sample
+        namespace: default
+    - type: key-auth
+      name: key-auth-sample
+      config:
+        key: sample-key
+  plugins:
+    - name: key-auth
+      config:
+        key: sample-key

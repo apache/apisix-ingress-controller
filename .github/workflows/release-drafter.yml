@@ -22,12 +22,13 @@ on:
   push:
     branches:
       - master
+      - release-v2-dev
     paths-ignore:
       - '.github/**'
 jobs:
   update_release_draft:
     if: github.repository == 'apache/apisix-ingress-controller'
-    runs-on: ubuntu-22.04
+    runs-on: buildjet-2vcpu-ubuntu-2204
     steps:
       - name: Drafting release
         id: release_drafter

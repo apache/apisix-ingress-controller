@@ -1,0 +1,18 @@
+repos:
+  - repo: local
+    hooks:
+      - id: go-mod-tidy
+        name: go mod tidy
+        entry: bash -c 'go mod tidy'
+        language: system
+        pass_filenames: false
+      - id: make-lint
+        name: make lint
+        entry: bash -c 'make lint'
+        language: system
+        pass_filenames: false
+      - id: make-gofmt
+        name: make gofmt
+        entry: bash -c 'make gofmt'
+        language: system
+        pass_filenames: false
