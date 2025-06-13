@@ -21,11 +21,11 @@ on:
   push:
     branches:
       - master
-      - release-v2-dev
+      - next
   pull_request:
     branches:
       - master
-      - release-v2-dev
+      - next
 jobs:
   misspell:
     name: runner / misspell
