@@ -1,35 +1,40 @@
 name: push on dockerhub
 on: 
-  release:
-    types: [published]
+  push:
+    tags:
+      - '*'
       
 jobs:
   docker:
-    runs-on: ubuntu-20.04
+    runs-on: buildjet-2vcpu-ubuntu-2204
     steps:
-      -
-        name: Checkout
-        uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          ref: ${{ github.ref }}  # Use the reference to the release
-      -
-        name: Set up QEMU
+          ref: ${{ github.ref }}
+          submodules: recursive
+      - name: Setup Go Env
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.22"
+
+      - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
-      -
-        name: Set up Docker Buildx
+
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      -
-        name: Login to Docker Hub
+
+      - name: Login to Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ secrets.DOCKER_REGISTRY }}
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       -
-        name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: '${{ github.event.release.tag_name }}'  # Use the release tag as the image tag
+        name: Build and push multi-arch image
+        env:
+          TAG: ${{ github.ref_name }}
+          IMAGE_TAG: ${{ github.ref_name }}
+        run: |
+          echo "building multi-arch images with tag: $TAG"
+          make build-push-multi-arch-image

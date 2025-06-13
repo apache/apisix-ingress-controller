@@ -32,7 +32,7 @@ exec_adc_timeout: 15s                   # The timeout for the ADC to execute.
                                         # The default value is 15 seconds.
 
 provider:
-  type: "api7ee"
+  type: "apisix-standalone"
 
   sync_period: 0s
                                         # The period between two consecutive syncs.
