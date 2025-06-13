@@ -105,8 +105,20 @@ jobs:
 
       - name: Report Conformance Test Result to PR Comment
         if: ${{ github.event_name == 'pull_request' }}
-        uses: mshick/add-pr-comment@v2
-        with:
-          message-id: 'apisix-conformance-test-report'
-          message-path: |
-            report.md
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Check if comment already exists
+          COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.number }}/comments" --jq '.[] | select(.body | contains("# conformance test report")) | .id' | head -1)
+
+          if [ -n "$COMMENT_ID" ]; then
+            # Update existing comment
+            gh api "repos/${{ github.repository }}/issues/comments/$COMMENT_ID" \
+              --method PATCH \
+              --field body="$(cat report.md)"
+          else
+            # Create new comment
+            gh api "repos/${{ github.repository }}/issues/${{ github.event.number }}/comments" \
+              --method POST \
+              --field body="$(cat report.md)"
+          fi
