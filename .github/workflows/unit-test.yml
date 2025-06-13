@@ -22,15 +22,15 @@ on:
   push:
     branches:
       - master
-      - release-v2-dev
+      - next
   pull_request:
     branches:
       - master
-      - release-v2-dev
+      - next
       - 1.8.0
 jobs:
   run-test:
-    runs-on: buildjet-2vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Setup Go Env
