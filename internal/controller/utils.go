@@ -13,6 +13,7 @@
 package controller
 
 import (
+	"cmp"
 	"context"
 	"encoding/pem"
 	"errors"
@@ -29,8 +30,10 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/types"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	"sigs.k8s.io/gateway-api/apis/v1beta1"
@@ -38,16 +41,20 @@ import (
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	"github.com/apache/apisix-ingress-controller/internal/types"
+	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
 const (
-	KindGateway      = "Gateway"
-	KindHTTPRoute    = "HTTPRoute"
-	KindGatewayClass = "GatewayClass"
-	KindIngress      = "Ingress"
-	KindIngressClass = "IngressClass"
-	KindGatewayProxy = "GatewayProxy"
-	KindSecret       = "Secret"
+	KindGateway          = "Gateway"
+	KindHTTPRoute        = "HTTPRoute"
+	KindGatewayClass     = "GatewayClass"
+	KindIngress          = "Ingress"
+	KindIngressClass     = "IngressClass"
+	KindGatewayProxy     = "GatewayProxy"
+	KindSecret           = "Secret"
+	KindService          = "Service"
+	KindApisixGlobalRule = "ApisixGlobalRule"
 )
 
 const defaultIngressClassAnnotation = "ingressclass.kubernetes.io/is-default-class"
@@ -55,6 +62,18 @@ const defaultIngressClassAnnotation = "ingressclass.kubernetes.io/is-default-cla
 var (
 	ErrNoMatchingListenerHostname = errors.New("no matching hostnames in listener")
 )
+
+var (
+	enableReferenceGrant bool
+)
+
+func SetEnableReferenceGrant(enable bool) {
+	enableReferenceGrant = enable
+}
+
+func GetEnableReferenceGrant() bool {
+	return enableReferenceGrant
+}
 
 // IsDefaultIngressClass returns whether an IngressClass is the default IngressClass.
 func IsDefaultIngressClass(obj client.Object) bool {
@@ -240,33 +259,23 @@ func SetRouteConditionAccepted(routeParentStatus *gatewayv1.RouteParentStatus, g
 
 // SetRouteConditionResolvedRefs sets the ResolvedRefs condition with proper reason based on error type
 func SetRouteConditionResolvedRefs(routeParentStatus *gatewayv1.RouteParentStatus, generation int64, err error) {
-	var (
-		reason  string
-		status  = metav1.ConditionTrue
-		message = "backendRefs are resolved"
-	)
-
-	if err != nil {
-		status = metav1.ConditionFalse
-		message = err.Error()
-		reason = string(gatewayv1.RouteReasonResolvedRefs)
-
-		if IsInvalidKindError(err) {
-			reason = string(gatewayv1.RouteReasonInvalidKind)
-		} else if IsBackendNotFoundError(err) {
-			reason = string(gatewayv1.RouteReasonBackendNotFound)
-		}
-	} else {
-		reason = string(gatewayv1.RouteReasonResolvedRefs)
+	var condition = metav1.Condition{
+		Type:               string(gatewayv1.RouteConditionResolvedRefs),
+		Status:             metav1.ConditionTrue,
+		ObservedGeneration: generation,
+		LastTransitionTime: metav1.Now(),
+		Reason:             string(gatewayv1.RouteReasonResolvedRefs),
+		Message:            "backendRefs are resolved",
 	}
 
-	condition := metav1.Condition{
-		Type:               string(gatewayv1.RouteConditionResolvedRefs),
-		Status:             status,
-		Reason:             reason,
-		ObservedGeneration: generation,
-		Message:            message,
-		LastTransitionTime: metav1.Now(),
+	if err != nil {
+		condition.Status = metav1.ConditionFalse
+		condition.Message = err.Error()
+
+		var re ReasonError
+		if errors.As(err, &re) {
+			condition.Reason = re.Reason
+		}
 	}
 
 	if !IsConditionPresentAndEqual(routeParentStatus.Conditions, condition) {
@@ -657,7 +666,6 @@ func getListenerStatus(
 	ctx context.Context,
 	mrgc client.Client,
 	gateway *gatewayv1.Gateway,
-	grants []v1beta1.ReferenceGrant,
 ) ([]gatewayv1.ListenerStatus, error) {
 	statuses := make(map[gatewayv1.SectionName]gatewayv1.ListenerStatus, len(gateway.Spec.Listeners))
 
@@ -745,7 +753,20 @@ func getListenerStatus(
 					conditionProgrammed.Reason = string(gatewayv1.ListenerReasonInvalid)
 					break
 				}
-				if ok := checkReferenceGrantBetweenGatewayAndSecret(gateway.Namespace, ref, grants); !ok {
+				if permitted := checkReferenceGrant(ctx,
+					mrgc,
+					v1beta1.ReferenceGrantFrom{
+						Group:     gatewayv1.GroupName,
+						Kind:      KindGateway,
+						Namespace: v1beta1.Namespace(gateway.Namespace),
+					},
+					gatewayv1.ObjectReference{
+						Group:     corev1.GroupName,
+						Kind:      KindSecret,
+						Name:      ref.Name,
+						Namespace: ref.Namespace,
+					},
+				); !permitted {
 					conditionResolvedRefs.Status = metav1.ConditionFalse
 					conditionResolvedRefs.Reason = string(gatewayv1.ListenerReasonRefNotPermitted)
 					conditionResolvedRefs.Message = "certificateRefs cross namespaces is not permitted"
@@ -753,11 +774,12 @@ func getListenerStatus(
 					conditionProgrammed.Reason = string(gatewayv1.ListenerReasonInvalid)
 					break
 				}
-				ns := gateway.Namespace
-				if ref.Namespace != nil {
-					ns = string(*ref.Namespace)
+
+				secretNN := k8stypes.NamespacedName{
+					Namespace: string(*cmp.Or(ref.Namespace, (*gatewayv1.Namespace)(&gateway.Namespace))),
+					Name:      string(ref.Name),
 				}
-				if err := mrgc.Get(ctx, client.ObjectKey{Namespace: ns, Name: string(ref.Name)}, &secret); err != nil {
+				if err := mrgc.Get(ctx, secretNN, &secret); err != nil {
 					conditionResolvedRefs.Status = metav1.ConditionFalse
 					conditionResolvedRefs.Reason = string(gatewayv1.ListenerReasonInvalidCertificateRef)
 					conditionResolvedRefs.Message = err.Error()
@@ -836,7 +858,7 @@ func SplitMetaNamespaceKey(key string) (namespace, name string, err error) {
 	return "", "", fmt.Errorf("unexpected key format: %q", key)
 }
 
-func ProcessGatewayProxy(r client.Client, tctx *provider.TranslateContext, gateway *gatewayv1.Gateway, rk provider.ResourceKind) error {
+func ProcessGatewayProxy(r client.Client, tctx *provider.TranslateContext, gateway *gatewayv1.Gateway, rk types.NamespacedNameKind) error {
 	if gateway == nil {
 		return nil
 	}
@@ -845,11 +867,7 @@ func ProcessGatewayProxy(r client.Client, tctx *provider.TranslateContext, gatew
 		return nil
 	}
 
-	gatewayKind := provider.ResourceKind{
-		Kind:      gateway.Kind,
-		Namespace: gateway.Namespace,
-		Name:      gateway.Name,
-	}
+	gatewayKind := utils.NamespacedNameKind(gateway)
 
 	ns := gateway.GetNamespace()
 	paramRef := infra.ParametersRef
@@ -891,7 +909,7 @@ func ProcessGatewayProxy(r client.Client, tctx *provider.TranslateContext, gatew
 						"gatewayproxy", gatewayProxy.Name,
 						"secret", secretRef.Name)
 
-					tctx.Secrets[types.NamespacedName{
+					tctx.Secrets[k8stypes.NamespacedName{
 						Namespace: ns,
 						Name:      secretRef.Name,
 					}] = secret
@@ -919,50 +937,34 @@ func FullTypeName(a any) string {
 	return path.Join(path.Dir(pkgPath), name)
 }
 
-// InvalidKindError represents an error when backend reference kind is not supported
-type InvalidKindError struct {
-	Kind string
+type ReasonError struct {
+	Reason  string
+	Message string
 }
 
-// Error implements the error interface
-func (e *InvalidKindError) Error() string {
-	return fmt.Sprintf("%s %s", string(gatewayv1.RouteReasonInvalidKind), e.Kind)
+func (e ReasonError) Error() string {
+	return e.Message
 }
 
-// NewInvalidKindError creates a new InvalidKindError
-func NewInvalidKindError(kind string) *InvalidKindError {
-	return &InvalidKindError{Kind: kind}
-}
-
-// IsInvalidKindError checks if the error is an InvalidKindError
-func IsInvalidKindError(err error) bool {
-	_, ok := err.(*InvalidKindError)
-	return ok
-}
-
-// BackendNotFoundError represents an error when a backend service is not found
-type BackendNotFoundError struct {
-	Name      string
-	Namespace string
-}
-
-// Error implements the error interface
-func (e *BackendNotFoundError) Error() string {
-	return fmt.Sprintf("Service %s/%s not found", e.Namespace, e.Name)
-}
-
-// NewBackendNotFoundError creates a new BackendNotFoundError
-func NewBackendNotFoundError(namespace, name string) *BackendNotFoundError {
-	return &BackendNotFoundError{
-		Name:      name,
-		Namespace: namespace,
+func IsSomeReasonError[Reason ~string](err error, reasons ...Reason) bool {
+	if err == nil {
+		return false
 	}
+	var re ReasonError
+	if !errors.As(err, &re) {
+		return false
+	}
+	if len(reasons) == 0 {
+		return true
+	}
+	return slices.Contains(reasons, Reason(re.Reason))
 }
 
-// IsBackendNotFoundError checks if the error is a BackendNotFoundError
-func IsBackendNotFoundError(err error) bool {
-	_, ok := err.(*BackendNotFoundError)
-	return ok
+func newInvalidKindError[Kind ~string](kind Kind) ReasonError {
+	return ReasonError{
+		Reason:  string(gatewayv1.RouteReasonInvalidKind),
+		Message: fmt.Sprintf("Invalid kind %s, only Service is supported", kind),
+	}
 }
 
 // filterHostnames accepts a list of gateways and an HTTPRoute, and returns a copy of the HTTPRoute with only the hostnames that match the listener hostnames of the gateways.
@@ -1095,23 +1097,46 @@ func isTLSSecretValid(secret *corev1.Secret) (string, bool) {
 	return "", true
 }
 
-func checkReferenceGrantBetweenGatewayAndSecret(gwNamespace string, certRef gatewayv1.SecretObjectReference, grants []v1beta1.ReferenceGrant) bool {
-	// if not cross namespaces
-	if certRef.Namespace == nil || string(*certRef.Namespace) == gwNamespace {
+func referenceGrantPredicates(kind gatewayv1.Kind) predicate.Funcs {
+	var filter = func(obj client.Object) bool {
+		grant, ok := obj.(*v1beta1.ReferenceGrant)
+		if !ok {
+			return false
+		}
+		for _, from := range grant.Spec.From {
+			if from.Kind == kind && string(from.Group) == gatewayv1.GroupName {
+				return true
+			}
+		}
+		return false
+	}
+	predicates := predicate.NewPredicateFuncs(filter)
+	predicates.UpdateFunc = func(e event.UpdateEvent) bool {
+		return filter(e.ObjectOld) || filter(e.ObjectNew)
+	}
+	return predicates
+}
+
+func checkReferenceGrant(ctx context.Context, cli client.Client, obj v1beta1.ReferenceGrantFrom, ref gatewayv1.ObjectReference) bool {
+	if ref.Namespace == nil || *ref.Namespace == obj.Namespace {
 		return true
 	}
 
-	for _, grant := range grants {
-		if grant.Namespace == string(*certRef.Namespace) {
+	if !GetEnableReferenceGrant() {
+		return false
+	}
+
+	var grantList v1beta1.ReferenceGrantList
+	if err := cli.List(ctx, &grantList, client.InNamespace(*ref.Namespace)); err != nil {
+		return false
+	}
+
+	for _, grant := range grantList.Items {
+		if grant.Namespace == string(*ref.Namespace) {
 			for _, from := range grant.Spec.From {
-				gw := v1beta1.ReferenceGrantFrom{
-					Group:     gatewayv1.GroupName,
-					Kind:      KindGateway,
-					Namespace: v1beta1.Namespace(gwNamespace),
-				}
-				if from == gw {
+				if obj == from {
 					for _, to := range grant.Spec.To {
-						if to.Group == corev1.GroupName && to.Kind == KindSecret && (to.Name == nil || *to.Name == certRef.Name) {
+						if to.Group == ref.Group && to.Kind == ref.Kind && (to.Name == nil || *to.Name == ref.Name) {
 							return true
 						}
 					}
@@ -1120,4 +1145,11 @@ func checkReferenceGrantBetweenGatewayAndSecret(gwNamespace string, certRef gate
 		}
 	}
 	return false
+}
+
+func NamespacedName(obj client.Object) k8stypes.NamespacedName {
+	return k8stypes.NamespacedName{
+		Namespace: obj.GetNamespace(),
+		Name:      obj.GetName(),
+	}
 }

@@ -27,7 +27,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	gatewayapisixiov1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	apiv1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -66,7 +67,10 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
-	err = gatewayapisixiov1alpha1.AddToScheme(scheme.Scheme)
+	err = apiv1alpha1.AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = apiv2.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	// +kubebuilder:scaffold:scheme

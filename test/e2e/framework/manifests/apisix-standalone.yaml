@@ -1,0 +1,101 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: apisix-conf
+data:
+  config.yaml: |
+    deployment:
+      role: traditional
+      role_traditional:
+          config_provider: yaml
+      admin:
+        allow_admin:
+        - 0.0.0.0/0
+        admin_key:
+        - key: {{ .AdminKey }}
+          name: admin
+          role: admin
+    nginx_config:
+      worker_processes: 2
+      error_log_level: info
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apisix
+  labels:
+    app.kubernetes.io/name: apisix
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: apisix
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: apisix
+    spec:
+      initContainers:
+        - name: config-setup
+          image: apache/apisix:dev
+          command:
+            - sh
+            - -c
+            - |
+              echo "Copying default config directory to writable volume"
+              cp -r /usr/local/apisix/conf/* /tmp/apisix-conf/
+              echo "Overwriting config.yaml with custom configuration"
+              cp /tmp/config-source/config.yaml /tmp/apisix-conf/config.yaml
+              echo "Config setup completed successfully"
+              ls -la /tmp/apisix-conf/
+          volumeMounts:
+            - name: config-source
+              mountPath: /tmp/config-source
+            - name: config-writable
+              mountPath: /tmp/apisix-conf
+      containers:
+        - name: apisix
+          image: apache/apisix:dev
+          ports:
+            - name: http
+              containerPort: 9080
+              protocol: TCP
+            - name: https
+              containerPort: 9443
+              protocol: TCP
+            - name: admin
+              containerPort: 9180
+              protocol: TCP
+          volumeMounts:
+            - name: config-writable
+              mountPath: /usr/local/apisix/conf
+      volumes:
+        - name: config-source
+          configMap:
+            name: apisix-conf
+        - name: config-writable
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .ServiceName }}
+  labels:
+    app.kubernetes.io/name: apisix
+spec:
+  ports:
+    - port: {{ .ServiceHTTPPort }}
+      name: http
+      protocol: TCP
+      targetPort: 9080
+    - port: {{ .ServiceHTTPSPort }}
+      name: https
+      protocol: TCP
+      targetPort: 9443
+    - port: 9180
+      name: admin
+      protocol: TCP
+      targetPort: 9180
+  selector:
+    app.kubernetes.io/name: apisix 
+  type: {{ .ServiceType | default "NodePort" }}

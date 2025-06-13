@@ -26,6 +26,8 @@ type Cache interface {
 	InsertService(*types.Service) error
 	// InsertConsumer adds or updates consumer to cache.
 	InsertConsumer(*types.Consumer) error
+	// InsertGlobalRule adds or updates global rule to cache.
+	InsertGlobalRule(*types.GlobalRuleItem) error
 
 	// GetSSL finds the ssl from cache according to the primary index (id).
 	GetSSL(string) (*types.SSL, error)
@@ -33,13 +35,17 @@ type Cache interface {
 	GetService(string) (*types.Service, error)
 	// GetConsumer finds the consumer from cache according to the primary index (username).
 	GetConsumer(string) (*types.Consumer, error)
+	// GetGlobalRule finds the global rule from cache according to the primary index (id).
+	GetGlobalRule(string) (*types.GlobalRuleItem, error)
 
 	// DeleteSSL deletes the specified ssl in cache.
 	DeleteSSL(*types.SSL) error
 	// DeleteUpstream deletes the specified upstream in cache.
 	DeleteService(*types.Service) error
-	// DeleteGlobalRule deletes the specified stream_route in cache.
+	// DeleteConsumer deletes the specified consumer in cache.
 	DeleteConsumer(*types.Consumer) error
+	// DeleteGlobalRule deletes the specified global rule in cache.
+	DeleteGlobalRule(*types.GlobalRuleItem) error
 
 	// ListSSL lists all ssl objects in cache.
 	ListSSL(...ListOption) ([]*types.SSL, error)
@@ -47,6 +53,8 @@ type Cache interface {
 	ListServices(...ListOption) ([]*types.Service, error)
 	// ListConsumers lists all consumer objects in cache.
 	ListConsumers(...ListOption) ([]*types.Consumer, error)
+	// ListGlobalRules lists all global rule objects in cache.
+	ListGlobalRules(...ListOption) ([]*types.GlobalRuleItem, error)
 }
 
 type ListOption interface {

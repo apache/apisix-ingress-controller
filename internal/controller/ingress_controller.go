@@ -41,7 +41,9 @@ import (
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
+	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
 // IngressReconciler reconciles a Ingress object.
@@ -52,6 +54,8 @@ type IngressReconciler struct { //nolint:revive
 
 	Provider     provider.Provider
 	genericEvent chan event.GenericEvent
+
+	Updater status.Updater
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -185,7 +189,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// update the status of related resources
-	UpdateStatus(r.Client, r.Log, tctx)
+	UpdateStatus(r.Updater, r.Log, tctx)
 
 	// update the ingress status
 	if err := r.updateStatus(ctx, tctx, ingress, ingressClass); err != nil {
@@ -598,11 +602,7 @@ func (r *IngressReconciler) processBackendService(tctx *provider.TranslateContex
 func (r *IngressReconciler) updateStatus(ctx context.Context, tctx *provider.TranslateContext, ingress *networkingv1.Ingress, ingressClass *networkingv1.IngressClass) error {
 	var loadBalancerStatus networkingv1.IngressLoadBalancerStatus
 
-	ingressClassKind := provider.ResourceKind{
-		Kind:      ingressClass.Kind,
-		Namespace: ingressClass.Namespace,
-		Name:      ingressClass.Name,
-	}
+	ingressClassKind := utils.NamespacedNameKind(ingressClass)
 
 	gatewayProxy, ok := tctx.GatewayProxies[ingressClassKind]
 	if !ok {
@@ -661,7 +661,20 @@ func (r *IngressReconciler) updateStatus(ctx context.Context, tctx *provider.Tra
 	// update the load balancer status
 	if len(loadBalancerStatus.Ingress) > 0 && !reflect.DeepEqual(ingress.Status.LoadBalancer, loadBalancerStatus) {
 		ingress.Status.LoadBalancer = loadBalancerStatus
-		return r.Status().Update(ctx, ingress)
+		r.Updater.Update(status.Update{
+			NamespacedName: NamespacedName(ingress),
+			Resource:       ingress.DeepCopy(),
+			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
+				t, ok := obj.(*networkingv1.Ingress)
+				if !ok {
+					err := fmt.Errorf("unsupported object type %T", obj)
+					panic(err)
+				}
+				t.Status = ingress.Status
+				return t
+			}),
+		})
+		return nil
 	}
 
 	return nil
@@ -673,17 +686,8 @@ func (r *IngressReconciler) processIngressClassParameters(ctx context.Context, t
 		return nil
 	}
 
-	ingressClassKind := provider.ResourceKind{
-		Kind:      ingressClass.Kind,
-		Namespace: ingressClass.Namespace,
-		Name:      ingressClass.Name,
-	}
-
-	ingressKind := provider.ResourceKind{
-		Kind:      ingress.Kind,
-		Namespace: ingress.Namespace,
-		Name:      ingress.Name,
-	}
+	ingressClassKind := utils.NamespacedNameKind(ingressClass)
+	ingressKind := utils.NamespacedNameKind(ingress)
 
 	parameters := ingressClass.Spec.Parameters
 	// check if the parameters reference GatewayProxy

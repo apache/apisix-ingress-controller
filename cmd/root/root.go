@@ -20,7 +20,7 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 
 	"go.uber.org/zap/zapcore"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"github.com/go-logr/zapr"

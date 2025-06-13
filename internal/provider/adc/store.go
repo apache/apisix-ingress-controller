@@ -16,6 +16,8 @@ import (
 	"sync"
 
 	"github.com/api7/gopkg/pkg/log"
+	"github.com/google/uuid"
+	"go.uber.org/zap"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
@@ -24,7 +26,6 @@ import (
 
 type Store struct {
 	cacheMap          map[string]cache.Cache
-	globalruleMap     map[string]adctypes.GlobalRule
 	pluginMetadataMap map[string]adctypes.PluginMetadata
 
 	sync.Mutex
@@ -33,7 +34,6 @@ type Store struct {
 func NewStore() *Store {
 	return &Store{
 		cacheMap:          make(map[string]cache.Cache),
-		globalruleMap:     make(map[string]adctypes.GlobalRule),
 		pluginMetadataMap: make(map[string]adctypes.PluginMetadata),
 	}
 }
@@ -105,7 +105,32 @@ func (s *Store) Insert(name string, resourceTypes []string, resources adctypes.R
 				}
 			}
 		case "global_rule":
-			s.globalruleMap[name] = resources.GlobalRules
+			// List existing global rules that match the selector
+			globalRules, err := targetCache.ListGlobalRules(selector)
+			if err != nil {
+				return err
+			}
+			// Delete existing matching global rules
+			for _, globalRule := range globalRules {
+				if err := targetCache.DeleteGlobalRule(globalRule); err != nil {
+					return err
+				}
+			}
+			// Convert GlobalRule (Plugins) to GlobalRuleItem and insert
+			if len(resources.GlobalRules) > 0 {
+				id := name + "-" + uuid.NewString()
+				globalRuleItem := &adctypes.GlobalRuleItem{
+					Metadata: adctypes.Metadata{
+						ID:     id,
+						Name:   id,
+						Labels: Labels,
+					},
+					Plugins: adctypes.Plugins(resources.GlobalRules),
+				}
+				if err := targetCache.InsertGlobalRule(globalRuleItem); err != nil {
+					return err
+				}
+			}
 		case "plugin_metadata":
 			s.pluginMetadataMap[name] = resources.PluginMetadata
 		default:
@@ -160,7 +185,15 @@ func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]st
 				}
 			}
 		case "global_rule":
-			delete(s.globalruleMap, name)
+			globalRules, err := targetCache.ListGlobalRules(selector)
+			if err != nil {
+				log.Errorf("failed to list global rules: %v", err)
+			}
+			for _, globalRule := range globalRules {
+				if err := targetCache.DeleteGlobalRule(globalRule); err != nil {
+					log.Errorf("failed to delete global rule %s: %v", globalRule.ID, err)
+				}
+			}
 		case "plugin_metadata":
 			delete(s.pluginMetadataMap, name)
 		}
@@ -176,13 +209,22 @@ func (s *Store) GetResources(name string) (*adctypes.Resources, error) {
 	defer s.Unlock()
 	targetCache, ok := s.cacheMap[name]
 	if !ok {
-		return nil, nil
+		return &adctypes.Resources{}, nil
 	}
 	var globalrule adctypes.GlobalRule
 	var metadata adctypes.PluginMetadata
-	if global, ok := s.globalruleMap[name]; ok {
-		globalrule = global.DeepCopy()
+	// Get all global rules from cache and merge them
+	globalRuleItems, _ := targetCache.ListGlobalRules()
+	if len(globalRuleItems) > 0 {
+		merged := make(adctypes.Plugins)
+		for _, item := range globalRuleItems {
+			for k, v := range item.Plugins {
+				merged[k] = v
+			}
+		}
+		globalrule = adctypes.GlobalRule(merged)
 	}
+	log.Debugw("get resources global rule items", zap.Any("globalRuleItems", globalRuleItems))
 	if meta, ok := s.pluginMetadataMap[name]; ok {
 		metadata = meta.DeepCopy()
 	}

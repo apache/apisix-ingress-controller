@@ -3,7 +3,6 @@ ARG ENABLE_PROXY=false
 FROM node:22 AS node_builder
 
 ARG TARGETARCH
-ARG ADC_COMMIT=78484e87a0168e0f86d130bfae8f808d0d1a1e41
 
 WORKDIR /app
 
@@ -11,7 +10,6 @@ RUN apt update \
     && apt install -y git \
     && git clone --branch main https://github.com/api7/adc.git \
     && cd adc \
-    && git checkout ${ADC_COMMIT} \
     && corepack enable pnpm \
     && pnpm install \
     && NODE_ENV=production npx nx build cli \
@@ -22,10 +20,13 @@ RUN apt update \
     && rm -rf /app
 
 FROM debian:bullseye-slim
+
+ARG TARGETARCH
+
 WORKDIR /app
 
 COPY --from=node_builder /bin/adc /bin/adc
-COPY ./bin/apisix-ingress-controller .
+COPY ./bin/apisix-ingress-controller_${TARGETARCH} ./apisix-ingress-controller
 COPY ./config/samples/config.yaml ./conf/config.yaml
 
 ENTRYPOINT ["/app/apisix-ingress-controller"]

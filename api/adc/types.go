@@ -103,6 +103,13 @@ func (g *GlobalRule) DeepCopy() GlobalRule {
 	return GlobalRule(copied)
 }
 
+// +k8s:deepcopy-gen=true
+type GlobalRuleItem struct {
+	Metadata `json:",inline" yaml:",inline"`
+
+	Plugins Plugins `json:"plugins" yaml:"plugins"`
+}
+
 type PluginMetadata Plugins
 
 func (p *PluginMetadata) DeepCopy() PluginMetadata {

@@ -25,13 +25,15 @@ enable_http2: false                     # Whether to enable HTTP/2 for the serve
 probe_addr: ":8081"                     # The address the probe endpoint binds to.
                                         # The default value is ":8081".
 
-secure_metrics: ""                      # The secure metrics configuration.
+secure_metrics: false                      # The secure metrics configuration.
                                         # The default value is "" (empty).
 
 exec_adc_timeout: 15s                   # The timeout for the ADC to execute.
                                         # The default value is 15 seconds.
 
 provider:
+  type: "api7ee"
+
   sync_period: 0s
                                         # The period between two consecutive syncs.
                                         # The default value is 0 seconds, which means the controller will not sync.

@@ -117,6 +117,7 @@ type ControlPlaneProvider struct {
 	// +kubebuilder:validation:MinItems=1
 	Endpoints []string `json:"endpoints"`
 
+	Service *ProviderService `json:"service,omitempty"`
 	// TlsVerify specifies whether to verify the TLS certificate of the control plane.
 	// +optional
 	TlsVerify *bool `json:"tlsVerify,omitempty"`
@@ -124,6 +125,14 @@ type ControlPlaneProvider struct {
 	// Auth specifies the authentication configurations.
 	// +kubebuilder:validation:Required
 	Auth ControlPlaneAuth `json:"auth"`
+}
+
+type ProviderService struct {
+	Name string `json:"name"`
+
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
+	Port int32 `json:"port,omitempty"`
 }
 
 // +kubebuilder:object:root=true

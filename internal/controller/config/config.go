@@ -21,7 +21,7 @@ import (
 	"text/template"
 	"time"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 
 	"github.com/apache/apisix-ingress-controller/internal/types"
 )
@@ -46,6 +46,7 @@ func NewDefaultConfig() *Config {
 		LeaderElection:   NewLeaderElection(),
 		ExecADCTimeout:   types.TimeDuration{Duration: 15 * time.Second},
 		ProviderConfig: ProviderConfig{
+			Type:          ProviderTypeAPI7EE,
 			SyncPeriod:    types.TimeDuration{Duration: 0},
 			InitSyncDelay: types.TimeDuration{Duration: 20 * time.Minute},
 		},
@@ -104,7 +105,24 @@ func (c *Config) Validate() error {
 	if c.ControllerName == "" {
 		return fmt.Errorf("controller_name is required")
 	}
+	if err := validateProvider(c.ProviderConfig); err != nil {
+		return err
+	}
 	return nil
+}
+
+func validateProvider(config ProviderConfig) error {
+	switch config.Type {
+	case ProviderTypeStandalone:
+		if config.SyncPeriod.Duration <= 0 {
+			return fmt.Errorf("sync_period must be greater than 0 for standalone provider")
+		}
+		return nil
+	case ProviderTypeAPI7EE:
+		return nil
+	default:
+		return fmt.Errorf("unsupported provider type: %s", config.Type)
+	}
 }
 
 func GetControllerName() string {

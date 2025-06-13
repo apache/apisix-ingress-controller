@@ -14,6 +14,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -32,7 +33,9 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
+	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
 // ConsumerReconciler  reconciles a Gateway object.
@@ -42,6 +45,8 @@ type ConsumerReconciler struct { //nolint:revive
 	Log    logr.Logger
 
 	Provider provider.Provider
+
+	Updater status.Updater
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -211,11 +216,7 @@ func (r *ConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		statusErr = err
 	}
 
-	rk := provider.ResourceKind{
-		Kind:      consumer.Kind,
-		Namespace: consumer.Namespace,
-		Name:      consumer.Name,
-	}
+	rk := utils.NamespacedNameKind(consumer)
 
 	if err := ProcessGatewayProxy(r.Client, tctx, gateway, rk); err != nil {
 		r.Log.Error(err, "failed to process gateway proxy", "gateway", gateway)
@@ -232,9 +233,7 @@ func (r *ConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		statusErr = err
 	}
 
-	if err := r.updateStatus(ctx, consumer, statusErr); err != nil {
-		return ctrl.Result{}, err
-	}
+	r.updateStatus(consumer, statusErr)
 
 	return ctrl.Result{}, nil
 }
@@ -269,20 +268,29 @@ func (r *ConsumerReconciler) processSpec(ctx context.Context, tctx *provider.Tra
 	return nil
 }
 
-func (r *ConsumerReconciler) updateStatus(ctx context.Context, consumer *v1alpha1.Consumer, err error) error {
+func (r *ConsumerReconciler) updateStatus(consumer *v1alpha1.Consumer, err error) {
 	condition := NewCondition(consumer.Generation, true, "Successfully")
 	if err != nil {
 		condition = NewCondition(consumer.Generation, false, err.Error())
 	}
 	if !VerifyConditions(&consumer.Status.Conditions, condition) {
-		return nil
+		return
 	}
 	meta.SetStatusCondition(&consumer.Status.Conditions, condition)
-	if err := r.Status().Update(ctx, consumer); err != nil {
-		r.Log.Error(err, "failed to update consumer status", "consumer", consumer)
-		return err
-	}
-	return nil
+
+	r.Updater.Update(status.Update{
+		NamespacedName: NamespacedName(consumer),
+		Resource:       consumer.DeepCopy(),
+		Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
+			t, ok := obj.(*v1alpha1.Consumer)
+			if !ok {
+				err := fmt.Errorf("unsupported object type %T", obj)
+				panic(err)
+			}
+			t.Status = consumer.Status
+			return t
+		}),
+	})
 }
 
 func (r *ConsumerReconciler) getGateway(ctx context.Context, consumer *v1alpha1.Consumer) (*gatewayv1.Gateway, error) {

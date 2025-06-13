@@ -15,21 +15,7 @@ rules:
   - ""
   resources:
   - namespaces
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
   - secrets
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
   - services
   verbs:
   - get
@@ -38,64 +24,36 @@ rules:
 - apiGroups:
   - apisix.apache.org
   resources:
+  - apisixconsumers
+  - apisixglobalrules
+  - apisixpluginconfigs
+  - apisixroutes
+  - apisixtls
+  - apisixupstreams
   - backendtrafficpolicies
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - apisix.apache.org
-  resources:
-  - backendtrafficpolicies/status
-  verbs:
-  - get
-  - update
-- apiGroups:
-  - apisix.apache.org
-  resources:
   - consumers
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - apisix.apache.org
-  resources:
-  - consumers/status
-  verbs:
-  - get
-  - update
-- apiGroups:
-  - apisix.apache.org
-  resources:
   - gatewayproxies
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - apisix.apache.org
-  resources:
   - httproutepolicies
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - apisix.apache.org
-  resources:
-  - httproutepolicies/status
-  verbs:
-  - get
-  - update
-- apiGroups:
-  - apisix.apache.org
-  resources:
   - pluginconfigs
   verbs:
   - get
   - list
   - watch
+- apiGroups:
+  - apisix.apache.org
+  resources:
+  - apisixconsumers/status
+  - apisixglobalrules/status
+  - apisixpluginconfigs/status
+  - apisixroutes/status
+  - apisixtls/status
+  - apisixupstreams/status
+  - backendtrafficpolicies/status
+  - consumers/status
+  - httproutepolicies/status
+  verbs:
+  - get
+  - update
 - apiGroups:
   - coordination.k8s.io
   resources:
@@ -120,21 +78,6 @@ rules:
   - gateway.networking.k8s.io
   resources:
   - gatewayclasses
-  verbs:
-  - get
-  - list
-  - update
-  - watch
-- apiGroups:
-  - gateway.networking.k8s.io
-  resources:
-  - gatewayclasses/status
-  verbs:
-  - get
-  - update
-- apiGroups:
-  - gateway.networking.k8s.io
-  resources:
   - gateways
   verbs:
   - get
@@ -144,7 +87,9 @@ rules:
 - apiGroups:
   - gateway.networking.k8s.io
   resources:
+  - gatewayclasses/status
   - gateways/status
+  - httproutes/status
   verbs:
   - get
   - update
@@ -156,13 +101,6 @@ rules:
   - get
   - list
   - watch
-- apiGroups:
-  - gateway.networking.k8s.io
-  resources:
-  - httproutes/status
-  verbs:
-  - get
-  - update
 - apiGroups:
   - networking.k8s.io
   resources:

@@ -307,6 +307,10 @@ func (t *Translator) translateEndpointSlice(portName *string, weight int, endpoi
 	return nodes
 }
 
+func (t *Translator) TranslateBackendRef(tctx *provider.TranslateContext, ref gatewayv1.BackendRef) (adctypes.UpstreamNodes, error) {
+	return t.translateBackendRef(tctx, ref)
+}
+
 func (t *Translator) translateBackendRef(tctx *provider.TranslateContext, ref gatewayv1.BackendRef) (adctypes.UpstreamNodes, error) {
 	if ref.Kind != nil && *ref.Kind != "Service" {
 		return adctypes.UpstreamNodes{}, fmt.Errorf("kind %s is not supported", *ref.Kind)

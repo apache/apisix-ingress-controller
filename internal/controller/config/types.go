@@ -16,6 +16,13 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/types"
 )
 
+type ProviderType string
+
+const (
+	ProviderTypeStandalone ProviderType = "apisix-standalone"
+	ProviderTypeAPI7EE     ProviderType = "api7ee"
+)
+
 const (
 	// IngressAPISIXLeader is the default election id for the controller
 	// leader election.
@@ -68,6 +75,7 @@ type LeaderElection struct {
 }
 
 type ProviderConfig struct {
+	Type          ProviderType       `json:"type" yaml:"type"`
 	SyncPeriod    types.TimeDuration `json:"sync_period" yaml:"sync_period"`
 	InitSyncDelay types.TimeDuration `json:"init_sync_delay" yaml:"init_sync_delay"`
 }

@@ -19,16 +19,13 @@ import (
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
 func (t *Translator) TranslateIngressClass(tctx *provider.TranslateContext, obj *networkingv1.IngressClass) (*TranslateResult, error) {
 	result := &TranslateResult{}
 
-	rk := provider.ResourceKind{
-		Kind:      obj.Kind,
-		Namespace: obj.Namespace,
-		Name:      obj.Name,
-	}
+	rk := utils.NamespacedNameKind(obj)
 	gatewayProxy, ok := tctx.GatewayProxies[rk]
 	if !ok {
 		log.Debugw("no GatewayProxy found for IngressClass", zap.String("ingressclass", obj.Name))

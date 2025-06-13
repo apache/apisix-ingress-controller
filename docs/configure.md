@@ -28,24 +28,3 @@ metadata:
 spec:
   controllerName: "apisix.apache.org/apisix-ingress-controller"
 ```
-
-### Addresses
-
-The `addresses` field records the status address of the Gateway.
-
-```yaml
-apiVersion: gateway.networking.k8s.io/v1
-  kind: Gateway
-  metadata:
-    name: gateway1
-  spec:
-    gatewayClassName: apisix
-    listeners:
-    - name: http
-      port: 80
-      protocol: HTTP
-  status:
-    addresses:
-    - type: IPAddress
-      value: 172.18.0.4
-```

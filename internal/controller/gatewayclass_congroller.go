@@ -30,6 +30,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
+	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 )
 
 const (
@@ -46,6 +47,8 @@ type GatewayClassReconciler struct { //nolint:revive
 
 	record.EventRecorder
 	Log logr.Logger
+
+	Updater status.Updater
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -111,9 +114,19 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	if !IsConditionPresentAndEqual(gc.Status.Conditions, condition) {
 		r.Log.Info("gatewayclass has been accepted", "gatewayclass", gc.Name)
 		setGatewayClassCondition(gc, condition)
-		if err := r.Status().Update(ctx, gc); err != nil {
-			return ctrl.Result{}, err
-		}
+		r.Updater.Update(status.Update{
+			NamespacedName: NamespacedName(gc),
+			Resource:       gc.DeepCopy(),
+			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
+				t, ok := obj.(*gatewayv1.GatewayClass)
+				if !ok {
+					err := fmt.Errorf("unsupported object type %T", obj)
+					panic(err)
+				}
+				t.Status = gc.Status
+				return t
+			}),
+		})
 	}
 	return ctrl.Result{}, nil
 }

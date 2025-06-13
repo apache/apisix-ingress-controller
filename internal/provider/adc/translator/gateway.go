@@ -31,6 +31,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/id"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
 func (t *Translator) TranslateGateway(tctx *provider.TranslateContext, obj *gatewayv1.Gateway) (*TranslateResult, error) {
@@ -47,11 +48,7 @@ func (t *Translator) TranslateGateway(tctx *provider.TranslateContext, obj *gate
 	}
 	result.SSL = mergeSSLWithSameID(result.SSL)
 
-	rk := provider.ResourceKind{
-		Kind:      obj.Kind,
-		Namespace: obj.Namespace,
-		Name:      obj.Name,
-	}
+	rk := utils.NamespacedNameKind(obj)
 	gatewayProxy, ok := tctx.GatewayProxies[rk]
 	if !ok {
 		log.Debugw("no GatewayProxy found for Gateway", zap.String("gateway", obj.Name))
@@ -108,16 +105,17 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 				// we doesn't allow wildcard hostname
 				if listener.Hostname != nil && *listener.Hostname != "" {
 					sslObj.Snis = append(sslObj.Snis, string(*listener.Hostname))
+				} else {
+					hosts, err := extractHost(cert)
+					if err != nil {
+						return nil, err
+					}
+					if len(hosts) == 0 {
+						log.Warnw("no valid hostname found in certificate", zap.String("secret", secret.Namespace+"/"+secret.Name))
+						continue
+					}
+					sslObj.Snis = append(sslObj.Snis, hosts...)
 				}
-				hosts, err := extractHost(cert)
-				if err != nil {
-					return nil, err
-				}
-				if len(hosts) == 0 {
-					log.Warnw("no valid hostname found in certificate", zap.String("secret", secret.Namespace+"/"+secret.Name))
-					continue
-				}
-				sslObj.Snis = append(sslObj.Snis, hosts...)
 				// Note: use cert as id to avoid duplicate certificate across ssl objects
 				sslObj.ID = id.GenID(string(cert))
 				log.Debugw("generated ssl id", zap.String("ssl id", sslObj.ID), zap.String("secret", secret.Namespace+"/"+secret.Name))

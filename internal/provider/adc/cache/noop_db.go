@@ -40,7 +40,7 @@ func (c *noopCache) InsertService(u *types.Service) error {
 	return nil
 }
 
-func (c *noopCache) InsertGlobalRule(gr *types.GlobalRule) error {
+func (c *noopCache) InsertGlobalRule(gr *types.GlobalRuleItem) error {
 	return nil
 }
 
@@ -56,7 +56,7 @@ func (c *noopCache) GetService(id string) (*types.Service, error) {
 	return nil, nil
 }
 
-func (c *noopCache) GetGlobalRule(id string) (*types.GlobalRule, error) {
+func (c *noopCache) GetGlobalRule(id string) (*types.GlobalRuleItem, error) {
 	return nil, nil
 }
 
@@ -76,7 +76,7 @@ func (c *noopCache) ListStreamRoutes(...ListOption) ([]*types.StreamRoute, error
 	return nil, nil
 }
 
-func (c *noopCache) ListGlobalRules(...ListOption) ([]*types.GlobalRule, error) {
+func (c *noopCache) ListGlobalRules(...ListOption) ([]*types.GlobalRuleItem, error) {
 	return nil, nil
 }
 
@@ -92,7 +92,7 @@ func (c *noopCache) DeleteService(u *types.Service) error {
 	return nil
 }
 
-func (c *noopCache) DeleteGlobalRule(gr *types.GlobalRule) error {
+func (c *noopCache) DeleteGlobalRule(gr *types.GlobalRuleItem) error {
 	return nil
 }
 

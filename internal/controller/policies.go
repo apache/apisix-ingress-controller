@@ -30,6 +30,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
+	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 )
 
@@ -147,7 +148,19 @@ func ProcessBackendTrafficPolicy(
 			processPolicyStatus(policy, tctx, condition, &updated)
 		}
 		if updated {
-			tctx.StatusUpdaters = append(tctx.StatusUpdaters, policy.DeepCopy())
+			tctx.StatusUpdaters = append(tctx.StatusUpdaters, status.Update{
+				NamespacedName: NamespacedName(policy),
+				Resource:       policy.DeepCopy(),
+				Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
+					t, ok := obj.(*v1alpha1.BackendTrafficPolicy)
+					if !ok {
+						err := fmt.Errorf("unsupported object type %T", obj)
+						panic(err)
+					}
+					t.Status = policy.Status
+					return t
+				}),
+			})
 		}
 	}
 	for _, policy := range conflicts {

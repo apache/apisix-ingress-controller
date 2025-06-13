@@ -13,6 +13,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -43,6 +44,7 @@ var (
 	excludes = []string{
 		"test/conformance",
 	}
+	addFlag = flag.Bool("add", false, "automatically add copyright headers to files that are missing them")
 )
 
 func checkCopyright() ([]string, error) {
@@ -136,15 +138,44 @@ func isGenerated(fset *token.FileSet, file *ast.File) bool {
 	return false
 }
 
+func addCopyright(filename string) error {
+	content, err := os.ReadFile(filename)
+	if err != nil {
+		return err
+	}
+
+	// Prepare the copyright header with proper comment formatting
+	header := "// " + strings.ReplaceAll(copyright, "\n", "\n// ") + "\n\n"
+
+	// Add the header to the beginning of the file
+	newContent := header + string(content)
+
+	return os.WriteFile(filename, []byte(newContent), 0644)
+}
+
 func main() {
+	flag.Parse()
+
 	files, err := checkCopyright()
 	if err != nil {
 		log.Fatal(err)
 	}
 	if len(files) > 0 {
-		fmt.Printf("[ERROR] invalid copyright files (%d):\n", len(files))
-		fmt.Println(strings.Join(files, "\n"))
-		os.Exit(1)
+		if *addFlag {
+			fmt.Printf("Adding copyright headers to %d files:\n", len(files))
+			for _, file := range files {
+				fmt.Printf("  %s\n", file)
+				if err := addCopyright(file); err != nil {
+					log.Printf("Failed to add copyright to %s: %v", file, err)
+					continue
+				}
+			}
+			fmt.Printf("Successfully added copyright headers to %d files!\n", len(files))
+		} else {
+			fmt.Printf("[ERROR] invalid copyright files (%d):\n", len(files))
+			fmt.Println(strings.Join(files, "\n"))
+			os.Exit(1)
+		}
 		return
 	}
 	fmt.Println("Good files !")

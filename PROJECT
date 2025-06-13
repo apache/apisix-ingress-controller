@@ -34,4 +34,57 @@ resources:
   kind: HTTPRoutePolicy
   path: github.com/apache/apisix-ingress-controller/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: github.com
+  group: apisix.apache.org
+  kind: ApisixRoute
+  path: github.com/apache/apisix-ingress-controller/api/v2
+  version: v2
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: github.com
+  group: apisix.apache.org
+  kind: ApisixConsumer
+  path: github.com/apache/apisix-ingress-controller/api/v2
+  version: v2
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: github.com
+  group: apisix.apache.org
+  kind: ApisixGlobalRule
+  path: github.com/apache/apisix-ingress-controller/api/v2
+  version: v2
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: github.com
+  group: apisix.apache.org
+  kind: ApisixTls
+  path: github.com/apache/apisix-ingress-controller/api/v2
+  version: v2
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: github.com
+  group: apisix.apache.org
+  kind: ApisixUpstream
+  path: github.com/apache/apisix-ingress-controller/api/v2
+  version: v2
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: github.com
+  group: apisix.apache.org
+  kind: ApisixPluginConfig
+  path: github.com/apache/apisix-ingress-controller/api/v2
+  version: v2
 version: "3"

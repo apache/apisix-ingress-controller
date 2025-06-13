@@ -1,0 +1,9 @@
+apiVersion: apisix.apache.org.github.com/v2
+kind: ApisixTls
+metadata:
+  labels:
+    app.kubernetes.io/name: apisix-ingress-controller
+    app.kubernetes.io/managed-by: kustomize
+  name: apisixtls-sample
+spec:
+  # TODO(user): Add fields here

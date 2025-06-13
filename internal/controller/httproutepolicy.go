@@ -15,9 +15,9 @@ package controller
 import (
 	"cmp"
 	"context"
+	"fmt"
 	"slices"
 
-	"github.com/go-logr/logr"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -28,6 +28,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
+	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 )
 
@@ -43,6 +44,16 @@ func (r *HTTPRouteReconciler) processHTTPRoutePolicies(tctx *provider.TranslateC
 
 	if len(list.Items) == 0 {
 		return nil
+	}
+
+	// set namespace in prentRef if it is not set
+	var parentRefs = make([]gatewayv1.ParentReference, len(httpRoute.Spec.ParentRefs))
+	for i := range httpRoute.Spec.ParentRefs {
+		ref := httpRoute.Spec.ParentRefs[i]
+		if ref.Namespace == nil || *ref.Namespace == "" {
+			ref.Namespace = (*gatewayv1.Namespace)(&httpRoute.Namespace)
+		}
+		parentRefs[i] = ref
 	}
 
 	var conflicts = make(map[types.NamespacedName]v1alpha1.HTTPRoutePolicy)
@@ -70,8 +81,20 @@ func (r *HTTPRouteReconciler) processHTTPRoutePolicies(tctx *provider.TranslateC
 			tctx.HTTPRoutePolicies = append(tctx.HTTPRoutePolicies, policy)
 		}
 
-		if updated := setAncestorsForHTTPRoutePolicyStatus(httpRoute.Spec.ParentRefs, &policy, condition); updated {
-			tctx.StatusUpdaters = append(tctx.StatusUpdaters, &policy)
+		if updated := setAncestorsForHTTPRoutePolicyStatus(parentRefs, &policy, condition); updated {
+			tctx.StatusUpdaters = append(tctx.StatusUpdaters, status.Update{
+				NamespacedName: NamespacedName(&policy),
+				Resource:       policy.DeepCopy(),
+				Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
+					t, ok := obj.(*v1alpha1.HTTPRoutePolicy)
+					if !ok {
+						err := fmt.Errorf("unsupported object type %T", obj)
+						panic(err)
+					}
+					t.Status = policy.Status
+					return t
+				}),
+			})
 		}
 	}
 
@@ -83,7 +106,7 @@ func (r *HTTPRouteReconciler) updateHTTPRoutePolicyStatusOnDeleting(ctx context.
 		list v1alpha1.HTTPRoutePolicyList
 		key  = indexer.GenIndexKeyWithGK(gatewayv1.GroupName, "HTTPRoute", nn.Namespace, nn.Name)
 	)
-	if err := r.List(context.Background(), &list, client.MatchingFields{indexer.PolicyTargetRefs: key}); err != nil {
+	if err := r.List(ctx, &list, client.MatchingFields{indexer.PolicyTargetRefs: key}); err != nil {
 		return err
 	}
 	var (
@@ -96,7 +119,7 @@ func (r *HTTPRouteReconciler) updateHTTPRoutePolicyStatusOnDeleting(ctx context.
 			var namespacedName = types.NamespacedName{Namespace: policy.GetNamespace(), Name: string(ref.Name)}
 			httpRoute, ok := httpRoutes[namespacedName]
 			if !ok {
-				if err := r.Get(context.Background(), namespacedName, &httpRoute); err != nil {
+				if err := r.Get(ctx, namespacedName, &httpRoute); err != nil {
 					continue
 				}
 				httpRoutes[namespacedName] = httpRoute
@@ -104,7 +127,7 @@ func (r *HTTPRouteReconciler) updateHTTPRoutePolicyStatusOnDeleting(ctx context.
 			parentRefs = append(parentRefs, httpRoute.Spec.ParentRefs...)
 		}
 		// delete AncestorRef which is not exist in the all parentRefs for each policy
-		updateDeleteAncestors(ctx, r.Client, r.Log, policy, parentRefs)
+		updateDeleteAncestors(r.Updater, policy, parentRefs)
 	}
 
 	return nil
@@ -137,7 +160,19 @@ func (r *IngressReconciler) processHTTPRoutePolicies(tctx *provider.TranslateCon
 	for i := range list.Items {
 		policy := list.Items[i]
 		if updated := setAncestorsForHTTPRoutePolicyStatus(tctx.RouteParentRefs, &policy, condition); updated {
-			tctx.StatusUpdaters = append(tctx.StatusUpdaters, &policy)
+			tctx.StatusUpdaters = append(tctx.StatusUpdaters, status.Update{
+				NamespacedName: NamespacedName(&policy),
+				Resource:       policy.DeepCopy(),
+				Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
+					t, ok := obj.(*v1alpha1.HTTPRoutePolicy)
+					if !ok {
+						err := fmt.Errorf("unsupported object type %T", obj)
+						panic(err)
+					}
+					t.Status = policy.Status
+					return t
+				}),
+			})
 		}
 	}
 
@@ -180,7 +215,7 @@ func (r *IngressReconciler) updateHTTPRoutePolicyStatusOnDeleting(ctx context.Co
 			parentRefs = append(parentRefs, parentRef)
 		}
 		// delete AncestorRef which is not exist in the all parentRefs
-		updateDeleteAncestors(ctx, r.Client, r.Log, policy, parentRefs)
+		updateDeleteAncestors(r.Updater, policy, parentRefs)
 	}
 
 	return nil
@@ -229,7 +264,7 @@ func findPoliciesWhichTargetRefTheRule(ruleName *gatewayv1.SectionName, kind str
 }
 
 // updateDeleteAncestors removes ancestor references from HTTPRoutePolicy statuses that are no longer present in the provided parentRefs.
-func updateDeleteAncestors(ctx context.Context, client client.Client, logger logr.Logger, policy v1alpha1.HTTPRoutePolicy, parentRefs []gatewayv1.ParentReference) {
+func updateDeleteAncestors(updater status.Updater, policy v1alpha1.HTTPRoutePolicy, parentRefs []gatewayv1.ParentReference) {
 	length := len(policy.Status.Ancestors)
 	policy.Status.Ancestors = slices.DeleteFunc(policy.Status.Ancestors, func(ancestor v1alpha2.PolicyAncestorStatus) bool {
 		return !slices.ContainsFunc(parentRefs, func(ref gatewayv1.ParentReference) bool {
@@ -237,8 +272,18 @@ func updateDeleteAncestors(ctx context.Context, client client.Client, logger log
 		})
 	})
 	if length != len(policy.Status.Ancestors) {
-		if err := client.Status().Update(ctx, &policy); err != nil {
-			logger.Error(err, "failed to update HTTPRoutePolicy status")
-		}
+		updater.Update(status.Update{
+			NamespacedName: NamespacedName(&policy),
+			Resource:       policy.DeepCopy(),
+			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
+				t, ok := obj.(*v1alpha1.HTTPRoutePolicy)
+				if !ok {
+					err := fmt.Errorf("unsupported object type %T", obj)
+					panic(err)
+				}
+				t.Status = policy.Status
+				return t
+			}),
+		})
 	}
 }

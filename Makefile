@@ -2,17 +2,18 @@
 
 VERSION ?= 2.0.0
 
-
 IMAGE_TAG ?= dev
 
 IMG ?= apache/apisix-ingress-controller:$(IMAGE_TAG)
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.30.0
-
 KIND_NAME ?= apisix-ingress-cluster
-GATEAY_API_VERSION ?= v1.2.0
 
-TEST_TIMEOUT ?= 45m
+GATEAY_API_VERSION ?= v1.2.0
+ADC_VERSION ?= 0.19.0
+
+TEST_TIMEOUT ?= 60m
+TEST_DIR ?= ./test/e2e/apisix/
 
 # CRD Reference Documentation
 CRD_REF_DOCS_VERSION ?= v0.1.0
@@ -104,6 +105,21 @@ test: manifests generate fmt vet envtest ## Run tests.
 .PHONY: kind-e2e-test
 kind-e2e-test: kind-up build-image kind-load-images e2e-test
 
+# Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
+.PHONY: e2e-test
+e2e-test:
+	@kind get kubeconfig --name $(KIND_NAME) > $$KUBECONFIG
+	go test $(TEST_DIR) -test.timeout=$(TEST_TIMEOUT) -v -ginkgo.v -ginkgo.focus="$(TEST_FOCUS)"
+
+.PHONY: conformance-test
+conformance-test:
+	go test -v ./test/conformance -tags=conformance -timeout 60m
+
+.PHONY: conformance-test-standalone
+conformance-test-standalone:
+	@kind get kubeconfig --name $(KIND_NAME) > $$KUBECONFIG
+	go test -v ./test/conformance/apisix -tags=conformance -timeout 60m
+
 .PHONY: lint
 lint: sort-import golangci-lint ## Run golangci-lint linter
 	$(GOLANGCI_LINT) run
@@ -164,11 +180,11 @@ build-multi-arch:
 .PHONY: build-multi-arch-image
 build-multi-arch-image: build-multi-arch
     # daemon.json: "features":{"containerd-snapshotter": true}
-	@docker buildx build --load --platform linux/amd64,linux/arm64 -t $(IMG) .
+	@docker buildx build --load --platform linux/amd64,linux/arm64 --build-arg ADC_VERSION=$(ADC_VERSION) -t $(IMG) .
 
 .PHONY: build-push-multi-arch-image
 build-push-multi-arch-image: build-multi-arch
-	@docker buildx build --push --platform linux/amd64,linux/arm64 -t $(IMG) .
+	@docker buildx build --push --platform linux/amd64,linux/arm64 --build-arg ADC_VERSION=$(ADC_VERSION) -t $(IMG) .
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
@@ -179,7 +195,12 @@ run: manifests generate fmt vet ## Run a controller from your host.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: docker-build
 docker-build: set-e2e-goos build ## Build docker image with the manager.
-	$(CONTAINER_TOOL) build -t ${IMG} -f Dockerfile .
+	@echo "Building with ADC_VERSION=$(ADC_VERSION)"
+	@if [ "$(strip $(ADC_VERSION))" = "dev" ]; then \
+		$(CONTAINER_TOOL) build -t ${IMG} -f Dockerfile.dev . ; \
+	else \
+		$(CONTAINER_TOOL) build --build-arg ADC_VERSION=${ADC_VERSION} -t ${IMG} -f Dockerfile . ; \
+	fi
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
@@ -255,7 +276,7 @@ GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.4.2
-CONTROLLER_TOOLS_VERSION ?= v0.15.0
+CONTROLLER_TOOLS_VERSION ?= v0.17.2
 ENVTEST_VERSION ?= release-0.18
 GOLANGCI_LINT_VERSION ?= v2.1.5
 
@@ -281,6 +302,10 @@ $(GOLANGCI_LINT): $(LOCALBIN)
 
 gofmt: ## Apply go fmt
 	@gofmt -w -r 'interface{} -> any' .
+	@gofmt -w -r 'FIt -> It' test
+	@gofmt -w -r 'FContext -> Context' test
+	@gofmt -w -r 'FDescribe -> Describe' test
+	@gofmt -w -r 'FDescribeTable -> DescribeTable' test
 	@go fmt ./...
 .PHONY: gofmt
 

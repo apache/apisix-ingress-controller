@@ -32,6 +32,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
 // IngressClassReconciler reconciles a IngressClass object.
@@ -196,11 +197,7 @@ func (r *IngressClassReconciler) processInfrastructure(tctx *provider.TranslateC
 		return fmt.Errorf("failed to get gateway proxy: %w", err)
 	}
 
-	rk := provider.ResourceKind{
-		Kind:      ingressClass.Kind,
-		Namespace: ingressClass.Namespace,
-		Name:      ingressClass.Name,
-	}
+	rk := utils.NamespacedNameKind(ingressClass)
 
 	tctx.GatewayProxies[rk] = *gatewayProxy
 	tctx.ResourceParentRefs[rk] = append(tctx.ResourceParentRefs[rk], rk)

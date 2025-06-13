@@ -25,10 +25,13 @@ type Consumer struct {
 
 	// ConsumerSpec defines the configuration for a consumer, including consumer name,
 	// authentication credentials, and plugin settings.
-	Spec   ConsumerSpec `json:"spec,omitempty"`
-	Status Status       `json:"status,omitempty"`
+	Spec   ConsumerSpec   `json:"spec,omitempty"`
+	Status ConsumerStatus `json:"status,omitempty"`
 }
 
+type ConsumerStatus struct {
+	Status `json:",inline"`
+}
 type ConsumerSpec struct {
 	// GatewayRef specifies the gateway details.
 	GatewayRef GatewayRef `json:"gatewayRef,omitempty"`

@@ -13,12 +13,10 @@
 package adc
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"os"
-	"os/exec"
 	"sync"
 	"time"
 
@@ -30,33 +28,44 @@ import (
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
-	"github.com/apache/apisix-ingress-controller/internal/controller/config"
+	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/provider/adc/translator"
+	types "github.com/apache/apisix-ingress-controller/internal/types"
+	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
 type adcConfig struct {
-	Name       string
-	ServerAddr string
-	Token      string
-	TlsVerify  bool
+	Name        string
+	ServerAddrs []string
+	Token       string
+	TlsVerify   bool
 }
+
+type BackendMode string
+
+const (
+	BackendModeAPISIXStandalone string = "apisix-standalone"
+	BackendModeAPI7EE           string = "api7ee"
+)
 
 type adcClient struct {
 	sync.Mutex
 
-	execLock sync.Mutex
+	syncLock sync.Mutex
 
 	translator *translator.Translator
 	// gateway/ingressclass -> adcConfig
-	configs map[provider.ResourceKind]adcConfig
+	configs map[types.NamespacedNameKind]adcConfig
 	// httproute/consumer/ingress/gateway -> gateway/ingressclass
-	parentRefs map[provider.ResourceKind][]provider.ResourceKind
-
-	syncTimeout time.Duration
+	parentRefs map[types.NamespacedNameKind][]types.NamespacedNameKind
 
 	store *Store
+
+	executor ADCExecutor
+
+	Options
 }
 
 type Task struct {
@@ -67,13 +76,17 @@ type Task struct {
 	configs       []adcConfig
 }
 
-func New() (provider.Provider, error) {
+func New(opts ...Option) (provider.Provider, error) {
+	o := Options{}
+	o.ApplyOptions(opts)
+
 	return &adcClient{
-		syncTimeout: config.ControllerConfig.ExecADCTimeout.Duration,
-		translator:  &translator.Translator{},
-		configs:     make(map[provider.ResourceKind]adcConfig),
-		parentRefs:  make(map[provider.ResourceKind][]provider.ResourceKind),
-		store:       NewStore(),
+		Options:    o,
+		translator: &translator.Translator{},
+		configs:    make(map[types.NamespacedNameKind]adcConfig),
+		parentRefs: make(map[types.NamespacedNameKind][]types.NamespacedNameKind),
+		store:      NewStore(),
+		executor:   &DefaultADCExecutor{},
 	}, nil
 }
 
@@ -85,11 +98,7 @@ func (d *adcClient) Update(ctx context.Context, tctx *provider.TranslateContext,
 		err           error
 	)
 
-	rk := provider.ResourceKind{
-		Kind:      obj.GetObjectKind().GroupVersionKind().Kind,
-		Namespace: obj.GetNamespace(),
-		Name:      obj.GetName(),
-	}
+	rk := utils.NamespacedNameKind(obj)
 
 	switch t := obj.(type) {
 	case *gatewayv1.HTTPRoute:
@@ -107,6 +116,9 @@ func (d *adcClient) Update(ctx context.Context, tctx *provider.TranslateContext,
 	case *networkingv1.IngressClass:
 		result, err = d.translator.TranslateIngressClass(tctx, t.DeepCopy())
 		resourceTypes = append(resourceTypes, "global_rule", "plugin_metadata")
+	case *apiv2.ApisixGlobalRule:
+		result, err = d.translator.TranslateApisixGlobalRule(tctx, t.DeepCopy())
+		resourceTypes = append(resourceTypes, "global_rule")
 	}
 	if err != nil {
 		return err
@@ -152,6 +164,7 @@ func (d *adcClient) Update(ctx context.Context, tctx *provider.TranslateContext,
 		SSLs:           result.SSL,
 		Consumers:      result.Consumers,
 	}
+	log.Debugw("update resources", zap.Any("resources", resources))
 
 	for _, config := range configs {
 		if err := d.store.Insert(config.Name, resourceTypes, resources, label.GenLabel(obj)); err != nil {
@@ -163,14 +176,30 @@ func (d *adcClient) Update(ctx context.Context, tctx *provider.TranslateContext,
 		}
 	}
 
-	// sync update
-	return d.sync(ctx, Task{
-		Name:          obj.GetName(),
-		Labels:        label.GenLabel(obj),
-		Resources:     resources,
-		ResourceTypes: resourceTypes,
-		configs:       configs,
-	})
+	switch d.BackendMode {
+	case BackendModeAPISIXStandalone:
+		// This mode is full synchronization,
+		// which only needs to be saved in cache
+		// and triggered by a timer for synchronization
+		return nil
+	case BackendModeAPI7EE:
+		// if api version is v2, then skip sync
+		if obj.GetObjectKind().GroupVersionKind().GroupVersion() == apiv2.GroupVersion {
+			log.Debugw("api version is v2, skip sync", zap.Any("obj", obj))
+			return nil
+		}
+
+		return d.sync(ctx, Task{
+			Name:          obj.GetName(),
+			Labels:        label.GenLabel(obj),
+			Resources:     resources,
+			ResourceTypes: resourceTypes,
+			configs:       configs,
+		})
+	default:
+		log.Errorw("unknown backend mode", zap.String("mode", d.BackendMode))
+		return errors.New("unknown backend mode: " + d.BackendMode)
+	}
 }
 
 func (d *adcClient) Delete(ctx context.Context, obj client.Object) error {
@@ -192,13 +221,12 @@ func (d *adcClient) Delete(ctx context.Context, obj client.Object) error {
 		labels = label.GenLabel(obj)
 	case *networkingv1.IngressClass:
 		// delete all resources
+	case *apiv2.ApisixGlobalRule:
+		resourceTypes = append(resourceTypes, "global_rule")
+		labels = label.GenLabel(obj)
 	}
 
-	rk := provider.ResourceKind{
-		Kind:      obj.GetObjectKind().GroupVersionKind().Kind,
-		Namespace: obj.GetNamespace(),
-		Name:      obj.GetName(),
-	}
+	rk := utils.NamespacedNameKind(obj)
 
 	configs := d.getConfigs(rk)
 	defer d.deleteConfigs(rk)
@@ -215,20 +243,60 @@ func (d *adcClient) Delete(ctx context.Context, obj client.Object) error {
 
 	log.Debugw("successfully deleted resources from store", zap.Any("object", obj))
 
-	err := d.sync(ctx, Task{
-		Name:          obj.GetName(),
-		Labels:        labels,
-		ResourceTypes: resourceTypes,
-		configs:       configs,
-	})
-	if err != nil {
-		return err
+	switch d.BackendMode {
+	case BackendModeAPISIXStandalone:
+		// Full synchronization is performed on a gateway by gateway basis
+		// and it is not possible to perform scheduled synchronization
+		// on deleted gateway level resources
+		if len(resourceTypes) == 0 {
+			return d.sync(ctx, Task{
+				Name:    obj.GetName(),
+				configs: configs,
+			})
+		}
+		return nil
+	case BackendModeAPI7EE:
+		return d.sync(ctx, Task{
+			Name:          obj.GetName(),
+			Labels:        labels,
+			ResourceTypes: resourceTypes,
+			configs:       configs,
+		})
+	default:
+		log.Errorw("unknown backend mode", zap.String("mode", d.BackendMode))
+		return errors.New("unknown backend mode: " + d.BackendMode)
 	}
+}
 
-	return nil
+func (d *adcClient) Start(ctx context.Context) error {
+	initalSyncDelay := d.InitSyncDelay
+	time.AfterFunc(initalSyncDelay, func() {
+		if err := d.Sync(ctx); err != nil {
+			return
+		}
+	})
+
+	if d.SyncPeriod < 1 {
+		return nil
+	}
+	ticker := time.NewTicker(d.SyncPeriod)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			if err := d.Sync(ctx); err != nil {
+				log.Errorw("failed to sync resources", zap.Error(err))
+			}
+		case <-ctx.Done():
+			return nil
+		}
+	}
 }
 
 func (d *adcClient) Sync(ctx context.Context) error {
+	d.syncLock.Lock()
+	defer d.syncLock.Unlock()
+
 	log.Debug("syncing all resources")
 
 	if len(d.configs) == 0 {
@@ -239,6 +307,8 @@ func (d *adcClient) Sync(ctx context.Context) error {
 	for _, config := range d.configs {
 		cfg[config.Name] = config
 	}
+
+	log.Debugw("syncing resources with multiple configs", zap.Any("configs", cfg))
 
 	for name, config := range cfg {
 		resources, err := d.store.GetResources(name)
@@ -270,108 +340,44 @@ func (d *adcClient) sync(ctx context.Context, task Task) error {
 		return errors.New("no adc configs provided")
 	}
 
-	data, err := json.Marshal(task.Resources)
+	syncFilePath, cleanup, err := prepareSyncFile(task.Resources)
 	if err != nil {
 		return err
+	}
+	defer cleanup()
+
+	args := BuildADCExecuteArgs(syncFilePath, task.Labels, task.ResourceTypes)
+
+	log.Debugw("syncing resources with multiple configs", zap.Any("configs", task.configs))
+	for _, config := range task.configs {
+		if err := d.executor.Execute(ctx, d.BackendMode, config, args); err != nil {
+			log.Errorw("failed to execute adc command", zap.Error(err), zap.Any("config", config))
+			return err
+		}
+	}
+	return nil
+}
+
+func prepareSyncFile(resources any) (string, func(), error) {
+	data, err := json.Marshal(resources)
+	if err != nil {
+		return "", nil, err
 	}
 
 	tmpFile, err := os.CreateTemp("", "adc-task-*.json")
 	if err != nil {
-		return err
+		return "", nil, err
 	}
-	defer func() {
+	cleanup := func() {
 		_ = tmpFile.Close()
 		_ = os.Remove(tmpFile.Name())
-	}()
+	}
+	if _, err := tmpFile.Write(data); err != nil {
+		cleanup()
+		return "", nil, err
+	}
 
 	log.Debugf("generated adc file, filename: %s, json: %s\n", tmpFile.Name(), string(data))
 
-	if _, err := tmpFile.Write(data); err != nil {
-		return err
-	}
-	args := []string{
-		"sync",
-		"-f", tmpFile.Name(),
-	}
-
-	for k, v := range task.Labels {
-		args = append(args, "--label-selector", k+"="+v)
-	}
-	for _, t := range task.ResourceTypes {
-		args = append(args, "--include-resource-type", t)
-	}
-
-	log.Debugw("syncing resources with multiple configs", zap.Any("configs", task.configs))
-	for _, config := range task.configs {
-		if err := d.execADC(ctx, config, args); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (d *adcClient) execADC(ctx context.Context, config adcConfig, args []string) error {
-	d.execLock.Lock()
-	defer d.execLock.Unlock()
-
-	ctxWithTimeout, cancel := context.WithTimeout(ctx, d.syncTimeout)
-	defer cancel()
-	serverAddr := config.ServerAddr
-	token := config.Token
-	tlsVerify := config.TlsVerify
-	if !tlsVerify {
-		args = append(args, "--tls-skip-verify")
-	}
-
-	adcEnv := []string{
-		"ADC_EXPERIMENTAL_FEATURE_FLAGS=remote-state-file,parallel-backend-request",
-		"ADC_RUNNING_MODE=ingress",
-		"ADC_BACKEND=api7ee",
-		"ADC_SERVER=" + serverAddr,
-		"ADC_TOKEN=" + token,
-	}
-
-	var stdout, stderr bytes.Buffer
-	cmd := exec.CommandContext(ctxWithTimeout, "adc", args...)
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	cmd.Env = append(cmd.Env, os.Environ()...)
-	cmd.Env = append(cmd.Env, adcEnv...)
-
-	log.Debug("running adc command", zap.String("command", cmd.String()), zap.Strings("env", adcEnv))
-
-	var result adctypes.SyncResult
-	if err := cmd.Run(); err != nil {
-		stderrStr := stderr.String()
-		stdoutStr := stdout.String()
-		errMsg := stderrStr
-		if errMsg == "" {
-			errMsg = stdoutStr
-		}
-		log.Errorw("failed to run adc",
-			zap.Error(err),
-			zap.String("output", stdoutStr),
-			zap.String("stderr", stderrStr),
-		)
-		return errors.New("failed to sync resources: " + errMsg + ", exit err: " + err.Error())
-	}
-
-	output := stdout.Bytes()
-	if err := json.Unmarshal(output, &result); err != nil {
-		log.Errorw("failed to unmarshal adc output",
-			zap.Error(err),
-			zap.String("stdout", string(output)),
-		)
-		return errors.New("failed to unmarshal adc result: " + err.Error())
-	}
-
-	if result.FailedCount > 0 {
-		log.Errorw("adc sync failed", zap.Any("result", result))
-		failed := result.Failed
-		return errors.New(failed[0].Reason)
-	}
-
-	log.Debugw("adc sync success", zap.Any("result", result))
-	return nil
+	return tmpFile.Name(), cleanup, nil
 }

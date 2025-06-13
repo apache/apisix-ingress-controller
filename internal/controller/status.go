@@ -16,9 +16,9 @@ import (
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
+	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 )
 
@@ -92,11 +92,11 @@ func NewPolicyConflictCondition(observedGeneration int64, message string) metav1
 }
 
 func UpdateStatus(
-	c client.Client,
+	updater status.Updater,
 	log logr.Logger,
 	tctx *provider.TranslateContext,
 ) {
-	for _, obj := range tctx.StatusUpdaters {
-		_ = c.Status().Update(tctx, obj)
+	for _, update := range tctx.StatusUpdaters {
+		updater.Update(update)
 	}
 }
