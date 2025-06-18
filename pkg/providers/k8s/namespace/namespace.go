@@ -68,6 +68,8 @@ func (c *namespaceController) run(ctx context.Context) {
 	}
 	log.Info("namespace controller started")
 	defer log.Info("namespace controller exited")
+	defer c.workqueue.ShutDown()
+
 	for i := 0; i < c.workers; i++ {
 		go c.runWorker(ctx)
 	}
