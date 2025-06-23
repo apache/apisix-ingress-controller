@@ -1,4 +1,4 @@
-apiVersion: apisix.apache.org.github.com/v2
+apiVersion: apisix.apache.org/v2
 kind: ApisixGlobalRule
 metadata:
   labels:

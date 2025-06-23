@@ -13,9 +13,14 @@
 package v2
 
 import (
+	"strings"
+
+	"github.com/pkg/errors"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+
+	"github.com/apache/apisix-ingress-controller/api/adc"
 )
 
 // ApisixRouteSpec is the spec definition for ApisixRouteSpec.
@@ -66,6 +71,7 @@ type ApisixRouteHTTP struct {
 	// Upstreams refer to ApisixUpstream CRD
 	Upstreams []ApisixRouteUpstreamReference `json:"upstreams,omitempty" yaml:"upstreams,omitempty"`
 
+	// +kubebuilder:validation:Optional
 	Websocket        bool   `json:"websocket" yaml:"websocket"`
 	PluginConfigName string `json:"plugin_config_name,omitempty" yaml:"plugin_config_name,omitempty"`
 	// By default, PluginConfigNamespace will be the same as the namespace of ApisixRoute
@@ -118,7 +124,7 @@ type ApisixRouteHTTPMatch struct {
 	//     value:
 	//       - "127.0.0.1"
 	//       - "10.0.5.11"
-	NginxVars []ApisixRouteHTTPMatchExpr `json:"exprs,omitempty" yaml:"exprs,omitempty"`
+	NginxVars ApisixRouteHTTPMatchExprs `json:"exprs,omitempty" yaml:"exprs,omitempty"`
 	// Matches based on a user-defined filtering function.
 	// These functions can accept an input parameter `vars`
 	// which can be used to access the Nginx variables.
@@ -134,7 +140,7 @@ type ApisixRoutePlugin struct {
 	Enable bool `json:"enable" yaml:"enable"`
 	// Plugin configuration.
 	// +kubebuilder:validation:Optional
-	Config ApisixRoutePluginConfig `json:"config" yaml:"config"`
+	Config apiextensionsv1.JSON `json:"config" yaml:"config"`
 	// Plugin configuration secretRef.
 	// +kubebuilder:validation:Optional
 	SecretRef string `json:"secretRef" yaml:"secretRef"`
@@ -153,6 +159,7 @@ type ApisixRouteHTTPBackend struct {
 	// default is endpoints.
 	ResolveGranularity string `json:"resolveGranularity,omitempty" yaml:"resolveGranularity,omitempty"`
 	// Weight of this backend.
+	// +kubebuilder:validation:Optional
 	Weight *int `json:"weight" yaml:"weight"`
 	// Subset specifies a subset for the target Service. The subset should be pre-defined
 	// in ApisixUpstream about this service.
@@ -211,12 +218,105 @@ type ApisixRouteHTTPMatchExpr struct {
 	Op string `json:"op" yaml:"op"`
 	// Set is an array type object of the expression.
 	// It should be used when the Op is "in" or "not_in";
+	// +kubebuilder:validation:Optional
 	Set []string `json:"set" yaml:"set"`
 	// Value is the normal type object for the expression,
 	// it should be used when the Op is not "in" and "not_in".
 	// Set and Value are exclusive so only of them can be set
 	// in the same time.
+	// +kubebuilder:validation:Optional
 	Value *string `json:"value" yaml:"value"`
+}
+
+type ApisixRouteHTTPMatchExprs []ApisixRouteHTTPMatchExpr
+
+func (exprs ApisixRouteHTTPMatchExprs) ToVars() (result adc.Vars, err error) {
+	for _, expr := range exprs {
+		if expr.Subject.Name == "" && expr.Subject.Scope != ScopePath {
+			return result, errors.New("empty subject.name")
+		}
+
+		// process key
+		var (
+			subj string
+			this adc.StringOrSlice
+		)
+		switch expr.Subject.Scope {
+		case ScopeQuery:
+			subj = "arg_" + expr.Subject.Name
+		case ScopeHeader:
+			subj = "http_" + strings.ReplaceAll(strings.ToLower(expr.Subject.Name), "-", "_")
+		case ScopeCookie:
+			subj = "cookie_" + expr.Subject.Name
+		case ScopePath:
+			subj = "uri"
+		case ScopeVariable:
+			subj = expr.Subject.Name
+		default:
+			return result, errors.New("invalid http match expr: subject.scope should be one of [query, header, cookie, path, variable]")
+		}
+		this.SliceVal = append(this.SliceVal, adc.StringOrSlice{StrVal: subj})
+
+		// process operator
+		var (
+			op string
+		)
+		switch expr.Op {
+		case OpEqual:
+			op = "=="
+		case OpGreaterThan:
+			op = ">"
+		case OpGreaterThanEqual:
+			op = ">="
+		case OpIn:
+			op = "in"
+		case OpLessThan:
+			op = "<"
+		case OpLessThanEqual:
+			op = "<="
+		case OpNotEqual:
+			op = "~="
+		case OpNotIn:
+			op = "in"
+		case OpRegexMatch:
+			op = "~~"
+		case OpRegexMatchCaseInsensitive:
+			op = "~*"
+		case OpRegexNotMatch:
+			op = "~~"
+		case OpRegexNotMatchCaseInsensitive:
+			op = "~*"
+		default:
+			return result, errors.New("unknown operator")
+		}
+		if expr.Op == OpNotIn || expr.Op == OpRegexNotMatch || expr.Op == OpRegexNotMatchCaseInsensitive {
+			this.SliceVal = append(this.SliceVal, adc.StringOrSlice{StrVal: "!"})
+		}
+		this.SliceVal = append(this.SliceVal, adc.StringOrSlice{StrVal: op})
+
+		// process value
+		switch expr.Op {
+		case OpIn, OpNotIn:
+			if expr.Set == nil {
+				return result, errors.New("empty set value")
+			}
+			var value adc.StringOrSlice
+			for _, item := range expr.Set {
+				value.SliceVal = append(value.SliceVal, adc.StringOrSlice{StrVal: item})
+			}
+			this.SliceVal = append(this.SliceVal, value)
+		default:
+			if expr.Value == nil {
+				return result, errors.New("empty value")
+			}
+			this.SliceVal = append(this.SliceVal, adc.StringOrSlice{StrVal: *expr.Value})
+		}
+
+		// append to result
+		result = append(result, this.SliceVal)
+	}
+
+	return result, nil
 }
 
 // ApisixRoutePluginConfig is the configuration for

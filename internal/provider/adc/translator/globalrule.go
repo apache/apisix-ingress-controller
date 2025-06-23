@@ -40,22 +40,11 @@ func (t *Translator) TranslateApisixGlobalRule(tctx *provider.TranslateContext, 
 			continue
 		}
 
-		// Parse plugin configuration
-		var pluginConfig map[string]any
-		if plugin.Config != nil {
-			pluginConfig = make(map[string]any)
-			// Convert map[string]apiextensionsv1.JSON to map[string]any
-			for key, jsonValue := range plugin.Config {
-				var value any
-				if err := json.Unmarshal(jsonValue.Raw, &value); err != nil {
-					log.Errorw("failed to parse plugin config",
-						zap.String("plugin", plugin.Name),
-						zap.String("key", key),
-						zap.Error(err),
-					)
-					return nil, err
-				}
-				pluginConfig[key] = value
+		pluginConfig := make(map[string]any)
+		if len(plugin.Config.Raw) > 0 {
+			if err := json.Unmarshal(plugin.Config.Raw, &pluginConfig); err != nil {
+				log.Errorw("failed to unmarshal plugin config", zap.String("plugin", plugin.Name), zap.Error(err))
+				continue
 			}
 		}
 		plugins[plugin.Name] = pluginConfig

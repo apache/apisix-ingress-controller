@@ -29,6 +29,7 @@ type ApisixUpstreamSpec struct {
 	// ExternalNodes contains external nodes the Upstream should use
 	// If this field is set, the upstream will use these nodes directly without any further resolves
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:MinItems=1
 	ExternalNodes []ApisixUpstreamExternalNode `json:"externalNodes,omitempty" yaml:"externalNodes,omitempty"`
 
 	ApisixUpstreamConfig `json:",inline" yaml:",inline"`
@@ -81,17 +82,19 @@ type ApisixUpstreamConfig struct {
 	// The scheme used to talk with the upstream.
 	// Now value can be http, grpc.
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum=http;https;grpc;grpcs;
 	Scheme string `json:"scheme,omitempty" yaml:"scheme,omitempty"`
 
 	// How many times that the proxy (Apache APISIX) should do when
 	// errors occur (error, timeout or bad http status codes like 500, 502).
 	// +kubebuilder:validation:Optional
-	Retries *int `json:"retries,omitempty" yaml:"retries,omitempty"`
+	Retries *int64 `json:"retries,omitempty" yaml:"retries,omitempty"`
 
 	// Timeout settings for the read, send and connect to the upstream.
 	// +kubebuilder:validation:Optional
 	Timeout *UpstreamTimeout `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 
+	// Deprecated: this is no longer support on standalone mode.
 	// The health check configurations for the upstream.
 	// +kubebuilder:validation:Optional
 	HealthCheck *HealthCheck `json:"healthCheck,omitempty" yaml:"healthCheck,omitempty"`
@@ -108,6 +111,7 @@ type ApisixUpstreamConfig struct {
 	// Configures the host when the request is forwarded to the upstream.
 	// Can be one of pass, node or rewrite.
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum=pass;node;rewrite;
 	PassHost string `json:"passHost,omitempty" yaml:"passHost,omitempty"`
 
 	// Specifies the host of the Upstream request. This is only valid if
@@ -115,6 +119,7 @@ type ApisixUpstreamConfig struct {
 	// +kubebuilder:validation:Optional
 	UpstreamHost string `json:"upstreamHost,omitempty" yaml:"upstreamHost,omitempty"`
 
+	// Deprecated: this is no longer support on standalone mode.
 	// Discovery is used to configure service discovery for upstream.
 	// +kubebuilder:validation:Optional
 	Discovery *Discovery `json:"discovery,omitempty" yaml:"discovery,omitempty"`
@@ -145,7 +150,9 @@ type LoadBalancer struct {
 
 // HealthCheck describes the upstream health check parameters.
 type HealthCheck struct {
-	Active  *ActiveHealthCheck  `json:"active" yaml:"active"`
+	// +kubebuilder:validation:Required
+	Active *ActiveHealthCheck `json:"active" yaml:"active"`
+	// +kubebuilder:validation:Optional
 	Passive *PassiveHealthCheck `json:"passive,omitempty" yaml:"passive,omitempty"`
 }
 
@@ -159,17 +166,23 @@ type ApisixUpstreamSubset struct {
 
 // Discovery defines Service discovery related configuration.
 type Discovery struct {
-	ServiceName string            `json:"serviceName" yaml:"serviceName"`
-	Type        string            `json:"type" yaml:"type"`
-	Args        map[string]string `json:"args,omitempty" yaml:"args,omitempty"`
+	ServiceName string `json:"serviceName" yaml:"serviceName"`
+	Type        string `json:"type" yaml:"type"`
+	// +kubebuilder:validation:Optional
+	Args map[string]string `json:"args,omitempty" yaml:"args,omitempty"`
 }
 
 // ActiveHealthCheck defines the active kind of upstream health check.
 type ActiveHealthCheck struct {
-	Type           string                      `json:"type,omitempty" yaml:"type,omitempty"`
-	Timeout        time.Duration               `json:"timeout,omitempty" yaml:"timeout,omitempty"`
-	Concurrency    int                         `json:"concurrency,omitempty" yaml:"concurrency,omitempty"`
-	Host           string                      `json:"host,omitempty" yaml:"host,omitempty"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum=http;https;tcp;
+	Type    string        `json:"type,omitempty" yaml:"type,omitempty"`
+	Timeout time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	// +kubebuilder:validation:Minimum=0
+	Concurrency int    `json:"concurrency,omitempty" yaml:"concurrency,omitempty"`
+	Host        string `json:"host,omitempty" yaml:"host,omitempty"`
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=65535
 	Port           int32                       `json:"port,omitempty" yaml:"port,omitempty"`
 	HTTPPath       string                      `json:"httpPath,omitempty" yaml:"httpPath,omitempty"`
 	StrictTLS      *bool                       `json:"strictTLS,omitempty" yaml:"strictTLS,omitempty"`
@@ -205,17 +218,27 @@ type ActiveHealthCheckUnhealthy struct {
 // PassiveHealthCheckHealthy defines the conditions to judge whether
 // an upstream node is healthy with the passive manner.
 type PassiveHealthCheckHealthy struct {
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:MinItems=1
 	HTTPCodes []int `json:"httpCodes,omitempty" yaml:"httpCodes,omitempty"`
-	Successes int   `json:"successes,omitempty" yaml:"successes,omitempty"`
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=254
+	Successes int `json:"successes,omitempty" yaml:"successes,omitempty"`
 }
 
 // PassiveHealthCheckUnhealthy defines the conditions to judge whether
 // an upstream node is unhealthy with the passive manager.
 type PassiveHealthCheckUnhealthy struct {
-	HTTPCodes    []int `json:"httpCodes,omitempty" yaml:"httpCodes,omitempty"`
-	HTTPFailures int   `json:"httpFailures,omitempty" yaml:"http_failures,omitempty"`
-	TCPFailures  int   `json:"tcpFailures,omitempty" yaml:"tcpFailures,omitempty"`
-	Timeouts     int   `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:MinItems=1
+	HTTPCodes []int `json:"httpCodes,omitempty" yaml:"httpCodes,omitempty"`
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=254
+	HTTPFailures int `json:"httpFailures,omitempty" yaml:"http_failures,omitempty"`
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=254
+	TCPFailures int `json:"tcpFailures,omitempty" yaml:"tcpFailures,omitempty"`
+	Timeouts    int `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 }
 
 func init() {

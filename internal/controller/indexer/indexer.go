@@ -13,8 +13,10 @@
 package indexer
 
 import (
+	"cmp"
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -23,6 +25,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 )
 
 const (
@@ -37,6 +40,8 @@ const (
 	ConsumerGatewayRef        = "consumerGatewayRef"
 	PolicyTargetRefs          = "targetRefs"
 	GatewayClassIndexRef      = "gatewayClassRef"
+	ApisixUpstreamRef         = "apisixUpstreamRef"
+	PluginConfigIndexRef      = "pluginConfigRefs"
 )
 
 func SetupIndexer(mgr ctrl.Manager) error {
@@ -50,6 +55,10 @@ func SetupIndexer(mgr ctrl.Manager) error {
 		setupGatewayProxyIndexer,
 		setupGatewaySecretIndex,
 		setupGatewayClassIndexer,
+		setupApisixRouteIndexer,
+		setupApisixPluginConfigIndexer,
+		setupApisixTlsIndexer,
+		setupApisixConsumerIndexer,
 	} {
 		if err := setup(mgr); err != nil {
 			return err
@@ -84,6 +93,46 @@ func setupConsumerIndexer(mgr ctrl.Manager) error {
 		&v1alpha1.Consumer{},
 		SecretIndexRef,
 		ConsumerSecretIndexFunc,
+	); err != nil {
+		return err
+	}
+	return nil
+}
+
+func setupApisixRouteIndexer(mgr ctrl.Manager) error {
+	var indexers = map[string]func(client.Object) []string{
+		ServiceIndexRef:      ApisixRouteServiceIndexFunc(mgr.GetClient()),
+		SecretIndexRef:       ApisixRouteSecretIndexFunc(mgr.GetClient()),
+		ApisixUpstreamRef:    ApisixRouteApisixUpstreamIndexFunc,
+		PluginConfigIndexRef: ApisixRoutePluginConfigIndexFunc,
+	}
+	for key, f := range indexers {
+		if err := mgr.GetFieldIndexer().IndexField(context.Background(), &apiv2.ApisixRoute{}, key, f); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func setupApisixPluginConfigIndexer(mgr ctrl.Manager) error {
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&apiv2.ApisixPluginConfig{},
+		SecretIndexRef,
+		ApisixPluginConfigSecretIndexFunc,
+	); err != nil {
+		return err
+	}
+	return nil
+}
+
+func setupApisixConsumerIndexer(mgr ctrl.Manager) error {
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&apiv2.ApisixConsumer{},
+		SecretIndexRef,
+		ApisixConsumerSecretIndexFunc,
 	); err != nil {
 		return err
 	}
@@ -412,6 +461,120 @@ func HTTPRouteServiceIndexFunc(rawObj client.Object) []string {
 	return keys
 }
 
+func ApisixRouteServiceIndexFunc(cli client.Client) func(client.Object) []string {
+	return func(obj client.Object) (keys []string) {
+		ar := obj.(*apiv2.ApisixRoute)
+		for _, http := range ar.Spec.HTTP {
+			// service reference in .backends
+			for _, backend := range http.Backends {
+				keys = append(keys, GenIndexKey(ar.GetNamespace(), backend.ServiceName))
+			}
+			// service reference in .upstreams
+			for _, upstream := range http.Upstreams {
+				if upstream.Name == "" {
+					continue
+				}
+				var (
+					au   apiv2.ApisixUpstream
+					auNN = types.NamespacedName{
+						Namespace: ar.GetNamespace(),
+						Name:      upstream.Name,
+					}
+				)
+				if err := cli.Get(context.Background(), auNN, &au); err != nil {
+					continue
+				}
+				for _, node := range au.Spec.ExternalNodes {
+					if node.Type == apiv2.ExternalTypeService && node.Name != "" {
+						keys = append(keys, GenIndexKey(au.GetNamespace(), node.Name))
+					}
+				}
+			}
+		}
+		for _, stream := range ar.Spec.Stream {
+			keys = append(keys, GenIndexKey(ar.GetNamespace(), stream.Backend.ServiceName))
+		}
+		return keys
+	}
+}
+
+func ApisixRouteSecretIndexFunc(cli client.Client) func(client.Object) []string {
+	return func(obj client.Object) (keys []string) {
+		ar := obj.(*apiv2.ApisixRoute)
+		for _, http := range ar.Spec.HTTP {
+			// secret reference in .plugins
+			for _, plugin := range http.Plugins {
+				if plugin.Enable && plugin.SecretRef != "" {
+					keys = append(keys, GenIndexKey(ar.GetNamespace(), plugin.SecretRef))
+				}
+			}
+			// secret reference in .upstreams
+			for _, upstream := range http.Upstreams {
+				if upstream.Name == "" {
+					continue
+				}
+				var (
+					au   apiv2.ApisixUpstream
+					auNN = types.NamespacedName{
+						Namespace: ar.GetNamespace(),
+						Name:      upstream.Name,
+					}
+				)
+				if err := cli.Get(context.Background(), auNN, &au); err != nil {
+					continue
+				}
+				if secret := au.Spec.TLSSecret; secret != nil && secret.Name != "" {
+					keys = append(keys, GenIndexKey(cmp.Or(secret.Namespace, au.GetNamespace()), secret.Name))
+				}
+			}
+		}
+		for _, stream := range ar.Spec.Stream {
+			for _, plugin := range stream.Plugins {
+				if plugin.Enable && plugin.SecretRef != "" {
+					keys = append(keys, GenIndexKey(ar.GetNamespace(), plugin.SecretRef))
+				}
+			}
+		}
+		return keys
+	}
+}
+
+func ApisixRouteApisixUpstreamIndexFunc(obj client.Object) (keys []string) {
+	ar := obj.(*apiv2.ApisixRoute)
+	for _, rule := range ar.Spec.HTTP {
+		for _, backend := range rule.Backends {
+			if backend.Subset != "" && backend.ServiceName != "" {
+				keys = append(keys, GenIndexKey(ar.GetNamespace(), backend.ServiceName))
+			}
+		}
+		for _, upstream := range rule.Upstreams {
+			if upstream.Name != "" {
+				keys = append(keys, GenIndexKey(ar.GetNamespace(), upstream.Name))
+			}
+		}
+	}
+	return
+}
+
+func ApisixRoutePluginConfigIndexFunc(obj client.Object) (keys []string) {
+	ar := obj.(*apiv2.ApisixRoute)
+	m := make(map[string]struct{})
+	for _, http := range ar.Spec.HTTP {
+		if http.PluginConfigName != "" {
+			ns := ar.GetNamespace()
+			if http.PluginConfigNamespace != "" {
+				ns = http.PluginConfigNamespace
+			}
+			key := GenIndexKey(ns, http.PluginConfigName)
+			if _, ok := m[key]; !ok {
+				m[key] = struct{}{}
+				keys = append(keys, key)
+			}
+		}
+	}
+	return
+}
+
 func HTTPRouteExtensionIndexFunc(rawObj client.Object) []string {
 	hr := rawObj.(*gatewayv1.HTTPRoute)
 	keys := make([]string, 0, len(hr.Spec.Rules))
@@ -484,4 +647,85 @@ func IngressClassParametersRefIndexFunc(rawObj client.Object) []string {
 		return []string{GenIndexKey(ns, ingressClass.Spec.Parameters.Name)}
 	}
 	return nil
+}
+
+func ApisixPluginConfigSecretIndexFunc(obj client.Object) (keys []string) {
+	pc := obj.(*apiv2.ApisixPluginConfig)
+	for _, plugin := range pc.Spec.Plugins {
+		if plugin.Enable && plugin.SecretRef != "" {
+			keys = append(keys, GenIndexKey(pc.GetNamespace(), plugin.SecretRef))
+		}
+	}
+	return
+}
+
+func ApisixConsumerSecretIndexFunc(rawObj client.Object) (keys []string) {
+	ac := rawObj.(*apiv2.ApisixConsumer)
+	var secretRef *corev1.LocalObjectReference
+	if ac.Spec.AuthParameter.KeyAuth != nil {
+		secretRef = ac.Spec.AuthParameter.KeyAuth.SecretRef
+	} else if ac.Spec.AuthParameter.BasicAuth != nil {
+		secretRef = ac.Spec.AuthParameter.BasicAuth.SecretRef
+	} else if ac.Spec.AuthParameter.JwtAuth != nil {
+		secretRef = ac.Spec.AuthParameter.JwtAuth.SecretRef
+	} else if ac.Spec.AuthParameter.WolfRBAC != nil {
+		secretRef = ac.Spec.AuthParameter.WolfRBAC.SecretRef
+	} else if ac.Spec.AuthParameter.HMACAuth != nil {
+		secretRef = ac.Spec.AuthParameter.HMACAuth.SecretRef
+	} else if ac.Spec.AuthParameter.LDAPAuth != nil {
+		secretRef = ac.Spec.AuthParameter.LDAPAuth.SecretRef
+	}
+	if secretRef != nil {
+		keys = append(keys, GenIndexKey(ac.GetNamespace(), secretRef.Name))
+	}
+	return
+}
+
+func setupApisixTlsIndexer(mgr ctrl.Manager) error {
+	// Create secret index for ApisixTls
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&apiv2.ApisixTls{},
+		SecretIndexRef,
+		ApisixTlsSecretIndexFunc,
+	); err != nil {
+		return err
+	}
+
+	// Create ingress class index for ApisixTls
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&apiv2.ApisixTls{},
+		IngressClassRef,
+		ApisixTlsIngressClassIndexFunc,
+	); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func ApisixTlsSecretIndexFunc(rawObj client.Object) []string {
+	tls := rawObj.(*apiv2.ApisixTls)
+	secrets := make([]string, 0)
+
+	// Index the main TLS secret
+	key := GenIndexKey(tls.Spec.Secret.Namespace, tls.Spec.Secret.Name)
+	secrets = append(secrets, key)
+
+	// Index the client CA secret if mutual TLS is configured
+	if tls.Spec.Client != nil {
+		caKey := GenIndexKey(tls.Spec.Client.CASecret.Namespace, tls.Spec.Client.CASecret.Name)
+		secrets = append(secrets, caKey)
+	}
+
+	return secrets
+}
+
+func ApisixTlsIngressClassIndexFunc(rawObj client.Object) []string {
+	tls := rawObj.(*apiv2.ApisixTls)
+	if tls.Spec.IngressClassName == "" {
+		return nil
+	}
+	return []string{tls.Spec.IngressClassName}
 }

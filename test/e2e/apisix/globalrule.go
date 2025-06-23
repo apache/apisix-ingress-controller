@@ -23,12 +23,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = Describe("Test GlobalRule", func() {
-	s := scaffold.NewScaffold(&scaffold.Options{
-		ControllerName: "apisix.apache.org/apisix-ingress-controller",
-	})
-
-	var gatewayProxyYaml = `
+const gatewayProxyYaml = `
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
@@ -46,7 +41,7 @@ spec:
           value: "%s"
 `
 
-	var ingressClassYaml = `
+const ingressClassYaml = `
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
 metadata:
@@ -60,6 +55,11 @@ spec:
     namespace: "default"
     scope: "Namespace"
 `
+
+var _ = Describe("Test GlobalRule", func() {
+	s := scaffold.NewScaffold(&scaffold.Options{
+		ControllerName: "apisix.apache.org/apisix-ingress-controller",
+	})
 
 	var ingressYaml = `
 apiVersion: networking.k8s.io/v1

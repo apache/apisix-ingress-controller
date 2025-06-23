@@ -218,7 +218,7 @@ func (s *APISIXDeployer) deployDataplane(opts *APISIXDeployOptions) *corev1.Serv
 
 func (s *APISIXDeployer) DeployIngress() {
 	s.Framework.DeployIngress(framework.IngressDeployOpts{
-		ProviderSyncPeriod: time.Second,
+		ProviderSyncPeriod: 200 * time.Millisecond,
 		ControllerName:     s.opts.ControllerName,
 		Namespace:          s.namespace,
 		Replicas:           1,
@@ -227,7 +227,7 @@ func (s *APISIXDeployer) DeployIngress() {
 
 func (s *APISIXDeployer) ScaleIngress(replicas int) {
 	s.Framework.DeployIngress(framework.IngressDeployOpts{
-		ProviderSyncPeriod: time.Second,
+		ProviderSyncPeriod: 200 * time.Millisecond,
 		ControllerName:     s.opts.ControllerName,
 		Namespace:          s.namespace,
 		Replicas:           replicas,

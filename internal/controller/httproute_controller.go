@@ -223,7 +223,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	r.Updater.Update(status.Update{
-		NamespacedName: NamespacedName(hr),
+		NamespacedName: utils.NamespacedName(hr),
 		Resource:       &gatewayv1.HTTPRoute{},
 		Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
 			h, ok := obj.(*gatewayv1.HTTPRoute)

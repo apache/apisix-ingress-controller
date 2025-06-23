@@ -32,6 +32,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
 type PolicyTargetKey struct {
@@ -149,7 +150,7 @@ func ProcessBackendTrafficPolicy(
 		}
 		if updated {
 			tctx.StatusUpdaters = append(tctx.StatusUpdaters, status.Update{
-				NamespacedName: NamespacedName(policy),
+				NamespacedName: utils.NamespacedName(policy),
 				Resource:       policy.DeepCopy(),
 				Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
 					t, ok := obj.(*v1alpha1.BackendTrafficPolicy)

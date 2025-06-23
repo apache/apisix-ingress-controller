@@ -130,7 +130,6 @@ spec:
                         required:
                         - serviceName
                         - servicePort
-                        - weight
                         type: object
                       type: array
                     match:
@@ -193,9 +192,7 @@ spec:
                                 type: string
                             required:
                             - op
-                            - set
                             - subject
-                            - value
                             type: object
                           type: array
                         filter_func:
@@ -250,10 +247,8 @@ spec:
                         description: ApisixRoutePlugin represents an APISIX plugin.
                         properties:
                           config:
-                            additionalProperties:
-                              x-kubernetes-preserve-unknown-fields: true
                             description: Plugin configuration.
-                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           enable:
                             default: true
                             description: Whether this plugin is in use, default is
@@ -303,7 +298,6 @@ spec:
                       type: boolean
                   required:
                   - name
-                  - websocket
                   type: object
                 type: array
               ingressClassName:
@@ -368,10 +362,8 @@ spec:
                         description: ApisixRoutePlugin represents an APISIX plugin.
                         properties:
                           config:
-                            additionalProperties:
-                              x-kubernetes-preserve-unknown-fields: true
                             description: Plugin configuration.
-                            type: object
+                            x-kubernetes-preserve-unknown-fields: true
                           enable:
                             default: true
                             description: Whether this plugin is in use, default is

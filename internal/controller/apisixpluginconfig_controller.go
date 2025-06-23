@@ -14,6 +14,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -26,8 +27,8 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
-// ApisixUpstreamReconciler reconciles a ApisixUpstream object
-type ApisixUpstreamReconciler struct {
+// ApisixPluginConfigReconciler reconciles a ApisixPluginConfig object
+type ApisixPluginConfigReconciler struct {
 	client.Client
 	Scheme  *runtime.Scheme
 	Log     logr.Logger
@@ -35,34 +36,39 @@ type ApisixUpstreamReconciler struct {
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ApisixUpstreamReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ApisixPluginConfigReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&apiv2.ApisixUpstream{}).
+		For(&apiv2.ApisixPluginConfig{}).
 		WithEventFilter(predicate.GenerationChangedPredicate{}).
-		Named("apisixupstream").
+		Named("apisixpluginconfig").
 		Complete(r)
 }
 
-func (r *ApisixUpstreamReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	var au apiv2.ApisixUpstream
-	if err := r.Get(ctx, req.NamespacedName, &au); err != nil {
+func (r *ApisixPluginConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	var pc apiv2.ApisixPluginConfig
+	if err := r.Get(ctx, req.NamespacedName, &pc); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	// Only update status
-	r.updateStatus(&au, nil)
+	r.updateStatus(&pc, nil)
 	return ctrl.Result{}, nil
 }
 
-func (r *ApisixUpstreamReconciler) updateStatus(au *apiv2.ApisixUpstream, err error) {
-	SetApisixCRDConditionAccepted(&au.Status, au.GetGeneration(), err)
+func (r *ApisixPluginConfigReconciler) updateStatus(pc *apiv2.ApisixPluginConfig, err error) {
+	SetApisixCRDConditionAccepted(&pc.Status, pc.GetGeneration(), err)
 	r.Updater.Update(status.Update{
-		NamespacedName: utils.NamespacedName(au),
-		Resource:       &apiv2.ApisixUpstream{},
+		NamespacedName: utils.NamespacedName(pc),
+		Resource:       &apiv2.ApisixPluginConfig{},
 		Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
-			cp := obj.(*apiv2.ApisixUpstream).DeepCopy()
-			cp.Status = au.Status
-			return cp
+			cp, ok := obj.(*apiv2.ApisixPluginConfig)
+			if !ok {
+				err := fmt.Errorf("unsupported object type %T", obj)
+				panic(err)
+			}
+			cpCopy := cp.DeepCopy()
+			cpCopy.Status = pc.Status
+			return cpCopy
 		}),
 	})
 }

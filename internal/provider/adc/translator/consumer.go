@@ -19,6 +19,7 @@ import (
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 )
 
@@ -65,14 +66,16 @@ func (t *Translator) TranslateConsumerV1alpha1(tctx *provider.TranslateContext, 
 		credentials = append(credentials, credential)
 	}
 	consumer.Credentials = credentials
-
+	consumer.Labels = label.GenLabel(consumerV)
 	plugins := adctypes.Plugins{}
 	for _, plugin := range consumerV.Spec.Plugins {
 		pluginName := plugin.Name
 		pluginConfig := make(map[string]any)
-		if err := json.Unmarshal(plugin.Config.Raw, &pluginConfig); err != nil {
-			t.Log.Error(err, "failed to unmarshal plugin config", "plugin", plugin)
-			continue
+		if len(plugin.Config.Raw) > 0 {
+			if err := json.Unmarshal(plugin.Config.Raw, &pluginConfig); err != nil {
+				t.Log.Error(err, "failed to unmarshal plugin config", "plugin", plugin)
+				continue
+			}
 		}
 		plugins[pluginName] = pluginConfig
 	}

@@ -14,7 +14,6 @@ package controller
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"reflect"
 
@@ -39,7 +38,6 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
-	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
@@ -144,7 +142,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// create a translate context
 	tctx := provider.NewDefaultTranslateContext(ctx)
 
-	ingressClass, err := r.getIngressClass(ingress)
+	ingressClass, err := r.getIngressClass(ctx, ingress)
 	if err != nil {
 		r.Log.Error(err, "failed to get IngressClass")
 		return ctrl.Result{}, err
@@ -157,7 +155,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	})
 
 	// process IngressClass parameters if they reference GatewayProxy
-	if err := r.processIngressClassParameters(ctx, tctx, ingress, ingressClass); err != nil {
+	if err := ProcessIngressClassParameters(tctx, r.Client, r.Log, ingress, ingressClass); err != nil {
 		r.Log.Error(err, "failed to process IngressClass parameters", "ingressClass", ingressClass.Name)
 		return ctrl.Result{}, err
 	}
@@ -201,48 +199,18 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 }
 
 // getIngressClass get the ingress class for the ingress
-func (r *IngressReconciler) getIngressClass(obj client.Object) (*networkingv1.IngressClass, error) {
+func (r *IngressReconciler) getIngressClass(ctx context.Context, obj client.Object) (*networkingv1.IngressClass, error) {
 	ingress := obj.(*networkingv1.Ingress)
-
-	if ingress.Spec.IngressClassName == nil {
-		// handle the case where IngressClassName is not specified
-		// find all ingress classes and check if any of them is marked as default
-		ingressClassList := &networkingv1.IngressClassList{}
-		if err := r.List(context.Background(), ingressClassList, client.MatchingFields{
-			indexer.IngressClass: config.GetControllerName(),
-		}); err != nil {
-			r.Log.Error(err, "failed to list ingress classes")
-			return nil, err
-		}
-
-		// find the ingress class that is marked as default
-		for _, ic := range ingressClassList.Items {
-			if IsDefaultIngressClass(&ic) && matchesController(ic.Spec.Controller) {
-				log.Debugw("match the default ingress class")
-				return &ic, nil
-			}
-		}
-
-		log.Debugw("no default ingress class found")
-		return nil, errors.New("no default ingress class found")
+	var ingressClassName string
+	if ingress.Spec.IngressClassName != nil {
+		ingressClassName = *ingress.Spec.IngressClassName
 	}
-
-	// if it does not match, check if the ingress class is controlled by us
-	ingressClass := networkingv1.IngressClass{}
-	if err := r.Get(context.Background(), client.ObjectKey{Name: *ingress.Spec.IngressClassName}, &ingressClass); err != nil {
-		return nil, err
-	}
-
-	if matchesController(ingressClass.Spec.Controller) {
-		return &ingressClass, nil
-	}
-
-	return nil, errors.New("ingress class is not controlled by us")
+	return GetIngressClass(ctx, r.Client, r.Log, ingressClassName)
 }
 
 // checkIngressClass check if the ingress uses the ingress class that we control
 func (r *IngressReconciler) checkIngressClass(obj client.Object) bool {
-	_, err := r.getIngressClass(obj)
+	_, err := r.getIngressClass(context.Background(), obj)
 	return err == nil
 }
 
@@ -662,7 +630,7 @@ func (r *IngressReconciler) updateStatus(ctx context.Context, tctx *provider.Tra
 	if len(loadBalancerStatus.Ingress) > 0 && !reflect.DeepEqual(ingress.Status.LoadBalancer, loadBalancerStatus) {
 		ingress.Status.LoadBalancer = loadBalancerStatus
 		r.Updater.Update(status.Update{
-			NamespacedName: NamespacedName(ingress),
+			NamespacedName: utils.NamespacedName(ingress),
 			Resource:       ingress.DeepCopy(),
 			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
 				t, ok := obj.(*networkingv1.Ingress)
@@ -680,118 +648,7 @@ func (r *IngressReconciler) updateStatus(ctx context.Context, tctx *provider.Tra
 	return nil
 }
 
-// processIngressClassParameters processes the IngressClass parameters that reference GatewayProxy
-func (r *IngressReconciler) processIngressClassParameters(ctx context.Context, tctx *provider.TranslateContext, ingress *networkingv1.Ingress, ingressClass *networkingv1.IngressClass) error {
-	if ingressClass.Spec.Parameters == nil {
-		return nil
-	}
-
-	ingressClassKind := utils.NamespacedNameKind(ingressClass)
-	ingressKind := utils.NamespacedNameKind(ingress)
-
-	parameters := ingressClass.Spec.Parameters
-	// check if the parameters reference GatewayProxy
-	if parameters.APIGroup != nil && *parameters.APIGroup == v1alpha1.GroupVersion.Group && parameters.Kind == KindGatewayProxy {
-		ns := ingress.GetNamespace()
-		if parameters.Namespace != nil {
-			ns = *parameters.Namespace
-		}
-
-		gatewayProxy := &v1alpha1.GatewayProxy{}
-		if err := r.Get(ctx, client.ObjectKey{
-			Namespace: ns,
-			Name:      parameters.Name,
-		}, gatewayProxy); err != nil {
-			r.Log.Error(err, "failed to get GatewayProxy", "namespace", ns, "name", parameters.Name)
-			return err
-		}
-
-		r.Log.Info("found GatewayProxy for IngressClass", "ingressClass", ingressClass.Name, "gatewayproxy", gatewayProxy.Name)
-		tctx.GatewayProxies[ingressClassKind] = *gatewayProxy
-		tctx.ResourceParentRefs[ingressKind] = append(tctx.ResourceParentRefs[ingressKind], ingressClassKind)
-
-		// check if the provider field references a secret
-		if gatewayProxy.Spec.Provider != nil && gatewayProxy.Spec.Provider.Type == v1alpha1.ProviderTypeControlPlane {
-			if gatewayProxy.Spec.Provider.ControlPlane != nil &&
-				gatewayProxy.Spec.Provider.ControlPlane.Auth.Type == v1alpha1.AuthTypeAdminKey &&
-				gatewayProxy.Spec.Provider.ControlPlane.Auth.AdminKey != nil &&
-				gatewayProxy.Spec.Provider.ControlPlane.Auth.AdminKey.ValueFrom != nil &&
-				gatewayProxy.Spec.Provider.ControlPlane.Auth.AdminKey.ValueFrom.SecretKeyRef != nil {
-
-				secretRef := gatewayProxy.Spec.Provider.ControlPlane.Auth.AdminKey.ValueFrom.SecretKeyRef
-				secret := &corev1.Secret{}
-				if err := r.Get(ctx, client.ObjectKey{
-					Namespace: ns,
-					Name:      secretRef.Name,
-				}, secret); err != nil {
-					r.Log.Error(err, "failed to get secret for GatewayProxy provider",
-						"namespace", ns,
-						"name", secretRef.Name)
-					return err
-				}
-
-				r.Log.Info("found secret for GatewayProxy provider",
-					"ingressClass", ingressClass.Name,
-					"gatewayproxy", gatewayProxy.Name,
-					"secret", secretRef.Name)
-
-				tctx.Secrets[types.NamespacedName{
-					Namespace: ns,
-					Name:      secretRef.Name,
-				}] = secret
-			}
-		}
-	}
-
-	// if gateway proxy is not found, return error
-	_, ok := tctx.GatewayProxies[ingressClassKind]
-	if !ok {
-		r.Log.Error(fmt.Errorf("no gateway proxy found for ingress class"), "failed to process IngressClass parameters", "ingressClass", ingressClass.Name)
-		return fmt.Errorf("no gateway proxy found for ingress class")
-	}
-
-	return nil
-}
-
 // listIngressesForGatewayProxy list all ingresses that use a specific gateway proxy
 func (r *IngressReconciler) listIngressesForGatewayProxy(ctx context.Context, obj client.Object) []reconcile.Request {
-	gatewayProxy, ok := obj.(*v1alpha1.GatewayProxy)
-	if !ok {
-		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to GatewayProxy")
-		return nil
-	}
-
-	// find all ingress classes that reference this gateway proxy
-	ingressClassList := &networkingv1.IngressClassList{}
-	if err := r.List(ctx, ingressClassList, client.MatchingFields{
-		indexer.IngressClassParametersRef: indexer.GenIndexKey(gatewayProxy.GetNamespace(), gatewayProxy.GetName()),
-	}); err != nil {
-		r.Log.Error(err, "failed to list ingress classes for gateway proxy", "gatewayproxy", gatewayProxy.GetName())
-		return nil
-	}
-
-	var requests []reconcile.Request
-
-	for _, ingressClass := range ingressClassList.Items {
-		requests = append(requests, r.listIngressForIngressClass(ctx, &ingressClass)...)
-	}
-
-	// the requests may contain duplicates, distinct the requests
-	requests = distinctRequests(requests)
-
-	return requests
-}
-
-// distinctRequests distinct the requests
-func distinctRequests(requests []reconcile.Request) []reconcile.Request {
-	uniqueRequests := make(map[string]reconcile.Request)
-	for _, request := range requests {
-		uniqueRequests[request.String()] = request
-	}
-
-	distinctRequests := make([]reconcile.Request, 0, len(uniqueRequests))
-	for _, request := range uniqueRequests {
-		distinctRequests = append(distinctRequests, request)
-	}
-	return distinctRequests
+	return listIngressClassRequestsForGatewayProxy(ctx, r.Client, obj, r.Log, r.listIngressForIngressClass)
 }
