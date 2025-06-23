@@ -1,0 +1,6 @@
+[submodule ".github/actions/paths-filter"]
+	path = .github/actions/paths-filter
+	url = https://github.com/dorny/paths-filter.git
+[submodule ".github/actions/markdown-link-check"]
+	path = .github/actions/markdown-link-check
+	url = https://github.com/gaurav-nelson/github-action-markdown-link-check.git
