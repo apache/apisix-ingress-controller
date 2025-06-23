@@ -17,6 +17,7 @@ package v2
 
 import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/scheme"
 )
 
@@ -30,3 +31,12 @@ var (
 	// AddToScheme adds the types in this group-version to the given scheme.
 	AddToScheme = SchemeBuilder.AddToScheme
 )
+
+func Is(obj client.Object) bool {
+	switch obj.(type) {
+	case *ApisixConsumer, *ApisixGlobalRule, *ApisixPluginConfig, *ApisixRoute, *ApisixTls, *ApisixUpstream:
+		return obj.GetObjectKind().GroupVersionKind().GroupVersion() == GroupVersion
+	default:
+		return false
+	}
+}

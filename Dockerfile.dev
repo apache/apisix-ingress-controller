@@ -8,7 +8,7 @@ WORKDIR /app
 
 RUN apt update \
     && apt install -y git \
-    && git clone --branch main https://github.com/api7/adc.git \
+    && git clone --depth 1 --branch main https://github.com/api7/adc.git \
     && cd adc \
     && corepack enable pnpm \
     && pnpm install \

@@ -30,10 +30,11 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
 func (r *HTTPRouteReconciler) processHTTPRoutePolicies(tctx *provider.TranslateContext, httpRoute *gatewayv1.HTTPRoute) error {
-	// list HTTPRoutePolices which sectionName is not specified
+	// list HTTPRoutePolicies, which sectionName is not specified
 	var (
 		list v1alpha1.HTTPRoutePolicyList
 		key  = indexer.GenIndexKeyWithGK(gatewayv1.GroupName, "HTTPRoute", httpRoute.GetNamespace(), httpRoute.GetName())
@@ -83,7 +84,7 @@ func (r *HTTPRouteReconciler) processHTTPRoutePolicies(tctx *provider.TranslateC
 
 		if updated := setAncestorsForHTTPRoutePolicyStatus(parentRefs, &policy, condition); updated {
 			tctx.StatusUpdaters = append(tctx.StatusUpdaters, status.Update{
-				NamespacedName: NamespacedName(&policy),
+				NamespacedName: utils.NamespacedName(&policy),
 				Resource:       policy.DeepCopy(),
 				Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
 					t, ok := obj.(*v1alpha1.HTTPRoutePolicy)
@@ -161,7 +162,7 @@ func (r *IngressReconciler) processHTTPRoutePolicies(tctx *provider.TranslateCon
 		policy := list.Items[i]
 		if updated := setAncestorsForHTTPRoutePolicyStatus(tctx.RouteParentRefs, &policy, condition); updated {
 			tctx.StatusUpdaters = append(tctx.StatusUpdaters, status.Update{
-				NamespacedName: NamespacedName(&policy),
+				NamespacedName: utils.NamespacedName(&policy),
 				Resource:       policy.DeepCopy(),
 				Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
 					t, ok := obj.(*v1alpha1.HTTPRoutePolicy)
@@ -201,7 +202,7 @@ func (r *IngressReconciler) updateHTTPRoutePolicyStatusOnDeleting(ctx context.Co
 				if err := r.Get(ctx, namespacedName, &ingress); err != nil {
 					continue
 				}
-				ingressClass, err := r.getIngressClass(&ingress)
+				ingressClass, err := r.getIngressClass(ctx, &ingress)
 				if err != nil {
 					continue
 				}
@@ -273,7 +274,7 @@ func updateDeleteAncestors(updater status.Updater, policy v1alpha1.HTTPRoutePoli
 	})
 	if length != len(policy.Status.Ancestors) {
 		updater.Update(status.Update{
-			NamespacedName: NamespacedName(&policy),
+			NamespacedName: utils.NamespacedName(&policy),
 			Resource:       policy.DeepCopy(),
 			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
 				t, ok := obj.(*v1alpha1.HTTPRoutePolicy)

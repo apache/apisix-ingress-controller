@@ -51,10 +51,8 @@ spec:
                   description: ApisixRoutePlugin represents an APISIX plugin.
                   properties:
                     config:
-                      additionalProperties:
-                        x-kubernetes-preserve-unknown-fields: true
                       description: Plugin configuration.
-                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     enable:
                       default: true
                       description: Whether this plugin is in use, default is true.
@@ -74,7 +72,7 @@ spec:
             - plugins
             type: object
           status:
-            description: ApisixPluginConfigStatus defines the observed state of ApisixPluginConfig.
+            description: ApisixStatus is the status report for Apisix ingress Resources
             properties:
               conditions:
                 items:

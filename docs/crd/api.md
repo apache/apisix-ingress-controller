@@ -959,8 +959,6 @@ ApisixPluginConfigSpec defines the desired state of ApisixPluginConfigSpec.
 _Appears in:_
 - [ApisixPluginConfig](#apisixpluginconfig)
 
-
-
 #### ApisixRouteAuthentication
 
 
@@ -1091,7 +1089,7 @@ ApisixRouteHTTPMatch represents the match condition for hitting this route.
 | `methods` _string array_ | HTTP request method predicates. |
 | `hosts` _string array_ | HTTP Host predicates, host can be a wildcard domain or an exact domain. For wildcard domain, only one generic level is allowed, for instance, "*.foo.com" is valid but "*.*.foo.com" is not. |
 | `remoteAddrs` _string array_ | Remote address predicates, items can be valid IPv4 address or IPv6 address or CIDR. |
-| `exprs` _[ApisixRouteHTTPMatchExpr](#apisixroutehttpmatchexpr) array_ | NginxVars represents generic match predicates, it uses Nginx variable systems, so any predicate like headers, querystring and etc can be leveraged here to match the route. For instance, it can be: nginxVars:   - subject: "$remote_addr"     op: in     value:       - "127.0.0.1"       - "10.0.5.11" |
+| `exprs` _[ApisixRouteHTTPMatchExprs](#apisixroutehttpmatchexprs)_ | NginxVars represents generic match predicates, it uses Nginx variable systems, so any predicate like headers, querystring and etc can be leveraged here to match the route. For instance, it can be: nginxVars:   - subject: "$remote_addr"     op: in     value:       - "127.0.0.1"       - "10.0.5.11" |
 | `filter_func` _string_ | Matches based on a user-defined filtering function. These functions can accept an input parameter `vars` which can be used to access the Nginx variables. |
 
 
@@ -1114,7 +1112,7 @@ ApisixRouteHTTPMatchExpr represents a binary route match expression .
 
 
 _Appears in:_
-- [ApisixRouteHTTPMatch](#apisixroutehttpmatch)
+- [ApisixRouteHTTPMatchExprs](#apisixroutehttpmatchexprs)
 
 #### ApisixRouteHTTPMatchExprSubject
 
@@ -1132,6 +1130,24 @@ ApisixRouteHTTPMatchExprSubject describes the route match expression subject.
 _Appears in:_
 - [ApisixRouteHTTPMatchExpr](#apisixroutehttpmatchexpr)
 
+#### ApisixRouteHTTPMatchExprs
+_Base type:_ `[ApisixRouteHTTPMatchExpr](#apisixroutehttpmatchexpr)`
+
+
+
+
+
+| Field | Description |
+| --- | --- |
+| `subject` _[ApisixRouteHTTPMatchExprSubject](#apisixroutehttpmatchexprsubject)_ | Subject is the expression subject, it can be any string composed by literals and nginx vars. |
+| `op` _string_ | Op is the operator. |
+| `set` _string array_ | Set is an array type object of the expression. It should be used when the Op is "in" or "not_in"; |
+| `value` _string_ | Value is the normal type object for the expression, it should be used when the Op is not "in" and "not_in". Set and Value are exclusive so only of them can be set in the same time. |
+
+
+_Appears in:_
+- [ApisixRouteHTTPMatch](#apisixroutehttpmatch)
+
 #### ApisixRoutePlugin
 
 
@@ -1143,7 +1159,7 @@ ApisixRoutePlugin represents an APISIX plugin.
 | --- | --- |
 | `name` _string_ | The plugin name. |
 | `enable` _boolean_ | Whether this plugin is in use, default is true. |
-| `config` _[ApisixRoutePluginConfig](#apisixroutepluginconfig)_ | Plugin configuration. |
+| `config` _[JSON](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#json-v1-apiextensions-k8s-io)_ | Plugin configuration. |
 | `secretRef` _string_ | Plugin configuration secretRef. |
 
 
@@ -1153,18 +1169,7 @@ _Appears in:_
 - [ApisixRouteHTTP](#apisixroutehttp)
 - [ApisixRouteStream](#apisixroutestream)
 
-#### ApisixRoutePluginConfig
-_Base type:_ `[JSON](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#json-v1-apiextensions-k8s-io)`
 
-ApisixRoutePluginConfig is the configuration for
-any plugins.
-
-
-
-
-
-_Appears in:_
-- [ApisixRoutePlugin](#apisixrouteplugin)
 
 #### ApisixRouteSpec
 
@@ -1272,95 +1277,19 @@ _Appears in:_
 - [ApisixUpstreamSpec](#apisixupstreamspec)
 - [PortLevelSettings](#portlevelsettings)
 
-#### ApisixStatus
-
-
-ApisixStatus is the status report for Apisix ingress Resources
 
 
 
-| Field | Description |
-| --- | --- |
-| `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#condition-v1-meta) array_ |  |
-
-
-_Appears in:_
-- [ApisixPluginConfigStatus](#apisixpluginconfigstatus)
-
-#### ApisixStatus
-
-
-ApisixStatus is the status report for Apisix ingress Resources
 
 
 
-| Field | Description |
-| --- | --- |
-| `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#condition-v1-meta) array_ |  |
-
-
-_Appears in:_
-- [ApisixPluginConfigStatus](#apisixpluginconfigstatus)
-
-#### ApisixStatus
-
-
-ApisixStatus is the status report for Apisix ingress Resources
 
 
 
-| Field | Description |
-| --- | --- |
-| `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#condition-v1-meta) array_ |  |
-
-
-_Appears in:_
-- [ApisixPluginConfigStatus](#apisixpluginconfigstatus)
-
-#### ApisixStatus
-
-
-ApisixStatus is the status report for Apisix ingress Resources
 
 
 
-| Field | Description |
-| --- | --- |
-| `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#condition-v1-meta) array_ |  |
 
-
-_Appears in:_
-- [ApisixPluginConfigStatus](#apisixpluginconfigstatus)
-
-#### ApisixStatus
-
-
-ApisixStatus is the status report for Apisix ingress Resources
-
-
-
-| Field | Description |
-| --- | --- |
-| `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#condition-v1-meta) array_ |  |
-
-
-_Appears in:_
-- [ApisixPluginConfigStatus](#apisixpluginconfigstatus)
-
-#### ApisixStatus
-
-
-ApisixStatus is the status report for Apisix ingress Resources
-
-
-
-| Field | Description |
-| --- | --- |
-| `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#condition-v1-meta) array_ |  |
-
-
-_Appears in:_
-- [ApisixPluginConfigStatus](#apisixpluginconfigstatus)
 
 #### ApisixTlsSpec
 
@@ -1394,12 +1323,12 @@ load balancer, health check, etc.
 | `scheme` _string_ | The scheme used to talk with the upstream. Now value can be http, grpc. |
 | `retries` _integer_ | How many times that the proxy (Apache APISIX) should do when errors occur (error, timeout or bad http status codes like 500, 502). |
 | `timeout` _[UpstreamTimeout](#upstreamtimeout)_ | Timeout settings for the read, send and connect to the upstream. |
-| `healthCheck` _[HealthCheck](#healthcheck)_ | The health check configurations for the upstream. |
+| `healthCheck` _[HealthCheck](#healthcheck)_ | Deprecated: this is no longer support on standalone mode. The health check configurations for the upstream. |
 | `tlsSecret` _[ApisixSecret](#apisixsecret)_ | Set the client certificate when connecting to TLS upstream. |
 | `subsets` _[ApisixUpstreamSubset](#apisixupstreamsubset) array_ | Subsets groups the service endpoints by their labels. Usually used to differentiate service versions. |
 | `passHost` _string_ | Configures the host when the request is forwarded to the upstream. Can be one of pass, node or rewrite. |
 | `upstreamHost` _string_ | Specifies the host of the Upstream request. This is only valid if the pass_host is set to rewrite |
-| `discovery` _[Discovery](#discovery)_ | Discovery is used to configure service discovery for upstream. |
+| `discovery` _[Discovery](#discovery)_ | Deprecated: this is no longer support on standalone mode. Discovery is used to configure service discovery for upstream. |
 
 
 _Appears in:_
@@ -1451,12 +1380,12 @@ ApisixUpstreamSpec describes the specification of ApisixUpstream.
 | `scheme` _string_ | The scheme used to talk with the upstream. Now value can be http, grpc. |
 | `retries` _integer_ | How many times that the proxy (Apache APISIX) should do when errors occur (error, timeout or bad http status codes like 500, 502). |
 | `timeout` _[UpstreamTimeout](#upstreamtimeout)_ | Timeout settings for the read, send and connect to the upstream. |
-| `healthCheck` _[HealthCheck](#healthcheck)_ | The health check configurations for the upstream. |
+| `healthCheck` _[HealthCheck](#healthcheck)_ | Deprecated: this is no longer support on standalone mode. The health check configurations for the upstream. |
 | `tlsSecret` _[ApisixSecret](#apisixsecret)_ | Set the client certificate when connecting to TLS upstream. |
 | `subsets` _[ApisixUpstreamSubset](#apisixupstreamsubset) array_ | Subsets groups the service endpoints by their labels. Usually used to differentiate service versions. |
 | `passHost` _string_ | Configures the host when the request is forwarded to the upstream. Can be one of pass, node or rewrite. |
 | `upstreamHost` _string_ | Specifies the host of the Upstream request. This is only valid if the pass_host is set to rewrite |
-| `discovery` _[Discovery](#discovery)_ | Discovery is used to configure service discovery for upstream. |
+| `discovery` _[Discovery](#discovery)_ | Deprecated: this is no longer support on standalone mode. Discovery is used to configure service discovery for upstream. |
 | `portLevelSettings` _[PortLevelSettings](#portlevelsettings) array_ |  |
 
 
@@ -1620,17 +1549,19 @@ them if they are set on the port level.
 | `scheme` _string_ | The scheme used to talk with the upstream. Now value can be http, grpc. |
 | `retries` _integer_ | How many times that the proxy (Apache APISIX) should do when errors occur (error, timeout or bad http status codes like 500, 502). |
 | `timeout` _[UpstreamTimeout](#upstreamtimeout)_ | Timeout settings for the read, send and connect to the upstream. |
-| `healthCheck` _[HealthCheck](#healthcheck)_ | The health check configurations for the upstream. |
+| `healthCheck` _[HealthCheck](#healthcheck)_ | Deprecated: this is no longer support on standalone mode. The health check configurations for the upstream. |
 | `tlsSecret` _[ApisixSecret](#apisixsecret)_ | Set the client certificate when connecting to TLS upstream. |
 | `subsets` _[ApisixUpstreamSubset](#apisixupstreamsubset) array_ | Subsets groups the service endpoints by their labels. Usually used to differentiate service versions. |
 | `passHost` _string_ | Configures the host when the request is forwarded to the upstream. Can be one of pass, node or rewrite. |
 | `upstreamHost` _string_ | Specifies the host of the Upstream request. This is only valid if the pass_host is set to rewrite |
-| `discovery` _[Discovery](#discovery)_ | Discovery is used to configure service discovery for upstream. |
+| `discovery` _[Discovery](#discovery)_ | Deprecated: this is no longer support on standalone mode. Discovery is used to configure service discovery for upstream. |
 | `port` _integer_ | Port is a Kubernetes Service port, it should be already defined. |
 
 
 _Appears in:_
 - [ApisixUpstreamSpec](#apisixupstreamspec)
+
+
 
 
 

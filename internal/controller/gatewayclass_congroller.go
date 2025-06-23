@@ -31,6 +31,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
+	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
 const (
@@ -115,7 +116,7 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		r.Log.Info("gatewayclass has been accepted", "gatewayclass", gc.Name)
 		setGatewayClassCondition(gc, condition)
 		r.Updater.Update(status.Update{
-			NamespacedName: NamespacedName(gc),
+			NamespacedName: utils.NamespacedName(gc),
 			Resource:       gc.DeepCopy(),
 			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
 				t, ok := obj.(*gatewayv1.GatewayClass)

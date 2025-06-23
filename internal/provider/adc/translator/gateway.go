@@ -209,15 +209,16 @@ func (t *Translator) fillPluginsFromGatewayProxy(plugins adctypes.GlobalRule, ga
 		}
 
 		pluginName := plugin.Name
-		var pluginConfig map[string]any
-		if err := json.Unmarshal(plugin.Config.Raw, &pluginConfig); err != nil {
-			log.Errorw("gateway proxy plugin config unmarshal failed", zap.Error(err), zap.String("plugin", pluginName))
-			continue
+		pluginConfig := map[string]any{}
+		if len(plugin.Config.Raw) > 0 {
+			if err := json.Unmarshal(plugin.Config.Raw, &pluginConfig); err != nil {
+				log.Errorw("gateway proxy plugin config unmarshal failed", zap.Error(err), zap.String("plugin", pluginName))
+				continue
+			}
 		}
-
-		log.Debugw("fill plugin from gateway proxy", zap.String("plugin", pluginName), zap.Any("config", pluginConfig))
 		plugins[pluginName] = pluginConfig
 	}
+	log.Debugw("fill plugins for gateway proxy", zap.Any("plugins", plugins))
 }
 
 func (t *Translator) fillPluginMetadataFromGatewayProxy(pluginMetadata adctypes.PluginMetadata, gatewayProxy *v1alpha1.GatewayProxy) {

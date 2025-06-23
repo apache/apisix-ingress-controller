@@ -128,11 +128,11 @@ type ConsumerGroup struct {
 
 // +k8s:deepcopy-gen=true
 type Consumer struct {
-	Credentials []Credential      `json:"credentials,omitempty" yaml:"credentials,omitempty"`
-	Description string            `json:"description,omitempty" yaml:"description,omitempty"`
-	Labels      map[string]string `json:"labels,omitempty" yaml:"labels,omitempty"`
-	Plugins     Plugins           `json:"plugins,omitempty" yaml:"plugins,omitempty"`
-	Username    string            `json:"username" yaml:"username"`
+	Metadata `json:",inline" yaml:",inline"`
+
+	Credentials []Credential `json:"credentials,omitempty" yaml:"credentials,omitempty"`
+	Plugins     Plugins      `json:"plugins,omitempty" yaml:"plugins,omitempty"`
+	Username    string       `json:"username" yaml:"username"`
 }
 
 // +k8s:deepcopy-gen=true
@@ -206,6 +206,108 @@ type Upstream struct {
 	Timeout      *Timeout      `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 	Type         UpstreamType  `json:"type,omitempty" yaml:"type,omitempty"`
 	UpstreamHost string        `json:"upstream_host,omitempty" yaml:"upstream_host,omitempty"`
+
+	Checks *UpstreamHealthCheck `json:"checks,omitempty" yaml:"checks,omitempty"`
+	TLS    *ClientTLS           `json:"tls,omitempty" yaml:"tls,omitempty"`
+	// for Service Discovery
+	DiscoveryType string            `json:"discovery_type,omitempty" yaml:"discovery_type,omitempty"`
+	DiscoveryArgs map[string]string `json:"discovery_args,omitempty" yaml:"discovery_args,omitempty"`
+}
+
+// UpstreamHealthCheck defines the active and/or passive health check for an Upstream,
+// with the upstream health check feature, pods can be kicked out or joined in quickly,
+// if the feedback of Kubernetes liveness/readiness probe is long.
+// +k8s:deepcopy-gen=true
+type UpstreamHealthCheck struct {
+	Active  *UpstreamActiveHealthCheck  `json:"active" yaml:"active"`
+	Passive *UpstreamPassiveHealthCheck `json:"passive,omitempty" yaml:"passive,omitempty"`
+}
+
+// ClientTLS is tls cert and key use in mTLS
+// +k8s:deepcopy-gen=true
+type ClientTLS struct {
+	Cert string `json:"client_cert,omitempty" yaml:"client_cert,omitempty"`
+	Key  string `json:"client_key,omitempty" yaml:"client_key,omitempty"`
+}
+
+// UpstreamActiveHealthCheck defines the active kind of upstream health check.
+// +k8s:deepcopy-gen=true
+type UpstreamActiveHealthCheck struct {
+	Type               string                             `json:"type,omitempty" yaml:"type,omitempty"`
+	Timeout            int                                `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	Concurrency        int                                `json:"concurrency,omitempty" yaml:"concurrency,omitempty"`
+	Host               string                             `json:"host,omitempty" yaml:"host,omitempty"`
+	Port               int32                              `json:"port,omitempty" yaml:"port,omitempty"`
+	HTTPPath           string                             `json:"http_path,omitempty" yaml:"http_path,omitempty"`
+	HTTPSVerifyCert    bool                               `json:"https_verify_certificate,omitempty" yaml:"https_verify_certificate,omitempty"`
+	HTTPRequestHeaders []string                           `json:"req_headers,omitempty" yaml:"req_headers,omitempty"`
+	Healthy            UpstreamActiveHealthCheckHealthy   `json:"healthy,omitempty" yaml:"healthy,omitempty"`
+	Unhealthy          UpstreamActiveHealthCheckUnhealthy `json:"unhealthy,omitempty" yaml:"unhealthy,omitempty"`
+}
+
+// UpstreamPassiveHealthCheck defines the passive kind of upstream health check.
+// +k8s:deepcopy-gen=true
+type UpstreamPassiveHealthCheck struct {
+	Type      string                              `json:"type,omitempty" yaml:"type,omitempty"`
+	Healthy   UpstreamPassiveHealthCheckHealthy   `json:"healthy,omitempty" yaml:"healthy,omitempty"`
+	Unhealthy UpstreamPassiveHealthCheckUnhealthy `json:"unhealthy,omitempty" yaml:"unhealthy,omitempty"`
+}
+
+// UpstreamActiveHealthCheckHealthy defines the conditions to judge whether
+// an upstream node is healthy with the active manner.
+// +k8s:deepcopy-gen=true
+type UpstreamActiveHealthCheckHealthy struct {
+	UpstreamPassiveHealthCheckHealthy `json:",inline" yaml:",inline"`
+
+	Interval int `json:"interval,omitempty" yaml:"interval,omitempty"`
+}
+
+// UpstreamPassiveHealthCheckHealthy defines the conditions to judge whether
+// an upstream node is healthy with the passive manner.
+// +k8s:deepcopy-gen=true
+type UpstreamPassiveHealthCheckHealthy struct {
+	HTTPStatuses []int `json:"http_statuses,omitempty" yaml:"http_statuses,omitempty"`
+	Successes    int   `json:"successes,omitempty" yaml:"successes,omitempty"`
+}
+
+// UpstreamPassiveHealthCheckUnhealthy defines the conditions to judge whether
+// an upstream node is unhealthy with the passive manager.
+// +k8s:deepcopy-gen=true
+type UpstreamPassiveHealthCheckUnhealthy struct {
+	HTTPStatuses []int `json:"http_statuses,omitempty" yaml:"http_statuses,omitempty"`
+	HTTPFailures int   `json:"http_failures,omitempty" yaml:"http_failures,omitempty"`
+	TCPFailures  int   `json:"tcp_failures,omitempty" yaml:"tcp_failures,omitempty"`
+	Timeouts     int   `json:"timeouts,omitempty" yaml:"timeouts,omitempty"`
+}
+
+// UpstreamActiveHealthCheckUnhealthy defines the conditions to judge whether
+// an upstream node is unhealthy with the active manager.
+// +k8s:deepcopy-gen=true
+type UpstreamActiveHealthCheckUnhealthy struct {
+	UpstreamPassiveHealthCheckUnhealthy `json:",inline" yaml:",inline"`
+
+	Interval int `json:"interval,omitempty" yaml:"interval,omitempty"`
+}
+
+// TrafficSplitConfig is the config of traffic-split plugin.
+// +k8s:deepcopy-gen=true
+type TrafficSplitConfig struct {
+	Rules []TrafficSplitConfigRule `json:"rules"`
+}
+
+// TrafficSplitConfigRule is the rule config in traffic-split plugin config.
+// +k8s:deepcopy-gen=true
+type TrafficSplitConfigRule struct {
+	WeightedUpstreams []TrafficSplitConfigRuleWeightedUpstream `json:"weighted_upstreams"`
+}
+
+// TrafficSplitConfigRuleWeightedUpstream is the weighted upstream config in
+// the traffic split plugin rule.
+// +k8s:deepcopy-gen=true
+type TrafficSplitConfigRuleWeightedUpstream struct {
+	UpstreamID string    `json:"upstream_id,omitempty"`
+	Upstream   *Upstream `json:"upstream,omitempty"`
+	Weight     int       `json:"weight"`
 }
 
 // +k8s:deepcopy-gen=true
@@ -431,15 +533,14 @@ func NewDefaultService() *Service {
 
 func NewDefaultUpstream() *Upstream {
 	return &Upstream{
-		Type:   Roundrobin,
-		Nodes:  make(UpstreamNodes, 0),
-		Scheme: SchemeHTTP,
 		Metadata: Metadata{
-			Desc: "Created by apisix-ingress-controller, DO NOT modify it manually",
 			Labels: map[string]string{
 				"managed-by": "apisix-ingress-controller",
 			},
 		},
+		Nodes:  make(UpstreamNodes, 0),
+		Scheme: SchemeHTTP,
+		Type:   Roundrobin,
 	}
 }
 

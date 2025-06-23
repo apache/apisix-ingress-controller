@@ -190,7 +190,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 
 		r.Updater.Update(status.Update{
-			NamespacedName: NamespacedName(gateway),
+			NamespacedName: utils.NamespacedName(gateway),
 			Resource:       &gatewayv1.Gateway{},
 			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
 				t, ok := obj.(*gatewayv1.Gateway)

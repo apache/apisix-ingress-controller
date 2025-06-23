@@ -15,6 +15,7 @@ package framework
 import (
 	"bufio"
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -33,6 +34,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
@@ -108,8 +110,8 @@ func (f *Framework) ensureServiceWithTimeout(name, namespace string, desiredEndp
 	return nil
 }
 
-func (f *Framework) GetServiceEndpoints(name string) ([]string, error) {
-	ep, err := f.clientset.CoreV1().Endpoints(_namespace).Get(f.Context, name, metav1.GetOptions{})
+func (f *Framework) GetServiceEndpoints(nn types.NamespacedName) ([]string, error) {
+	ep, err := f.clientset.CoreV1().Endpoints(cmp.Or(nn.Namespace, _namespace)).Get(f.Context, nn.Name, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
