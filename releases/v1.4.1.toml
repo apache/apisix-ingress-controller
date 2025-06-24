@@ -1,0 +1,63 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# commit to be tagged for new release
+commit = "HEAD"
+
+# project_name is used to refer to the project in the notes
+project_name = "apisix-ingress-controller"
+
+# github_repo is the github project, only github is currently supported
+github_repo = "apache/apisix-ingress-controller"
+
+# match_deps is a pattern to determine which dependencies should be included
+# as part of this release. The changelog will also include changes for these
+# dependencies based on the change in the dependency's version.
+match_deps = "^github.com/(apache/[a-zA-Z0-9-]+)$"
+
+# previous release of this project for determining changes
+previous = "1.4.0"
+
+# pre_release is whether to include a disclaimer about being a pre-release
+pre_release = false
+
+# preface is the description of the release which precedes the author list
+# and changelog. This description could include highlights as well as any
+# description of changes. Use markdown formatting.
+preface = """\
+This is a Patch version release.
+
+## Highlights
+
+### Roadmap
+
+In next release(v1.5), custom resource's API version v2 will be GA released. Please go to [#707](https://github.com/apache/apisix-ingress-controller/issues/707) for detail.
+
+### Bug fixes
+
+* fix: consumer name contain "-" [#828](https://github.com/apache/apisix-ingress-controller/pull/828)
+* fix: fix typo in ApidixRoute CRD [#830](https://github.com/apache/apisix-ingress-controller/pull/830)
+* fix: add v2beta3 register resources [#833](https://github.com/apache/apisix-ingress-controller/pull/833)
+* fix: ApisixClusterConfig e2e test case [#859](https://github.com/apache/apisix-ingress-controller/pull/859)
+* fix: objects get from lister must be treated as read-only [#829](https://github.com/apache/apisix-ingress-controller/pull/829)
+* fix ingress delete panic [#872](https://github.com/apache/apisix-ingress-controller/pull/872)
+* fix json unmarshal error when list plguins [#888](https://github.com/apache/apisix-ingress-controller/pull/888)
+* fix: check if stream_routes is disabled [#868](https://github.com/apache/apisix-ingress-controller/pull/868)
+* fix: avoid create pluginconfig in the tranlsation of route [#845](https://github.com/apache/apisix-ingress-controller/pull/845)
+* fix: filter useless pod update event [#894](https://github.com/apache/apisix-ingress-controller/pull/894)
+* fix: fix ep resourceVersion comparison and clean up [#901](https://github.com/apache/apisix-ingress-controller/pull/901)
+* fix: ingress update event handler not filter by watching namespaces [#947](https://github.com/apache/apisix-ingress-controller/pull/)
+"""

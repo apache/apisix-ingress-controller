@@ -1,0 +1,54 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# commit to be tagged for new release
+commit = "HEAD"
+
+# project_name is used to refer to the project in the notes
+project_name = "apisix-ingress-controller"
+
+# github_repo is the github project, only github is currently supported
+github_repo = "apache/apisix-ingress-controller"
+
+# match_deps is a pattern to determine which dependencies should be included
+# as part of this release. The changelog will also include changes for these
+# dependencies based on the change in the dependency's version.
+match_deps = "^github.com/(apache/[a-zA-Z0-9-]+)$"
+
+# previous release of this project for determining changes
+previous = "0.6.0"
+
+# pre_release is whether to include a disclaimer about being a pre-release
+pre_release = false
+
+# preface is the description of the release which precedes the author list
+# and changelog. This description could include highlights as well as any
+# description of changes. Use markdown formatting.
+preface = """\
+This is the first **GA** release.
+
+## Highlights
+
+### New Features
+
+* **Support blocklist-source-range annotation for Ingress source** [#446](https://github.com/apache/apisix-ingress-controller/pull/446)
+* **Add ApisixConsumer CRD** [#462](https://github.com/apache/apisix-ingress-controller/pull/462)
+* **Support rewrite annotation for Ingress source** [#480](https://github.com/apache/apisix-ingress-controller/pull/480)
+* **Support http-to-https redirect annotation for Ingress source** [#484](https://github.com/apache/apisix-ingress-controller/pull/484)
+* **Add health check to apisix-admin and make the leader election recyclable** [499](https://github.com/apache/apisix-ingress-controller/pull/499)
+* **Support mTLS for ApisixTls** [#492](https://github.com/apache/apisix-ingress-controller/pull/492)
+* **Support authentication for ApisixRoute** [#528](https://github.com/apache/apisix-ingress-controller/pull/528)
+"""
