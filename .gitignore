@@ -30,10 +30,3 @@ dist
 .tmp
 apisix-ingress-controller
 apisix-ingress-controller-conformance-report.yaml
-
-*.mdx
-.cursor/
-.env
-
-charts/api7ee3
-docs/api
