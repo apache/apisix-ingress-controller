@@ -69,7 +69,7 @@ jobs:
       - name: Setup Go Env
         uses: actions/setup-go@v4
         with:
-          go-version: '1.22'
+          go-version: "1.23"
       - name: run gofmt
         working-directory: ./
         run: |
