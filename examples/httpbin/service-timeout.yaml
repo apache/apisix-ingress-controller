@@ -4,9 +4,9 @@ metadata:
   name: httpbin
 spec:
   targetRefs:
-  - name: httpbin
-    kind: Service
-    group: ""
+    - name: httpbin
+      kind: Service
+      group: ""
   timeout:
     send: 10s
     read: 10s
