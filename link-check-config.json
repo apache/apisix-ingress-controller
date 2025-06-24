@@ -21,7 +21,7 @@
     },
     {
       "pattern": "^https://apisix.apache.org/docs/ingress-controller/(.*?)$",
-      "replacement": "{{BASEURL}}/docs/en/latest/$1.md"
+      "replacement": "{{BASEURL}}/docs/$1.md"
     }
   ],
   "timeout": "20s",

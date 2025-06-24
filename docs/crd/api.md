@@ -366,7 +366,7 @@ LoadBalancer describes the load balancing parameters.
 | --- | --- |
 | `type` _string_ | Type specifies the load balancing algorithms. Default is `roundrobin`. Can be one of `roundrobin`, `chash`, `ewma`, or `least_conn`. |
 | `hashOn` _string_ | HashOn specified the type of field used for hashing, required when Type is `chash`. Default is `vars`. Can be one of `vars`, `header`, `cookie`, `consumer`, or `vars_combinations`. |
-| `key` _string_ | Key is used with HashOn, generally required when Type is `chash`. When HashOn is `header` or `cookie`, specifies the name of the header or cookie. When HashOn is `consumer`, key is not required, as the consumer name is used automatically. When HashOn is `vars` or `vars_combinations`, key refers to one or a combination of [built-in variables](/enterprise/reference/built-in-variables). |
+| `key` _string_ | Key is used with HashOn, generally required when Type is `chash`. When HashOn is `header` or `cookie`, specifies the name of the header or cookie. When HashOn is `consumer`, key is not required, as the consumer name is used automatically. When HashOn is `vars` or `vars_combinations`, key refers to one or a combination of [APISIX variable](https://apisix.apache.org/docs/apisix/apisix-variable/). |
 
 
 _Appears in:_
