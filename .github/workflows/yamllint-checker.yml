@@ -42,10 +42,10 @@ jobs:
         id: filter
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          # focus on `samples/deploy` yaml files directory
+          # focus on `examples` yaml files directory
           filters: |
             yaml:
-              - 'samples/deploy/**/*'
+              - 'examples/**/*'
   yamllint-checker:
     needs: changes
     if: |
@@ -58,4 +58,4 @@ jobs:
           python-version: '3.10'
       - run: pip install yamllint==1.29.0
       - name: 🚀 Run yamllint
-        run: yamllint samples/deploy  # focus on `samples/deploy` yaml files directory
+        run: yamllint examples  # focus on `examples` yaml files directory
