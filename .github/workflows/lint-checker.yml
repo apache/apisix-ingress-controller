@@ -96,7 +96,6 @@ jobs:
           markdownlint '**/*.md' \
             --ignore node_modules \
             --ignore CHANGELOG.md \
-            --ignore docs/en/latest/references/v2.md \
             --ignore docs/crd/api.md \
             --ignore docs/gateway-api.md
   markdown-link-check:
@@ -114,7 +113,7 @@ jobs:
           use-quiet-mode: 'yes'
           use-verbose-mode: 'yes'
           config-file: 'link-check-config.json'
-          folder-path: 'docs/en'
+          folder-path: 'docs'
           file-path: './README.md, ./install.md, ./test/e2e/README.md'
           max-depth: -1
           file-extension: ".md"
