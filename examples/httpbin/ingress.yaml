@@ -8,7 +8,7 @@ spec:
     type: ControlPlane
     controlPlane:
       endpoints:
-      - ${ADMIN_ENDPOINT}   # https://127.0.0.1:7443
+        - ${ADMIN_ENDPOINT}   # https://127.0.0.1:7443
       auth:
         type: AdminKey
         adminKey:
@@ -38,13 +38,13 @@ metadata:
 spec:
   ingressClassName: apisix
   rules:
-  - host: httpbin.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: httpbin
-            port:
-              number: 80
+    - host: httpbin.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: httpbin
+                port:
+                  number: 80

@@ -4,8 +4,8 @@ metadata:
   name: httpbin
 spec:
   targetRefs:
-  - name: httpbin
-    kind: Service
-    group: ""
+    - name: httpbin
+      kind: Service
+      group: ""
   passHost: rewrite
   upstreamHost: httpbin.example.com

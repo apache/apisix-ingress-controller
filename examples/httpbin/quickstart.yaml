@@ -48,13 +48,13 @@ spec:
   selector:
     app: httpbin-deployment
   ports:
-  - name: http
-    port: 80
-    protocol: TCP
-    targetPort: 80
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 80
   type: ClusterIP
 
---- 
+---
 
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
@@ -74,7 +74,7 @@ spec:
     type: ControlPlane
     controlPlane:
       endpoints:
-      - ${ADMIN_ENDPOINT}   # https://127.0.0.1:7443
+        - ${ADMIN_ENDPOINT}   # https://127.0.0.1:7443
       auth:
         type: AdminKey
         adminKey:
@@ -89,9 +89,9 @@ metadata:
 spec:
   gatewayClassName: apisix
   listeners:
-  - name: http
-    protocol: HTTP
-    port: 80
+    - name: http
+      protocol: HTTP
+      port: 80
   infrastructure:
     parametersRef:
       group: apisix.apache.org
@@ -106,14 +106,14 @@ metadata:
   name: httpbin
 spec:
   parentRefs:
-  - name: apisix
+    - name: apisix
   hostnames:
-  - httpbin.example.com
+    - httpbin.example.com
   rules:
-  - matches: 
-    - path:
-        type: PathPrefix
-        value: /*
-    backendRefs:
-    - name: httpbin
-      port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /*
+      backendRefs:
+        - name: httpbin
+          port: 80
