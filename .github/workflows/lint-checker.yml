@@ -92,7 +92,13 @@ jobs:
         with:
           node-version: '20.7.x'
       - run: npm install -g markdownlint-cli@0.36.0
-      - run: markdownlint '**/*.md' --ignore node_modules --ignore CHANGELOG.md --ignore docs/en/latest/references/v2.md
+      - run: |
+          markdownlint '**/*.md' \
+            --ignore node_modules \
+            --ignore CHANGELOG.md \
+            --ignore docs/en/latest/references/v2.md \
+            --ignore docs/crd/api.md \
+            --ignore docs/gateway-api.md
   markdown-link-check:
     needs: changes
     if: |

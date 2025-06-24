@@ -2,7 +2,10 @@
 
 ## Description
 
-The APISIX Ingress Controller allows you to run the APISIX Gateway as a Kubernetes Ingress to handle inbound traffic for a Kubernetes cluster. It dynamically configures and manages the APISIX Gateway using Gateway API resources.
+The APISIX Ingress Controller allows you to run the APISIX Gateway as a
+Kubernetes Ingress to handle inbound traffic for a Kubernetes cluster. It
+dynamically configures and manages the APISIX Gateway using Gateway API
+resources.
 
 ## Document
 
@@ -28,9 +31,10 @@ The APISIX Ingress Controller allows you to run the APISIX Gateway as a Kubernet
 make build-image
 ```
 
-**NOTE:** This image ought to be published in the personal registry you specified.
-And it is required to have access to pull the image from the working environment.
-Make sure you have the proper permission to the registry if the above commands don’t work.
+**NOTE:** This image ought to be published in the personal registry you
+specified. And it is required to have access to pull the image from the
+working environment. Make sure you have the proper permission to the registry
+if the above commands don't work.
 
 **Install the CRDs & Gateway API into the cluster:**
 
@@ -44,8 +48,8 @@ make install
 make deploy #IMG=apache/apisix-ingress-controller:dev
 ```
 
-> **NOTE**: If you encounter RBAC errors, you may need to grant yourself cluster-admin
-privileges or be logged in as admin.
+> **NOTE**: If you encounter RBAC errors, you may need to grant yourself
+> cluster-admin privileges or be logged in as admin.
 
 **Delete the APIs(CRDs) from the cluster:**
 
@@ -61,7 +65,8 @@ make undeploy
 
 ## Project Distribution
 
-Following are the steps to build the installer and distribute this project to users.
+Following are the steps to build the installer and distribute this project to
+users.
 
 1. Build the installer for the image built and published in the registry:
 
@@ -74,9 +79,10 @@ file in the dist directory. This file contains all the resources built
 with Kustomize, which are necessary to install this project without
 its dependencies.
 
-2. Using the installer
+1. Using the installer
 
-Users can just run kubectl apply -f <URL for YAML BUNDLE> to install the project, i.e.:
+Users can just run kubectl apply -f with the YAML bundle to install the
+project, i.e.:
 
 ```sh
 kubectl apply -f dist/install.yaml
