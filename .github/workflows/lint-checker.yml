@@ -114,7 +114,7 @@ jobs:
           use-verbose-mode: 'yes'
           config-file: 'link-check-config.json'
           folder-path: 'docs'
-          file-path: './README.md, ./install.md, ./test/e2e/README.md'
+          file-path: './README.md'
           max-depth: -1
           file-extension: ".md"
           check-modified-files-only: "no"
