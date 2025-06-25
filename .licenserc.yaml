@@ -33,6 +33,7 @@ header:
     - 'PROJECT'
     - 'hack/boilerplate.go.txt'
     - 'config/**'
+    - 'charts/**'
     - '**/assets/header-templates/**'
     - '**/assets/lcs-templates/**'
     - '**/assets/languages.yaml'
