@@ -1,4 +1,4 @@
-#!/bin/bash
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -16,15 +16,25 @@
 # specific language governing permissions and limitations
 # under the License.
 
+name: License checker
 
-set -e
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+      - next
+      - 1.8.0
 
-go install github.com/incu6us/goimports-reviser/v3@latest
+jobs:
+  check-license:
+    runs-on: ubuntu-latest
 
-PROJECT_NAME=github.com/apache/apisix-ingress-controller
-
-find . -name '*.go' -print0 | while IFS= read -r -d '' file; do
-  if [ "$file" != "./cmd/root/root.go" ]; then
-    goimports-reviser -project-name "$PROJECT_NAME" "$file"
-  fi
-done
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check License Header
+        uses: apache/skywalking-eyes@v0.5.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

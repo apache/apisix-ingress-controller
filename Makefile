@@ -1,3 +1,20 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
 # Image URL to use all building/pushing image targets
 
 VERSION ?= 2.0.0
@@ -340,10 +357,6 @@ sort-import:
 	@./scripts/goimports-reviser.sh >/dev/null 2>&1
 .PHONY: sort-import
 
-# check copyright header
-check-copyright:
-	go run scripts/go-copyright/main.go
-
 .PHONY: generate-crd-docs
 generate-crd-docs: manifests ## Generate CRD reference documentation in a single file
 	@mkdir -p $(dir $(CRD_DOCS_OUTPUT))
@@ -369,3 +382,41 @@ generate-crd-docs-grouped: manifests ## Generate CRD reference documentation gro
 		--output-path=docs/crd/groups \
 		--output-mode=group
 	@echo "CRD reference documentation generated in docs/crd/groups directory"
+
+### verify-license:       Verify license headers.
+.PHONY: verify-license
+verify-license:
+	docker run -it --rm -v $(PWD):/github/workspace apache/skywalking-eyes header check -v info
+
+### update-license:       Update license headers.
+.PHONY: update-license
+update-license:
+	docker run -it --rm -v $(PWD):/github/workspace apache/skywalking-eyes header fix
+
+### verify-mdlint:        Verify markdown files lint rules.
+.PHONY: verify-mdlint
+verify-mdlint:
+	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' --ignore node_modules --ignore CHANGELOG.md
+
+### update-mdlint:        Update markdown files lint rules.
+.PHONY: update-mdlint
+update-mdlint:
+	docker run -it --rm -v $(PWD):/work tmknom/markdownlint '**/*.md' -f --ignore node_modules --ignore vendor --ignore CHANGELOG.md
+
+### verify-yamllint:	  Verify yaml files lint rules for `examples` directory.
+.PHONY: verify-yamllint
+verify-yamllint:
+	docker run -it --rm -v $(PWD):/yaml peterdavehello/yamllint yamllint examples
+
+### update-yamlfmt:       Update yaml files format for `examples` directory.
+.PHONY: update-yamlfmt
+update-yamlfmt:
+	go install github.com/google/yamlfmt/cmd/yamlfmt@latest && yamlfmt examples
+
+### verify-all:           Verify all verify- rules.
+.PHONY: verify-all
+verify-all: verify-license verify-mdlint verify-yamllint
+
+### update-all:           Update all update- rules.
+.PHONY: update-all
+update-all: update-license update-mdlint update-gofmt
