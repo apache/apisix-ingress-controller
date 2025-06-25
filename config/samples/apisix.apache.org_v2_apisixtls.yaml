@@ -1,0 +1,23 @@
+apiVersion: apisix.apache.org/v2
+kind: ApisixTls
+metadata:
+  labels:
+    app.kubernetes.io/name: apisix-ingress-controller
+    app.kubernetes.io/managed-by: kustomize
+  name: apisixtls-sample
+spec:
+  hosts:
+    - "example.com"
+    - "*.example.com"
+  secret:
+    name: "example-tls-secret"
+    namespace: "default"
+  # Optional: Mutual TLS configuration
+  # client:
+  #   caSecret:
+  #     name: "ca-secret"
+  #     namespace: "default"
+  #   depth: 2
+  #   skip_mtls_uri_regex:
+  #     - "/health"
+  #     - "/metrics"

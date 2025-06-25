@@ -1,17 +1,20 @@
-// Licensed to the Apache Software Foundation (ASF) under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// The ASF licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
 //
-//	http://www.apache.org/licenses/LICENSE-2.0
+//   http://www.apache.org/licenses/LICENSE-2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
 package scaffold
 
 import (
@@ -19,7 +22,7 @@ import (
 	"time"
 
 	"github.com/gruntwork-io/terratest/modules/k8s"
-	ginkgo "github.com/onsi/ginkgo/v2"
+	"github.com/onsi/ginkgo/v2"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -63,7 +66,7 @@ spec:
             tcpSocket:
               port: 80
             timeoutSeconds: 2
-          image: "localhost:5000/httpbin:dev"
+          image: "kennethreitz/httpbin:latest"
           imagePullPolicy: IfNotPresent
           name: httpbin-deployment-e2e-test
           ports:
@@ -118,18 +121,19 @@ func (s *Scaffold) ScaleHTTPBIN(desired int) error {
 	if err := s.CreateResourceFromString(httpbinDeployment); err != nil {
 		return err
 	}
-	if err := k8s.WaitUntilNumPodsCreatedE(s.t, s.kubectlOptions, s.labelSelector("app=httpbin-deployment-e2e-test"), desired, 5, 5*time.Second); err != nil {
+	if err := k8s.WaitUntilNumPodsCreatedE(
+		s.t,
+		s.kubectlOptions,
+		s.labelSelector("app=httpbin-deployment-e2e-test"),
+		desired,
+		5,
+		5*time.Second,
+	); err != nil {
 		return err
 	}
 	return nil
 }
 
-// DeleteHTTPBINService deletes the HTTPBIN service object.
-func (s *Scaffold) DeleteHTTPBINService() error {
-	return k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, _httpService)
-}
-
-// WaitAllHTTPBINPodsAvailable waits until all httpbin pods ready.
 func (s *Scaffold) WaitAllHTTPBINPodsAvailable() error {
 	opts := metav1.ListOptions{
 		LabelSelector: "app=httpbin-deployment-e2e-test",

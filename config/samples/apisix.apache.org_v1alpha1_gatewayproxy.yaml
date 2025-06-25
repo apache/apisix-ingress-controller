@@ -1,0 +1,13 @@
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  labels:
+    app.kubernetes.io/name: gatewayproxy
+    app.kubernetes.io/instance: gatewayproxy-sample
+    app.kubernetes.io/part-of: apisix-ingress-controller
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: apisix-ingress-controller
+  name: gatewayproxy-sample
+spec:
+  pluginMetadata:
+    "error-page": {"enable":false}

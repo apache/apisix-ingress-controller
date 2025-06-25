@@ -1,4 +1,3 @@
-#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,64 +14,53 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-#
-name: golangci-lint
+
+name: lint
 
 on:
   push:
     branches:
       - master
+      - next
   pull_request:
     branches:
       - master
-      - 1.8.0
+      - next
 
 jobs:
-  changes:
-    runs-on: ubuntu-latest
-    outputs:
-      docs: ${{ steps.filter.outputs.docs }}
-      go: ${{ steps.filter.outputs.go }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - uses: ./.github/actions/paths-filter
-        id: filter
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          filters: |
-            docs:
-              - 'docs/**/*'
-              - '*.md'
-            go:
-              - '*.go'
-              - '**/*.go'
-              - 'go.mod'
-              - 'go.sum'
-              - 'Makefile'
-              - 'Dockerfile'
-              - 'test/e2e/**/*'
-              - 'conf/**'
-              - 'utils/**'
-              - ".github/**"
   golangci:
     name: lint
-    needs: changes
-    if: |
-      (needs.changes.outputs.go == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Setup Go Env
         uses: actions/setup-go@v4
         with:
-          go-version: '1.20'
+          go-version: "1.23"
 
-      - name: Download golangci-lint
-        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.52.2
+      - name: check go path for debug
+        run: go env
 
       - name: 🛩️ golangci-lint
-        run: $(go env GOPATH)/bin/golangci-lint run --tests=false --timeout 300s ./...
+        run: make lint
+
+  crd-docs-check:
+    name: Check CRD Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download crd-ref-docs
+        run: |
+          mkdir -p ./bin
+          curl -L -o ./bin/crd-ref-docs.tar.gz https://github.com/elastic/crd-ref-docs/releases/download/v0.1.0/crd-ref-docs_0.1.0_Linux_x86_64.tar.gz
+          tar -xzvf ./bin/crd-ref-docs.tar.gz -C ./bin
+          chmod +x ./bin/crd-ref-docs
+      - name: Generate CRD Docs
+        run: |
+          make generate-crd-docs
+      - name: Check CRD Docs Diff
+        run: |
+          if ! git diff --exit-code -- docs/crd/api.md; then
+            echo "docs/crd/api.md has changed. Please run 'make generate-crd-docs' and commit the updated file."
+            exit 1
+          fi

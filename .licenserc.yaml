@@ -30,6 +30,10 @@ header:
     - '**/go.sum'
     - 'LICENSE'
     - 'NOTICE'
+    - 'PROJECT'
+    - 'hack/boilerplate.go.txt'
+    - 'config/**'
+    - 'charts/**'
     - '**/assets/header-templates/**'
     - '**/assets/lcs-templates/**'
     - '**/assets/languages.yaml'
@@ -42,6 +46,5 @@ header:
     - 'utils/generate-groups.sh'
     - '**/*.pem'
     - '**/*.key'
-    - 'samples/deploy/gateway-api/**'
     - '.gitattributes'
   comment: on-failure

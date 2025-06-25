@@ -17,138 +17,92 @@
 #
 -->
 
-# Apache APISIX for Kubernetes
+# apisix-ingress-controller
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/apache/apisix-ingress-controller)](https://goreportcard.com/report/github.com/apache/apisix-ingress-controller)
-[![Slack](https://badgen.net/badge/Slack/Join%20Apache%20APISIX?icon=slack)](https://apisix.apache.org/slack)
+## Description
 
-Use [Apache APISIX](https://github.com/apache/apisix#apache-apisix) for Kubernetes [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/).
+The APISIX Ingress Controller allows you to run the APISIX Gateway as a
+Kubernetes Ingress to handle inbound traffic for a Kubernetes cluster. It
+dynamically configures and manages the APISIX Gateway using Gateway API
+resources.
 
-All configurations in `apisix-ingress-controller` are defined with Kubernetes CRDs (Custom Resource Definitions).
-Support configuring [plugins](https://github.com/apache/apisix/blob/master/docs/en/latest/plugins), service registration discovery mechanism for upstreams, load balancing and more in Apache APISIX.
+## Document
 
-`apisix-ingress-controller` is an Apache APISIX control plane component. Currently it serves for Kubernetes clusters. In the future, we plan to separate the submodule to adapt to more deployment modes, such as virtual machine clusters.
+* [Quickstart](./docs/quickstart.md)
+* [Concepts](./docs/concepts.md)
+* [Configuration](./docs/configuration.md)
+* [Gateway API](./docs/gateway-api.md)
 
-The technical architecture of `apisix-ingress-controller`:
+## Getting Started
 
-<img src="./docs/assets/images/module-0.png" alt="Architecture" width="743" height="559" />
+### Prerequisites
 
-## Status
+* go version v1.22.0+
+* docker version 17.03+.
+* kubectl version v1.11.3+.
+* Access to a Kubernetes v1.11.3+ cluster.
 
-This project is currently general availability.
+### To Deploy on the cluster
 
-## Features
+**Build and push your image to the location specified by `IMG`:**
 
-* Declarative configuration for Apache APISIX with Custom Resource Definitions(CRDs), using k8s yaml struct with minimum learning curve.
-* Hot-reload during yaml apply.
-* Native Kubernetes Ingress (both `v1` and `v1beta1`) support.
-* Auto register k8s endpoint to upstream (Apache APISIX) node.
-* Support load balancing based on pod (upstream nodes).
-* Out of box support for node health check.
-* Plug-in extension supports hot configuration and immediate effect.
-* Support SSL and mTLS for routes.
-* Support traffic split and canary deployments.
-* Support TCP 4 layer proxy.
-* Ingress controller itself as a pluggable hot-reload component.
-* Multi-cluster configuration distribution.
+```sh
+make build-image
+```
 
-[More about comparison among multiple Ingress Controllers.](https://docs.google.com/spreadsheets/d/191WWNpjJ2za6-nbG4ZoUMXMpUK8KlCIosvQB0f-oq3k/edit?ts=5fd6c769#gid=907731238)
+**NOTE:** This image ought to be published in the personal registry you
+specified. And it is required to have access to pull the image from the
+working environment. Make sure you have the proper permission to the registry
+if the above commands don't work.
 
-## Get started
+**Install the CRDs & Gateway API into the cluster:**
 
-* [How to install](./install.md)
-* [Get Started](./docs/en/latest/getting-started.md)
-* [Design introduction](./docs/en/latest/design.md)
-* [FAQ](./docs/en/latest/FAQ.md)
+```sh
+make install
+```
 
-## Prerequisites
+**Deploy the Manager to the cluster with the image specified by `IMG`:**
 
-Apisix ingress controller requires Kubernetes version 1.16+. Because we used `CustomResourceDefinition` v1 stable API.
-From the version 1.0.0, APISIX-ingress-controller need to work with Apache APISIX version 2.7+.
+```sh
+make deploy #IMG=apache/apisix-ingress-controller:dev
+```
 
-## Works with APISIX Dashboard
+> **NOTE**: If you encounter RBAC errors, you may need to grant yourself
+> cluster-admin privileges or be logged in as admin.
 
-Currently, APISIX Ingress Controller automatically manipulates some APISIX resources, which is not very compatible with APISIX Dashboard. In addition, users should not modify resources labeled `managed-by: apisix-ingress-controllers` via APISIX Dashboard.
+**Delete the APIs(CRDs) from the cluster:**
 
-## Internal Architecture
+```sh
+make uninstall
+```
 
-<img src="./docs/assets/images/apisix-ingress-controller-arch.png" alt="module" width="74.3%" height="55.9%" />
+**UnDeploy the controller from the cluster:**
 
-## Apache APISIX Ingress vs. Kubernetes Ingress Nginx
+```sh
+make undeploy
+```
 
-* The control plane and data plane are separated, which can improve security and deployment flexibility.
-* Hot-reload during yaml apply.
-* [More convenient canary deployment.](./docs/en/latest/concepts/apisix_route.md)
-* Verify the correctness of the configuration, safe and reliable.
-* [Rich plugins and ecology.](https://github.com/apache/apisix/tree/master/docs/en/latest/plugins)
-* Supports APISIX custom resources and Kubernetes native Ingress resources.
+## Project Distribution
 
-## Contributing
+Following are the steps to build the installer and distribute this project to
+users.
 
-We welcome all kinds of contributions from the open-source community, individuals and partners.
+1. Build the installer for the image built and published in the registry:
 
-* [Contributing Guide](./docs/en/latest/contribute.md)
+```sh
+make build-installer # IMG=apache/apisix-ingress-controller:dev
+```
 
-### How to contribute
+NOTE: The makefile target mentioned above generates an 'install.yaml'
+file in the dist directory. This file contains all the resources built
+with Kustomize, which are necessary to install this project without
+its dependencies.
 
-Most of the contributions that we receive are code contributions, but you can
-also contribute to the documentation or simply report solid bugs
-for us to fix.
+1. Using the installer
 
- For new contributors, please take a look at issues with a tag called [Good first issue](https://github.com/apache/apisix-ingress-controller/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or [Help wanted](https://github.com/apache/apisix-ingress-controller/issues?q=is%3Aissue+is%3Aopen+label%3A%22help+wanted%22).
+Users can just run kubectl apply -f with the YAML bundle to install the
+project, i.e.:
 
-### How to report a bug
-
-* **Ensure the bug was not already reported** by searching on GitHub under [Issues](https://github.com/apache/apisix-ingress-controller/issues).
-
-* If you're unable to find an open issue addressing the problem, [open a new one](https://github.com/apache/apisix-ingress-controller/issues/new). Be sure to include a **title and clear description**, as much relevant information as possible, and a **code sample** or an **executable test case** demonstrating the expected behavior that is not occurring.
-
-### Contributor over time
-
-[![Contributor over time](https://contributor-overtime-api.git-contributor.com/contributors-svg?chart=contributorOverTime&repo=apache/apisix-ingress-controller)](https://git-contributor.com/?chart=contributorOverTime&repo=apache/apisix-ingress-controller)
-
-## Community
-
-* Mailing List: Mail to <dev-subscribe@apisix.apache.org>, follow the reply to subscribe the mailing list.
-* QQ Group - 578997126
-* ![Twitter Follow](https://img.shields.io/twitter/follow/ApacheAPISIX?style=social) - follow and interact with us using hashtag `#ApacheAPISIX`
-* [Bilibili video](https://space.bilibili.com/551921247)
-
-## Todos
-
-* More todos will display in [issues](https://github.com/apache/apisix-ingress-controller/issues?q=is%3Aopen+is%3Aissue+label%3Atriage%2Faccepted)
-
-## User stories
-
-- [How Does Zoom Use APISIX Ingress in Its Continuous Delivery Pipeline? - API7.ai](https://api7.ai/blog/zoom-uses-apisix-ingress)
-- [Copernicus Reference System Software](https://github.com/COPRS/infrastructure/wiki/Networking-trade-off)
-- [From Traefik to APISIX, Horizon Robotics's Exploration in Ingress Controller - API7.ai](https://api7.ai/blog/why-horizon-robotics-migrated-from-traefik-to-apche-apisix)
-- [Why Jiakaobaodian Chooses APISIX Ingress Controller - API7.ai](https://api7.ai/blog/why-jiakaobaodian-chooses-apisix-ingress-controller)
-- [Why AISpeech Chooses Apache APISIX Instead of NGINX as k8s Ingress Controller - API7.ai](https://api7.ai/blog/why-aispeech-chooses-apache-apisix-instead-of-nginx-as-k8s-ingress-controller)
-- [Tencent Cloud: Why choose Apache APISIX to implement the k8s ingress controller?(Chinese)](https://cloud.tencent.com/developer/article/1592281)
-- [aispeech: Why we create a new k8s ingress controller?(Chinese)](https://mp.weixin.qq.com/s/bmm2ibk2V7-XYneLo9XAPQ)
-
-If you are willing to share with us some scenarios and use cases when you use APISIX Ingress,
-please reply to the [issue](https://github.com/apache/apisix-ingress-controller/issues/501),
-or submit PR to update [Powered-BY](./powered-by.md) file
-
-## Who Uses APISIX Ingress?
-
-A wide variety of companies and organizations use APISIX Ingress for research, production and commercial product, below are some of them:
-
-- AISpeech
-- European Copernicus Reference System
-- Jiakaobaodian(驾考宝典)
-- Horizon Robotics(地平线)
-- Tencent Cloud
-- UPYUN
-- Zoom
-
-## Milestone
-
-* [Milestone](https://github.com/apache/apisix-ingress-controller/milestones)
-
-## Terminology
-
-* APISIX Ingress: the whole service that contains the proxy ([Apache APISIX](https://apisix.apache.org)) and ingress controller (apisix-ingress-controller).
-* apisix-ingress-controller: the ingress controller component.
+```sh
+kubectl apply -f dist/install.yaml
+```

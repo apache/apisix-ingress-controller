@@ -1,17 +1,19 @@
-// Licensed to the Apache Software Foundation (ASF) under one or more
-// contributor license agreements.  See the NOTICE file distributed with
-// this work for additional information regarding copyright ownership.
-// The ASF licenses this file to You under the Apache License, Version 2.0
-// (the "License"); you may not use this file except in compliance with
-// the License.  You may obtain a copy of the License at
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//   http://www.apache.org/licenses/LICENSE-2.0
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
 
 package scaffold
 
@@ -27,9 +29,8 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/gruntwork-io/terratest/modules/k8s"
-	"github.com/onsi/ginkgo/v2"
-	"github.com/stretchr/testify/assert"
+	. "github.com/onsi/ginkgo/v2" //nolint:staticcheck
+	. "github.com/onsi/gomega"    //nolint:staticcheck
 )
 
 const (
@@ -58,38 +59,6 @@ metadata:
   name: %s
 data:
   cert: %s
-`
-	_api6tlsTemplate = `
-apiVersion: %s
-kind: ApisixTls
-metadata:
-  name: %s
-spec:
-  %s
-  hosts:
-  - %s
-  secret:
-    name: %s
-    namespace: %s
-`
-	_api6tlsWithClientCATemplate = `
-apiVersion: %s
-kind: ApisixTls
-metadata:
-  name: %s
-spec:
-  hosts:
-  - %s
-  secret:
-    name: %s
-    namespace: %s
-  client:
-    caSecret:
-      name: %s
-      namespace: %s
-    depth: 10
-    skip_mtls_uri_regex:
-    - %s
 `
 )
 
@@ -125,44 +94,14 @@ func (s *Scaffold) NewClientCASecret(name, cert, key string) error {
 	return nil
 }
 
-// NewApisixTls new a ApisixTls CRD
-func (s *Scaffold) NewApisixTls(name, host, secretName string, ingressClassName ...string) error {
-	var ingClassName string
-	if len(ingressClassName) > 0 {
-		ingClassName = "ingressClassName: " + ingressClassName[0]
-	}
-	tls := fmt.Sprintf(_api6tlsTemplate, s.opts.ApisixResourceVersion, name, ingClassName, host, secretName, s.kubectlOptions.Namespace)
-	if err := s.CreateResourceFromString(tls); err != nil {
-		return err
-	}
-	return nil
-}
-
-// NewApisixTlsWithClientCA new a ApisixTls CRD
-func (s *Scaffold) NewApisixTlsWithClientCA(name, host, secretName, clientCASecret, skipMtlsUriRegex string) error {
-	tls := fmt.Sprintf(_api6tlsWithClientCATemplate, s.opts.ApisixResourceVersion, name, host, secretName, s.kubectlOptions.Namespace, clientCASecret, s.kubectlOptions.Namespace, skipMtlsUriRegex)
-	if err := s.CreateResourceFromString(tls); err != nil {
-		return err
-	}
-	return nil
-}
-
-// DeleteApisixTls remove ApisixTls CRD
-func (s *Scaffold) DeleteApisixTls(name string, host, secretName string) error {
-	tls := fmt.Sprintf(_api6tlsTemplate, s.opts.ApisixResourceVersion, name, "", host, secretName, s.kubectlOptions.Namespace)
-	if err := k8s.KubectlDeleteFromStringE(s.t, s.kubectlOptions, tls); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (s *Scaffold) GenerateCert(t ginkgo.GinkgoTInterface, dnsNames []string) (certPemBytes, privPemBytes bytes.Buffer) {
+func (s *Scaffold) GenerateCert(t GinkgoTInterface, dnsNames []string) (certPemBytes, privPemBytes bytes.Buffer) {
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	Expect(err).ToNot(HaveOccurred())
 	pub := priv.Public()
 
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
-	assert.NoError(t, err)
+	Expect(err).ToNot(HaveOccurred())
 
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
@@ -180,28 +119,33 @@ func (s *Scaffold) GenerateCert(t ginkgo.GinkgoTInterface, dnsNames []string) (c
 	}
 
 	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, pub, priv)
-	assert.NoError(t, err)
+	Expect(err).ToNot(HaveOccurred())
 	err = pem.Encode(&certPemBytes, &pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	assert.NoError(t, err)
+	Expect(err).ToNot(HaveOccurred())
 
 	privBytes, err := x509.MarshalPKCS8PrivateKey(priv)
-	assert.NoError(t, err)
+	Expect(err).ToNot(HaveOccurred())
 	err = pem.Encode(&privPemBytes, &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes})
-	assert.NoError(t, err)
+	Expect(err).ToNot(HaveOccurred())
 
-	return
+	return certPemBytes, privPemBytes
 }
 
 // GenerateMACert used for generate MutualAuthCerts
-func (s *Scaffold) GenerateMACert(t ginkgo.GinkgoTInterface, dnsNames []string) (caCertBytes, serverCertBytes, serverKeyBytes, clientCertBytes, clientKeyBytes bytes.Buffer) {
+func (s *Scaffold) GenerateMACert(
+	t GinkgoTInterface,
+	dnsNames []string,
+) (
+	caCertBytes, serverCertBytes, serverKeyBytes, clientCertBytes, clientKeyBytes bytes.Buffer,
+) {
 	// CA cert
 	caKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	assert.NoError(t, err)
+	Expect(err).ToNot(HaveOccurred())
 	caPub := caKey.Public()
 
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
-	assert.NoError(t, err)
+	Expect(err).ToNot(HaveOccurred())
 
 	caTemplate := x509.Certificate{
 		SerialNumber: serialNumber,
@@ -221,16 +165,16 @@ func (s *Scaffold) GenerateMACert(t ginkgo.GinkgoTInterface, dnsNames []string) 
 	caTemplate.KeyUsage |= x509.KeyUsageCertSign
 
 	caBytes, err := x509.CreateCertificate(rand.Reader, &caTemplate, &caTemplate, caPub, caKey)
-	assert.NoError(t, err)
+	Expect(err).ToNot(HaveOccurred())
 	err = pem.Encode(&caCertBytes, &pem.Block{Type: "CERTIFICATE", Bytes: caBytes})
-	assert.NoError(t, err)
+	Expect(err).ToNot(HaveOccurred())
 
 	// Server cert
 	serverKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	assert.NoError(t, err)
+	Expect(err).ToNot(HaveOccurred())
 
 	serialNumber, err = rand.Int(rand.Reader, serialNumberLimit)
-	assert.NoError(t, err)
+	Expect(err).ToNot(HaveOccurred())
 
 	serverTemplate := x509.Certificate{
 		SerialNumber: serialNumber,
@@ -247,19 +191,20 @@ func (s *Scaffold) GenerateMACert(t ginkgo.GinkgoTInterface, dnsNames []string) 
 	}
 
 	serverBytes, err := x509.CreateCertificate(rand.Reader, &serverTemplate, &caTemplate, &serverKey.PublicKey, caKey)
-	assert.NoError(t, err)
+	Expect(err).ToNot(HaveOccurred())
 	err = pem.Encode(&serverCertBytes, &pem.Block{Type: "CERTIFICATE", Bytes: serverBytes})
-	assert.NoError(t, err)
+	Expect(err).ToNot(HaveOccurred())
 	serverKeyBytesD, err := x509.MarshalPKCS8PrivateKey(serverKey)
-	assert.NoError(t, err)
+	Expect(err).ToNot(HaveOccurred())
 	err = pem.Encode(&serverKeyBytes, &pem.Block{Type: "PRIVATE KEY", Bytes: serverKeyBytesD})
+	Expect(err).ToNot(HaveOccurred())
 
 	// Client cert
 	clientKey, err := rsa.GenerateKey(rand.Reader, 2048)
-	assert.NoError(t, err)
+	Expect(err).ToNot(HaveOccurred())
 
 	serialNumber, err = rand.Int(rand.Reader, serialNumberLimit)
-	assert.NoError(t, err)
+	Expect(err).ToNot(HaveOccurred())
 
 	clientTemplate := x509.Certificate{
 		SerialNumber: serialNumber,
@@ -276,12 +221,13 @@ func (s *Scaffold) GenerateMACert(t ginkgo.GinkgoTInterface, dnsNames []string) 
 	}
 
 	clientBytes, err := x509.CreateCertificate(rand.Reader, &clientTemplate, &caTemplate, &clientKey.PublicKey, caKey)
-	assert.NoError(t, err)
+	Expect(err).ToNot(HaveOccurred())
 	err = pem.Encode(&clientCertBytes, &pem.Block{Type: "CERTIFICATE", Bytes: clientBytes})
-	assert.NoError(t, err)
+	Expect(err).ToNot(HaveOccurred())
 	clientKeyBytesD, err := x509.MarshalPKCS8PrivateKey(clientKey)
-	assert.NoError(t, err)
+	Expect(err).ToNot(HaveOccurred())
 	err = pem.Encode(&clientKeyBytes, &pem.Block{Type: "PRIVATE KEY", Bytes: clientKeyBytesD})
+	Expect(err).ToNot(HaveOccurred())
 
-	return
+	return caCertBytes, serverCertBytes, serverKeyBytes, clientCertBytes, clientKeyBytes
 }

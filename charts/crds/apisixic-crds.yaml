@@ -1,0 +1,3212 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.17.2
+  name: apisixconsumers.apisix.apache.org
+spec:
+  group: apisix.apache.org
+  names:
+    kind: ApisixConsumer
+    listKind: ApisixConsumerList
+    plural: apisixconsumers
+    singular: apisixconsumer
+  scope: Namespaced
+  versions:
+  - name: v2
+    schema:
+      openAPIV3Schema:
+        description: ApisixConsumer is the Schema for the apisixconsumers API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ApisixConsumerSpec defines the desired state of ApisixConsumer.
+            properties:
+              authParameter:
+                properties:
+                  basicAuth:
+                    description: ApisixConsumerBasicAuth defines the configuration
+                      for basic auth.
+                    properties:
+                      secretRef:
+                        description: |-
+                          LocalObjectReference contains enough information to let you locate the
+                          referenced object inside the same namespace.
+                        properties:
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      value:
+                        description: ApisixConsumerBasicAuthValue defines the in-place
+                          username and password configuration for basic auth.
+                        properties:
+                          password:
+                            type: string
+                          username:
+                            type: string
+                        required:
+                        - password
+                        - username
+                        type: object
+                    type: object
+                  hmacAuth:
+                    description: ApisixConsumerHMACAuth defines the configuration
+                      for the hmac auth.
+                    properties:
+                      secretRef:
+                        description: |-
+                          LocalObjectReference contains enough information to let you locate the
+                          referenced object inside the same namespace.
+                        properties:
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      value:
+                        description: ApisixConsumerHMACAuthValue defines the in-place
+                          configuration for hmac auth.
+                        properties:
+                          access_key:
+                            type: string
+                          algorithm:
+                            type: string
+                          clock_skew:
+                            format: int64
+                            type: integer
+                          encode_uri_params:
+                            type: boolean
+                          keep_headers:
+                            type: boolean
+                          max_req_body:
+                            format: int64
+                            type: integer
+                          secret_key:
+                            type: string
+                          signed_headers:
+                            items:
+                              type: string
+                            type: array
+                          validate_request_body:
+                            type: boolean
+                        required:
+                        - access_key
+                        - secret_key
+                        type: object
+                    type: object
+                  jwtAuth:
+                    description: ApisixConsumerJwtAuth defines the configuration for
+                      the jwt auth.
+                    properties:
+                      secretRef:
+                        description: |-
+                          LocalObjectReference contains enough information to let you locate the
+                          referenced object inside the same namespace.
+                        properties:
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      value:
+                        description: ApisixConsumerJwtAuthValue defines the in-place
+                          configuration for jwt auth.
+                        properties:
+                          algorithm:
+                            type: string
+                          base64_secret:
+                            type: boolean
+                          exp:
+                            format: int64
+                            type: integer
+                          key:
+                            type: string
+                          lifetime_grace_period:
+                            format: int64
+                            type: integer
+                          private_key:
+                            type: string
+                          public_key:
+                            type: string
+                          secret:
+                            type: string
+                        required:
+                        - key
+                        - private_key
+                        type: object
+                    type: object
+                  keyAuth:
+                    description: ApisixConsumerKeyAuth defines the configuration for
+                      the key auth.
+                    properties:
+                      secretRef:
+                        description: |-
+                          LocalObjectReference contains enough information to let you locate the
+                          referenced object inside the same namespace.
+                        properties:
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      value:
+                        description: ApisixConsumerKeyAuthValue defines the in-place
+                          configuration for basic auth.
+                        properties:
+                          key:
+                            type: string
+                        required:
+                        - key
+                        type: object
+                    type: object
+                  ldapAuth:
+                    description: ApisixConsumerLDAPAuth defines the configuration
+                      for the ldap auth.
+                    properties:
+                      secretRef:
+                        description: |-
+                          LocalObjectReference contains enough information to let you locate the
+                          referenced object inside the same namespace.
+                        properties:
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      value:
+                        description: ApisixConsumerLDAPAuthValue defines the in-place
+                          configuration for ldap auth.
+                        properties:
+                          user_dn:
+                            type: string
+                        required:
+                        - user_dn
+                        type: object
+                    required:
+                    - secretRef
+                    type: object
+                  wolfRBAC:
+                    description: ApisixConsumerWolfRBAC defines the configuration
+                      for the wolf-rbac auth.
+                    properties:
+                      secretRef:
+                        description: |-
+                          LocalObjectReference contains enough information to let you locate the
+                          referenced object inside the same namespace.
+                        properties:
+                          name:
+                            default: ""
+                            description: |-
+                              Name of the referent.
+                              This field is effectively required, but due to backwards compatibility is
+                              allowed to be empty. Instances of this type with an empty value here are
+                              almost certainly wrong.
+                              More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                            type: string
+                        type: object
+                        x-kubernetes-map-type: atomic
+                      value:
+                        description: ApisixConsumerWolfRBAC defines the in-place server
+                          and appid and header_prefix configuration for wolf-rbac
+                          auth.
+                        properties:
+                          appid:
+                            type: string
+                          header_prefix:
+                            type: string
+                          server:
+                            type: string
+                        type: object
+                    type: object
+                type: object
+              ingressClassName:
+                description: |-
+                  IngressClassName is the name of an IngressClass cluster resource.
+                  controller implementations use this field to know whether they should be
+                  serving this ApisixConsumer resource, by a transitive connection
+                  (controller -> IngressClass -> ApisixConsumer resource).
+                type: string
+            required:
+            - authParameter
+            type: object
+          status:
+            description: ApisixStatus is the status report for Apisix ingress Resources
+            properties:
+              conditions:
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.17.2
+  name: apisixglobalrules.apisix.apache.org
+spec:
+  group: apisix.apache.org
+  names:
+    kind: ApisixGlobalRule
+    listKind: ApisixGlobalRuleList
+    plural: apisixglobalrules
+    singular: apisixglobalrule
+  scope: Namespaced
+  versions:
+  - name: v2
+    schema:
+      openAPIV3Schema:
+        description: ApisixGlobalRule is the Schema for the apisixglobalrules API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ApisixGlobalRuleSpec defines the desired state of ApisixGlobalRule.
+            properties:
+              ingressClassName:
+                description: |-
+                  IngressClassName is the name of an IngressClass cluster resource.
+                  The controller uses this field to decide whether the resource should be managed or not.
+                type: string
+              plugins:
+                description: Plugins contains a list of ApisixRoutePlugin
+                items:
+                  description: ApisixRoutePlugin represents an APISIX plugin.
+                  properties:
+                    config:
+                      description: Plugin configuration.
+                      x-kubernetes-preserve-unknown-fields: true
+                    enable:
+                      default: true
+                      description: Whether this plugin is in use, default is true.
+                      type: boolean
+                    name:
+                      description: The plugin name.
+                      type: string
+                    secretRef:
+                      description: Plugin configuration secretRef.
+                      type: string
+                  required:
+                  - enable
+                  - name
+                  type: object
+                type: array
+            required:
+            - plugins
+            type: object
+          status:
+            description: ApisixStatus is the status report for Apisix ingress Resources
+            properties:
+              conditions:
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.17.2
+  name: apisixpluginconfigs.apisix.apache.org
+spec:
+  group: apisix.apache.org
+  names:
+    kind: ApisixPluginConfig
+    listKind: ApisixPluginConfigList
+    plural: apisixpluginconfigs
+    singular: apisixpluginconfig
+  scope: Namespaced
+  versions:
+  - name: v2
+    schema:
+      openAPIV3Schema:
+        description: ApisixPluginConfig is the Schema for the apisixpluginconfigs
+          API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ApisixPluginConfigSpec defines the desired state of ApisixPluginConfigSpec.
+            properties:
+              ingressClassName:
+                description: |-
+                  IngressClassName is the name of an IngressClass cluster resource.
+                  The controller uses this field to decide whether the resource should be managed or not.
+                type: string
+              plugins:
+                description: Plugins contain a list of ApisixRoutePlugin
+                items:
+                  description: ApisixRoutePlugin represents an APISIX plugin.
+                  properties:
+                    config:
+                      description: Plugin configuration.
+                      x-kubernetes-preserve-unknown-fields: true
+                    enable:
+                      default: true
+                      description: Whether this plugin is in use, default is true.
+                      type: boolean
+                    name:
+                      description: The plugin name.
+                      type: string
+                    secretRef:
+                      description: Plugin configuration secretRef.
+                      type: string
+                  required:
+                  - enable
+                  - name
+                  type: object
+                type: array
+            required:
+            - plugins
+            type: object
+          status:
+            description: ApisixStatus is the status report for Apisix ingress Resources
+            properties:
+              conditions:
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.17.2
+  name: apisixroutes.apisix.apache.org
+spec:
+  group: apisix.apache.org
+  names:
+    kind: ApisixRoute
+    listKind: ApisixRouteList
+    plural: apisixroutes
+    singular: apisixroute
+  scope: Namespaced
+  versions:
+  - name: v2
+    schema:
+      openAPIV3Schema:
+        description: ApisixRoute is the Schema for the apisixroutes API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ApisixRouteSpec is the spec definition for ApisixRouteSpec.
+            properties:
+              http:
+                items:
+                  description: ApisixRouteHTTP represents a single route in for HTTP
+                    traffic.
+                  properties:
+                    authentication:
+                      description: |-
+                        ApisixRouteAuthentication is the authentication-related
+                        configuration in ApisixRoute.
+                      properties:
+                        enable:
+                          type: boolean
+                        jwtAuth:
+                          description: |-
+                            ApisixRouteAuthenticationJwtAuth is the jwt auth related
+                            configuration in ApisixRouteAuthentication.
+                          properties:
+                            cookie:
+                              type: string
+                            header:
+                              type: string
+                            query:
+                              type: string
+                          type: object
+                        keyAuth:
+                          description: |-
+                            ApisixRouteAuthenticationKeyAuth is the keyAuth-related
+                            configuration in ApisixRouteAuthentication.
+                          properties:
+                            header:
+                              type: string
+                          type: object
+                        ldapAuth:
+                          description: |-
+                            ApisixRouteAuthenticationLDAPAuth is the LDAP auth related
+                            configuration in ApisixRouteAuthentication.
+                          properties:
+                            base_dn:
+                              type: string
+                            ldap_uri:
+                              type: string
+                            uid:
+                              type: string
+                            use_tls:
+                              type: boolean
+                          type: object
+                        type:
+                          type: string
+                      required:
+                      - enable
+                      - type
+                      type: object
+                    backends:
+                      description: |-
+                        Backends represents potential backends to proxy after the route
+                        rule matched. When number of backends are more than one, traffic-split
+                        plugin in APISIX will be used to split traffic based on the backend weight.
+                      items:
+                        description: ApisixRouteHTTPBackend represents an HTTP backend
+                          (a Kubernetes Service).
+                        properties:
+                          resolveGranularity:
+                            description: |-
+                              The resolve granularity, can be "endpoints" or "service",
+                              when set to "endpoints", the pod ips will be used; other
+                              wise, the service ClusterIP or ExternalIP will be used,
+                              default is endpoints.
+                            type: string
+                          serviceName:
+                            description: |-
+                              The name (short) of the service, note cross namespace is forbidden,
+                              so be sure the ApisixRoute and Service are in the same namespace.
+                            type: string
+                          servicePort:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            description: The service port, could be the name or the
+                              port number.
+                            x-kubernetes-int-or-string: true
+                          subset:
+                            description: |-
+                              Subset specifies a subset for the target Service. The subset should be pre-defined
+                              in ApisixUpstream about this service.
+                            type: string
+                          weight:
+                            description: Weight of this backend.
+                            type: integer
+                        required:
+                        - serviceName
+                        - servicePort
+                        type: object
+                      type: array
+                    match:
+                      description: ApisixRouteHTTPMatch represents the match condition
+                        for hitting this route.
+                      properties:
+                        exprs:
+                          description: |-
+                            NginxVars represents generic match predicates,
+                            it uses Nginx variable systems, so any predicate
+                            like headers, querystring and etc can be leveraged
+                            here to match the route.
+                            For instance, it can be:
+                            nginxVars:
+                              - subject: "$remote_addr"
+                                op: in
+                                value:
+                                  - "127.0.0.1"
+                                  - "10.0.5.11"
+                          items:
+                            description: ApisixRouteHTTPMatchExpr represents a binary
+                              route match expression .
+                            properties:
+                              op:
+                                description: Op is the operator.
+                                type: string
+                              set:
+                                description: |-
+                                  Set is an array type object of the expression.
+                                  It should be used when the Op is "in" or "not_in";
+                                items:
+                                  type: string
+                                type: array
+                              subject:
+                                description: |-
+                                  Subject is the expression subject, it can
+                                  be any string composed by literals and nginx
+                                  vars.
+                                properties:
+                                  name:
+                                    description: The name of subject.
+                                    type: string
+                                  scope:
+                                    description: |-
+                                      The subject scope, can be:
+                                      ScopeQuery, ScopeHeader, ScopePath
+                                      when subject is ScopePath, Name field
+                                      will be ignored.
+                                    type: string
+                                required:
+                                - name
+                                - scope
+                                type: object
+                              value:
+                                description: |-
+                                  Value is the normal type object for the expression,
+                                  it should be used when the Op is not "in" and "not_in".
+                                  Set and Value are exclusive so only of them can be set
+                                  in the same time.
+                                type: string
+                            required:
+                            - op
+                            - subject
+                            type: object
+                          type: array
+                        filter_func:
+                          description: |-
+                            Matches based on a user-defined filtering function.
+                            These functions can accept an input parameter `vars`
+                            which can be used to access the Nginx variables.
+                          type: string
+                        hosts:
+                          description: |-
+                            HTTP Host predicates, host can be a wildcard domain or
+                            an exact domain. For wildcard domain, only one generic
+                            level is allowed, for instance, "*.foo.com" is valid but
+                            "*.*.foo.com" is not.
+                          items:
+                            type: string
+                          type: array
+                        methods:
+                          description: HTTP request method predicates.
+                          items:
+                            type: string
+                          type: array
+                        paths:
+                          description: |-
+                            URI path predicates, at least one path should be
+                            configured, path could be exact or prefix, for prefix path,
+                            append "*" after it, for instance, "/foo*".
+                          items:
+                            type: string
+                          type: array
+                        remoteAddrs:
+                          description: |-
+                            Remote address predicates, items can be valid IPv4 address
+                            or IPv6 address or CIDR.
+                          items:
+                            type: string
+                          type: array
+                      required:
+                      - paths
+                      type: object
+                    name:
+                      description: The rule name, cannot be empty.
+                      type: string
+                    plugin_config_name:
+                      type: string
+                    plugin_config_namespace:
+                      description: By default, PluginConfigNamespace will be the same
+                        as the namespace of ApisixRoute
+                      type: string
+                    plugins:
+                      items:
+                        description: ApisixRoutePlugin represents an APISIX plugin.
+                        properties:
+                          config:
+                            description: Plugin configuration.
+                            x-kubernetes-preserve-unknown-fields: true
+                          enable:
+                            default: true
+                            description: Whether this plugin is in use, default is
+                              true.
+                            type: boolean
+                          name:
+                            description: The plugin name.
+                            type: string
+                          secretRef:
+                            description: Plugin configuration secretRef.
+                            type: string
+                        required:
+                        - enable
+                        - name
+                        type: object
+                      type: array
+                    priority:
+                      description: |-
+                        Route priority, when multiple routes contains
+                        same URI path (for path matching), route with
+                        higher priority will take effect.
+                      type: integer
+                    timeout:
+                      description: UpstreamTimeout is settings for the read, send
+                        and connect to the upstream.
+                      properties:
+                        connect:
+                          type: string
+                        read:
+                          type: string
+                        send:
+                          type: string
+                      type: object
+                    upstreams:
+                      description: Upstreams refer to ApisixUpstream CRD
+                      items:
+                        description: ApisixRouteUpstreamReference contains a ApisixUpstream
+                          CRD reference
+                        properties:
+                          name:
+                            type: string
+                          weight:
+                            type: integer
+                        type: object
+                      type: array
+                    websocket:
+                      type: boolean
+                  required:
+                  - name
+                  type: object
+                type: array
+              ingressClassName:
+                type: string
+              stream:
+                items:
+                  description: ApisixRouteStream is the configuration for level 4
+                    route
+                  properties:
+                    backend:
+                      description: ApisixRouteStreamBackend represents a TCP backend
+                        (a Kubernetes Service).
+                      properties:
+                        resolveGranularity:
+                          description: |-
+                            The resolve granularity, can be "endpoints" or "service",
+                            when set to "endpoints", the pod ips will be used; other
+                            wise, the service ClusterIP or ExternalIP will be used,
+                            default is endpoints.
+                          type: string
+                        serviceName:
+                          description: |-
+                            The name (short) of the service, note cross namespace is forbidden,
+                            so be sure the ApisixRoute and Service are in the same namespace.
+                          type: string
+                        servicePort:
+                          anyOf:
+                          - type: integer
+                          - type: string
+                          description: The service port, could be the name or the
+                            port number.
+                          x-kubernetes-int-or-string: true
+                        subset:
+                          description: |-
+                            Subset specifies a subset for the target Service. The subset should be pre-defined
+                            in ApisixUpstream about this service.
+                          type: string
+                      required:
+                      - serviceName
+                      - servicePort
+                      type: object
+                    match:
+                      description: ApisixRouteStreamMatch represents the match conditions
+                        of stream route.
+                      properties:
+                        host:
+                          type: string
+                        ingressPort:
+                          description: |-
+                            IngressPort represents the port listening on the Ingress proxy server.
+                            It should be pre-defined as APISIX doesn't support dynamic listening.
+                          format: int32
+                          type: integer
+                      required:
+                      - ingressPort
+                      type: object
+                    name:
+                      description: The rule name cannot be empty.
+                      type: string
+                    plugins:
+                      items:
+                        description: ApisixRoutePlugin represents an APISIX plugin.
+                        properties:
+                          config:
+                            description: Plugin configuration.
+                            x-kubernetes-preserve-unknown-fields: true
+                          enable:
+                            default: true
+                            description: Whether this plugin is in use, default is
+                              true.
+                            type: boolean
+                          name:
+                            description: The plugin name.
+                            type: string
+                          secretRef:
+                            description: Plugin configuration secretRef.
+                            type: string
+                        required:
+                        - enable
+                        - name
+                        type: object
+                      type: array
+                    protocol:
+                      type: string
+                  required:
+                  - backend
+                  - match
+                  - name
+                  - protocol
+                  type: object
+                type: array
+            type: object
+          status:
+            description: ApisixStatus is the status report for Apisix ingress Resources
+            properties:
+              conditions:
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.17.2
+  name: apisixtls.apisix.apache.org
+spec:
+  group: apisix.apache.org
+  names:
+    kind: ApisixTls
+    listKind: ApisixTlsList
+    plural: apisixtls
+    shortNames:
+    - atls
+    singular: apisixtls
+  scope: Namespaced
+  versions:
+  - name: v2
+    schema:
+      openAPIV3Schema:
+        description: ApisixTls is the Schema for the apisixtls API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ApisixTlsSpec defines the desired state of ApisixTls.
+            properties:
+              client:
+                description: ApisixMutualTlsClientConfig describes the mutual TLS
+                  CA and verify depth
+                properties:
+                  caSecret:
+                    description: ApisixSecret describes the Kubernetes Secret name
+                      and namespace.
+                    properties:
+                      name:
+                        minLength: 1
+                        type: string
+                      namespace:
+                        minLength: 1
+                        type: string
+                    required:
+                    - name
+                    - namespace
+                    type: object
+                  depth:
+                    type: integer
+                  skip_mtls_uri_regex:
+                    items:
+                      type: string
+                    type: array
+                type: object
+              hosts:
+                items:
+                  pattern: ^\*?[0-9a-zA-Z-.]+$
+                  type: string
+                minItems: 1
+                type: array
+              ingressClassName:
+                description: |-
+                  IngressClassName is the name of an IngressClass cluster resource.
+                  controller implementations use this field to know whether they should be
+                  serving this ApisixTls resource, by a transitive connection
+                  (controller -> IngressClass -> ApisixTls resource).
+                type: string
+              secret:
+                description: ApisixSecret describes the Kubernetes Secret name and
+                  namespace.
+                properties:
+                  name:
+                    minLength: 1
+                    type: string
+                  namespace:
+                    minLength: 1
+                    type: string
+                required:
+                - name
+                - namespace
+                type: object
+            required:
+            - hosts
+            - secret
+            type: object
+          status:
+            description: ApisixStatus is the status report for Apisix ingress Resources
+            properties:
+              conditions:
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.17.2
+  name: apisixupstreams.apisix.apache.org
+spec:
+  group: apisix.apache.org
+  names:
+    kind: ApisixUpstream
+    listKind: ApisixUpstreamList
+    plural: apisixupstreams
+    singular: apisixupstream
+  scope: Namespaced
+  versions:
+  - name: v2
+    schema:
+      openAPIV3Schema:
+        description: ApisixUpstream is the Schema for the apisixupstreams API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ApisixUpstreamSpec describes the specification of ApisixUpstream.
+            properties:
+              discovery:
+                description: |-
+                  Deprecated: this is no longer support on standalone mode.
+                  Discovery is used to configure service discovery for upstream.
+                properties:
+                  args:
+                    additionalProperties:
+                      type: string
+                    type: object
+                  serviceName:
+                    type: string
+                  type:
+                    type: string
+                required:
+                - serviceName
+                - type
+                type: object
+              externalNodes:
+                description: |-
+                  ExternalNodes contains external nodes the Upstream should use
+                  If this field is set, the upstream will use these nodes directly without any further resolves
+                items:
+                  description: ApisixUpstreamExternalNode is the external node conf
+                  properties:
+                    name:
+                      type: string
+                    port:
+                      description: Port defines the port of the external node
+                      type: integer
+                    type:
+                      description: ApisixUpstreamExternalType is the external service
+                        type
+                      type: string
+                    weight:
+                      type: integer
+                  type: object
+                minItems: 1
+                type: array
+              healthCheck:
+                description: |-
+                  Deprecated: this is no longer support on standalone mode.
+                  The health check configurations for the upstream.
+                properties:
+                  active:
+                    description: ActiveHealthCheck defines the active kind of upstream
+                      health check.
+                    properties:
+                      concurrency:
+                        minimum: 0
+                        type: integer
+                      healthy:
+                        description: |-
+                          ActiveHealthCheckHealthy defines the conditions to judge whether
+                          an upstream node is healthy with the active manner.
+                        properties:
+                          httpCodes:
+                            items:
+                              type: integer
+                            minItems: 1
+                            type: array
+                          interval:
+                            type: string
+                          successes:
+                            maximum: 254
+                            minimum: 0
+                            type: integer
+                        type: object
+                      host:
+                        type: string
+                      httpPath:
+                        type: string
+                      port:
+                        format: int32
+                        maximum: 65535
+                        minimum: 0
+                        type: integer
+                      requestHeaders:
+                        items:
+                          type: string
+                        type: array
+                      strictTLS:
+                        type: boolean
+                      timeout:
+                        description: |-
+                          A Duration represents the elapsed time between two instants
+                          as an int64 nanosecond count. The representation limits the
+                          largest representable duration to approximately 290 years.
+                        format: int64
+                        type: integer
+                      type:
+                        enum:
+                        - http
+                        - https
+                        - tcp
+                        type: string
+                      unhealthy:
+                        description: |-
+                          ActiveHealthCheckUnhealthy defines the conditions to judge whether
+                          an upstream node is unhealthy with the active manager.
+                        properties:
+                          httpCodes:
+                            items:
+                              type: integer
+                            minItems: 1
+                            type: array
+                          httpFailures:
+                            maximum: 254
+                            minimum: 0
+                            type: integer
+                          interval:
+                            type: string
+                          tcpFailures:
+                            maximum: 254
+                            minimum: 0
+                            type: integer
+                          timeout:
+                            type: integer
+                        type: object
+                    type: object
+                  passive:
+                    description: |-
+                      PassiveHealthCheck defines the conditions to judge whether
+                      an upstream node is healthy with the passive manager.
+                    properties:
+                      healthy:
+                        description: |-
+                          PassiveHealthCheckHealthy defines the conditions to judge whether
+                          an upstream node is healthy with the passive manner.
+                        properties:
+                          httpCodes:
+                            items:
+                              type: integer
+                            minItems: 1
+                            type: array
+                          successes:
+                            maximum: 254
+                            minimum: 0
+                            type: integer
+                        type: object
+                      type:
+                        type: string
+                      unhealthy:
+                        description: |-
+                          PassiveHealthCheckUnhealthy defines the conditions to judge whether
+                          an upstream node is unhealthy with the passive manager.
+                        properties:
+                          httpCodes:
+                            items:
+                              type: integer
+                            minItems: 1
+                            type: array
+                          httpFailures:
+                            maximum: 254
+                            minimum: 0
+                            type: integer
+                          tcpFailures:
+                            maximum: 254
+                            minimum: 0
+                            type: integer
+                          timeout:
+                            type: integer
+                        type: object
+                    type: object
+                required:
+                - active
+                type: object
+              ingressClassName:
+                description: |-
+                  IngressClassName is the name of an IngressClass cluster resource.
+                  controller implementations use this field to know whether they should be
+                  serving this ApisixUpstream resource, by a transitive connection
+                  (controller -> IngressClass -> ApisixUpstream resource).
+                type: string
+              loadbalancer:
+                description: |-
+                  LoadBalancer represents the load balancer configuration for Kubernetes Service.
+                  The default strategy is round robin.
+                properties:
+                  hashOn:
+                    description: |-
+                      The HashOn and Key fields are required when Type is "chash".
+                      HashOn represents the key fetching scope.
+                    type: string
+                  key:
+                    description: Key represents the hash key.
+                    type: string
+                  type:
+                    type: string
+                required:
+                - type
+                type: object
+              passHost:
+                description: |-
+                  Configures the host when the request is forwarded to the upstream.
+                  Can be one of pass, node or rewrite.
+                enum:
+                - pass
+                - node
+                - rewrite
+                type: string
+              portLevelSettings:
+                items:
+                  description: |-
+                    PortLevelSettings configures the ApisixUpstreamConfig for each individual port. It inherits
+                    configurations from the outer level (the whole Kubernetes Service) and overrides some of
+                    them if they are set on the port level.
+                  properties:
+                    discovery:
+                      description: |-
+                        Deprecated: this is no longer support on standalone mode.
+                        Discovery is used to configure service discovery for upstream.
+                      properties:
+                        args:
+                          additionalProperties:
+                            type: string
+                          type: object
+                        serviceName:
+                          type: string
+                        type:
+                          type: string
+                      required:
+                      - serviceName
+                      - type
+                      type: object
+                    healthCheck:
+                      description: |-
+                        Deprecated: this is no longer support on standalone mode.
+                        The health check configurations for the upstream.
+                      properties:
+                        active:
+                          description: ActiveHealthCheck defines the active kind of
+                            upstream health check.
+                          properties:
+                            concurrency:
+                              minimum: 0
+                              type: integer
+                            healthy:
+                              description: |-
+                                ActiveHealthCheckHealthy defines the conditions to judge whether
+                                an upstream node is healthy with the active manner.
+                              properties:
+                                httpCodes:
+                                  items:
+                                    type: integer
+                                  minItems: 1
+                                  type: array
+                                interval:
+                                  type: string
+                                successes:
+                                  maximum: 254
+                                  minimum: 0
+                                  type: integer
+                              type: object
+                            host:
+                              type: string
+                            httpPath:
+                              type: string
+                            port:
+                              format: int32
+                              maximum: 65535
+                              minimum: 0
+                              type: integer
+                            requestHeaders:
+                              items:
+                                type: string
+                              type: array
+                            strictTLS:
+                              type: boolean
+                            timeout:
+                              description: |-
+                                A Duration represents the elapsed time between two instants
+                                as an int64 nanosecond count. The representation limits the
+                                largest representable duration to approximately 290 years.
+                              format: int64
+                              type: integer
+                            type:
+                              enum:
+                              - http
+                              - https
+                              - tcp
+                              type: string
+                            unhealthy:
+                              description: |-
+                                ActiveHealthCheckUnhealthy defines the conditions to judge whether
+                                an upstream node is unhealthy with the active manager.
+                              properties:
+                                httpCodes:
+                                  items:
+                                    type: integer
+                                  minItems: 1
+                                  type: array
+                                httpFailures:
+                                  maximum: 254
+                                  minimum: 0
+                                  type: integer
+                                interval:
+                                  type: string
+                                tcpFailures:
+                                  maximum: 254
+                                  minimum: 0
+                                  type: integer
+                                timeout:
+                                  type: integer
+                              type: object
+                          type: object
+                        passive:
+                          description: |-
+                            PassiveHealthCheck defines the conditions to judge whether
+                            an upstream node is healthy with the passive manager.
+                          properties:
+                            healthy:
+                              description: |-
+                                PassiveHealthCheckHealthy defines the conditions to judge whether
+                                an upstream node is healthy with the passive manner.
+                              properties:
+                                httpCodes:
+                                  items:
+                                    type: integer
+                                  minItems: 1
+                                  type: array
+                                successes:
+                                  maximum: 254
+                                  minimum: 0
+                                  type: integer
+                              type: object
+                            type:
+                              type: string
+                            unhealthy:
+                              description: |-
+                                PassiveHealthCheckUnhealthy defines the conditions to judge whether
+                                an upstream node is unhealthy with the passive manager.
+                              properties:
+                                httpCodes:
+                                  items:
+                                    type: integer
+                                  minItems: 1
+                                  type: array
+                                httpFailures:
+                                  maximum: 254
+                                  minimum: 0
+                                  type: integer
+                                tcpFailures:
+                                  maximum: 254
+                                  minimum: 0
+                                  type: integer
+                                timeout:
+                                  type: integer
+                              type: object
+                          type: object
+                      required:
+                      - active
+                      type: object
+                    loadbalancer:
+                      description: |-
+                        LoadBalancer represents the load balancer configuration for Kubernetes Service.
+                        The default strategy is round robin.
+                      properties:
+                        hashOn:
+                          description: |-
+                            The HashOn and Key fields are required when Type is "chash".
+                            HashOn represents the key fetching scope.
+                          type: string
+                        key:
+                          description: Key represents the hash key.
+                          type: string
+                        type:
+                          type: string
+                      required:
+                      - type
+                      type: object
+                    passHost:
+                      description: |-
+                        Configures the host when the request is forwarded to the upstream.
+                        Can be one of pass, node or rewrite.
+                      enum:
+                      - pass
+                      - node
+                      - rewrite
+                      type: string
+                    port:
+                      description: Port is a Kubernetes Service port, it should be
+                        already defined.
+                      format: int32
+                      type: integer
+                    retries:
+                      description: |-
+                        How many times that the proxy (Apache APISIX) should do when
+                        errors occur (error, timeout or bad http status codes like 500, 502).
+                      format: int64
+                      type: integer
+                    scheme:
+                      description: |-
+                        The scheme used to talk with the upstream.
+                        Now value can be http, grpc.
+                      enum:
+                      - http
+                      - https
+                      - grpc
+                      - grpcs
+                      type: string
+                    subsets:
+                      description: |-
+                        Subsets groups the service endpoints by their labels. Usually used to differentiate
+                        service versions.
+                      items:
+                        description: ApisixUpstreamSubset defines a single endpoints
+                          group of one Service.
+                        properties:
+                          labels:
+                            additionalProperties:
+                              type: string
+                            description: Labels is the label set of this subset.
+                            type: object
+                          name:
+                            description: Name is the name of subset.
+                            type: string
+                        required:
+                        - labels
+                        - name
+                        type: object
+                      type: array
+                    timeout:
+                      description: Timeout settings for the read, send and connect
+                        to the upstream.
+                      properties:
+                        connect:
+                          type: string
+                        read:
+                          type: string
+                        send:
+                          type: string
+                      type: object
+                    tlsSecret:
+                      description: Set the client certificate when connecting to TLS
+                        upstream.
+                      properties:
+                        name:
+                          minLength: 1
+                          type: string
+                        namespace:
+                          minLength: 1
+                          type: string
+                      required:
+                      - name
+                      - namespace
+                      type: object
+                    upstreamHost:
+                      description: |-
+                        Specifies the host of the Upstream request. This is only valid if
+                        the pass_host is set to rewrite
+                      type: string
+                  required:
+                  - port
+                  type: object
+                type: array
+              retries:
+                description: |-
+                  How many times that the proxy (Apache APISIX) should do when
+                  errors occur (error, timeout or bad http status codes like 500, 502).
+                format: int64
+                type: integer
+              scheme:
+                description: |-
+                  The scheme used to talk with the upstream.
+                  Now value can be http, grpc.
+                enum:
+                - http
+                - https
+                - grpc
+                - grpcs
+                type: string
+              subsets:
+                description: |-
+                  Subsets groups the service endpoints by their labels. Usually used to differentiate
+                  service versions.
+                items:
+                  description: ApisixUpstreamSubset defines a single endpoints group
+                    of one Service.
+                  properties:
+                    labels:
+                      additionalProperties:
+                        type: string
+                      description: Labels is the label set of this subset.
+                      type: object
+                    name:
+                      description: Name is the name of subset.
+                      type: string
+                  required:
+                  - labels
+                  - name
+                  type: object
+                type: array
+              timeout:
+                description: Timeout settings for the read, send and connect to the
+                  upstream.
+                properties:
+                  connect:
+                    type: string
+                  read:
+                    type: string
+                  send:
+                    type: string
+                type: object
+              tlsSecret:
+                description: Set the client certificate when connecting to TLS upstream.
+                properties:
+                  name:
+                    minLength: 1
+                    type: string
+                  namespace:
+                    minLength: 1
+                    type: string
+                required:
+                - name
+                - namespace
+                type: object
+              upstreamHost:
+                description: |-
+                  Specifies the host of the Upstream request. This is only valid if
+                  the pass_host is set to rewrite
+                type: string
+            type: object
+          status:
+            description: ApisixStatus is the status report for Apisix ingress Resources
+            properties:
+              conditions:
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.17.2
+  name: backendtrafficpolicies.apisix.apache.org
+spec:
+  group: apisix.apache.org
+  names:
+    kind: BackendTrafficPolicy
+    listKind: BackendTrafficPolicyList
+    plural: backendtrafficpolicies
+    singular: backendtrafficpolicy
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              BackendTrafficPolicySpec defines traffic handling policies applied to backend services,
+              such as load balancing strategy, connection settings, and failover behavior.
+            properties:
+              loadbalancer:
+                description: |-
+                  LoadBalancer represents the load balancer configuration for Kubernetes Service.
+                  The default strategy is round robin.
+                properties:
+                  hashOn:
+                    default: vars
+                    description: |-
+                      HashOn specified the type of field used for hashing, required when Type is `chash`.
+                      Default is `vars`.
+                      Can be one of `vars`, `header`, `cookie`, `consumer`, or `vars_combinations`.
+                    enum:
+                    - vars
+                    - header
+                    - cookie
+                    - consumer
+                    - vars_combinations
+                    type: string
+                  key:
+                    description: |-
+                      Key is used with HashOn, generally required when Type is `chash`.
+                      When HashOn is `header` or `cookie`, specifies the name of the header or cookie.
+                      When HashOn is `consumer`, key is not required, as the consumer name is used automatically.
+                      When HashOn is `vars` or `vars_combinations`, key refers to one or a combination of
+                      [APISIX variable](https://apisix.apache.org/docs/apisix/apisix-variable/).
+                    type: string
+                  type:
+                    default: roundrobin
+                    description: |-
+                      Type specifies the load balancing algorithms.
+                      Default is `roundrobin`.
+                      Can be one of `roundrobin`, `chash`, `ewma`, or `least_conn`.
+                    enum:
+                    - roundrobin
+                    - chash
+                    - ewma
+                    - least_conn
+                    type: string
+                required:
+                - type
+                type: object
+                x-kubernetes-validations:
+                - rule: '!(has(self.key) && self.type != ''chash'')'
+              passHost:
+                default: pass
+                description: |-
+                  PassHost configures how the host header should be determined when a
+                  request is forwarded to the upstream.
+                  Default is `pass`.
+                  Can be one of `pass`, `node` or `rewrite`.
+                enum:
+                - pass
+                - node
+                - rewrite
+                type: string
+              retries:
+                description: |-
+                  Retries specify the number of times the gateway should retry sending
+                  requests when errors such as timeouts or 502 errors occur.
+                type: integer
+              scheme:
+                default: http
+                description: |-
+                  Scheme is the protocol used to communicate with the upstream.
+                  Default is `http`.
+                  Can be one of `http`, `https`, `grpc`, or `grpcs`.
+                enum:
+                - http
+                - https
+                - grpc
+                - grpcs
+                type: string
+              targetRefs:
+                description: |-
+                  TargetRef identifies an API object to apply policy to.
+                  Currently, Backends (i.e. Service, ServiceImport, or any
+                  implementation-specific backendRef) are the only valid API
+                  target references.
+                items:
+                  description: |-
+                    LocalPolicyTargetReferenceWithSectionName identifies an API object to apply a
+                    direct policy to. This should be used as part of Policy resources that can
+                    target single resources. For more information on how this policy attachment
+                    mode works, and a sample Policy resource, refer to the policy attachment
+                    documentation for Gateway API.
+
+                    Note: This should only be used for direct policy attachment when references
+                    to SectionName are actually needed. In all other cases,
+                    LocalPolicyTargetReference should be used.
+                  properties:
+                    group:
+                      description: Group is the group of the target resource.
+                      maxLength: 253
+                      pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                      type: string
+                    kind:
+                      description: Kind is kind of the target resource.
+                      maxLength: 63
+                      minLength: 1
+                      pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                      type: string
+                    name:
+                      description: Name is the name of the target resource.
+                      maxLength: 253
+                      minLength: 1
+                      type: string
+                    sectionName:
+                      description: |-
+                        SectionName is the name of a section within the target resource. When
+                        unspecified, this targetRef targets the entire resource. In the following
+                        resources, SectionName is interpreted as the following:
+
+                        * Gateway: Listener name
+                        * HTTPRoute: HTTPRouteRule name
+                        * Service: Port name
+
+                        If a SectionName is specified, but does not exist on the targeted object,
+                        the Policy must fail to attach, and the policy implementation should record
+                        a `ResolvedRefs` or similar Condition in the Policy's status.
+                      maxLength: 253
+                      minLength: 1
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                      type: string
+                  required:
+                  - group
+                  - kind
+                  - name
+                  type: object
+                  x-kubernetes-validations:
+                  - rule: self.kind == 'Service' && self.group == ""
+                maxItems: 16
+                minItems: 1
+                type: array
+              timeout:
+                description: Timeout sets the read, send, and connect timeouts to
+                  the upstream.
+                properties:
+                  connect:
+                    default: 60s
+                    description: Connection timeout. Default is `60s`.
+                    pattern: ^[0-9]+s$
+                    type: string
+                  read:
+                    default: 60s
+                    description: Read timeout. Default is `60s`.
+                    pattern: ^[0-9]+s$
+                    type: string
+                  send:
+                    default: 60s
+                    description: Send timeout. Default is `60s`.
+                    pattern: ^[0-9]+s$
+                    type: string
+                type: object
+              upstreamHost:
+                description: |-
+                  UpstreamHost specifies the host of the Upstream request. Used only if
+                  passHost is set to `rewrite`.
+                maxLength: 253
+                minLength: 1
+                pattern: ^(\*\.)?[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                type: string
+            required:
+            - targetRefs
+            type: object
+          status:
+            description: |-
+              PolicyStatus defines the common attributes that all Policies should include within
+              their status.
+            properties:
+              ancestors:
+                description: |-
+                  Ancestors is a list of ancestor resources (usually Gateways) that are
+                  associated with the policy, and the status of the policy with respect to
+                  each ancestor. When this policy attaches to a parent, the controller that
+                  manages the parent and the ancestors MUST add an entry to this list when
+                  the controller first sees the policy and SHOULD update the entry as
+                  appropriate when the relevant ancestor is modified.
+
+                  Note that choosing the relevant ancestor is left to the Policy designers;
+                  an important part of Policy design is designing the right object level at
+                  which to namespace this status.
+
+                  Note also that implementations MUST ONLY populate ancestor status for
+                  the Ancestor resources they are responsible for. Implementations MUST
+                  use the ControllerName field to uniquely identify the entries in this list
+                  that they are responsible for.
+
+                  Note that to achieve this, the list of PolicyAncestorStatus structs
+                  MUST be treated as a map with a composite key, made up of the AncestorRef
+                  and ControllerName fields combined.
+
+                  A maximum of 16 ancestors will be represented in this list. An empty list
+                  means the Policy is not relevant for any ancestors.
+
+                  If this slice is full, implementations MUST NOT add further entries.
+                  Instead they MUST consider the policy unimplementable and signal that
+                  on any related resources such as the ancestor that would be referenced
+                  here. For example, if this list was full on BackendTLSPolicy, no
+                  additional Gateways would be able to reference the Service targeted by
+                  the BackendTLSPolicy.
+                items:
+                  description: |-
+                    PolicyAncestorStatus describes the status of a route with respect to an
+                    associated Ancestor.
+
+                    Ancestors refer to objects that are either the Target of a policy or above it
+                    in terms of object hierarchy. For example, if a policy targets a Service, the
+                    Policy's Ancestors are, in order, the Service, the HTTPRoute, the Gateway, and
+                    the GatewayClass. Almost always, in this hierarchy, the Gateway will be the most
+                    useful object to place Policy status on, so we recommend that implementations
+                    SHOULD use Gateway as the PolicyAncestorStatus object unless the designers
+                    have a _very_ good reason otherwise.
+
+                    In the context of policy attachment, the Ancestor is used to distinguish which
+                    resource results in a distinct application of this policy. For example, if a policy
+                    targets a Service, it may have a distinct result per attached Gateway.
+
+                    Policies targeting the same resource may have different effects depending on the
+                    ancestors of those resources. For example, different Gateways targeting the same
+                    Service may have different capabilities, especially if they have different underlying
+                    implementations.
+
+                    For example, in BackendTLSPolicy, the Policy attaches to a Service that is
+                    used as a backend in a HTTPRoute that is itself attached to a Gateway.
+                    In this case, the relevant object for status is the Gateway, and that is the
+                    ancestor object referred to in this status.
+
+                    Note that a parent is also an ancestor, so for objects where the parent is the
+                    relevant object for status, this struct SHOULD still be used.
+
+                    This struct is intended to be used in a slice that's effectively a map,
+                    with a composite key made up of the AncestorRef and the ControllerName.
+                  properties:
+                    ancestorRef:
+                      description: |-
+                        AncestorRef corresponds with a ParentRef in the spec that this
+                        PolicyAncestorStatus struct describes the status of.
+                      properties:
+                        group:
+                          default: gateway.networking.k8s.io
+                          description: |-
+                            Group is the group of the referent.
+                            When unspecified, "gateway.networking.k8s.io" is inferred.
+                            To set the core API group (such as for a "Service" kind referent),
+                            Group must be explicitly set to "" (empty string).
+
+                            Support: Core
+                          maxLength: 253
+                          pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                          type: string
+                        kind:
+                          default: Gateway
+                          description: |-
+                            Kind is kind of the referent.
+
+                            There are two kinds of parent resources with "Core" support:
+
+                            * Gateway (Gateway conformance profile)
+                            * Service (Mesh conformance profile, ClusterIP Services only)
+
+                            Support for other resources is Implementation-Specific.
+                          maxLength: 63
+                          minLength: 1
+                          pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                          type: string
+                        name:
+                          description: |-
+                            Name is the name of the referent.
+
+                            Support: Core
+                          maxLength: 253
+                          minLength: 1
+                          type: string
+                        namespace:
+                          description: |-
+                            Namespace is the namespace of the referent. When unspecified, this refers
+                            to the local namespace of the Route.
+
+                            Note that there are specific rules for ParentRefs which cross namespace
+                            boundaries. Cross-namespace references are only valid if they are explicitly
+                            allowed by something in the namespace they are referring to. For example:
+                            Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+                            generic way to enable any other kind of cross-namespace reference.
+
+                            <gateway:experimental:description>
+                            ParentRefs from a Route to a Service in the same namespace are "producer"
+                            routes, which apply default routing rules to inbound connections from
+                            any namespace to the Service.
+
+                            ParentRefs from a Route to a Service in a different namespace are
+                            "consumer" routes, and these routing rules are only applied to outbound
+                            connections originating from the same namespace as the Route, for which
+                            the intended destination of the connections are a Service targeted as a
+                            ParentRef of the Route.
+                            </gateway:experimental:description>
+
+                            Support: Core
+                          maxLength: 63
+                          minLength: 1
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        port:
+                          description: |-
+                            Port is the network port this Route targets. It can be interpreted
+                            differently based on the type of parent resource.
+
+                            When the parent resource is a Gateway, this targets all listeners
+                            listening on the specified port that also support this kind of Route(and
+                            select this Route). It's not recommended to set `Port` unless the
+                            networking behaviors specified in a Route must apply to a specific port
+                            as opposed to a listener(s) whose port(s) may be changed. When both Port
+                            and SectionName are specified, the name and port of the selected listener
+                            must match both specified values.
+
+                            <gateway:experimental:description>
+                            When the parent resource is a Service, this targets a specific port in the
+                            Service spec. When both Port (experimental) and SectionName are specified,
+                            the name and port of the selected port must match both specified values.
+                            </gateway:experimental:description>
+
+                            Implementations MAY choose to support other parent resources.
+                            Implementations supporting other types of parent resources MUST clearly
+                            document how/if Port is interpreted.
+
+                            For the purpose of status, an attachment is considered successful as
+                            long as the parent resource accepts it partially. For example, Gateway
+                            listeners can restrict which Routes can attach to them by Route kind,
+                            namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+                            from the referencing Route, the Route MUST be considered successfully
+                            attached. If no Gateway listeners accept attachment from this Route,
+                            the Route MUST be considered detached from the Gateway.
+
+                            Support: Extended
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        sectionName:
+                          description: |-
+                            SectionName is the name of a section within the target resource. In the
+                            following resources, SectionName is interpreted as the following:
+
+                            * Gateway: Listener name. When both Port (experimental) and SectionName
+                            are specified, the name and port of the selected listener must match
+                            both specified values.
+                            * Service: Port name. When both Port (experimental) and SectionName
+                            are specified, the name and port of the selected listener must match
+                            both specified values.
+
+                            Implementations MAY choose to support attaching Routes to other resources.
+                            If that is the case, they MUST clearly document how SectionName is
+                            interpreted.
+
+                            When unspecified (empty string), this will reference the entire resource.
+                            For the purpose of status, an attachment is considered successful if at
+                            least one section in the parent resource accepts it. For example, Gateway
+                            listeners can restrict which Routes can attach to them by Route kind,
+                            namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+                            the referencing Route, the Route MUST be considered successfully
+                            attached. If no Gateway listeners accept attachment from this Route, the
+                            Route MUST be considered detached from the Gateway.
+
+                            Support: Core
+                          maxLength: 253
+                          minLength: 1
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    conditions:
+                      description: Conditions describes the status of the Policy with
+                        respect to the given Ancestor.
+                      items:
+                        description: Condition contains details for one aspect of
+                          the current state of this API Resource.
+                        properties:
+                          lastTransitionTime:
+                            description: |-
+                              lastTransitionTime is the last time the condition transitioned from one status to another.
+                              This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                            format: date-time
+                            type: string
+                          message:
+                            description: |-
+                              message is a human readable message indicating details about the transition.
+                              This may be an empty string.
+                            maxLength: 32768
+                            type: string
+                          observedGeneration:
+                            description: |-
+                              observedGeneration represents the .metadata.generation that the condition was set based upon.
+                              For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                              with respect to the current state of the instance.
+                            format: int64
+                            minimum: 0
+                            type: integer
+                          reason:
+                            description: |-
+                              reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                              Producers of specific condition types may define expected values and meanings for this field,
+                              and whether the values are considered a guaranteed API.
+                              The value should be a CamelCase string.
+                              This field may not be empty.
+                            maxLength: 1024
+                            minLength: 1
+                            pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                            type: string
+                          status:
+                            description: status of the condition, one of True, False,
+                              Unknown.
+                            enum:
+                            - "True"
+                            - "False"
+                            - Unknown
+                            type: string
+                          type:
+                            description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                            maxLength: 316
+                            pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                            type: string
+                        required:
+                        - lastTransitionTime
+                        - message
+                        - reason
+                        - status
+                        - type
+                        type: object
+                      maxItems: 8
+                      minItems: 1
+                      type: array
+                      x-kubernetes-list-map-keys:
+                      - type
+                      x-kubernetes-list-type: map
+                    controllerName:
+                      description: |-
+                        ControllerName is a domain/path string that indicates the name of the
+                        controller that wrote this status. This corresponds with the
+                        controllerName field on GatewayClass.
+
+                        Example: "example.net/gateway-controller".
+
+                        The format of this field is DOMAIN "/" PATH, where DOMAIN and PATH are
+                        valid Kubernetes names
+                        (https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names).
+
+                        Controllers MUST populate this field when writing status. Controllers should ensure that
+                        entries to status populated with their ControllerName are cleaned up when they are no
+                        longer necessary.
+                      maxLength: 253
+                      minLength: 1
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*\/[A-Za-z0-9\/\-._~%!$&'()*+,;=:]+$
+                      type: string
+                  required:
+                  - ancestorRef
+                  - controllerName
+                  type: object
+                maxItems: 16
+                type: array
+            required:
+            - ancestors
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.17.2
+  name: consumers.apisix.apache.org
+spec:
+  group: apisix.apache.org
+  names:
+    kind: Consumer
+    listKind: ConsumerList
+    plural: consumers
+    singular: consumer
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              ConsumerSpec defines the configuration for a consumer, including consumer name,
+              authentication credentials, and plugin settings.
+            properties:
+              credentials:
+                description: Credentials specifies the credential details of a consumer.
+                items:
+                  oneOf:
+                  - required:
+                    - config
+                  - required:
+                    - secretRef
+                  properties:
+                    config:
+                      description: Config specifies the credential details for authentication.
+                      x-kubernetes-preserve-unknown-fields: true
+                    name:
+                      description: Name is the name of the credential.
+                      type: string
+                    secretRef:
+                      description: SecretRef references to the Secret that contains
+                        the credentials.
+                      properties:
+                        name:
+                          description: Name is the name of the secret.
+                          type: string
+                        namespace:
+                          description: Namespace is the namespace of the secret.
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    type:
+                      description: |-
+                        Type specifies the type of authentication to configure credentials for.
+                        Can be one of `jwt-auth`, `basic-auth`, `key-auth`, or `hmac-auth`.
+                      enum:
+                      - jwt-auth
+                      - basic-auth
+                      - key-auth
+                      - hmac-auth
+                      type: string
+                  required:
+                  - type
+                  type: object
+                type: array
+              gatewayRef:
+                description: GatewayRef specifies the gateway details.
+                properties:
+                  group:
+                    default: gateway.networking.k8s.io
+                    description: Group is the API group the resource belongs to. Default
+                      is `gateway.networking.k8s.io`.
+                    type: string
+                  kind:
+                    default: Gateway
+                    description: Kind is the type of Kubernetes object. Default is
+                      `Gateway`.
+                    type: string
+                  name:
+                    description: Name is the name of the gateway.
+                    minLength: 1
+                    type: string
+                  namespace:
+                    description: Namespace is namespace of the resource.
+                    type: string
+                required:
+                - name
+                type: object
+              plugins:
+                description: Plugins define the plugins associated with a consumer.
+                items:
+                  properties:
+                    config:
+                      description: Config is plugin configuration details.
+                      x-kubernetes-preserve-unknown-fields: true
+                    name:
+                      description: Name is the name of the plugin.
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
+            type: object
+          status:
+            properties:
+              conditions:
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.17.2
+  name: gatewayproxies.apisix.apache.org
+spec:
+  group: apisix.apache.org
+  names:
+    kind: GatewayProxy
+    listKind: GatewayProxyList
+    plural: gatewayproxies
+    singular: gatewayproxy
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: GatewayProxy is the Schema for the gatewayproxies API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              GatewayProxySpec defines the desired state and configuration of a GatewayProxy,
+              including networking settings, global plugins, and plugin metadata.
+            properties:
+              pluginMetadata:
+                additionalProperties:
+                  x-kubernetes-preserve-unknown-fields: true
+                description: PluginMetadata configures common configurations shared
+                  by all plugin instances of the same name.
+                type: object
+              plugins:
+                description: Plugins configure global plugins.
+                items:
+                  description: GatewayProxyPlugin contains plugin configurations.
+                  properties:
+                    config:
+                      description: Config defines the plugin's configuration details.
+                      x-kubernetes-preserve-unknown-fields: true
+                    enabled:
+                      description: Enabled defines whether the plugin is enabled.
+                      type: boolean
+                    name:
+                      description: Name is the name of the plugin.
+                      type: string
+                  type: object
+                type: array
+              provider:
+                description: Provider configures the provider details.
+                properties:
+                  controlPlane:
+                    description: ControlPlane specifies the configuration for control
+                      plane provider.
+                    properties:
+                      auth:
+                        description: Auth specifies the authentication configurations.
+                        properties:
+                          adminKey:
+                            description: AdminKey specifies the admin key authentication
+                              configuration.
+                            properties:
+                              value:
+                                description: Value sets the admin key value explicitly
+                                  (not recommended for production).
+                                type: string
+                              valueFrom:
+                                description: ValueFrom specifies the source of the
+                                  admin key.
+                                properties:
+                                  secretKeyRef:
+                                    description: SecretKeyRef references a key in
+                                      a Secret.
+                                    properties:
+                                      key:
+                                        description: Key is the key in the secret
+                                          to retrieve the secret from.
+                                        type: string
+                                      name:
+                                        description: Name is the name of the secret.
+                                        type: string
+                                    required:
+                                    - key
+                                    - name
+                                    type: object
+                                type: object
+                            type: object
+                          type:
+                            description: |-
+                              Type specifies the type of authentication.
+                              Can only be `AdminKey`.
+                            enum:
+                            - AdminKey
+                            type: string
+                        required:
+                        - type
+                        type: object
+                      endpoints:
+                        description: Endpoints specifies the list of control plane
+                          endpoints.
+                        items:
+                          type: string
+                        minItems: 1
+                        type: array
+                      service:
+                        properties:
+                          name:
+                            type: string
+                          port:
+                            format: int32
+                            maximum: 65535
+                            minimum: 1
+                            type: integer
+                        required:
+                        - name
+                        type: object
+                      tlsVerify:
+                        description: TlsVerify specifies whether to verify the TLS
+                          certificate of the control plane.
+                        type: boolean
+                    required:
+                    - auth
+                    - endpoints
+                    type: object
+                  type:
+                    description: Type specifies the type of provider. Can only be
+                      `ControlPlane`.
+                    enum:
+                    - ControlPlane
+                    type: string
+                required:
+                - type
+                type: object
+                x-kubernetes-validations:
+                - message: controlPlane must be specified when type is ControlPlane
+                  rule: 'self.type == ''ControlPlane'' ? has(self.controlPlane) :
+                    true'
+              publishService:
+                description: |-
+                  PublishService specifies the LoadBalancer-type Service whose external address the controller uses to
+                  update the status of Ingress resources.
+                type: string
+              statusAddress:
+                description: |-
+                  StatusAddress specifies the external IP addresses that the controller uses to populate the status field
+                  of GatewayProxy or Ingress resources for developers to access.
+                items:
+                  type: string
+                type: array
+            type: object
+        type: object
+    served: true
+    storage: true
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.17.2
+  name: httproutepolicies.apisix.apache.org
+spec:
+  group: apisix.apache.org
+  names:
+    kind: HTTPRoutePolicy
+    listKind: HTTPRoutePolicyList
+    plural: httproutepolicies
+    singular: httproutepolicy
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: HTTPRoutePolicy is the Schema for the httproutepolicies API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              HTTPRoutePolicySpec defines the desired state and configuration of a HTTPRoutePolicy,
+              including route priority and request matching conditions.
+            properties:
+              priority:
+                description: Priority sets the priority for route. A higher value
+                  sets a higher priority in route matching.
+                format: int64
+                type: integer
+              targetRefs:
+                description: TargetRef identifies an API object (i.e. HTTPRoute, Ingress)
+                  to apply HTTPRoutePolicy to.
+                items:
+                  description: |-
+                    LocalPolicyTargetReferenceWithSectionName identifies an API object to apply a
+                    direct policy to. This should be used as part of Policy resources that can
+                    target single resources. For more information on how this policy attachment
+                    mode works, and a sample Policy resource, refer to the policy attachment
+                    documentation for Gateway API.
+
+                    Note: This should only be used for direct policy attachment when references
+                    to SectionName are actually needed. In all other cases,
+                    LocalPolicyTargetReference should be used.
+                  properties:
+                    group:
+                      description: Group is the group of the target resource.
+                      maxLength: 253
+                      pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                      type: string
+                    kind:
+                      description: Kind is kind of the target resource.
+                      maxLength: 63
+                      minLength: 1
+                      pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                      type: string
+                    name:
+                      description: Name is the name of the target resource.
+                      maxLength: 253
+                      minLength: 1
+                      type: string
+                    sectionName:
+                      description: |-
+                        SectionName is the name of a section within the target resource. When
+                        unspecified, this targetRef targets the entire resource. In the following
+                        resources, SectionName is interpreted as the following:
+
+                        * Gateway: Listener name
+                        * HTTPRoute: HTTPRouteRule name
+                        * Service: Port name
+
+                        If a SectionName is specified, but does not exist on the targeted object,
+                        the Policy must fail to attach, and the policy implementation should record
+                        a `ResolvedRefs` or similar Condition in the Policy's status.
+                      maxLength: 253
+                      minLength: 1
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                      type: string
+                  required:
+                  - group
+                  - kind
+                  - name
+                  type: object
+                maxItems: 16
+                minItems: 1
+                type: array
+              vars:
+                description: Vars sets the request matching conditions.
+                items:
+                  x-kubernetes-preserve-unknown-fields: true
+                type: array
+            required:
+            - targetRefs
+            type: object
+          status:
+            description: |-
+              PolicyStatus defines the common attributes that all Policies should include within
+              their status.
+            properties:
+              ancestors:
+                description: |-
+                  Ancestors is a list of ancestor resources (usually Gateways) that are
+                  associated with the policy, and the status of the policy with respect to
+                  each ancestor. When this policy attaches to a parent, the controller that
+                  manages the parent and the ancestors MUST add an entry to this list when
+                  the controller first sees the policy and SHOULD update the entry as
+                  appropriate when the relevant ancestor is modified.
+
+                  Note that choosing the relevant ancestor is left to the Policy designers;
+                  an important part of Policy design is designing the right object level at
+                  which to namespace this status.
+
+                  Note also that implementations MUST ONLY populate ancestor status for
+                  the Ancestor resources they are responsible for. Implementations MUST
+                  use the ControllerName field to uniquely identify the entries in this list
+                  that they are responsible for.
+
+                  Note that to achieve this, the list of PolicyAncestorStatus structs
+                  MUST be treated as a map with a composite key, made up of the AncestorRef
+                  and ControllerName fields combined.
+
+                  A maximum of 16 ancestors will be represented in this list. An empty list
+                  means the Policy is not relevant for any ancestors.
+
+                  If this slice is full, implementations MUST NOT add further entries.
+                  Instead they MUST consider the policy unimplementable and signal that
+                  on any related resources such as the ancestor that would be referenced
+                  here. For example, if this list was full on BackendTLSPolicy, no
+                  additional Gateways would be able to reference the Service targeted by
+                  the BackendTLSPolicy.
+                items:
+                  description: |-
+                    PolicyAncestorStatus describes the status of a route with respect to an
+                    associated Ancestor.
+
+                    Ancestors refer to objects that are either the Target of a policy or above it
+                    in terms of object hierarchy. For example, if a policy targets a Service, the
+                    Policy's Ancestors are, in order, the Service, the HTTPRoute, the Gateway, and
+                    the GatewayClass. Almost always, in this hierarchy, the Gateway will be the most
+                    useful object to place Policy status on, so we recommend that implementations
+                    SHOULD use Gateway as the PolicyAncestorStatus object unless the designers
+                    have a _very_ good reason otherwise.
+
+                    In the context of policy attachment, the Ancestor is used to distinguish which
+                    resource results in a distinct application of this policy. For example, if a policy
+                    targets a Service, it may have a distinct result per attached Gateway.
+
+                    Policies targeting the same resource may have different effects depending on the
+                    ancestors of those resources. For example, different Gateways targeting the same
+                    Service may have different capabilities, especially if they have different underlying
+                    implementations.
+
+                    For example, in BackendTLSPolicy, the Policy attaches to a Service that is
+                    used as a backend in a HTTPRoute that is itself attached to a Gateway.
+                    In this case, the relevant object for status is the Gateway, and that is the
+                    ancestor object referred to in this status.
+
+                    Note that a parent is also an ancestor, so for objects where the parent is the
+                    relevant object for status, this struct SHOULD still be used.
+
+                    This struct is intended to be used in a slice that's effectively a map,
+                    with a composite key made up of the AncestorRef and the ControllerName.
+                  properties:
+                    ancestorRef:
+                      description: |-
+                        AncestorRef corresponds with a ParentRef in the spec that this
+                        PolicyAncestorStatus struct describes the status of.
+                      properties:
+                        group:
+                          default: gateway.networking.k8s.io
+                          description: |-
+                            Group is the group of the referent.
+                            When unspecified, "gateway.networking.k8s.io" is inferred.
+                            To set the core API group (such as for a "Service" kind referent),
+                            Group must be explicitly set to "" (empty string).
+
+                            Support: Core
+                          maxLength: 253
+                          pattern: ^$|^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                          type: string
+                        kind:
+                          default: Gateway
+                          description: |-
+                            Kind is kind of the referent.
+
+                            There are two kinds of parent resources with "Core" support:
+
+                            * Gateway (Gateway conformance profile)
+                            * Service (Mesh conformance profile, ClusterIP Services only)
+
+                            Support for other resources is Implementation-Specific.
+                          maxLength: 63
+                          minLength: 1
+                          pattern: ^[a-zA-Z]([-a-zA-Z0-9]*[a-zA-Z0-9])?$
+                          type: string
+                        name:
+                          description: |-
+                            Name is the name of the referent.
+
+                            Support: Core
+                          maxLength: 253
+                          minLength: 1
+                          type: string
+                        namespace:
+                          description: |-
+                            Namespace is the namespace of the referent. When unspecified, this refers
+                            to the local namespace of the Route.
+
+                            Note that there are specific rules for ParentRefs which cross namespace
+                            boundaries. Cross-namespace references are only valid if they are explicitly
+                            allowed by something in the namespace they are referring to. For example:
+                            Gateway has the AllowedRoutes field, and ReferenceGrant provides a
+                            generic way to enable any other kind of cross-namespace reference.
+
+                            <gateway:experimental:description>
+                            ParentRefs from a Route to a Service in the same namespace are "producer"
+                            routes, which apply default routing rules to inbound connections from
+                            any namespace to the Service.
+
+                            ParentRefs from a Route to a Service in a different namespace are
+                            "consumer" routes, and these routing rules are only applied to outbound
+                            connections originating from the same namespace as the Route, for which
+                            the intended destination of the connections are a Service targeted as a
+                            ParentRef of the Route.
+                            </gateway:experimental:description>
+
+                            Support: Core
+                          maxLength: 63
+                          minLength: 1
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
+                          type: string
+                        port:
+                          description: |-
+                            Port is the network port this Route targets. It can be interpreted
+                            differently based on the type of parent resource.
+
+                            When the parent resource is a Gateway, this targets all listeners
+                            listening on the specified port that also support this kind of Route(and
+                            select this Route). It's not recommended to set `Port` unless the
+                            networking behaviors specified in a Route must apply to a specific port
+                            as opposed to a listener(s) whose port(s) may be changed. When both Port
+                            and SectionName are specified, the name and port of the selected listener
+                            must match both specified values.
+
+                            <gateway:experimental:description>
+                            When the parent resource is a Service, this targets a specific port in the
+                            Service spec. When both Port (experimental) and SectionName are specified,
+                            the name and port of the selected port must match both specified values.
+                            </gateway:experimental:description>
+
+                            Implementations MAY choose to support other parent resources.
+                            Implementations supporting other types of parent resources MUST clearly
+                            document how/if Port is interpreted.
+
+                            For the purpose of status, an attachment is considered successful as
+                            long as the parent resource accepts it partially. For example, Gateway
+                            listeners can restrict which Routes can attach to them by Route kind,
+                            namespace, or hostname. If 1 of 2 Gateway listeners accept attachment
+                            from the referencing Route, the Route MUST be considered successfully
+                            attached. If no Gateway listeners accept attachment from this Route,
+                            the Route MUST be considered detached from the Gateway.
+
+                            Support: Extended
+                          format: int32
+                          maximum: 65535
+                          minimum: 1
+                          type: integer
+                        sectionName:
+                          description: |-
+                            SectionName is the name of a section within the target resource. In the
+                            following resources, SectionName is interpreted as the following:
+
+                            * Gateway: Listener name. When both Port (experimental) and SectionName
+                            are specified, the name and port of the selected listener must match
+                            both specified values.
+                            * Service: Port name. When both Port (experimental) and SectionName
+                            are specified, the name and port of the selected listener must match
+                            both specified values.
+
+                            Implementations MAY choose to support attaching Routes to other resources.
+                            If that is the case, they MUST clearly document how SectionName is
+                            interpreted.
+
+                            When unspecified (empty string), this will reference the entire resource.
+                            For the purpose of status, an attachment is considered successful if at
+                            least one section in the parent resource accepts it. For example, Gateway
+                            listeners can restrict which Routes can attach to them by Route kind,
+                            namespace, or hostname. If 1 of 2 Gateway listeners accept attachment from
+                            the referencing Route, the Route MUST be considered successfully
+                            attached. If no Gateway listeners accept attachment from this Route, the
+                            Route MUST be considered detached from the Gateway.
+
+                            Support: Core
+                          maxLength: 253
+                          minLength: 1
+                          pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*$
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    conditions:
+                      description: Conditions describes the status of the Policy with
+                        respect to the given Ancestor.
+                      items:
+                        description: Condition contains details for one aspect of
+                          the current state of this API Resource.
+                        properties:
+                          lastTransitionTime:
+                            description: |-
+                              lastTransitionTime is the last time the condition transitioned from one status to another.
+                              This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                            format: date-time
+                            type: string
+                          message:
+                            description: |-
+                              message is a human readable message indicating details about the transition.
+                              This may be an empty string.
+                            maxLength: 32768
+                            type: string
+                          observedGeneration:
+                            description: |-
+                              observedGeneration represents the .metadata.generation that the condition was set based upon.
+                              For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                              with respect to the current state of the instance.
+                            format: int64
+                            minimum: 0
+                            type: integer
+                          reason:
+                            description: |-
+                              reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                              Producers of specific condition types may define expected values and meanings for this field,
+                              and whether the values are considered a guaranteed API.
+                              The value should be a CamelCase string.
+                              This field may not be empty.
+                            maxLength: 1024
+                            minLength: 1
+                            pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                            type: string
+                          status:
+                            description: status of the condition, one of True, False,
+                              Unknown.
+                            enum:
+                            - "True"
+                            - "False"
+                            - Unknown
+                            type: string
+                          type:
+                            description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                            maxLength: 316
+                            pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                            type: string
+                        required:
+                        - lastTransitionTime
+                        - message
+                        - reason
+                        - status
+                        - type
+                        type: object
+                      maxItems: 8
+                      minItems: 1
+                      type: array
+                      x-kubernetes-list-map-keys:
+                      - type
+                      x-kubernetes-list-type: map
+                    controllerName:
+                      description: |-
+                        ControllerName is a domain/path string that indicates the name of the
+                        controller that wrote this status. This corresponds with the
+                        controllerName field on GatewayClass.
+
+                        Example: "example.net/gateway-controller".
+
+                        The format of this field is DOMAIN "/" PATH, where DOMAIN and PATH are
+                        valid Kubernetes names
+                        (https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names).
+
+                        Controllers MUST populate this field when writing status. Controllers should ensure that
+                        entries to status populated with their ControllerName are cleaned up when they are no
+                        longer necessary.
+                      maxLength: 253
+                      minLength: 1
+                      pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*\/[A-Za-z0-9\/\-._~%!$&'()*+,;=:]+$
+                      type: string
+                  required:
+                  - ancestorRef
+                  - controllerName
+                  type: object
+                maxItems: 16
+                type: array
+            required:
+            - ancestors
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.17.2
+  name: pluginconfigs.apisix.apache.org
+spec:
+  group: apisix.apache.org
+  names:
+    kind: PluginConfig
+    listKind: PluginConfigList
+    plural: pluginconfigs
+    singular: pluginconfig
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: PluginConfig is the Schema for the PluginConfigs API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              PluginConfigSpec defines the desired state of a PluginConfig,
+              in which plugins and their configurations are specified.
+            properties:
+              plugins:
+                description: Plugins are an array of plugins and their configurations
+                  to be applied.
+                items:
+                  properties:
+                    config:
+                      description: Config is plugin configuration details.
+                      x-kubernetes-preserve-unknown-fields: true
+                    name:
+                      description: Name is the name of the plugin.
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
+            required:
+            - plugins
+            type: object
+        type: object
+    served: true
+    storage: true

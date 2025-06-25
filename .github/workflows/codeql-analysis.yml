@@ -24,6 +24,7 @@ on:
   pull_request:
     branches:
       - master
+      - next
       - 1.8.0
   schedule:
     - cron: '25 5 * * 5'

@@ -1,0 +1,56 @@
+nameOverride: ""
+fullnameOverride: ""
+labelsOverride: {}
+
+# -- See https://kubernetes.io/docs/tasks/run-application/configure-pdb/ for more details
+podDisruptionBudget:
+  # -- Enable or disable podDisruptionBudget
+  enabled: false
+  # -- Set the `minAvailable` of podDisruptionBudget. You can specify only one of `maxUnavailable` and `minAvailable` in a single PodDisruptionBudget.
+  # See [Specifying a Disruption Budget for your Application](https://kubernetes.io/docs/tasks/run-application/configure-pdb/#specifying-a-poddisruptionbudget)
+  # for more details
+  minAvailable: 90%
+  # -- Set the maxUnavailable of podDisruptionBudget
+  maxUnavailable: 1
+# -- Topology Spread Constraints for pod assignment spread across your cluster among failure-domains
+# ref: https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/#spread-constraints-for-pods
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+
+deployment:
+  annotations: {}
+  podAnnotations: {}
+  replicas: 1
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  podSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+  topologySpreadConstraints: []
+  image:
+    repository: apache/apisix-ingress-controller
+    pullPolicy: IfNotPresent
+    tag: "dev"
+
+config:
+  logLevel: "info"
+  controllerName: apisix.apache.org/apisix-ingress-controller
+  leaderElection:
+    id: "apisix-ingress-controller-leader"
+    leaseDuration: "15s"
+    renewDeadline: "10s"
+    retryPeriod: "2s"
+    disable: false
+  metricsAddr: ":8080"
+  enableHTTP2: false
+  probeAddr: ":8081"
+  secureMetrics: ""
+  execADCTimeout: "15s"
+  provider:
+    syncPeriod: "0s"
+    initSyncDelay: "20m"
