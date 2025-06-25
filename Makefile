@@ -357,10 +357,6 @@ sort-import:
 	@./scripts/goimports-reviser.sh >/dev/null 2>&1
 .PHONY: sort-import
 
-# check copyright header
-check-copyright:
-	go run scripts/go-copyright/main.go
-
 .PHONY: generate-crd-docs
 generate-crd-docs: manifests ## Generate CRD reference documentation in a single file
 	@mkdir -p $(dir $(CRD_DOCS_OUTPUT))
