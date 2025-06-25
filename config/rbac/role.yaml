@@ -91,6 +91,7 @@ rules:
   - gatewayclasses/status
   - gateways/status
   - httproutes/status
+  - referencegrants/status
   verbs:
   - get
   - update
@@ -101,6 +102,14 @@ rules:
   verbs:
   - get
   - list
+  - watch
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - referencegrants
+  verbs:
+  - list
+  - update
   - watch
 - apiGroups:
   - networking.k8s.io
