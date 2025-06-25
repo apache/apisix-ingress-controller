@@ -30,6 +30,8 @@ header:
     - '**/go.sum'
     - 'LICENSE'
     - 'NOTICE'
+    - 'PROJECT'
+    - 'hack/boilerplate.go.txt'
     - '**/assets/header-templates/**'
     - '**/assets/lcs-templates/**'
     - '**/assets/languages.yaml'
