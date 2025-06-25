@@ -32,6 +32,7 @@ header:
     - 'NOTICE'
     - 'PROJECT'
     - 'hack/boilerplate.go.txt'
+    - 'config/**'
     - '**/assets/header-templates/**'
     - '**/assets/lcs-templates/**'
     - '**/assets/languages.yaml'

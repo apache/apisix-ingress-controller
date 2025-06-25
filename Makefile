@@ -387,7 +387,6 @@ generate-crd-docs-grouped: manifests ## Generate CRD reference documentation gro
 		--output-mode=group
 	@echo "CRD reference documentation generated in docs/crd/groups directory"
 
-
 ### verify-license:       Verify license headers.
 .PHONY: verify-license
 verify-license:
@@ -417,7 +416,6 @@ verify-yamllint:
 .PHONY: update-yamlfmt
 update-yamlfmt:
 	go install github.com/google/yamlfmt/cmd/yamlfmt@latest && yamlfmt examples
-
 
 ### verify-all:           Verify all verify- rules.
 .PHONY: verify-all
