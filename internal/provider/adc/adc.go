@@ -20,12 +20,12 @@ package adc
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"os"
 	"sync"
 	"time"
 
 	"github.com/api7/gopkg/pkg/log"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	networkingv1 "k8s.io/api/networking/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -53,6 +53,7 @@ type BackendMode string
 const (
 	BackendModeAPISIXStandalone string = "apisix-standalone"
 	BackendModeAPI7EE           string = "api7ee"
+	BackendModeAPISIX           string = "apisix"
 )
 
 type adcClient struct {
@@ -193,7 +194,7 @@ func (d *adcClient) Update(ctx context.Context, tctx *provider.TranslateContext,
 	// This mode is full synchronization,
 	// which only needs to be saved in cache
 	// and triggered by a timer for synchronization
-	if d.BackendMode == BackendModeAPISIXStandalone || apiv2.Is(obj) {
+	if d.BackendMode == BackendModeAPISIXStandalone || d.BackendMode == BackendModeAPISIX || apiv2.Is(obj) {
 		return nil
 	}
 
@@ -254,7 +255,7 @@ func (d *adcClient) Delete(ctx context.Context, obj client.Object) error {
 	log.Debugw("successfully deleted resources from store", zap.Any("object", obj))
 
 	switch d.BackendMode {
-	case BackendModeAPISIXStandalone:
+	case BackendModeAPISIXStandalone, BackendModeAPISIX:
 		// Full synchronization is performed on a gateway by gateway basis
 		// and it is not possible to perform scheduled synchronization
 		// on deleted gateway level resources

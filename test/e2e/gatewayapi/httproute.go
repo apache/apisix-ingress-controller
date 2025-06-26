@@ -529,7 +529,7 @@ spec:
 			By("create HTTPRoute")
 			ResourceApplied("HTTPRoute", "httpbin", exactRouteByGet, 1)
 
-			By("access daataplane to check the HTTPRoute")
+			By("access dataplane to check the HTTPRoute")
 			s.NewAPISIXClient().
 				GET("/get").
 				WithHost("httpbin.example").
@@ -539,13 +539,14 @@ spec:
 			By("delete Gateway")
 			err := s.DeleteResource("Gateway", "apisix")
 			Expect(err).NotTo(HaveOccurred(), "deleting Gateway")
-			time.Sleep(5 * time.Second)
 
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHost("httpbin.example").
-				Expect().
-				Status(404)
+			Eventually(func() int {
+				return s.NewAPISIXClient().
+					GET("/get").
+					WithHost("httpbin.example").
+					Expect().
+					Raw().StatusCode
+			}).WithTimeout(5 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
 		})
 
 		It("Proxy External Service", func() {

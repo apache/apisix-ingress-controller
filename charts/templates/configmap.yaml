@@ -32,6 +32,8 @@ data:
     exec_adc_timeout: {{ .Values.config.execADCTimeout | default "15s" }}
 
     provider:
+      type: {{ .Values.config.provider.type | default "apisix-standalone" }}
+
       sync_period: {{ .Values.config.provider.syncPeriod | default "0s" }}
 
       init_sync_delay: {{ .Values.config.provider.initSyncDelay | default "20m" }}

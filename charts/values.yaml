@@ -52,5 +52,6 @@ config:
   secureMetrics: ""
   execADCTimeout: "15s"
   provider:
+    type: "apisix-standalone"
     syncPeriod: "0s"
     initSyncDelay: "20m"

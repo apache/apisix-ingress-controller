@@ -18,16 +18,25 @@
 package framework
 
 import (
+	"cmp"
 	_ "embed"
+	"os"
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
 )
 
 var (
-	//go:embed manifests/apisix-standalone.yaml
+	ProviderType = cmp.Or(os.Getenv("PROVIDER_TYPE"), "apisix-standalone")
+)
+
+var (
+	//go:embed manifests/apisix.yaml
 	apisixStandaloneTemplate string
 	APISIXStandaloneTpl      *template.Template
+
+	//go:embed manifests/etcd.yaml
+	EtcdSpec string
 )
 
 var (

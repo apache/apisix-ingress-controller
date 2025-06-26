@@ -4,13 +4,13 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.17.2
-  name: apisixtls.apisix.apache.org
+  name: apisixtlses.apisix.apache.org
 spec:
   group: apisix.apache.org
   names:
     kind: ApisixTls
     listKind: ApisixTlsList
-    plural: apisixtls
+    plural: apisixtlses
     shortNames:
     - atls
     singular: apisixtls
