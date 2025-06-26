@@ -10,7 +10,7 @@ resources:
 - bases/apisix.apache.org_apisixroutes.yaml
 - bases/apisix.apache.org_apisixconsumers.yaml
 - bases/apisix.apache.org_apisixglobalrules.yaml
-- bases/apisix.apache.org_apisixtls.yaml
+- bases/apisix.apache.org_apisixtlses.yaml
 - bases/apisix.apache.org_apisixupstreams.yaml
 - bases/apisix.apache.org_apisixpluginconfigs.yaml
 # +kubebuilder:scaffold:crdkustomizeresource

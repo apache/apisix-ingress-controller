@@ -43,7 +43,7 @@ import (
 // +kubebuilder:rbac:groups=apisix.apache.org,resources=apisixglobalrules,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apisix.apache.org,resources=apisixpluginconfigs,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apisix.apache.org,resources=apisixroutes,verbs=get;list;watch
-// +kubebuilder:rbac:groups=apisix.apache.org,resources=apisixtls,verbs=get;list;watch
+// +kubebuilder:rbac:groups=apisix.apache.org,resources=apisixtlses,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apisix.apache.org,resources=apisixupstreams,verbs=get;list;watch
 
 // CustomResourceDefinition v2 status
@@ -51,7 +51,7 @@ import (
 // +kubebuilder:rbac:groups=apisix.apache.org,resources=apisixglobalrules/status,verbs=get;update
 // +kubebuilder:rbac:groups=apisix.apache.org,resources=apisixpluginconfigs/status,verbs=get;update
 // +kubebuilder:rbac:groups=apisix.apache.org,resources=apisixroutes/status,verbs=get;update
-// +kubebuilder:rbac:groups=apisix.apache.org,resources=apisixtls/status,verbs=get;update
+// +kubebuilder:rbac:groups=apisix.apache.org,resources=apisixtlses/status,verbs=get;update
 // +kubebuilder:rbac:groups=apisix.apache.org,resources=apisixupstreams/status,verbs=get;update
 
 // CustomResourceDefinition

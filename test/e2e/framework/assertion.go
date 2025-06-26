@@ -116,7 +116,7 @@ func APIv2MustHaveCondition(t testing.TestingT, cli client.Client, timeout time.
 	}
 	err := PollUntilAPIv2MustHaveStatus(cli, timeout, nn, obj, f)
 
-	require.NoError(t, err, "error waiting status to have a Condition matching %+v", nn, cond)
+	require.NoError(t, err, "error waiting %s status to have a Condition matching %+v", nn, cond)
 }
 
 func PollUntilAPIv2MustHaveStatus(cli client.Client, timeout time.Duration, nn types.NamespacedName, obj client.Object, f func(client.Object) bool) error {

@@ -52,6 +52,11 @@ jobs:
   e2e-test:
     needs: 
       - prepare
+    strategy:
+      matrix:
+        provider_type:
+        - apisix-standalone
+        - apisix
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -100,5 +105,6 @@ jobs:
         shell: bash
         env:
           TEST_DIR: "./test/e2e/apisix/"
+          PROVIDER_TYPE: ${{ matrix.provider_type }}
         run: |
           make e2e-test

@@ -41,7 +41,7 @@ type ApisixTlsStatus = ApisixStatus
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=atls
+// +kubebuilder:resource:shortName=atls,path=apisixtlses
 
 // ApisixTls is the Schema for the apisixtls API.
 type ApisixTls struct {

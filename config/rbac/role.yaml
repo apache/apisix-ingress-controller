@@ -29,7 +29,7 @@ rules:
   - apisixglobalrules
   - apisixpluginconfigs
   - apisixroutes
-  - apisixtls
+  - apisixtlses
   - apisixupstreams
   - backendtrafficpolicies
   - consumers
@@ -47,7 +47,7 @@ rules:
   - apisixglobalrules/status
   - apisixpluginconfigs/status
   - apisixroutes/status
-  - apisixtls/status
+  - apisixtlses/status
   - apisixupstreams/status
   - backendtrafficpolicies/status
   - consumers/status

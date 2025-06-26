@@ -51,13 +51,17 @@ func (e *DefaultADCExecutor) Execute(ctx context.Context, mode string, config ad
 
 func (e *DefaultADCExecutor) runADC(ctx context.Context, mode string, config adcConfig, args []string) error {
 	for _, addr := range config.ServerAddrs {
-		ctxWithTimeout, cancel := context.WithTimeout(ctx, 15*time.Second)
-		defer cancel()
-		if err := e.runForSingleServer(ctxWithTimeout, addr, mode, config, args); err != nil {
+		if err := e.runForSingleServerWithTimeout(ctx, addr, mode, config, args); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func (e *DefaultADCExecutor) runForSingleServerWithTimeout(ctx context.Context, serverAddr, mode string, config adcConfig, args []string) error {
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+	return e.runForSingleServer(ctx, serverAddr, mode, config, args)
 }
 
 func (e *DefaultADCExecutor) runForSingleServer(ctx context.Context, serverAddr, mode string, config adcConfig, args []string) error {
@@ -113,6 +117,10 @@ func (e *DefaultADCExecutor) buildCmdError(runErr error, stdout, stderr []byte) 
 
 func (e *DefaultADCExecutor) handleOutput(output []byte) error {
 	var result adctypes.SyncResult
+	if index := strings.IndexByte(string(output), '{'); index > 0 {
+		log.Warnf("extra output: %s", string(output[:index]))
+		output = output[index:]
+	}
 	if err := json.Unmarshal(output, &result); err != nil {
 		log.Errorw("failed to unmarshal adc output",
 			zap.Error(err),

@@ -53,6 +53,11 @@ jobs:
     timeout-minutes: 60
     needs: 
       - prepare
+    strategy:
+      matrix:
+        provider_type:
+        - apisix-standalone
+        - apisix
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -96,6 +101,8 @@ jobs:
       - name: Run Conformance Test
         shell: bash
         continue-on-error: true
+        env:
+          PROVIDER_TYPE: ${{ matrix.provider_type }}
         run: |
           make conformance-test-standalone
       
