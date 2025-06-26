@@ -32,8 +32,7 @@ import (
 )
 
 var (
-	// TODO: set namespace from env
-	_namespace = "api7-ee-e2e"
+	_namespace = "apisix-e2e"
 	_framework *Framework
 )
 

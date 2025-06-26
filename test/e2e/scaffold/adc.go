@@ -99,7 +99,6 @@ func (a *adcDataplaneResource) Consumer() ConsumerResource {
 }
 
 func init() {
-	// dashboard sdk log
 	l, err := log.NewLogger(
 		log.WithOutputFile("stderr"),
 		log.WithLogLevel("debug"),
