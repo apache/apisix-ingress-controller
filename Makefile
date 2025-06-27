@@ -127,7 +127,7 @@ kind-e2e-test: kind-up build-image kind-load-images e2e-test
 .PHONY: e2e-test
 e2e-test:
 	@kind get kubeconfig --name $(KIND_NAME) > $$KUBECONFIG
-	go test $(TEST_DIR) -test.timeout=$(TEST_TIMEOUT) -v -ginkgo.v -ginkgo.focus="$(TEST_FOCUS)"
+	go test $(TEST_DIR) -test.timeout=$(TEST_TIMEOUT) -v -ginkgo.v -ginkgo.focus="$(TEST_FOCUS)" -ginkgo.label-filter="$(TEST_LABEL)"
 
 .PHONY: conformance-test
 conformance-test:

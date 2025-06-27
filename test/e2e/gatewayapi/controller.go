@@ -28,7 +28,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = Describe("Check if controller cache gets synced with correct resources", func() {
+var _ = Describe("Check if controller cache gets synced with correct resources", Label("networking.k8s.io", "basic"), func() {
 
 	var gatewayProxyYaml = `
 apiVersion: apisix.apache.org/v1alpha1

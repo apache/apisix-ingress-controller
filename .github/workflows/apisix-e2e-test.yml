@@ -57,6 +57,10 @@ jobs:
         provider_type:
         - apisix-standalone
         - apisix
+        cases_subset:
+        - apisix.apache.org
+        - networking.k8s.io
+      fail-fast: false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -106,5 +110,6 @@ jobs:
         env:
           TEST_DIR: "./test/e2e/apisix/"
           PROVIDER_TYPE: ${{ matrix.provider_type }}
+          TEST_LABEL: ${{ matrix.cases_subset }}
         run: |
           make e2e-test
