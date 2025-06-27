@@ -52,7 +52,6 @@ type BackendMode string
 
 const (
 	BackendModeAPISIXStandalone string = "apisix-standalone"
-	BackendModeAPI7EE           string = "api7ee"
 	BackendModeAPISIX           string = "apisix"
 )
 
@@ -266,13 +265,6 @@ func (d *adcClient) Delete(ctx context.Context, obj client.Object) error {
 			})
 		}
 		return nil
-	case BackendModeAPI7EE:
-		return d.sync(ctx, Task{
-			Name:          obj.GetName(),
-			Labels:        labels,
-			ResourceTypes: resourceTypes,
-			configs:       configs,
-		})
 	default:
 		log.Errorw("unknown backend mode", zap.String("mode", d.BackendMode))
 		return errors.New("unknown backend mode: " + d.BackendMode)

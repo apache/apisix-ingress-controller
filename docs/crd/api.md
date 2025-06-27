@@ -4,7 +4,7 @@ slug: /reference/apisix-ingress-controller/crd-reference
 description: Explore detailed reference documentation for the custom resource definitions (CRDs) supported by the APISIX Ingress Controller.
 ---
 
-This document provides the API resource description the API7 Ingress Controller custom resource definitions (CRDs).
+This document provides the API resource description the APISIX Ingress Controller custom resource definitions (CRDs).
 
 ## Packages
 - [apisix.apache.org/v1alpha1](#apisixapacheorgv1alpha1)
