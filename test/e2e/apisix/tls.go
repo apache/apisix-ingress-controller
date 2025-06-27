@@ -90,7 +90,7 @@ var Cert = strings.TrimSpace(framework.TestServerCert)
 
 var Key = strings.TrimSpace(framework.TestServerKey)
 
-var _ = Describe("Test ApisixTls", func() {
+var _ = Describe("Test ApisixTls", Label("apisix.apache.org", "v2", "apisixtls"), func() {
 	var (
 		s = scaffold.NewScaffold(&scaffold.Options{
 			ControllerName: "apisix.apache.org/apisix-ingress-controller",

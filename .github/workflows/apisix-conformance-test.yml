@@ -122,7 +122,7 @@ jobs:
       - name: Format Conformance Test Report
         if: ${{ github.event_name == 'pull_request' }}
         run: |
-          echo '# conformance test report' > report.md
+          echo '# conformance test report - ${{ matrix.provider_type }} mode' > report.md
           echo '```yaml' >> report.md
           cat apisix-ingress-controller-conformance-report.yaml >> report.md
           echo '```' >> report.md
