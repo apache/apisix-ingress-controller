@@ -40,6 +40,13 @@ type ApisixRouteStatus = ApisixStatus
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=ar
+// +kubebuilder:printcolumn:name="Hosts",type="string",JSONPath=".spec.http[].match.hosts",description="HTTP Hosts",priority=0
+// +kubebuilder:printcolumn:name="URIs",type="string",JSONPath=".spec.http[].match.paths",description="HTTP Paths",priority=0
+// +kubebuilder:printcolumn:name="Target Service (HTTP)",type="string",JSONPath=".spec.http[].backends[].serviceName",description="Backend Service for HTTP",priority=1
+// +kubebuilder:printcolumn:name="Ingress Port (TCP)",type="integer",JSONPath=".spec.tcp[].match.ingressPort",description="TCP Ingress Port",priority=1
+// +kubebuilder:printcolumn:name="Target Service (TCP)",type="string",JSONPath=".spec.tcp[].match.backend.serviceName",description="Backend Service for TCP",priority=1
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="Creation time",priority=0
 
 // ApisixRoute is the Schema for the apisixroutes API.
 type ApisixRoute struct {

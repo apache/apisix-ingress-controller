@@ -11,10 +11,40 @@ spec:
     kind: ApisixRoute
     listKind: ApisixRouteList
     plural: apisixroutes
+    shortNames:
+    - ar
     singular: apisixroute
   scope: Namespaced
   versions:
-  - name: v2
+  - additionalPrinterColumns:
+    - description: HTTP Hosts
+      jsonPath: .spec.http[].match.hosts
+      name: Hosts
+      type: string
+    - description: HTTP Paths
+      jsonPath: .spec.http[].match.paths
+      name: URIs
+      type: string
+    - description: Backend Service for HTTP
+      jsonPath: .spec.http[].backends[].serviceName
+      name: Target Service (HTTP)
+      priority: 1
+      type: string
+    - description: TCP Ingress Port
+      jsonPath: .spec.tcp[].match.ingressPort
+      name: Ingress Port (TCP)
+      priority: 1
+      type: integer
+    - description: Backend Service for TCP
+      jsonPath: .spec.tcp[].match.backend.serviceName
+      name: Target Service (TCP)
+      priority: 1
+      type: string
+    - description: Creation time
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v2
     schema:
       openAPIV3Schema:
         description: ApisixRoute is the Schema for the apisixroutes API.

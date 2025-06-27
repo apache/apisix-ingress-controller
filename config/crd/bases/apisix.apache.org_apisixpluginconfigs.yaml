@@ -11,6 +11,8 @@ spec:
     kind: ApisixPluginConfig
     listKind: ApisixPluginConfigList
     plural: apisixpluginconfigs
+    shortNames:
+    - apc
     singular: apisixpluginconfig
   scope: Namespaced
   versions:

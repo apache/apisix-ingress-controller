@@ -36,6 +36,7 @@ type ApisixGlobalRuleStatus = ApisixStatus
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=agr
 
 // ApisixGlobalRule is the Schema for the apisixglobalrules API.
 type ApisixGlobalRule struct {

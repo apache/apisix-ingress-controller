@@ -11,6 +11,8 @@ spec:
     kind: ApisixUpstream
     listKind: ApisixUpstreamList
     plural: apisixupstreams
+    shortNames:
+    - au
     singular: apisixupstream
   scope: Namespaced
   versions:
