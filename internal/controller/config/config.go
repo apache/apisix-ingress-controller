@@ -51,7 +51,7 @@ func NewDefaultConfig() *Config {
 		LeaderElection:   NewLeaderElection(),
 		ExecADCTimeout:   types.TimeDuration{Duration: 15 * time.Second},
 		ProviderConfig: ProviderConfig{
-			Type:          ProviderTypeStandalone,
+			Type:          ProviderTypeAPISIX,
 			SyncPeriod:    types.TimeDuration{Duration: 0},
 			InitSyncDelay: types.TimeDuration{Duration: 20 * time.Minute},
 		},
