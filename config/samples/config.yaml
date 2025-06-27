@@ -34,9 +34,9 @@ exec_adc_timeout: 15s                   # The timeout for the ADC to execute.
 provider:
   type: "apisix"
 
-  sync_period: 0s
+  sync_period: 1s
                                         # The period between two consecutive syncs.
-                                        # The default value is 0 seconds, which means the controller will not sync.
+                                        # The default value is 1 seconds, which means the controller will not sync.
                                         # If you want to enable the sync, set it to a positive value.
   init_sync_delay: 20m                # The initial delay before the first sync, only used when the controller is started.
                                         # The default value is 20 minutes.
