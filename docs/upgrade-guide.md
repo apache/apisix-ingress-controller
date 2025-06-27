@@ -1,4 +1,29 @@
-# APISIX Ingress Controller Upgrade Guide
+---
+title: Upgrade Guide
+keywords:
+  - APISIX Ingress
+  - Apache APISIX
+  - Kubernetes Ingress
+  - Gateway API
+---
+<!--
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+-->
 
 ## Upgrading from 1.x.x to 2.0.0: Key Changes and Considerations
 
@@ -115,7 +140,17 @@ Due to current limitations in the ADC (API Definition Controller) component, the
 
 More details: [ADC Backend Differences](https://github.com/api7/adc/blob/2449ca81e3c61169f8c1e59efb4c1173a766bce2/libs/backend-apisix-standalone/README.md#differences-in-upstream)
 
-#### Limited Support for Ingress Annotations
+#### `ApisixClusterConfig`
+
+The `ApisixClusterConfig` CRD has been removed in 2.0.0. global rules and configurations should now be managed through the `ApisixGlobalRule` CRDs.
+
+#### Ingress
+
+##### API Version Support
+
+Currently supports networking.k8s.io/v1 only. Support for other Ingress API versions (networking.k8s.io/v1beta1 and extensions/v1beta1) is not yet available in 2.0.0.
+
+##### Limited Support for Ingress Annotations
 
 Ingress annotations used in version 1.x.x are not fully supported in 2.0.0. If your existing setup relies on any of the following annotations, validate compatibility or consider delaying the upgrade.
 

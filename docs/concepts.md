@@ -1,27 +1,44 @@
-# Concepts
+---
+title: Concepts
+keywords:
+  - APISIX Ingress
+  - Apache APISIX
+  - Kubernetes Ingress
+  - Gateway API
+---
+<!--
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+-->
 
 The APISIX Ingress Controller is used to manage the APISIX Gateway as either a standalone application or a Kubernetes-based application. It dynamically configures and manages the APISIX Gateway using Gateway API resources.
 
 ## Architecture
 
-![APISIX Ingress Controller Architecture](./assets/images/api7-ingress-controller-architecture.png)
+### Admin API Mode
 
-## Kubernetes Resources
+APISIX operates using etcd as its configuration center in the traditional deployment approach, where administrators dynamically manage routes, upstreams, and other resources through RESTful APIs, supporting distributed cluster deployments with real-time configuration synchronization.
 
-### Service
+![Admin API Architecture](./assets/images/ingress-admin-api-architecture.png)
 
-In Kubernetes, a Service is a method to expose network applications running on a set of Pods as network services.
+### Standalone Mode (Experimental)
 
-When proxying ingress traffic, APISIX Gateway by default directs traffic directly to the Pods instead of through kube-proxy.
+APISIX runs independently without relying on etcd, supporting two sub-modes - file-driven (managing configuration through conf/apisix.yaml files) and API-driven (storing configuration in memory with full configuration management through the dedicated /apisix/admin/configs endpoint).
 
-### EndpointSlicea
+This mode is particularly suitable for Kubernetes environments and single-node deployments, where the API-driven memory management approach combines the convenience of traditional Admin API with the simplicity of Standalone mode.
 
-EndpointSlice objects represent subsets (slices) of backend network endpoints for a Service.
-
-The APISIX Ingress Controller continuously tracks matching EndpointSlice objects, and whenever the set of Pods in a Service changes, the set of Pods proxied by the APISIX Gateway will also update accordingly.
-
-## Gateway API
-
-Gateway API is an official Kubernetes project focused on L4 and L7 routing in Kubernetes. This project represents the next generation of Kubernetes Ingress, Load Balancing, and Service Mesh APIs.
-
-For more information on supporting Gateway API, please refer to [Gateway API](./gateway-api.md).
+![Standalone Architecture](./assets/images/ingress-standalone-architecture.png)
