@@ -39,8 +39,6 @@ CRD_REF_DOCS ?= $(LOCALBIN)/crd-ref-docs
 CRD_DOCS_CONFIG ?= docs/crd/config.yaml
 CRD_DOCS_OUTPUT ?= docs/crd/api.md
 
-export KUBECONFIG = /tmp/$(KIND_NAME).kubeconfig
-
 # go 
 VERSYM="github.com/apache/apisix-ingress-controller/internal/version._buildVersion"
 GITSHASYM="github.com/apache/apisix-ingress-controller/internal/version._buildGitRevision"
@@ -126,7 +124,6 @@ kind-e2e-test: kind-up build-image kind-load-images e2e-test
 # Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
 .PHONY: e2e-test
 e2e-test:
-	@kind get kubeconfig --name $(KIND_NAME) > $$KUBECONFIG
 	go test $(TEST_DIR) -test.timeout=$(TEST_TIMEOUT) -v -ginkgo.v -ginkgo.focus="$(TEST_FOCUS)" -ginkgo.label-filter="$(TEST_LABEL)"
 
 .PHONY: conformance-test
@@ -135,7 +132,6 @@ conformance-test:
 
 .PHONY: conformance-test-standalone
 conformance-test-standalone:
-	@kind get kubeconfig --name $(KIND_NAME) > $$KUBECONFIG
 	go test -v ./test/conformance/apisix -tags=conformance -timeout 60m
 
 .PHONY: lint
@@ -151,7 +147,6 @@ kind-up:
 	@kind get clusters 2>&1 | grep -v $(KIND_NAME) \
 		&& kind create cluster --name $(KIND_NAME) \
 		|| echo "kind cluster already exists"
-	@kind get kubeconfig --name $(KIND_NAME) > $$KUBECONFIG
 	kubectl wait --for=condition=Ready nodes --all
 
 .PHONY: kind-down
@@ -432,6 +427,7 @@ release-src:
 	--exclude .DS_Store \
 	--exclude docs \
 	--exclude examples \
+	--exclude scripts \
 	--exclude samples \
 	--exclude test \
 	--exclude release \
