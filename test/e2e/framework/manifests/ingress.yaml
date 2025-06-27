@@ -328,7 +328,7 @@ data:
 
     leader_election_id: "apisix-ingress-controller-leader"
     provider:
-      type: {{ .ProviderType | default "apisix-standalone" }}
+      type: {{ .ProviderType | default "apisix" }}
       sync_period: {{ .ProviderSyncPeriod | default "0s" }}
                                         # The period between two consecutive syncs.
                                         # The default value is 0 seconds, which means the controller will not sync.

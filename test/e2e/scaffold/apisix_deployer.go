@@ -384,7 +384,7 @@ func (s *APISIXDeployer) GetAdminEndpoint(svc ...*corev1.Service) string {
 
 func (s *APISIXDeployer) DefaultDataplaneResource() DataplaneResource {
 	return newADCDataplaneResource(
-		"apisix-standalone",
+		framework.ProviderType,
 		fmt.Sprintf("http://%s", s.adminTunnel.Endpoint()),
 		s.AdminKey(),
 		false, // tlsVerify
