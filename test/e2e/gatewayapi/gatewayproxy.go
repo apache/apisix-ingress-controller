@@ -364,13 +364,6 @@ spec:
 	)
 
 	Context("Test GatewayProxy Provider Validation", func() {
-		AfterEach(func() {
-			By("Clean up GatewayProxy resources")
-			_ = s.DeleteResourceFromString(gatewayProxyWithInvalidProviderType)
-			_ = s.DeleteResourceFromString(gatewayProxyWithMissingControlPlane)
-			_ = s.DeleteResourceFromString(gatewayProxyWithValidProvider)
-		})
-
 		It("Should reject invalid provider type", func() {
 			By("Create GatewayProxy with invalid provider type")
 			err := s.CreateResourceFromString(gatewayProxyWithInvalidProviderType)
