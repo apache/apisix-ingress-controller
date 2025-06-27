@@ -39,7 +39,6 @@ WORKDIR /app
 
 COPY --from=deps /bin/adc /bin/adc
 COPY ./bin/apisix-ingress-controller_${TARGETARCH} ./apisix-ingress-controller
-COPY ./config/samples/config.yaml ./conf/config.yaml
 
 ENTRYPOINT ["/app/apisix-ingress-controller"]
 CMD ["-c", "/app/conf/config.yaml"]
