@@ -1,5 +1,5 @@
 ---
-title: Concepts
+title: Deployment Architecture
 keywords:
   - APISIX Ingress
   - Apache APISIX
@@ -27,18 +27,16 @@ keywords:
 
 The APISIX Ingress Controller is used to manage the APISIX Gateway as either a standalone application or a Kubernetes-based application. It dynamically configures and manages the APISIX Gateway using Gateway API resources.
 
-## Architecture
-
-### Admin API Mode
+## Admin API Mode
 
 APISIX operates using etcd as its configuration center in the traditional deployment approach, where administrators dynamically manage routes, upstreams, and other resources through RESTful APIs, supporting distributed cluster deployments with real-time configuration synchronization.
 
-![Admin API Architecture](./assets/images/ingress-admin-api-architecture.png)
+![Admin API Architecture](../assets/images/ingress-admin-api-architecture.png)
 
-### Standalone Mode (Experimental)
+## Standalone Mode (Experimental)
 
 APISIX runs independently without relying on etcd, supporting two sub-modes - file-driven (managing configuration through conf/apisix.yaml files) and API-driven (storing configuration in memory with full configuration management through the dedicated /apisix/admin/configs endpoint).
 
 This mode is particularly suitable for Kubernetes environments and single-node deployments, where the API-driven memory management approach combines the convenience of traditional Admin API with the simplicity of Standalone mode.
 
-![Standalone Architecture](./assets/images/ingress-standalone-architecture.png)
+![Standalone Architecture](../assets/images/ingress-standalone-architecture.png)
