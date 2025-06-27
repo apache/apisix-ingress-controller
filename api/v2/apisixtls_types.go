@@ -42,6 +42,12 @@ type ApisixTlsStatus = ApisixStatus
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=atls,path=apisixtlses
+// +kubebuilder:printcolumn:name="SNIs",type=string,JSONPath=`.spec.hosts`
+// +kubebuilder:printcolumn:name="Secret Name",type=string,JSONPath=`.spec.secret.name`
+// +kubebuilder:printcolumn:name="Secret Namespace",type=string,JSONPath=`.spec.secret.namespace`
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
+// +kubebuilder:printcolumn:name="Client CA Secret Name",type=string,JSONPath=`.spec.client.ca.name`
+// +kubebuilder:printcolumn:name="Client CA Secret Namespace",type=string,JSONPath=`.spec.client.ca.namespace`
 
 // ApisixTls is the Schema for the apisixtls API.
 type ApisixTls struct {
@@ -52,14 +58,9 @@ type ApisixTls struct {
 	Status ApisixTlsStatus `json:"status,omitempty"`
 }
 
-// ApisixTlsList contains a list of ApisixTls.
 // +kubebuilder:object:root=true
-// +kubebuilder:printcolumn:name="SNIs",type=string,JSONPath=`.spec.hosts`
-// +kubebuilder:printcolumn:name="Secret Name",type=string,JSONPath=`.spec.secret.name`
-// +kubebuilder:printcolumn:name="Secret Namespace",type=string,JSONPath=`.spec.secret.namespace`
-// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
-// +kubebuilder:printcolumn:name="Client CA Secret Name",type=string,JSONPath=`.spec.client.ca.name`
-// +kubebuilder:printcolumn:name="Client CA Secret Namespace",type=string,JSONPath=`.spec.client.ca.namespace`
+
+// ApisixTlsList contains a list of ApisixTls.
 type ApisixTlsList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

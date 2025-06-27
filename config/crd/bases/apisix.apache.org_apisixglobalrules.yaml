@@ -11,6 +11,8 @@ spec:
     kind: ApisixGlobalRule
     listKind: ApisixGlobalRuleList
     plural: apisixglobalrules
+    shortNames:
+    - agr
     singular: apisixglobalrule
   scope: Namespaced
   versions:

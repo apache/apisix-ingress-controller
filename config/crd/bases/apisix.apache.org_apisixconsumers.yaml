@@ -11,6 +11,8 @@ spec:
     kind: ApisixConsumer
     listKind: ApisixConsumerList
     plural: apisixconsumers
+    shortNames:
+    - ac
     singular: apisixconsumer
   scope: Namespaced
   versions:

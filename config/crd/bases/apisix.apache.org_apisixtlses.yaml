@@ -16,7 +16,26 @@ spec:
     singular: apisixtls
   scope: Namespaced
   versions:
-  - name: v2
+  - additionalPrinterColumns:
+    - jsonPath: .spec.hosts
+      name: SNIs
+      type: string
+    - jsonPath: .spec.secret.name
+      name: Secret Name
+      type: string
+    - jsonPath: .spec.secret.namespace
+      name: Secret Namespace
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .spec.client.ca.name
+      name: Client CA Secret Name
+      type: string
+    - jsonPath: .spec.client.ca.namespace
+      name: Client CA Secret Namespace
+      type: string
+    name: v2
     schema:
       openAPIV3Schema:
         description: ApisixTls is the Schema for the apisixtls API.
