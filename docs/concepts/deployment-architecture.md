@@ -29,7 +29,7 @@ The APISIX Ingress Controller is used to manage the APISIX Gateway as either a s
 
 ## Admin API Mode
 
-APISIX operates using etcd as its configuration center in the traditional deployment approach, where administrators dynamically manage routes, upstreams, and other resources through RESTful APIs, supporting distributed cluster deployments with real-time configuration synchronization.
+In the traditional deployment approach, APISIX uses etcd as its configuration center, allowing administrators to dynamically manage routes, upstreams, and other resources through RESTful APIs. It supports distributed cluster deployments with real-time configuration synchronization.
 
 ![Admin API Architecture](../assets/images/ingress-admin-api-architecture.png)
 
