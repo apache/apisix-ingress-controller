@@ -19,8 +19,9 @@
 
 VERSION ?= 2.0.0
 
-IMAGE_TAG ?= dev
+RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 
+IMAGE_TAG ?= dev
 IMG ?= apache/apisix-ingress-controller:$(IMAGE_TAG)
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.30.0
@@ -420,3 +421,27 @@ verify-all: verify-license verify-mdlint verify-yamllint
 ### update-all:           Update all update- rules.
 .PHONY: update-all
 update-all: update-license update-mdlint update-gofmt
+
+### release-src:      Release source
+release-src:
+	tar -zcvf $(RELEASE_SRC).tgz \
+	--exclude .github \
+	--exclude .git \
+	--exclude .idea \
+	--exclude .gitignore \
+	--exclude .DS_Store \
+	--exclude docs \
+	--exclude examples \
+	--exclude samples \
+	--exclude test \
+	--exclude release \
+	--exclude $(RELEASE_SRC).tgz \
+	.
+
+	gpg --batch --yes --armor --detach-sig $(RELEASE_SRC).tgz
+	shasum -a 512 $(RELEASE_SRC).tgz > $(RELEASE_SRC).tgz.sha512
+
+	mkdir -p release
+	mv $(RELEASE_SRC).tgz release/$(RELEASE_SRC).tgz
+	mv $(RELEASE_SRC).tgz.asc release/$(RELEASE_SRC).tgz.asc
+	mv $(RELEASE_SRC).tgz.sha512 release/$(RELEASE_SRC).tgz.sha512
