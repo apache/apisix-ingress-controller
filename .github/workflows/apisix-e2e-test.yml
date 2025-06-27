@@ -75,7 +75,6 @@ jobs:
           ARCH: amd64
           ENABLE_PROXY: "false"
           BASE_IMAGE_TAG: "debug"
-          ADC_VERSION: "dev"
         run: |
           echo "building images..."
           make build-image
