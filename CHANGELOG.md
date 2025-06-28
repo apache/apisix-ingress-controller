@@ -19,6 +19,7 @@
 
 # Table of Contents
 
+- [2.0.0-rc1](#200-rc1)
 - [1.8.0](#180)
 - [1.7.0](#170)
 - [1.6.0](#160)
@@ -38,6 +39,209 @@
 - [0.3.0](#030)
 - [0.2.0](#020)
 - [0.1.0](#010)
+
+# 2.0.0-rc1
+
+apisix-ingress-controller 2.0.0-rc1
+
+Welcome to the 2.0.0-rc1 release of apisix-ingress-controller!
+
+This is a feature release.
+
+## Highlights
+
+**Add Gateway API Extensions `apisix.apache.org/v1alpha1`**
+
+Enable additional features not included in the standard Kubernetes Gateway API, developed and maintained by Gateway API implementers to extend functionality securely and reliably.
+
+* GatewayProxy: Defines connection settings between the APISIX Ingress Controller and APISIX, including auth, endpoints, and global plugins. Referenced via parametersRef in Gateway, GatewayClass, or IngressClass
+
+* BackendTrafficPolicy: Defines traffic management settings for backend services, including load balancing, timeouts, retries, and host header handling in the APISIX Ingress Controller.
+
+* Consumer: Defines API consumers and their credentials, enabling authentication and plugin configuration for controlling access to API endpoints.
+
+* PluginConfig: Defines reusable plugin configurations that can be referenced by other resources like HTTPRoute, enabling separation of routing logic and plugin settings for better reusability and manageability.
+
+* HTTPRoutePolicy: Configures advanced traffic management and routing policies for HTTPRoute or Ingress resources, enhancing functionality without modifying the original resources.
+
+**Support APISIX Standalone API-Driven Mode (Experimental)**
+
+This new implementation addresses the issue of ETCD instability in Kubernetes, removing the need for ETCD support. Routing rules are now stored entirely in memory and can be updated through the API. This change allows you to run Ingress Controllers more reliably in a stateless mode.
+
+You can enable this mode in APISIX Ingress Controller configuration file by specifying:
+
+```yaml
+provider:
+  type: "apisix-standalone"
+```
+
+**For major changes introduced in this release, refer to the [upgrade guide](https://github.com/apache/apisix-ingress-controller/blob/0db882d66d5b9dfb7dc9dd9d2045d4709b1c6ed2/docs/upgrade-guide.md#upgrading-from-1xx-to-200-key-changes-and-considerations).**
+
+If you encounter any problems while using the implementation, please [submit an issue](https://github.com/apache/apisix-ingress-controller/issues) along with the reproduction steps. The APISIX Team will review and resolve it.
+
+### Contributors
+
+* AlinsRan
+* Ashing Zheng
+
+### Changes
+<details><summary>14 commits</summary>
+<p>
+
+  * [`2f35524`](https://github.com/apache/apisix-ingress-controller/commit/2f35524b72b3f9e181e50479ce0576c5d9bae45d) add Makefile
+  * [`10eada5`](https://github.com/apache/apisix-ingress-controller/commit/10eada507db3515e1e19bca1152ef19fae47b7eb) chore: v2.0.0-rc1 release
+  * [`c1533c9`](https://github.com/apache/apisix-ingress-controller/commit/c1533c9ddf4b1ed6db999d1535370824b8c150e1) fix: the sync_period of the provider should not be 0s (#2438)
+  * [`0db882d`](https://github.com/apache/apisix-ingress-controller/commit/0db882d66d5b9dfb7dc9dd9d2045d4709b1c6ed2) chore: remove useless example files in dockerfile (#2434)
+  * [`11ecb35`](https://github.com/apache/apisix-ingress-controller/commit/11ecb353d074b7392046d08e52bc824a3eeb6ee7) fix: set default provider type (#2436)
+  * [`16f9d60`](https://github.com/apache/apisix-ingress-controller/commit/16f9d609ad63a9ff1d11aa1d1dfceaf89a603a60) fix(crd): missing shortname and printcolumn (#2435)
+  * [`e6fa3b8`](https://github.com/apache/apisix-ingress-controller/commit/e6fa3b845ed30a077d2f2235790701d9653e0403) chore: upgrade adc to 0.20.0 (#2432)
+  * [`03877e0`](https://github.com/apache/apisix-ingress-controller/commit/03877e06abbdf8fda712c65a9f0f6613bdbf5f59) fix(ci): run e2e group by resource api group (#2431)
+  * [`b21d429`](https://github.com/apache/apisix-ingress-controller/commit/b21d429a5efea0571bb0e9f4b5a1633e578d0ce9) chore: revert release-src cmd in makefile (#2433)
+  * [`5588c00`](https://github.com/apache/apisix-ingress-controller/commit/5588c00f116d86daea268a43b3adfc1023ad6a03) docs: update resources and overview (#2430)
+  * [`67ad69a`](https://github.com/apache/apisix-ingress-controller/commit/67ad69ab2fe84cc439b0a95dd20132108b596a60) chore: remove charts folder (#2428)
+  * [`c7d7732`](https://github.com/apache/apisix-ingress-controller/commit/c7d77325a46d9c158e21a0562db7164c7fa34bd9) chore: remove useless provider (#2429)
+  * [`cfa8fd5`](https://github.com/apache/apisix-ingress-controller/commit/cfa8fd5159ef8c899dfc7d311365e26c6f2392e1) feat: support apisix provider type and add ingress docs (#2427)
+  * [`756ed51`](https://github.com/apache/apisix-ingress-controller/commit/756ed51df778d44b61df7e5c3b78bd2dd9c8afbe) refactor: new apisix ingress controller (#2421)
+</p>
+</details>
+
+### Dependency Changes
+
+* **github.com/Masterminds/goutils**                                   v1.1.1 **_new_**
+* **github.com/Masterminds/semver/v3**                                 v3.2.1 **_new_**
+* **github.com/Masterminds/sprig/v3**                                  v3.2.3 **_new_**
+* **github.com/TylerBrock/colorjson**                                  8a50f05110d2 **_new_**
+* **github.com/ajg/form**                                              v1.5.1 **_new_**
+* **github.com/andybalholm/brotli**                                    v1.0.4 **_new_**
+* **github.com/antlr4-go/antlr/v4**                                    v4.13.0 **_new_**
+* **github.com/api7/gopkg**                                            v0.2.0 -> 0f3730f9b57a
+* **github.com/asaskevich/govalidator**                                a9d515a09cc2 **_new_**
+* **github.com/aws/aws-sdk-go**                                        v1.44.245 **_new_**
+* **github.com/blang/semver/v4**                                       v4.0.0 **_new_**
+* **github.com/boombuler/barcode**                                     6c824513bacc **_new_**
+* **github.com/cenkalti/backoff/v4**                                   v4.3.0 **_new_**
+* **github.com/cespare/xxhash/v2**                                     v2.2.0 -> v2.3.0
+* **github.com/cpuguy83/go-md2man/v2**                                 v2.0.4 **_new_**
+* **github.com/davecgh/go-spew**                                       v1.1.1 -> d8f796af33cc
+* **github.com/emicklei/go-restful/v3**                                v3.10.2 -> v3.12.0
+* **github.com/evanphx/json-patch**                                    v5.6.0 -> v5.9.0
+* **github.com/evanphx/json-patch/v5**                                 v5.6.0 -> v5.9.0
+* **github.com/fatih/color**                                           v1.17.0 **_new_**
+* **github.com/fatih/structs**                                         v1.1.0 **_new_**
+* **github.com/felixge/httpsnoop**                                     v1.0.4 **_new_**
+* **github.com/fsnotify/fsnotify**                                     v1.7.0 **_new_**
+* **github.com/fxamacker/cbor/v2**                                     v2.7.0 **_new_**
+* **github.com/gavv/httpexpect/v2**                                    v2.16.0 **_new_**
+* **github.com/go-errors/errors**                                      v1.4.2 **_new_**
+* **github.com/go-logr/logr**                                          v1.2.4 -> v1.4.2
+* **github.com/go-logr/stdr**                                          v1.2.2 **_new_**
+* **github.com/go-logr/zapr**                                          v1.3.0 **_new_**
+* **github.com/go-openapi/jsonpointer**                                v0.20.0 -> v0.21.0
+* **github.com/go-openapi/jsonreference**                              v0.20.2 -> v0.21.0
+* **github.com/go-openapi/swag**                                       v0.22.4 -> v0.23.0
+* **github.com/go-sql-driver/mysql**                                   v1.7.1 **_new_**
+* **github.com/go-task/slim-sprig/v3**                                 v3.0.0 **_new_**
+* **github.com/gobwas/glob**                                           v0.2.3 **_new_**
+* **github.com/golang/protobuf**                                       v1.5.3 -> v1.5.4
+* **github.com/google/cel-go**                                         v0.20.1 **_new_**
+* **github.com/google/go-cmp**                                         v0.5.9 -> v0.6.0
+* **github.com/google/go-querystring**                                 v1.1.0 **_new_**
+* **github.com/google/pprof**                                          813a5fbdbec8 **_new_**
+* **github.com/google/uuid**                                           v1.3.0 -> v1.6.0
+* **github.com/gorilla/websocket**                                     v1.5.0 -> v1.5.1
+* **github.com/grpc-ecosystem/grpc-gateway/v2**                        v2.20.0 **_new_**
+* **github.com/gruntwork-io/go-commons**                               v0.8.0 **_new_**
+* **github.com/gruntwork-io/terratest**                                v0.47.0 **_new_**
+* **github.com/hashicorp/errwrap**                                     v1.0.0 -> v1.1.0
+* **github.com/hashicorp/go-uuid**                                     v1.0.1 **_new_**
+* **github.com/hashicorp/golang-lru**                                  v0.5.4 -> v1.0.2
+* **github.com/hpcloud/tail**                                          v1.0.0 **_new_**
+* **github.com/huandu/xstrings**                                       v1.4.0 **_new_**
+* **github.com/imdario/mergo**                                         v0.3.15 -> v0.3.16
+* **github.com/imkira/go-interpol**                                    v1.1.0 **_new_**
+* **github.com/jmespath/go-jmespath**                                  v0.4.0 **_new_**
+* **github.com/klauspost/compress**                                    v1.17.4 **_new_**
+* **github.com/mattn/go-colorable**                                    v0.1.13 **_new_**
+* **github.com/mattn/go-isatty**                                       v0.0.19 -> v0.0.20
+* **github.com/mattn/go-zglob**                                        e3c945676326 **_new_**
+* **github.com/miekg/dns**                                             v1.1.62 **_new_**
+* **github.com/mitchellh/copystructure**                               v1.2.0 **_new_**
+* **github.com/mitchellh/go-homedir**                                  v1.1.0 **_new_**
+* **github.com/mitchellh/go-wordwrap**                                 v1.0.1 **_new_**
+* **github.com/mitchellh/reflectwalk**                                 v1.0.2 **_new_**
+* **github.com/moby/spdystream**                                       v0.4.0 **_new_**
+* **github.com/mxk/go-flowrate**                                       cca7078d478f **_new_**
+* **github.com/onsi/ginkgo/v2**                                        v2.20.0 **_new_**
+* **github.com/onsi/gomega**                                           v1.34.1 **_new_**
+* **github.com/pmezard/go-difflib**                                    v1.0.0 -> 5d4384ee4fb2
+* **github.com/pquerna/otp**                                           v1.2.0 **_new_**
+* **github.com/prometheus/client_golang**                              v1.16.0 -> v1.19.1
+* **github.com/prometheus/client_model**                               v0.4.0 -> v0.6.1
+* **github.com/prometheus/common**                                     v0.44.0 -> v0.55.0
+* **github.com/prometheus/procfs**                                     v0.11.1 -> v0.15.1
+* **github.com/russross/blackfriday/v2**                               v2.1.0 **_new_**
+* **github.com/samber/lo**                                             v1.47.0 **_new_**
+* **github.com/sanity-io/litter**                                      v1.5.5 **_new_**
+* **github.com/sergi/go-diff**                                         v1.3.1 **_new_**
+* **github.com/shopspring/decimal**                                    v1.3.1 **_new_**
+* **github.com/spf13/cast**                                            v1.6.0 **_new_**
+* **github.com/spf13/cobra**                                           v1.8.0 -> v1.8.1
+* **github.com/stoewer/go-strcase**                                    v1.2.0 **_new_**
+* **github.com/stretchr/testify**                                      v1.8.4 -> v1.9.0
+* **github.com/urfave/cli**                                            v1.22.14 **_new_**
+* **github.com/valyala/bytebufferpool**                                v1.0.0 **_new_**
+* **github.com/valyala/fasthttp**                                      v1.34.0 **_new_**
+* **github.com/x448/float16**                                          v0.8.4 **_new_**
+* **github.com/xeipuuv/gojsonpointer**                                 4e3ac2762d5f -> 02993c407bfb
+* **github.com/yalp/jsonpath**                                         5cc68e5049a0 **_new_**
+* **github.com/yudai/gojsondiff**                                      v1.0.0 **_new_**
+* **github.com/yudai/golcs**                                           ecda9a501e82 **_new_**
+* **go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp**    v0.53.0 **_new_**
+* **go.opentelemetry.io/otel**                                         v1.28.0 **_new_**
+* **go.opentelemetry.io/otel/exporters/otlp/otlptrace**                v1.28.0 **_new_**
+* **go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc**  v1.27.0 **_new_**
+* **go.opentelemetry.io/otel/metric**                                  v1.28.0 **_new_**
+* **go.opentelemetry.io/otel/sdk**                                     v1.28.0 **_new_**
+* **go.opentelemetry.io/otel/trace**                                   v1.28.0 **_new_**
+* **go.opentelemetry.io/proto/otlp**                                   v1.3.1 **_new_**
+* **go.uber.org/zap**                                                  v1.26.0 -> v1.27.0
+* **golang.org/x/arch**                                                v0.3.0 -> v0.6.0
+* **golang.org/x/crypto**                                              v0.14.0 -> v0.36.0
+* **golang.org/x/exp**                                                 8a7402abbf56 **_new_**
+* **golang.org/x/mod**                                                 v0.12.0 -> v0.20.0
+* **golang.org/x/net**                                                 v0.17.0 -> v0.38.0
+* **golang.org/x/oauth2**                                              v0.8.0 -> v0.21.0
+* **golang.org/x/sync**                                                v0.12.0 **_new_**
+* **golang.org/x/sys**                                                 v0.13.0 -> v0.31.0
+* **golang.org/x/term**                                                v0.13.0 -> v0.30.0
+* **golang.org/x/text**                                                v0.13.0 -> v0.23.0
+* **golang.org/x/time**                                                v0.3.0 -> v0.5.0
+* **golang.org/x/tools**                                               v0.12.0 -> v0.24.0
+* **gomodules.xyz/jsonpatch/v2**                                       v2.4.0 **_new_**
+* **google.golang.org/genproto/googleapis/api**                        6bfd019c3878 -> ef581f913117
+* **google.golang.org/genproto/googleapis/rpc**                        6bfd019c3878 -> f6361c86f094
+* **google.golang.org/grpc**                                           v1.57.0 -> v1.66.2
+* **google.golang.org/protobuf**                                       v1.31.0 -> v1.34.2
+* **gopkg.in/fsnotify.v1**                                             v1.4.7 **_new_**
+* **gopkg.in/tomb.v1**                                                 dd632973f1e7 **_new_**
+* **k8s.io/api**                                                       v0.28.4 -> v0.31.1
+* **k8s.io/apiextensions-apiserver**                                   v0.31.1 **_new_**
+* **k8s.io/apimachinery**                                              v0.28.4 -> v0.31.1
+* **k8s.io/apiserver**                                                 v0.31.1 **_new_**
+* **k8s.io/client-go**                                                 v0.28.2 -> v0.31.1
+* **k8s.io/component-base**                                            v0.31.1 **_new_**
+* **k8s.io/klog/v2**                                                   v2.100.1 -> v2.130.1
+* **k8s.io/kube-openapi**                                              2695361300d9 -> f0e62f92d13f
+* **k8s.io/kubectl**                                                   v0.30.3 **_new_**
+* **k8s.io/utils**                                                     d93618cff8a2 -> 18e509b52bc8
+* **moul.io/http2curl/v2**                                             v2.3.0 **_new_**
+* **sigs.k8s.io/apiserver-network-proxy/konnectivity-client**          v0.30.3 **_new_**
+* **sigs.k8s.io/controller-runtime**                                   v0.16.2 -> v0.19.0
+* **sigs.k8s.io/gateway-api**                                          v0.8.0 -> v1.2.0
+* **sigs.k8s.io/structured-merge-diff/v4**                             v4.3.0 -> v4.4.1
+* **sigs.k8s.io/yaml**                                                 v1.3.0 -> v1.4.0
+
+Previous release can be found at [v1.8.4](https://github.com/apache/apisix-ingress-controller/releases/tag/v1.8.4)
 
 # 1.8.0
 
