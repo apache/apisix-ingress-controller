@@ -66,11 +66,11 @@ Enable additional features not included in the standard Kubernetes Gateway API, 
 
 **Support APISIX Standalone API-Driven Mode (Experimental)**
 
-> This mode is experimental, please do not rely on it in your production environment. We use it to validate certain specific workloads and if it is appropriate we will turn it into an officially supported feature, otherwise it will be removed.
+This new implementation addresses the issue of ETCD instability in Kubernetes, removing the need for ETCD support. Routing rules are now stored entirely in memory and can be updated through the API. This change allows you to run Ingress Controllers more reliably in a stateless mode.
 
-In this mode, there is no need to maintain an ETCD cluster. Routing rules are stored entirely in memory and can be updated through the API.
+For more details on the implementation, refer to the [upgrade guide](https://github.com/apache/apisix-ingress-controller/blob/0db882d66d5b9dfb7dc9dd9d2045d4709b1c6ed2/docs/upgrade-guide.md). 
 
-You can enable this mode in Apache Ingress configuration file by specifying:
+You can enable this mode in APISIX Ingress Controller configuration file by specifying:
 
 ```yaml
 provider:
@@ -79,18 +79,19 @@ provider:
 
 **For major changes introduced in this release, refer to the [upgrade guide](https://github.com/apache/apisix-ingress-controller/blob/0db882d66d5b9dfb7dc9dd9d2045d4709b1c6ed2/docs/upgrade-guide.md#upgrading-from-1xx-to-200-key-changes-and-considerations).**
 
-Please try out the release binaries and report any issues at
-https://github.com/apache/apisix-ingress-controller/issues.
+If you encounter any problems while using the implementation, please [submit an issue](https://github.com/apache/apisix-ingress-controller/issues) along with the reproduction steps. The APISIX Team will review and resolve it.
 
 ### Contributors
 
-* Ashing Zheng
 * AlinsRan
+* Ashing Zheng
 
 ### Changes
-<details><summary>12 commits</summary>
+<details><summary>14 commits</summary>
 <p>
 
+  * [`2f35524`](https://github.com/apache/apisix-ingress-controller/commit/2f35524b72b3f9e181e50479ce0576c5d9bae45d) add Makefile
+  * [`10eada5`](https://github.com/apache/apisix-ingress-controller/commit/10eada507db3515e1e19bca1152ef19fae47b7eb) chore: v2.0.0-rc1 release
   * [`c1533c9`](https://github.com/apache/apisix-ingress-controller/commit/c1533c9ddf4b1ed6db999d1535370824b8c150e1) fix: the sync_period of the provider should not be 0s (#2438)
   * [`0db882d`](https://github.com/apache/apisix-ingress-controller/commit/0db882d66d5b9dfb7dc9dd9d2045d4709b1c6ed2) chore: remove useless example files in dockerfile (#2434)
   * [`11ecb35`](https://github.com/apache/apisix-ingress-controller/commit/11ecb353d074b7392046d08e52bc824a3eeb6ee7) fix: set default provider type (#2436)
