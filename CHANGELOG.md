@@ -68,8 +68,6 @@ Enable additional features not included in the standard Kubernetes Gateway API, 
 
 This new implementation addresses the issue of ETCD instability in Kubernetes, removing the need for ETCD support. Routing rules are now stored entirely in memory and can be updated through the API. This change allows you to run Ingress Controllers more reliably in a stateless mode.
 
-For more details on the implementation, refer to the [upgrade guide](https://github.com/apache/apisix-ingress-controller/blob/0db882d66d5b9dfb7dc9dd9d2045d4709b1c6ed2/docs/upgrade-guide.md). 
-
 You can enable this mode in APISIX Ingress Controller configuration file by specifying:
 
 ```yaml
