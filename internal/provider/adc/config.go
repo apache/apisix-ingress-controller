@@ -30,7 +30,8 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
-	types "github.com/apache/apisix-ingress-controller/internal/types"
+	"github.com/apache/apisix-ingress-controller/internal/types"
+	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
 func (d *adcClient) getConfigsForGatewayProxy(tctx *provider.TranslateContext, gatewayProxy *v1alpha1.GatewayProxy) (*adcConfig, error) {
@@ -158,6 +159,32 @@ func (d *adcClient) updateConfigs(rk types.NamespacedNameKind, tctx *provider.Tr
 			continue
 		}
 		d.configs[parentRef] = *config
+	}
+
+	return nil
+}
+
+// updateConfigForGatewayProxy update config for all referrers of the GatewayProxy
+func (d *adcClient) updateConfigForGatewayProxy(tctx *provider.TranslateContext, gp *v1alpha1.GatewayProxy) error {
+	d.Lock()
+	defer d.Unlock()
+
+	config, err := d.getConfigsForGatewayProxy(tctx, gp)
+	if err != nil {
+		return err
+	}
+
+	referrers := tctx.GatewayProxyReferrers[utils.NamespacedName(gp)]
+
+	if config == nil {
+		for _, ref := range referrers {
+			delete(d.configs, ref)
+		}
+		return nil
+	}
+
+	for _, ref := range referrers {
+		d.configs[ref] = *config
 	}
 
 	return nil

@@ -133,6 +133,8 @@ func (d *adcClient) Update(ctx context.Context, tctx *provider.TranslateContext,
 	case *apiv2.ApisixConsumer:
 		result, err = d.translator.TranslateApisixConsumer(tctx, t.DeepCopy())
 		resourceTypes = append(resourceTypes, "consumer")
+	case *v1alpha1.GatewayProxy:
+		return d.updateConfigForGatewayProxy(tctx, t)
 	}
 	if err != nil {
 		return err
