@@ -97,6 +97,7 @@ func (d *adcClient) getConfigsForGatewayProxy(tctx *provider.TranslateContext, g
 		for _, port := range service.Spec.Ports {
 			if port.Port == provider.ControlPlane.Service.Port {
 				servicePort = &port
+				break
 			}
 		}
 		if servicePort == nil {
