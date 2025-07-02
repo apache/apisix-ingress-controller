@@ -137,8 +137,9 @@ spec:
                         type: boolean
                     required:
                     - auth
-                    - endpoints
                     type: object
+                    x-kubernetes-validations:
+                    - rule: has(self.endpoints) != has(self.service)
                   type:
                     description: Type specifies the type of provider. Can only be
                       `ControlPlane`.
