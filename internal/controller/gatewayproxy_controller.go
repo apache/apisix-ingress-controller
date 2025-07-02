@@ -155,7 +155,3 @@ func (r *GatewayProxyController) listGatewayProxiesForSecret(ctx context.Context
 		indexer.SecretIndexRef: indexer.GenIndexKey(secret.GetNamespace(), secret.GetName()),
 	})
 }
-
-func addProviderEndpointsToTranslateContext(tctx *provider.TranslateContext, c client.Client, serviceNN types.NamespacedName) error {
-	return nil
-}

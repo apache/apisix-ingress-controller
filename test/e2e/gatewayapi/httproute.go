@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	"github.com/apache/apisix-ingress-controller/internal/provider/adc"
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
@@ -41,7 +42,28 @@ import (
 var _ = Describe("Test HTTPRoute", Label("networking.k8s.io", "httproute"), func() {
 	s := scaffold.NewDefaultScaffold()
 
-	var gatewayProxyYaml = `
+	getGatewayProxySpec := func(endpoint, adminKey string) string {
+		if framework.ProviderType == adc.BackendModeAPISIXStandalone {
+			var gatewayProxyYaml = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  name: apisix-proxy-config
+spec:
+  provider:
+    type: ControlPlane
+    controlPlane:
+      service:
+        name: apisix-standalone
+        port: 9180
+      auth:
+        type: AdminKey
+        adminKey:
+          value: "%s"
+`
+			return fmt.Sprintf(gatewayProxyYaml, adminKey)
+		}
+		var gatewayProxyYaml = `
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
@@ -57,6 +79,8 @@ spec:
         adminKey:
           value: "%s"
 `
+		return fmt.Sprintf(gatewayProxyYaml, endpoint, adminKey)
+	}
 
 	var gatewayClassYaml = `
 apiVersion: gateway.networking.k8s.io/v1
@@ -129,7 +153,7 @@ spec:
 
 	var beforeEachHTTP = func() {
 		By("create GatewayProxy")
-		gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+		gatewayProxy := getGatewayProxySpec(s.Deployer.GetAdminEndpoint(), s.AdminKey())
 		err := s.CreateResourceFromString(gatewayProxy)
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 		time.Sleep(5 * time.Second)
@@ -160,7 +184,7 @@ spec:
 
 	var beforeEachHTTPS = func() {
 		By("create GatewayProxy")
-		gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+		gatewayProxy := getGatewayProxySpec(s.Deployer.GetAdminEndpoint(), s.AdminKey())
 		err := s.CreateResourceFromString(gatewayProxy)
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 		time.Sleep(5 * time.Second)

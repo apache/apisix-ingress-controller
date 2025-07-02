@@ -22,9 +22,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
-
 // GatewayProxySpec defines the desired state of GatewayProxy.
 type GatewayProxySpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
@@ -116,9 +113,10 @@ type ControlPlaneAuth struct {
 }
 
 // ControlPlaneProvider defines the configuration for control plane provider.
+// +kubebuilder:validation:XValidation:rule="has(self.endpoints) != has(self.service)"
 type ControlPlaneProvider struct {
 	// Endpoints specifies the list of control plane endpoints.
-	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:MinItems=1
 	Endpoints []string `json:"endpoints"`
 
