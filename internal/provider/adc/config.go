@@ -20,14 +20,14 @@ package adc
 import (
 	"net"
 	"slices"
+	"strconv"
 
 	"github.com/api7/gopkg/pkg/log"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	corev1 "k8s.io/api/core/v1"
-	discoveryv1 "k8s.io/api/discovery/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+	v1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
@@ -85,45 +85,26 @@ func (d *adcClient) getConfigsForGatewayProxy(tctx *provider.TranslateContext, g
 			Namespace: gatewayProxy.Namespace,
 			Name:      provider.ControlPlane.Service.Name,
 		}
-		service, ok := tctx.Services[namespacedName]
+		_, ok := tctx.Services[namespacedName]
 		if !ok {
 			return nil, errors.Errorf("no service found for service reference: %s", namespacedName)
 		}
-
-		var (
-			endpointSlices = tctx.EndpointSlices[namespacedName]
-			servicePort    *corev1.ServicePort
-		)
-		for _, port := range service.Spec.Ports {
-			if port.Port == provider.ControlPlane.Service.Port {
-				servicePort = &port
-				break
-			}
+		endpoint := tctx.EndpointSlices[namespacedName]
+		if endpoint == nil {
+			return nil, nil
 		}
-		if servicePort == nil {
-			log.Errorf("failed to find provider.controlPlane.service.port %v in the ports of the service %s", provider.ControlPlane.Service.Port, namespacedName)
-			return nil, errors.New("port not found in service")
+		upstreamNodes, err := d.translator.TranslateBackendRef(tctx, v1.BackendRef{
+			BackendObjectReference: v1.BackendObjectReference{
+				Name:      v1.ObjectName(provider.ControlPlane.Service.Name),
+				Namespace: (*v1.Namespace)(&gatewayProxy.Namespace),
+				Port:      ptr.To(v1.PortNumber(provider.ControlPlane.Service.Port)),
+			},
+		})
+		if err != nil {
+			return nil, err
 		}
-
-		for _, endpointSlice := range endpointSlices {
-			if !slices.ContainsFunc(endpointSlice.Ports, func(port discoveryv1.EndpointPort) bool {
-				// match endpoints ports based on the targetPort or portName of the service
-				targetPort := int32(servicePort.TargetPort.IntValue())
-				return ptr.Equal(port.Name, &servicePort.Name) || ptr.Equal(port.Port, &targetPort)
-			}) {
-				continue
-			}
-
-			for _, endpoint := range endpointSlice.Endpoints {
-				for _, addr := range endpoint.Addresses {
-					serverAddr := "http://"
-					if tlsVerify := provider.ControlPlane.TlsVerify; tlsVerify != nil && *tlsVerify {
-						serverAddr = "https://"
-					}
-					serverAddr += net.JoinHostPort(addr, servicePort.TargetPort.String())
-					config.ServerAddrs = append(config.ServerAddrs, serverAddr)
-				}
-			}
+		for _, node := range upstreamNodes {
+			config.ServerAddrs = append(config.ServerAddrs, "http://"+net.JoinHostPort(node.Host, strconv.Itoa(node.Port)))
 		}
 
 		log.Debugf("add server address to config.ServiceAddrs: %v", config.ServerAddrs)
