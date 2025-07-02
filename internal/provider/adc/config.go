@@ -18,19 +18,20 @@
 package adc
 
 import (
-	"errors"
-	"fmt"
+	"net"
 	"slices"
+	"strconv"
 
 	"github.com/api7/gopkg/pkg/log"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
-	v1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
-	types "github.com/apache/apisix-ingress-controller/internal/types"
+	"github.com/apache/apisix-ingress-controller/internal/types"
 )
 
 func (d *adcClient) getConfigsForGatewayProxy(tctx *provider.TranslateContext, gatewayProxy *v1alpha1.GatewayProxy) (*adcConfig, error) {
@@ -86,24 +87,32 @@ func (d *adcClient) getConfigsForGatewayProxy(tctx *provider.TranslateContext, g
 		}
 		_, ok := tctx.Services[namespacedName]
 		if !ok {
-			return nil, errors.New("no service found for service reference")
+			return nil, errors.Errorf("no service found for service reference: %s", namespacedName)
 		}
-		endpoint := tctx.EndpointSlices[namespacedName]
-		if endpoint == nil {
-			return nil, nil
+
+		var (
+			endpointSlices = tctx.EndpointSlices[namespacedName]
+			port           = strconv.FormatInt(int64(provider.ControlPlane.Service.Port), 10)
+		)
+		for _, endpointSlice := range endpointSlices {
+			if !slices.ContainsFunc(endpointSlice.Ports, func(port discoveryv1.EndpointPort) bool {
+				return ptr.Equal(port.Port, &provider.ControlPlane.Service.Port)
+			}) {
+				continue
+			}
+
+			for _, endpoint := range endpointSlice.Endpoints {
+				for _, addr := range endpoint.Addresses {
+					serverAddr := "http://" + net.JoinHostPort(addr, port)
+					if tlsVerify := provider.ControlPlane.TlsVerify; tlsVerify != nil && *tlsVerify {
+						serverAddr = "https://" + net.JoinHostPort(addr, port)
+					}
+					config.ServerAddrs = append(config.ServerAddrs, serverAddr)
+				}
+			}
 		}
-		upstreamNodes, err := d.translator.TranslateBackendRef(tctx, v1.BackendRef{
-			BackendObjectReference: v1.BackendObjectReference{
-				Name: v1.ObjectName(provider.ControlPlane.Service.Name),
-				Port: ptr.To(v1.PortNumber(provider.ControlPlane.Service.Port)),
-			},
-		})
-		if err != nil {
-			return nil, err
-		}
-		for _, node := range upstreamNodes {
-			config.ServerAddrs = append(config.ServerAddrs, fmt.Sprintf("http://%s:%d", node.Host, node.Port))
-		}
+
+		log.Debugf("add server address to config.ServiceAddrs: %v", config.ServerAddrs)
 	}
 
 	return &config, nil
