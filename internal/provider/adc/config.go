@@ -20,11 +20,11 @@ package adc
 import (
 	"net"
 	"slices"
-	"strconv"
 
 	"github.com/api7/gopkg/pkg/log"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -85,28 +85,41 @@ func (d *adcClient) getConfigsForGatewayProxy(tctx *provider.TranslateContext, g
 			Namespace: gatewayProxy.Namespace,
 			Name:      provider.ControlPlane.Service.Name,
 		}
-		_, ok := tctx.Services[namespacedName]
+		service, ok := tctx.Services[namespacedName]
 		if !ok {
 			return nil, errors.Errorf("no service found for service reference: %s", namespacedName)
 		}
 
 		var (
 			endpointSlices = tctx.EndpointSlices[namespacedName]
-			port           = strconv.FormatInt(int64(provider.ControlPlane.Service.Port), 10)
+			servicePort    *corev1.ServicePort
 		)
+		for _, port := range service.Spec.Ports {
+			if port.Port == provider.ControlPlane.Service.Port {
+				servicePort = &port
+			}
+		}
+		if servicePort == nil {
+			log.Errorf("failed to find provider.controlPlane.service.port %v in the ports of the service %s", provider.ControlPlane.Service.Port, namespacedName)
+			return nil, errors.New("port not found in service")
+		}
+
 		for _, endpointSlice := range endpointSlices {
 			if !slices.ContainsFunc(endpointSlice.Ports, func(port discoveryv1.EndpointPort) bool {
-				return ptr.Equal(port.Port, &provider.ControlPlane.Service.Port)
+				// match endpoints ports based on the targetPort or portName of the service
+				targetPort := int32(servicePort.TargetPort.IntValue())
+				return ptr.Equal(port.Name, &servicePort.Name) || ptr.Equal(port.Port, &targetPort)
 			}) {
 				continue
 			}
 
 			for _, endpoint := range endpointSlice.Endpoints {
 				for _, addr := range endpoint.Addresses {
-					serverAddr := "http://" + net.JoinHostPort(addr, port)
+					serverAddr := "http://"
 					if tlsVerify := provider.ControlPlane.TlsVerify; tlsVerify != nil && *tlsVerify {
-						serverAddr = "https://" + net.JoinHostPort(addr, port)
+						serverAddr = "https://"
 					}
+					serverAddr += net.JoinHostPort(addr, servicePort.TargetPort.String())
 					config.ServerAddrs = append(config.ServerAddrs, serverAddr)
 				}
 			}
