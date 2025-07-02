@@ -53,14 +53,15 @@ spec:
   provider:
     type: ControlPlane
     controlPlane:
-      endpoints:
-      - %s
+      service:
+        name: apisix-standalone
+        port: 9180
       auth:
         type: AdminKey
         adminKey:
           value: "%s"
 `
-			return fmt.Sprintf(gatewayProxyYaml, endpoint, adminKey)
+			return fmt.Sprintf(gatewayProxyYaml, adminKey)
 		}
 		var gatewayProxyYaml = `
 apiVersion: apisix.apache.org/v1alpha1
@@ -71,15 +72,14 @@ spec:
   provider:
     type: ControlPlane
     controlPlane:
-      service:
-        name: apisix-standalone
-        port: 9180
+      endpoints:
+      - %s
       auth:
         type: AdminKey
         adminKey:
           value: "%s"
 `
-		return fmt.Sprintf(gatewayProxyYaml, adminKey)
+		return fmt.Sprintf(gatewayProxyYaml, endpoint, adminKey)
 	}
 
 	var gatewayClassYaml = `
