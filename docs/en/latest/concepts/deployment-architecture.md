@@ -31,7 +31,7 @@ The APISIX Ingress Controller is used to manage the APISIX Gateway as either a s
 
 In the traditional deployment approach, APISIX uses etcd as its configuration center, allowing administrators to dynamically manage routes, upstreams, and other resources through RESTful APIs. It supports distributed cluster deployments with real-time configuration synchronization.
 
-![Admin API Architecture](../assets/images/ingress-admin-api-architecture.png)
+![Admin API Architecture](../../../assets/images/ingress-admin-api-architecture.png)
 
 ## Standalone Mode (Experimental)
 
@@ -39,4 +39,4 @@ APISIX runs independently without relying on etcd, supporting two sub-modes - fi
 
 This mode is particularly suitable for Kubernetes environments and single-node deployments, where the API-driven memory management approach combines the convenience of traditional Admin API with the simplicity of Standalone mode.
 
-![Standalone Architecture](../assets/images/ingress-standalone-architecture.png)
+![Standalone Architecture](../../../assets/images/ingress-standalone-architecture.png)

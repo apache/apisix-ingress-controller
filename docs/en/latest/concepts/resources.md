@@ -68,7 +68,7 @@ Enable additional features not included in the standard Kubernetes Gateway API, 
 
 * HTTPRoutePolicy: Configures advanced traffic management and routing policies for HTTPRoute or Ingress resources, enhancing functionality without modifying the original resources.
 
-![Gateway API Extensions Overview](../assets/images/gateway-api-extensions-resources.png)
+![Gateway API Extensions Overview](../../../assets/images/gateway-api-extensions-resources.png)
 
 ## Ingress API Extensions
 
@@ -84,4 +84,4 @@ APISIX Ingress Controller CRDs extend Kubernetes functionality to provide declar
 
 * ApisixTls: Manages SSL/TLS certificates, supporting SNI binding and mutual TLS for secure APISIX gateway connections.
 
-![V2 CRDs Overview](../assets/images/v2-crds-api-resources.png)
+![V2 CRDs Overview](../../../assets/images/v2-crds-api-resources.png)
