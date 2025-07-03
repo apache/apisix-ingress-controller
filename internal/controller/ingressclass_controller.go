@@ -62,6 +62,7 @@ func (r *IngressClassReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithEventFilter(
 			predicate.Or(
 				predicate.GenerationChangedPredicate{},
+				predicate.AnnotationChangedPredicate{},
 				predicate.NewPredicateFuncs(func(obj client.Object) bool {
 					_, ok := obj.(*corev1.Secret)
 					return ok

@@ -63,13 +63,15 @@ func (r *ApisixRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		WithEventFilter(
 			predicate.Or(
 				predicate.GenerationChangedPredicate{},
+				predicate.AnnotationChangedPredicate{},
 				predicate.NewPredicateFuncs(func(obj client.Object) bool {
 					_, ok := obj.(*corev1.Secret)
 					return ok
 				}),
 			),
 		).
-		Watches(&networkingv1.IngressClass{},
+		Watches(
+			&networkingv1.IngressClass{},
 			handler.EnqueueRequestsFromMapFunc(r.listApisixRouteForIngressClass),
 			builder.WithPredicates(
 				predicate.NewPredicateFuncs(matchesIngressController),
