@@ -55,7 +55,9 @@ type TranslateContext struct {
 	Upstreams              map[k8stypes.NamespacedName]*apiv2.ApisixUpstream
 	GatewayProxies         map[types.NamespacedNameKind]v1alpha1.GatewayProxy
 	ResourceParentRefs     map[types.NamespacedNameKind][]types.NamespacedNameKind
-	HTTPRoutePolicies      []v1alpha1.HTTPRoutePolicy
+	// GatewayProxyReferrers key is GatewayProxy, value is a list of resources that reference this GatewayProxy
+	GatewayProxyReferrers map[k8stypes.NamespacedName][]types.NamespacedNameKind
+	HTTPRoutePolicies     []v1alpha1.HTTPRoutePolicy
 
 	StatusUpdaters []status.Update
 }
@@ -72,5 +74,6 @@ func NewDefaultTranslateContext(ctx context.Context) *TranslateContext {
 		Upstreams:              make(map[k8stypes.NamespacedName]*apiv2.ApisixUpstream),
 		GatewayProxies:         make(map[types.NamespacedNameKind]v1alpha1.GatewayProxy),
 		ResourceParentRefs:     make(map[types.NamespacedNameKind][]types.NamespacedNameKind),
+		GatewayProxyReferrers:  make(map[k8stypes.NamespacedName][]types.NamespacedNameKind),
 	}
 }

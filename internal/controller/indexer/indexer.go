@@ -244,6 +244,15 @@ func setupGatewayProxyIndexer(mgr ctrl.Manager) error {
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
 		&v1alpha1.GatewayProxy{},
+		ServiceIndexRef,
+		GatewayProxyServiceIndexFunc,
+	); err != nil {
+		return err
+	}
+
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&v1alpha1.GatewayProxy{},
 		SecretIndexRef,
 		GatewayProxySecretIndexFunc,
 	); err != nil {
@@ -270,6 +279,17 @@ func setupGatewayClassIndexer(mgr ctrl.Manager) error {
 			return []string{string(obj.(*gatewayv1.Gateway).Spec.GatewayClassName)}
 		},
 	)
+}
+
+func GatewayProxyServiceIndexFunc(rawObj client.Object) []string {
+	gatewayProxy := rawObj.(*v1alpha1.GatewayProxy)
+	if gatewayProxy.Spec.Provider != nil &&
+		gatewayProxy.Spec.Provider.ControlPlane != nil &&
+		gatewayProxy.Spec.Provider.ControlPlane.Service != nil {
+		service := gatewayProxy.Spec.Provider.ControlPlane.Service
+		return []string{GenIndexKey(gatewayProxy.GetNamespace(), service.Name)}
+	}
+	return nil
 }
 
 func GatewayProxySecretIndexFunc(rawObj client.Object) []string {

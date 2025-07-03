@@ -50,7 +50,7 @@ metadata:
   labels:
     app.kubernetes.io/name: apisix
 spec:
-  replicas: 1
+  replicas: {{ default 1 .Replicas }}
   selector:
     matchLabels:
       app.kubernetes.io/name: apisix

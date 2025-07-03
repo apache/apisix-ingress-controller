@@ -195,18 +195,24 @@ func (f *Framework) Scale(name string, replicas int32) {
 		UpdateScale(context.Background(), name, scale, metav1.UpdateOptions{})
 	f.GomegaT.Expect(err).ShouldNot(HaveOccurred(), fmt.Sprintf("scale deployment %s to %v failed", name, replicas))
 
+	// FIXME: The service name and the deployment name may not be the same
 	err = f.ensureService(name, _namespace, int(replicas))
 	f.GomegaT.Expect(err).ShouldNot(HaveOccurred(),
 		fmt.Sprintf("ensure service %s/%s has %v endpoints failed", _namespace, name, replicas))
 }
 
 func (f *Framework) GetPodIP(selector string) string {
-	podList, err := f.clientset.CoreV1().Pods(_namespace).List(f.Context, metav1.ListOptions{
+	pods := f.GetPods("", selector)
+	return pods[0].Status.PodIP
+}
+
+func (f *Framework) GetPods(namespace, selector string) []corev1.Pod {
+	podList, err := f.clientset.CoreV1().Pods(cmp.Or(namespace, _namespace)).List(f.Context, metav1.ListOptions{
 		LabelSelector: selector,
 	})
 	f.GomegaT.Expect(err).ShouldNot(HaveOccurred())
 	f.GomegaT.Expect(podList.Items).ShouldNot(BeEmpty())
-	return podList.Items[0].Status.PodIP
+	return podList.Items
 }
 
 //nolint:unused

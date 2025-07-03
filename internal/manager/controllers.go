@@ -168,5 +168,11 @@ func setupControllers(ctx context.Context, mgr manager.Manager, pro provider.Pro
 			Log:     ctrl.LoggerFrom(ctx).WithName("controllers").WithName("ApisixUpstream"),
 			Updater: updater,
 		},
+		&controller.GatewayProxyController{
+			Client:   mgr.GetClient(),
+			Scheme:   mgr.GetScheme(),
+			Log:      ctrl.LoggerFrom(ctx).WithName("controllers").WithName("GatewayProxy"),
+			Provider: pro,
+		},
 	}, nil
 }

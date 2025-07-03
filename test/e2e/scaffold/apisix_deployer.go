@@ -28,6 +28,7 @@ import (
 	. "github.com/onsi/gomega"    //nolint:staticcheck
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/apache/apisix-ingress-controller/internal/provider/adc"
 	"github.com/apache/apisix-ingress-controller/pkg/utils"
@@ -44,6 +45,7 @@ type APISIXDeployOptions struct {
 	ServiceHTTPSPort int
 
 	ConfigProvider string
+	Replicas       *int
 }
 
 type APISIXDeployer struct {
@@ -147,6 +149,7 @@ func (s *APISIXDeployer) DeployDataplane(deployOpts DeployDataplaneOptions) {
 		AdminKey:         s.opts.APISIXAdminAPIKey,
 		ServiceHTTPPort:  9080,
 		ServiceHTTPSPort: 9443,
+		Replicas:         ptr.To(1),
 	}
 
 	if deployOpts.Namespace != "" {
@@ -160,6 +163,19 @@ func (s *APISIXDeployer) DeployDataplane(deployOpts DeployDataplaneOptions) {
 	}
 	if deployOpts.ServiceHTTPSPort != 0 {
 		opts.ServiceHTTPSPort = deployOpts.ServiceHTTPSPort
+	}
+	if deployOpts.Replicas != nil {
+		opts.Replicas = deployOpts.Replicas
+	}
+
+	for _, tunnel := range []*k8s.Tunnel{
+		s.adminTunnel,
+		s.apisixHttpTunnel,
+		s.apisixHttpsTunnel,
+	} {
+		if tunnel != nil {
+			tunnel.Close()
+		}
 	}
 
 	svc := s.deployDataplane(&opts)
@@ -286,7 +302,10 @@ func (s *APISIXDeployer) createAdminTunnel(svc *corev1.Service) (*k8s.Tunnel, er
 	if err := adminTunnel.ForwardPortE(s.t); err != nil {
 		return nil, err
 	}
-	s.addFinalizers(adminTunnel.Close)
+	s.addFinalizers(func() {
+		adminTunnel.Close()
+		s.adminTunnel = nil
+	})
 
 	return adminTunnel, nil
 }

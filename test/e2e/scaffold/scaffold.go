@@ -313,13 +313,19 @@ func (s *Scaffold) createDataplaneTunnels(
 	if err := httpTunnel.ForwardPortE(s.t); err != nil {
 		return nil, nil, err
 	}
-	s.addFinalizers(httpTunnel.Close)
+	s.addFinalizers(func() {
+		httpTunnel.Close()
+		s.apisixHttpTunnel = nil
+	})
 
 	if err := httpsTunnel.ForwardPortE(s.t); err != nil {
 		httpTunnel.Close()
 		return nil, nil, err
 	}
-	s.addFinalizers(httpsTunnel.Close)
+	s.addFinalizers(func() {
+		httpsTunnel.Close()
+		s.apisixHttpsTunnel = nil
+	})
 
 	return httpTunnel, httpsTunnel, nil
 }
@@ -405,4 +411,27 @@ func (s *Scaffold) GetGatewayHTTPSEndpoint(identifier string) (string, error) {
 
 func (s *Scaffold) GetDataplaneService() *corev1.Service {
 	return s.dataplaneService
+}
+
+func (s *Scaffold) KubeOpts() *k8s.KubectlOptions {
+	return s.kubectlOptions
+}
+
+func NewClient(scheme, host string) *httpexpect.Expect {
+	u := url.URL{
+		Scheme: scheme,
+		Host:   host,
+	}
+	return httpexpect.WithConfig(httpexpect.Config{
+		BaseURL: u.String(),
+		Client: &http.Client{
+			Transport: &http.Transport{},
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+		Reporter: httpexpect.NewAssertReporter(
+			httpexpect.NewAssertReporter(GinkgoT()),
+		),
+	})
 }
