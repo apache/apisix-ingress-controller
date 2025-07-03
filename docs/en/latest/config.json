@@ -1,0 +1,35 @@
+{
+    "version": "0.3.0",
+    "sidebar": [
+        {
+            "type": "category",
+            "label": "Concepts",
+            "items": [
+                "concepts/resources",
+                "concepts/gateway-api",
+                "concepts/deployment-architecture"
+            ]
+        },
+        {
+            "type": "doc",
+            "id": "install"
+        },
+        {
+            "type": "doc",
+            "id": "developer-guide"
+        },
+        {
+            "type": "doc",
+            "id": "api-reference"
+        },
+        {
+            "type": "doc",
+            "id": "upgrade-guide"
+        },
+        {
+            "type": "link",
+            "label": "CHANGELOG",
+            "href": "https://github.com/apache/apisix-ingress-controller/blob/master/CHANGELOG.md"
+        }
+    ]
+}

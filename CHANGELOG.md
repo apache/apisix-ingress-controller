@@ -85,11 +85,9 @@ If you encounter any problems while using the implementation, please [submit an 
 * Ashing Zheng
 
 ### Changes
-<details><summary>14 commits</summary>
+<details><summary>12 commits</summary>
 <p>
 
-  * [`2f35524`](https://github.com/apache/apisix-ingress-controller/commit/2f35524b72b3f9e181e50479ce0576c5d9bae45d) add Makefile
-  * [`10eada5`](https://github.com/apache/apisix-ingress-controller/commit/10eada507db3515e1e19bca1152ef19fae47b7eb) chore: v2.0.0-rc1 release
   * [`c1533c9`](https://github.com/apache/apisix-ingress-controller/commit/c1533c9ddf4b1ed6db999d1535370824b8c150e1) fix: the sync_period of the provider should not be 0s (#2438)
   * [`0db882d`](https://github.com/apache/apisix-ingress-controller/commit/0db882d66d5b9dfb7dc9dd9d2045d4709b1c6ed2) chore: remove useless example files in dockerfile (#2434)
   * [`11ecb35`](https://github.com/apache/apisix-ingress-controller/commit/11ecb353d074b7392046d08e52bc824a3eeb6ee7) fix: set default provider type (#2436)

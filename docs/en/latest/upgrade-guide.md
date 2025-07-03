@@ -46,7 +46,7 @@ There were two main deployment architectures in 1.x.x:
 
 #### Architecture in 2.0.0
 
-![upgrade to 2.0.0 architecture](./assets/images/upgrade-to-architecture.png)
+![upgrade to 2.0.0 architecture](../../assets/images/upgrade-to-architecture.png)
 
 ##### Mock-ETCD Mode Deprecated
 

@@ -60,7 +60,7 @@ jobs:
           make generate-crd-docs
       - name: Check CRD Docs Diff
         run: |
-          if ! git diff --exit-code -- docs/crd/api.md; then
-            echo "docs/crd/api.md has changed. Please run 'make generate-crd-docs' and commit the updated file."
+          if ! git diff --exit-code -- docs/en/latest/api-reference.md; then
+            echo "docs/en/latest/api-reference.md has changed. Please run 'make generate-crd-docs' and commit the updated file."
             exit 1
           fi

@@ -43,9 +43,6 @@ const (
 	FinalizerGatewayClassProtection = "apisix.apache.org/gc-protection"
 )
 
-// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gatewayclasses,verbs=get;list;watch;update
-// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gatewayclasses/status,verbs=get;update
-
 // GatewayClassReconciler reconciles a GatewayClass object.
 type GatewayClassReconciler struct { //nolint:revive
 	client.Client
