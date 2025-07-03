@@ -20,6 +20,8 @@ on:
   push:
     tags:
       - '*'
+    branches:
+      - master
       
 jobs:
   docker:
@@ -47,10 +49,20 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USER }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       -
-        name: Build and push multi-arch image
+        name: Build and push multi-arch image (Tag)
+        if: github.ref_type == 'tag'
         env:
           TAG: ${{ github.ref_name }}
           IMAGE_TAG: ${{ github.ref_name }}
+        run: |
+          echo "building multi-arch images with tag: $TAG"
+          make build-push-multi-arch-image
+      -
+        name: Build and push multi-arch image (Dev)
+        if: github.ref_type == 'branch' && github.ref_name == 'master'
+        env:
+          TAG: dev
+          IMAGE_TAG: dev
         run: |
           echo "building multi-arch images with tag: $TAG"
           make build-push-multi-arch-image
