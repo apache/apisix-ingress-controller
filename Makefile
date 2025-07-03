@@ -36,8 +36,9 @@ TEST_DIR ?= ./test/e2e/apisix/
 # CRD Reference Documentation
 CRD_REF_DOCS_VERSION ?= v0.1.0
 CRD_REF_DOCS ?= $(LOCALBIN)/crd-ref-docs
-CRD_DOCS_CONFIG ?= docs/crd/config.yaml
+CRD_DOCS_CONFIG ?= docs/assets/crd/config.yaml
 CRD_DOCS_OUTPUT ?= docs/en/latest/api-reference.md
+CRD_DOCS_TEMPLATE ?= docs/assets/template
 
 # go 
 VERSYM="github.com/apache/apisix-ingress-controller/internal/version._buildVersion"
@@ -361,7 +362,7 @@ generate-crd-docs: manifests ## Generate CRD reference documentation in a single
 		--source-path=./api \
 		--config=$(CRD_DOCS_CONFIG) \
 		--renderer=markdown \
-		--templates-dir=./docs/template \
+		--templates-dir=$(CRD_DOCS_TEMPLATE) \
 		--output-path=$(CRD_DOCS_OUTPUT) \
 		--max-depth=100
 	@echo "CRD reference documentation generated at $(CRD_DOCS_OUTPUT)"
@@ -374,7 +375,7 @@ generate-crd-docs-grouped: manifests ## Generate CRD reference documentation gro
 		--source-path=./api \
 		--config=$(CRD_DOCS_CONFIG) \
 		--renderer=markdown \
-		--templates-dir=./docs/template \
+		--templates-dir=$(CRD_DOCS_TEMPLATE) \
 		--output-path=docs/crd/groups \
 		--output-mode=group
 	@echo "CRD reference documentation generated in docs/crd/groups directory"
