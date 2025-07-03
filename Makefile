@@ -37,7 +37,7 @@ TEST_DIR ?= ./test/e2e/apisix/
 CRD_REF_DOCS_VERSION ?= v0.1.0
 CRD_REF_DOCS ?= $(LOCALBIN)/crd-ref-docs
 CRD_DOCS_CONFIG ?= docs/crd/config.yaml
-CRD_DOCS_OUTPUT ?= docs/crd/api.md
+CRD_DOCS_OUTPUT ?= docs/en/latest/api-reference.md
 
 # go 
 VERSYM="github.com/apache/apisix-ingress-controller/internal/version._buildVersion"
