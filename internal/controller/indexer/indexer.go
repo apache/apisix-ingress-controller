@@ -281,8 +281,8 @@ func setupGatewayClassIndexer(mgr ctrl.Manager) error {
 	)
 }
 
-func GatewayProxyServiceIndexFunc(rawOjb client.Object) []string {
-	gatewayProxy := rawOjb.(*v1alpha1.GatewayProxy)
+func GatewayProxyServiceIndexFunc(rawObj client.Object) []string {
+	gatewayProxy := rawObj.(*v1alpha1.GatewayProxy)
 	if gatewayProxy.Spec.Provider != nil &&
 		gatewayProxy.Spec.Provider.ControlPlane != nil &&
 		gatewayProxy.Spec.Provider.ControlPlane.Service != nil {
