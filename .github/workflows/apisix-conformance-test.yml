@@ -115,12 +115,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: apisix-ingress-controller-conformance-report-${{ matrix.provider_type }}.yaml
-          path: apisix-ingress-controller-conformance-report-${{ matrix.provider_type }}.yaml
+          path: apisix-ingress-controller-conformance-report.yaml
 
       - name: Format Conformance Test Report
         if: ${{ github.event_name == 'pull_request' }}
         run: |
           echo '# conformance test report - ${{ matrix.provider_type }} mode' > report.md
           echo '```yaml' >> report.md
-          cat apisix-ingress-controller-conformance-report-${{ matrix.provider_type }}.yaml >> report.md
+          cat apisix-ingress-controller-conformance-report.yaml >> report.md
           echo '```' >> report.md
