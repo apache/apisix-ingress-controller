@@ -18,6 +18,7 @@
 package gatewayapi
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -26,6 +27,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/ptr"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
@@ -137,7 +139,22 @@ spec:
 				Replicas: ptr.To(2),
 			})
 
-			// request every pod to check configuration effect
+			By("check pod ready")
+			err = wait.PollUntilContextTimeout(context.Background(), time.Second, 10*time.Second, true, func(ctx context.Context) (done bool, err error) {
+				pods := s.GetPods(s.Namespace(), "app.kubernetes.io/name=apisix")
+				if len(pods) != 2 {
+					return false, nil
+				}
+				for _, pod := range pods {
+					if pod.Status.PodIP == "" {
+						return false, nil
+					}
+				}
+				return true, nil
+			})
+			Expect(err).NotTo(HaveOccurred(), "check pods ready")
+
+			By("request every pod to check configuration effect")
 			pods := s.GetPods(s.Namespace(), "app.kubernetes.io/name=apisix")
 			for i, pod := range pods {
 				s.Logf("pod name: %s", pod.GetName())
@@ -145,10 +162,12 @@ spec:
 				err := tunnel.ForwardPortE(s.GinkgoT)
 				Expect(err).NotTo(HaveOccurred(), "forward pod: %s", pod.Name)
 
-				resp := scaffold.NewClient("http", tunnel.Endpoint()).
-					GET("/get").WithHost("httpbin.org").Expect()
-				resp.Status(http.StatusOK)
-				resp.Header("X-Pod-Hostname").IsEqual(pod.Name)
+				err = wait.PollUntilContextTimeout(context.Background(), time.Second, 30*time.Second, true, func(ctx context.Context) (done bool, err error) {
+					resp := scaffold.NewClient("http", tunnel.Endpoint()).
+						GET("/get").WithHost("httpbin.org").Expect().Raw()
+					return resp.StatusCode == http.StatusOK && resp.Header.Get("X-Pod-Hostname") == pod.GetName(), nil
+				})
+				Expect(err).NotTo(HaveOccurred(), "request the pod: %s", pod.GetName())
 
 				tunnel.Close()
 			}

@@ -313,13 +313,19 @@ func (s *Scaffold) createDataplaneTunnels(
 	if err := httpTunnel.ForwardPortE(s.t); err != nil {
 		return nil, nil, err
 	}
-	s.addFinalizers(httpTunnel.Close)
+	s.addFinalizers(func() {
+		httpTunnel.Close()
+		s.apisixHttpTunnel = nil
+	})
 
 	if err := httpsTunnel.ForwardPortE(s.t); err != nil {
 		httpTunnel.Close()
 		return nil, nil, err
 	}
-	s.addFinalizers(httpsTunnel.Close)
+	s.addFinalizers(func() {
+		httpsTunnel.Close()
+		s.apisixHttpsTunnel = nil
+	})
 
 	return httpTunnel, httpsTunnel, nil
 }

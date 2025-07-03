@@ -302,7 +302,10 @@ func (s *APISIXDeployer) createAdminTunnel(svc *corev1.Service) (*k8s.Tunnel, er
 	if err := adminTunnel.ForwardPortE(s.t); err != nil {
 		return nil, err
 	}
-	s.addFinalizers(adminTunnel.Close)
+	s.addFinalizers(func() {
+		adminTunnel.Close()
+		s.adminTunnel = nil
+	})
 
 	return adminTunnel, nil
 }

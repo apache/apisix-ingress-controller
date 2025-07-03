@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	v1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
@@ -64,12 +64,17 @@ func (r *GatewayProxyController) SetupWithManager(mrg ctrl.Manager) error {
 }
 
 func (r *GatewayProxyController) Reconcile(ctx context.Context, req ctrl.Request) (reconcile.Result, error) {
+	var tctx = provider.NewDefaultTranslateContext(ctx)
+
 	var gp v1alpha1.GatewayProxy
 	if err := r.Get(ctx, req.NamespacedName, &gp); err != nil {
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		if client.IgnoreNotFound(err) == nil {
+			gp.Namespace = req.Namespace
+			gp.Name = req.Name
+			err = r.Provider.Update(ctx, tctx, &gp)
+		}
+		return ctrl.Result{}, err
 	}
-
-	var tctx = provider.NewDefaultTranslateContext(ctx)
 
 	// if there is no provider, update with empty translate context
 	if gp.Spec.Provider == nil || gp.Spec.Provider.ControlPlane == nil {
@@ -108,7 +113,7 @@ func (r *GatewayProxyController) Reconcile(ctx context.Context, req ctrl.Request
 
 	// list Gateways that reference the GatewayProxy
 	var (
-		gatewayList      v1.GatewayList
+		gatewayList      gatewayv1.GatewayList
 		ingressClassList networkingv1.IngressClassList
 		indexKey         = indexer.GenIndexKey(gp.GetNamespace(), gp.GetName())
 	)
@@ -119,11 +124,11 @@ func (r *GatewayProxyController) Reconcile(ctx context.Context, req ctrl.Request
 
 	// list IngressClasses that reference the GatewayProxy
 	if err := r.List(ctx, &ingressClassList, client.MatchingFields{indexer.IngressClassParametersRef: indexKey}); err != nil {
-		r.Log.Error(err, "failed to list GatewayList")
+		r.Log.Error(err, "failed to list IngressClassList")
 		return reconcile.Result{}, err
 	}
 
-	// append referrers to tanslate context
+	// append referrers to translate context
 	for _, item := range gatewayList.Items {
 		tctx.GatewayProxyReferrers[req.NamespacedName] = append(tctx.GatewayProxyReferrers[req.NamespacedName], utils.NamespacedNameKind(&item))
 	}

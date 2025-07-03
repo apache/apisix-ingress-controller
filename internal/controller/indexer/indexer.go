@@ -245,7 +245,7 @@ func setupGatewayProxyIndexer(mgr ctrl.Manager) error {
 		context.Background(),
 		&v1alpha1.GatewayProxy{},
 		ServiceIndexRef,
-		GatewayProxyserviceIndexFunc,
+		GatewayProxyServiceIndexFunc,
 	); err != nil {
 		return err
 	}
@@ -281,7 +281,7 @@ func setupGatewayClassIndexer(mgr ctrl.Manager) error {
 	)
 }
 
-func GatewayProxyserviceIndexFunc(rawOjb client.Object) []string {
+func GatewayProxyServiceIndexFunc(rawOjb client.Object) []string {
 	gatewayProxy := rawOjb.(*v1alpha1.GatewayProxy)
 	if gatewayProxy.Spec.Provider != nil &&
 		gatewayProxy.Spec.Provider.ControlPlane != nil &&
