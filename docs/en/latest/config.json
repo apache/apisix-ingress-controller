@@ -12,6 +12,14 @@
         },
         {
             "type": "doc",
+            "id": "install"
+        },
+        {
+            "type": "doc",
+            "id": "developer-guide"
+        },
+        {
+            "type": "doc",
             "id": "api-reference"
         },
         {
