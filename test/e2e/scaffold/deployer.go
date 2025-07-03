@@ -42,4 +42,5 @@ type DeployDataplaneOptions struct {
 	SkipCreateTunnels bool
 	ServiceHTTPPort   int
 	ServiceHTTPSPort  int
+	Replicas          *int
 }

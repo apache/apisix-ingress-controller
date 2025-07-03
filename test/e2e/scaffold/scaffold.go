@@ -406,3 +406,26 @@ func (s *Scaffold) GetGatewayHTTPSEndpoint(identifier string) (string, error) {
 func (s *Scaffold) GetDataplaneService() *corev1.Service {
 	return s.dataplaneService
 }
+
+func (s *Scaffold) KubeOpts() *k8s.KubectlOptions {
+	return s.kubectlOptions
+}
+
+func NewClient(scheme, host string) *httpexpect.Expect {
+	u := url.URL{
+		Scheme: scheme,
+		Host:   host,
+	}
+	return httpexpect.WithConfig(httpexpect.Config{
+		BaseURL: u.String(),
+		Client: &http.Client{
+			Transport: &http.Transport{},
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+		Reporter: httpexpect.NewAssertReporter(
+			httpexpect.NewAssertReporter(GinkgoT()),
+		),
+	})
+}
