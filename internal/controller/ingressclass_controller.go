@@ -57,6 +57,10 @@ func (r *IngressClassReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			&networkingv1.IngressClass{},
 			builder.WithPredicates(
 				predicate.NewPredicateFuncs(r.matchesController),
+				predicate.NewPredicateFuncs(func(obj client.Object) bool {
+					_, ok := obj.(*corev1.Secret)
+					return ok
+				}),
 			),
 		).
 		WithEventFilter(
