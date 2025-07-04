@@ -339,5 +339,5 @@ func (t *Translator) translateApisixRouteBackendResolveGranularityEndpoint(tctx 
 		},
 		Weight: &weight,
 	}
-	return t.translateBackendRef(tctx, backendRef)
+	return t.translateBackendRef(tctx, backendRef, DefaultEndpointFilter)
 }

@@ -234,6 +234,9 @@ func (t *Translator) translateEndpointSliceForIngress(weight int, endpointSlices
 				continue
 			}
 			for _, endpoint := range endpointSlice.Endpoints {
+				if !DefaultEndpointFilter(&endpoint) {
+					continue
+				}
 				for _, addr := range endpoint.Addresses {
 					node := adctypes.UpstreamNode{
 						Host:   addr,

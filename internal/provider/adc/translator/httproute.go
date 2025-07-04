@@ -283,7 +283,7 @@ func (t *Translator) fillHTTPRoutePolicies(routes []*adctypes.Route, policies []
 	}
 }
 
-func (t *Translator) translateEndpointSlice(portName *string, weight int, endpointSlices []discoveryv1.EndpointSlice) adctypes.UpstreamNodes {
+func (t *Translator) translateEndpointSlice(portName *string, weight int, endpointSlices []discoveryv1.EndpointSlice, endpointFilter func(*discoveryv1.Endpoint) bool) adctypes.UpstreamNodes {
 	var nodes adctypes.UpstreamNodes
 	if len(endpointSlices) == 0 {
 		return nodes
@@ -294,6 +294,9 @@ func (t *Translator) translateEndpointSlice(portName *string, weight int, endpoi
 				continue
 			}
 			for _, endpoint := range endpointSlice.Endpoints {
+				if endpointFilter != nil && !endpointFilter(&endpoint) {
+					continue
+				}
 				for _, addr := range endpoint.Addresses {
 					node := adctypes.UpstreamNode{
 						Host:   addr,
@@ -312,11 +315,19 @@ func (t *Translator) translateEndpointSlice(portName *string, weight int, endpoi
 	return nodes
 }
 
-func (t *Translator) TranslateBackendRef(tctx *provider.TranslateContext, ref gatewayv1.BackendRef) (adctypes.UpstreamNodes, error) {
-	return t.translateBackendRef(tctx, ref)
+func DefaultEndpointFilter(endpoint *discoveryv1.Endpoint) bool {
+	if endpoint.Conditions.Ready != nil && !*endpoint.Conditions.Ready {
+		log.Debugw("skip not ready endpoint", zap.Any("endpoint", endpoint))
+		return false
+	}
+	return true
 }
 
-func (t *Translator) translateBackendRef(tctx *provider.TranslateContext, ref gatewayv1.BackendRef) (adctypes.UpstreamNodes, error) {
+func (t *Translator) TranslateBackendRefWithFilter(tctx *provider.TranslateContext, ref gatewayv1.BackendRef, endpointFilter func(*discoveryv1.Endpoint) bool) (adctypes.UpstreamNodes, error) {
+	return t.translateBackendRef(tctx, ref, endpointFilter)
+}
+
+func (t *Translator) translateBackendRef(tctx *provider.TranslateContext, ref gatewayv1.BackendRef, endpointFilter func(*discoveryv1.Endpoint) bool) (adctypes.UpstreamNodes, error) {
 	if ref.Kind != nil && *ref.Kind != "Service" {
 		return adctypes.UpstreamNodes{}, fmt.Errorf("kind %s is not supported", *ref.Kind)
 	}
@@ -363,7 +374,7 @@ func (t *Translator) translateBackendRef(tctx *provider.TranslateContext, ref ga
 	}
 
 	endpointSlices := tctx.EndpointSlices[key]
-	return t.translateEndpointSlice(portName, weight, endpointSlices), nil
+	return t.translateEndpointSlice(portName, weight, endpointSlices, endpointFilter), nil
 }
 
 // calculateHTTPRoutePriority calculates the priority of the HTTP route.
@@ -475,7 +486,7 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 				namespace := gatewayv1.Namespace(httpRoute.Namespace)
 				backend.Namespace = &namespace
 			}
-			upNodes, err := t.translateBackendRef(tctx, backend.BackendRef)
+			upNodes, err := t.translateBackendRef(tctx, backend.BackendRef, DefaultEndpointFilter)
 			if err != nil {
 				backendErr = err
 				continue
