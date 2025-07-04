@@ -65,10 +65,7 @@ func (r *ApisixTlsReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			predicate.Or(
 				predicate.GenerationChangedPredicate{},
 				predicate.AnnotationChangedPredicate{},
-				predicate.NewPredicateFuncs(func(obj client.Object) bool {
-					_, ok := obj.(*corev1.Secret)
-					return ok
-				}),
+				predicate.NewPredicateFuncs(TypePredicate[*corev1.Secret]()),
 			),
 		).
 		Watches(
