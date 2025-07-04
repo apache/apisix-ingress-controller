@@ -201,8 +201,9 @@ func (f *Framework) Scale(name string, replicas int32) {
 		fmt.Sprintf("ensure service %s/%s has %v endpoints failed", _namespace, name, replicas))
 }
 
-func (f *Framework) GetPodIP(selector string) string {
-	pods := f.GetPods("", selector)
+func (f *Framework) GetPodIP(namespace, selector string) string {
+	pods := f.GetPods(namespace, selector)
+	f.GomegaT.Expect(pods).ShouldNot(BeEmpty())
 	return pods[0].Status.PodIP
 }
 
@@ -211,7 +212,6 @@ func (f *Framework) GetPods(namespace, selector string) []corev1.Pod {
 		LabelSelector: selector,
 	})
 	f.GomegaT.Expect(err).ShouldNot(HaveOccurred())
-	f.GomegaT.Expect(podList.Items).ShouldNot(BeEmpty())
 	return podList.Items
 }
 

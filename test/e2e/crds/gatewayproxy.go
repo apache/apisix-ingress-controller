@@ -185,7 +185,7 @@ spec:
 			if framework.ProviderType == adc.BackendModeAPISIX {
 				address = s.Deployer.GetAdminEndpoint()
 			} else {
-				address = s.GetPodIP("app.kubernetes.io/name=apisix")
+				address = s.GetPodIP(s.Namespace(), "app.kubernetes.io/name=apisix")
 			}
 
 			s.WaitControllerManagerLog(fmt.Sprintf(pattern, address), 0, time.Minute)
