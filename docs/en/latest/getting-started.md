@@ -28,9 +28,9 @@ description: Guide to get started with Apache APISIX ingress controller.
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-APISIX ingress controller is a [Kubernetes ingress controller](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/) using [Apache APISIX](https://apisix.apache.org) as the high performance reverse proxy.
+APISIX Ingress Controller is a [Kubernetes ingress controller](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/) using [Apache APISIX](https://apisix.apache.org) as the high performance reverse proxy.
 
-APISIX ingress controller can be configured using the native Kubernetes Ingress or Gateway API as well as with the declarative and easy to use custom resources provided by APISIX. The APISIX ingress controller converts these resources to APISIX configuration.
+APISIX Ingress Controller can be configured using the native Kubernetes Ingress or Gateway API, as well as with APISIX’s own declarative and easy-to-use custom resources. The controller translates these resources into APISIX configuration.
 
 ## Quick Start
 
@@ -38,14 +38,14 @@ Get started with APISIX Ingress Controller in a few simple steps.
 
 ### Prerequisites
 
-Before installing APISIX ingress controller, ensure you have:
+Before installing APISIX Ingress Controller, ensure you have:
 
 1. A working Kubernetes cluster (version 1.26+)
 2. [Helm](https://helm.sh/) (version 3.8+) installed
 
-### Installation
+### Install APISIX and APISIX Ingress Controller
 
-Install the Gateway API CRDs and APISIX and APISIX ingress controller using the following commands:
+Install the Gateway API CRDs, APISIX, and APISIX Ingress Controller using the following commands:
 
 ```bash
 helm repo add apisix https://charts.apiseven.com
@@ -61,11 +61,15 @@ helm install apisix \
   apisix/apisix
 ```
 
+### Set Up a Sample Upstream
+
 Install the httpbin example application to test the configuration:
 
 ```bash
 https://raw.githubusercontent.com/apache/apisix-ingress-controller/refs/heads/v2.0.0/examples/httpbin/deployment.yaml
 ```
+
+### Configure a Route
 
 Install an ApisixRoute or Ingress resource to route traffic to httpbin:
 
@@ -133,7 +137,7 @@ More details on the installation can be found in the [Installation guide](./inst
 
 :::
 
-### Testing the Routing Configuration
+### Verify Route Configuration
 
 Let's verify the configuration. In order to access APISIX locally, we can use `kubectl port-forward` command to forward traffic from the specified port at your local machine to the specified port on the specified service.
 
