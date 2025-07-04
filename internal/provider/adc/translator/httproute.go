@@ -295,6 +295,10 @@ func (t *Translator) translateEndpointSlice(portName *string, weight int, endpoi
 			}
 			for _, endpoint := range endpointSlice.Endpoints {
 				for _, addr := range endpoint.Addresses {
+					if endpoint.Conditions.Ready != nil && !*endpoint.Conditions.Ready {
+						log.Debugw("skip not ready endpoint", zap.Any("endpoint", endpoint))
+						continue
+					}
 					if endpoint.Conditions.Terminating != nil && *endpoint.Conditions.Terminating {
 						log.Debugw("skip terminating endpoint", zap.Any("endpoint", endpoint))
 						continue
