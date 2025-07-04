@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/ptr"
 
+	"github.com/apache/apisix-ingress-controller/internal/provider/adc"
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
@@ -170,6 +171,18 @@ spec:
 				Expect(err).NotTo(HaveOccurred(), "request the pod: %s", pod.GetName())
 
 				tunnel.Close()
+			}
+		})
+	})
+
+	Context("Backend server", func() {
+		It("backend server on apisix/apisix-standalone mode", func() {
+			if framework.ProviderType == adc.BackendModeAPISIX {
+				s.WaitControllerManagerLog(fmt.Sprintf("config.ServerAddrs: [%s]", s.Deployer.GetAdminEndpoint()), 0, time.Minute)
+			}
+
+			if framework.ProviderType == adc.BackendModeAPISIXStandalone {
+				s.WaitControllerManagerLog(fmt.Sprintf("config.ServerAddrs: [%s]", s.GetPodIP("app.kubernetes.io/name=apisix")), 0, time.Minute)
 			}
 		})
 	})
