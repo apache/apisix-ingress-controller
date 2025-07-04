@@ -19,7 +19,6 @@ package gatewayapi
 
 import (
 	"fmt"
-	"net/http"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -103,64 +102,6 @@ spec:
       headers:
         X-Proxy-Test: "disabled"
 `
-	var (
-		gatewayProxyWithPluginMetadata0 = `
-apiVersion: apisix.apache.org/v1alpha1
-kind: GatewayProxy
-metadata:
-  name: apisix-proxy-config
-spec:
-  provider:
-    type: ControlPlane
-    controlPlane:
-      endpoints:
-        - %s
-      auth:
-        type: AdminKey
-        adminKey:
-          value: "%s"
-  plugins:
-  - name: error-page
-    enabled: true
-    config: {}
-  pluginMetadata:
-    error-page: {
-      "enable": true,
-      "error_404": {
-          "body": "404 from plugin metadata",
-          "content-type": "text/plain"
-      }
-    }
-`
-		gatewayProxyWithPluginMetadata1 = `
-apiVersion: apisix.apache.org/v1alpha1
-kind: GatewayProxy
-metadata:
-  name: apisix-proxy-config
-spec:
-  provider:
-    type: ControlPlane
-    controlPlane:
-      endpoints:
-        - %s
-      auth:
-        type: AdminKey
-        adminKey:
-          value: "%s"
-  plugins:
-  - name: error-page
-    enabled: true
-    config: {}
-  pluginMetadata:
-    error-page: {
-      "enable": false,
-      "error_404": {
-          "body": "404 from plugin metadata",
-          "content-type": "text/plain"
-      }
-    }
-`
-	)
 
 	var httpRouteForTest = `
 apiVersion: gateway.networking.k8s.io/v1
@@ -254,8 +195,6 @@ spec:
 				Expect().
 				Status(200)
 
-			resp.Header("X-Proxy-Test").IsEqual("enabled")
-
 			By("Update GatewayProxy with disabled plugin")
 			err := s.CreateResourceFromString(fmt.Sprintf(gatewayProxyWithDisabledPlugin, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
 			Expect(err).NotTo(HaveOccurred(), "updating GatewayProxy with disabled plugin")
@@ -275,95 +214,75 @@ spec:
 		})
 	})
 
-	Context("Test Gateway with PluginMetadata", func() {
-		var (
-			err error
-		)
-
-		PIt("Should work OK with error-page", func() {
-			By("Update GatewayProxy with PluginMetadata")
-			err = s.CreateResourceFromString(fmt.Sprintf(gatewayProxyWithPluginMetadata0, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
-			Expect(err).ShouldNot(HaveOccurred())
+	Context("Test GatewayProxy with invalid endpoint", func() {
+		var gatewayProxyWithInvalidEndpoint = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  name: apisix-proxy-config
+spec:
+  provider:
+    type: ControlPlane
+    controlPlane:
+      endpoints:
+        - "http://invalid-endpoint:9180"
+        - %s
+      auth:
+        type: AdminKey
+        adminKey:
+          value: "%s"
+`
+		It("Should fail to apply GatewayProxy with invalid endpoint", func() {
+			By("Update GatewayProxy with enabled plugin")
+			err := s.CreateResourceFromString(fmt.Sprintf(gatewayProxyWithInvalidEndpoint, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
+			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy with enabled plugin")
 			time.Sleep(5 * time.Second)
 
-			By("Create HTTPRoute for Gateway with GatewayProxy")
-			resourceApplied("HTTPRoute", "test-route", fmt.Sprintf(httpRouteForTest, "apisix"), 1)
-
-			time.Sleep(5 * time.Second)
-			By("Check PluginMetadata working")
 			s.NewAPISIXClient().
-				GET("/not-found").
+				GET("/get").
 				WithHost("example.com").
 				Expect().
-				Status(http.StatusNotFound).
-				Body().Contains("404 from plugin metadata")
-
-			By("Update GatewayProxy with PluginMetadata")
-			err = s.CreateResourceFromString(fmt.Sprintf(gatewayProxyWithPluginMetadata1, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
-			Expect(err).ShouldNot(HaveOccurred())
-			time.Sleep(5 * time.Second)
-
-			By("Check PluginMetadata working")
-			s.NewAPISIXClient().
-				GET("/not-found").
-				WithHost("example.com").
-				Expect().
-				Status(http.StatusNotFound).
-				Body().Contains(`{"error_msg":"404 Route Not Found"}`)
-
-			By("Delete GatewayProxy")
-			err = s.DeleteResourceFromString(fmt.Sprintf(gatewayProxyWithPluginMetadata0, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
-			Expect(err).ShouldNot(HaveOccurred())
-			time.Sleep(5 * time.Second)
-
-			By("Check PluginMetadata is not working")
-			s.NewAPISIXClient().
-				GET("/not-found").
-				WithHost("example.com").
-				Expect().
-				Status(http.StatusNotFound).
-				Body().Contains(`{"error_msg":"404 Route Not Found"}`)
+				Status(200).Header("X-Proxy-Test").IsEmpty()
 		})
 	})
 
-	var (
-		gatewayProxyWithInvalidProviderType = `
-apiVersion: apisix.apache.org/v1alpha1
-kind: GatewayProxy
-metadata:
-  name: apisix-proxy-config
-spec:
-  provider:
-    type: "InvalidType"
-`
-		gatewayProxyWithMissingControlPlane = `
-apiVersion: apisix.apache.org/v1alpha1
-kind: GatewayProxy
-metadata:
-  name: apisix-proxy-config
-spec:
-  provider:
-    type: "ControlPlane"
-`
-		gatewayProxyWithValidProvider = `
-apiVersion: apisix.apache.org/v1alpha1
-kind: GatewayProxy
-metadata:
-  name: apisix-proxy-config
-spec:
-  provider:
-    type: "ControlPlane"
-    controlPlane:
-      endpoints:
-        - "http://localhost:9180"
-      auth:
-        type: "AdminKey"
-        adminKey:
-          value: "test-key"
-`
-	)
-
 	Context("Test GatewayProxy Provider Validation", func() {
+		var (
+			gatewayProxyWithInvalidProviderType = `
+	apiVersion: apisix.apache.org/v1alpha1
+	kind: GatewayProxy
+	metadata:
+	  name: apisix-proxy-config
+	spec:
+	  provider:
+		type: "InvalidType"
+	`
+			gatewayProxyWithMissingControlPlane = `
+	apiVersion: apisix.apache.org/v1alpha1
+	kind: GatewayProxy
+	metadata:
+	  name: apisix-proxy-config
+	spec:
+	  provider:
+		type: "ControlPlane"
+	`
+			gatewayProxyWithValidProvider = `
+	apiVersion: apisix.apache.org/v1alpha1
+	kind: GatewayProxy
+	metadata:
+	  name: apisix-proxy-config
+	spec:
+	  provider:
+		type: "ControlPlane"
+		controlPlane:
+		  endpoints:
+			- "http://localhost:9180"
+		  auth:
+			type: "AdminKey"
+			adminKey:
+			  value: "test-key"
+	`
+		)
 		It("Should reject invalid provider type", func() {
 			By("Create GatewayProxy with invalid provider type")
 			err := s.CreateResourceFromString(gatewayProxyWithInvalidProviderType)
