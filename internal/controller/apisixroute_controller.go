@@ -26,6 +26,7 @@ import (
 
 	"github.com/api7/gopkg/pkg/log"
 	"github.com/go-logr/logr"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -309,9 +310,9 @@ func (r *ApisixRouteReconciler) validateBackends(ctx context.Context, tc *provid
 		}
 
 		// try to get apisixupstream with the same name as the backend service
-		log.Debugf("try to get apisixupstream with the same name as the backend service: %s", serviceNN)
+		log.Debugw("try to get apisixupstream with the same name as the backend service", zap.Stringer("Service", serviceNN))
 		if err := r.Get(ctx, serviceNN, &au); err != nil {
-			log.Debugf("no ApisixUpstream with the same name as the backend service found, service: %s, err: %v", serviceNN, err)
+			log.Debugw("no ApisixUpstream with the same name as the backend service found", zap.Stringer("Service", serviceNN), zap.Error(err))
 			if err = client.IgnoreNotFound(err); err != nil {
 				return err
 			}

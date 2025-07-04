@@ -21,7 +21,6 @@ import (
 	"cmp"
 	"context"
 
-	"github.com/api7/gopkg/pkg/log"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -579,7 +578,6 @@ func ApisixRouteApisixUpstreamIndexFunc(obj client.Object) (keys []string) {
 			}
 		}
 	}
-	log.Debugf("ApisixRouteApisixUpstreamIndexFunc, au keys: %v", keys)
 	return
 }
 
