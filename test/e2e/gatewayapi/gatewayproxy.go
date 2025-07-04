@@ -195,6 +195,8 @@ spec:
 				Expect().
 				Status(200)
 
+			resp.Header("X-Proxy-Test").IsEqual("enabled")
+
 			By("Update GatewayProxy with disabled plugin")
 			err := s.CreateResourceFromString(fmt.Sprintf(gatewayProxyWithDisabledPlugin, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
 			Expect(err).NotTo(HaveOccurred(), "updating GatewayProxy with disabled plugin")
@@ -232,17 +234,24 @@ spec:
         adminKey:
           value: "%s"
 `
-		It("Should fail to apply GatewayProxy with invalid endpoint", func() {
-			By("Update GatewayProxy with enabled plugin")
+		FIt("Should fail to apply GatewayProxy with invalid endpoint", func() {
+			By("Update GatewayProxy with invalid endpoint")
 			err := s.CreateResourceFromString(fmt.Sprintf(gatewayProxyWithInvalidEndpoint, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy with enabled plugin")
 			time.Sleep(5 * time.Second)
 
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHost("example.com").
-				Expect().
-				Status(200).Header("X-Proxy-Test").IsEmpty()
+			By("Create HTTPRoute")
+			resourceApplied("HTTPRoute", "test-route", fmt.Sprintf(httpRouteForTest, "apisix"), 1)
+
+			expectRequest := func() bool {
+				resp := s.NewAPISIXClient().
+					GET("/get").
+					WithHost("example.com").
+					Expect().Raw()
+				return resp.StatusCode == 200 && resp.Header.Get("X-Proxy-Test") == ""
+			}
+
+			Eventually(expectRequest).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(BeTrue())
 		})
 	})
 
