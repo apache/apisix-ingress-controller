@@ -249,39 +249,39 @@ spec:
 	Context("Test GatewayProxy Provider Validation", func() {
 		var (
 			gatewayProxyWithInvalidProviderType = `
-	apiVersion: apisix.apache.org/v1alpha1
-	kind: GatewayProxy
-	metadata:
-	  name: apisix-proxy-config
-	spec:
-	  provider:
-		type: "InvalidType"
-	`
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  name: apisix-proxy-config
+spec:
+  provider:
+    type: "InvalidType"
+`
 			gatewayProxyWithMissingControlPlane = `
-	apiVersion: apisix.apache.org/v1alpha1
-	kind: GatewayProxy
-	metadata:
-	  name: apisix-proxy-config
-	spec:
-	  provider:
-		type: "ControlPlane"
-	`
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  name: apisix-proxy-config
+spec:
+  provider:
+    type: "ControlPlane"
+`
 			gatewayProxyWithValidProvider = `
-	apiVersion: apisix.apache.org/v1alpha1
-	kind: GatewayProxy
-	metadata:
-	  name: apisix-proxy-config
-	spec:
-	  provider:
-		type: "ControlPlane"
-		controlPlane:
-		  endpoints:
-			- "http://localhost:9180"
-		  auth:
-			type: "AdminKey"
-			adminKey:
-			  value: "test-key"
-	`
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  name: apisix-proxy-config
+spec:
+  provider:
+    type: "ControlPlane"
+    controlPlane:
+      endpoints:
+        - "http://localhost:9180"
+      auth:
+        type: "AdminKey"
+        adminKey:
+          value: "test-key"
+`
 		)
 		It("Should reject invalid provider type", func() {
 			By("Create GatewayProxy with invalid provider type")
