@@ -26,6 +26,7 @@ import (
 
 	"github.com/api7/gopkg/pkg/log"
 	"go.uber.org/zap"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -91,16 +92,22 @@ func (d *adcClient) getConfigsForGatewayProxy(tctx *provider.TranslateContext, g
 		if !ok {
 			return nil, fmt.Errorf("no service found for service reference: %s", namespacedName)
 		}
-		endpoints := tctx.EndpointSlices[namespacedName]
-		if len(endpoints) == 0 {
+		endpoint := tctx.EndpointSlices[namespacedName]
+		if endpoint == nil {
 			return nil, nil
 		}
-		upstreamNodes, err := d.translator.TranslateBackendRef(tctx, gatewayv1.BackendRef{
+		upstreamNodes, err := d.translator.TranslateBackendRefWithFilter(tctx, gatewayv1.BackendRef{
 			BackendObjectReference: gatewayv1.BackendObjectReference{
 				Name:      gatewayv1.ObjectName(provider.ControlPlane.Service.Name),
 				Namespace: (*gatewayv1.Namespace)(&gatewayProxy.Namespace),
 				Port:      ptr.To(gatewayv1.PortNumber(provider.ControlPlane.Service.Port)),
 			},
+		}, func(endpoint *discoveryv1.Endpoint) bool {
+			if endpoint.Conditions.Terminating != nil && *endpoint.Conditions.Terminating {
+				log.Debugw("skip terminating endpoint", zap.Any("endpoint", endpoint))
+				return false
+			}
+			return true
 		})
 		if err != nil {
 			return nil, err
