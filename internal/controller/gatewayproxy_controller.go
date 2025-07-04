@@ -30,6 +30,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
@@ -51,6 +52,12 @@ type GatewayProxyController struct {
 func (r *GatewayProxyController) SetupWithManager(mrg ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mrg).
 		For(&v1alpha1.GatewayProxy{}).
+		WithEventFilter(
+			predicate.Or(
+				predicate.GenerationChangedPredicate{},
+				predicate.NewPredicateFuncs(TypePredicate[*corev1.Secret]()),
+			),
+		).
 		Watches(&corev1.Service{},
 			handler.EnqueueRequestsFromMapFunc(r.listGatewayProxiesForProviderService),
 		).

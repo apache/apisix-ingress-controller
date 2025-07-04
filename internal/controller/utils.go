@@ -1471,3 +1471,10 @@ func addProviderEndpointsToTranslateContext(tctx *provider.TranslateContext, c c
 
 	return nil
 }
+
+func TypePredicate[T client.Object]() func(obj client.Object) bool {
+	return func(obj client.Object) bool {
+		_, ok := obj.(T)
+		return ok
+	}
+}
