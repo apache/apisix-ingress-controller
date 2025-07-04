@@ -168,14 +168,17 @@ func (s *APISIXDeployer) DeployDataplane(deployOpts DeployDataplaneOptions) {
 		opts.Replicas = deployOpts.Replicas
 	}
 
-	for _, tunnel := range []*k8s.Tunnel{
-		s.adminTunnel,
-		s.apisixHttpTunnel,
-		s.apisixHttpsTunnel,
-	} {
-		if tunnel != nil {
-			tunnel.Close()
-		}
+	if s.adminTunnel != nil {
+		s.adminTunnel.Close()
+		s.adminTunnel = nil
+	}
+	if s.apisixHttpTunnel != nil {
+		s.apisixHttpTunnel.Close()
+		s.apisixHttpTunnel = nil
+	}
+	if s.apisixHttpsTunnel != nil {
+		s.apisixHttpsTunnel.Close()
+		s.apisixHttpsTunnel = nil
 	}
 
 	svc := s.deployDataplane(&opts)

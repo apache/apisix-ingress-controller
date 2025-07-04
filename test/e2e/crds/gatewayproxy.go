@@ -178,17 +178,18 @@ spec:
 	Context("Backend server", func() {
 		It("backend server on apisix/apisix-standalone mode", func() {
 			var (
-				pattern = `{"config.ServerAddrs": ["%s"]}`
-				address string
+				keyword string
 			)
 
 			if framework.ProviderType == adc.BackendModeAPISIX {
-				address = s.Deployer.GetAdminEndpoint()
+				keyword = fmt.Sprintf(`{"config.ServerAddrs": ["%s"]}`, s.Deployer.GetAdminEndpoint())
 			} else {
-				address = s.GetPodIP(s.Namespace(), "app.kubernetes.io/name=apisix")
+				keyword = fmt.Sprintf(`{"config.ServerAddrs": ["http://%s:9180"]}`, s.GetPodIP(s.Namespace(), "app.kubernetes.io/name=apisix"))
 			}
 
-			s.WaitControllerManagerLog(fmt.Sprintf(pattern, address), 0, time.Minute)
+			s.Deployer.DeployIngress()
+			By(fmt.Sprintf("wait for keyword: %s", keyword))
+			s.WaitControllerManagerLog(keyword, 60, time.Minute)
 		})
 	})
 })
