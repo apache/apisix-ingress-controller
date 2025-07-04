@@ -234,7 +234,7 @@ spec:
         adminKey:
           value: "%s"
 `
-		FIt("Should fail to apply GatewayProxy with invalid endpoint", func() {
+		It("Should fail to apply GatewayProxy with invalid endpoint", func() {
 			By("Update GatewayProxy with invalid endpoint")
 			err := s.CreateResourceFromString(fmt.Sprintf(gatewayProxyWithInvalidEndpoint, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy with enabled plugin")
