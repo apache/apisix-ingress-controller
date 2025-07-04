@@ -20,7 +20,9 @@ package adc
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -277,6 +279,7 @@ func (d *adcClient) Start(ctx context.Context) error {
 	initalSyncDelay := d.InitSyncDelay
 	time.AfterFunc(initalSyncDelay, func() {
 		if err := d.Sync(ctx); err != nil {
+			log.Error(err)
 			return
 		}
 	})
@@ -290,7 +293,7 @@ func (d *adcClient) Start(ctx context.Context) error {
 		select {
 		case <-ticker.C:
 			if err := d.Sync(ctx); err != nil {
-				log.Errorw("failed to sync resources", zap.Error(err))
+				log.Error(err)
 			}
 		case <-ctx.Done():
 			return nil
@@ -315,25 +318,32 @@ func (d *adcClient) Sync(ctx context.Context) error {
 
 	log.Debugw("syncing resources with multiple configs", zap.Any("configs", cfg))
 
+	var failedConfigs []string
 	for name, config := range cfg {
 		resources, err := d.store.GetResources(name)
 		if err != nil {
-			return err
+			log.Errorw("failed to get resources from store", zap.String("name", name), zap.Error(err))
+			failedConfigs = append(failedConfigs, name)
+			continue
 		}
 		if resources == nil {
 			continue
 		}
 
-		err = d.sync(ctx, Task{
+		if err := d.sync(ctx, Task{
 			Name:      name + "-sync",
 			configs:   []adcConfig{config},
 			Resources: *resources,
-		})
-		if err != nil {
-			return err
+		}); err != nil {
+			log.Errorw("failed to sync resources", zap.String("name", name), zap.Error(err))
+			failedConfigs = append(failedConfigs, name)
 		}
 	}
-
+	if len(failedConfigs) > 0 {
+		return fmt.Errorf("failed to sync %d configs: %s",
+			len(failedConfigs),
+			strings.Join(failedConfigs, ", "))
+	}
 	return nil
 }
 
@@ -353,12 +363,15 @@ func (d *adcClient) sync(ctx context.Context, task Task) error {
 
 	args := BuildADCExecuteArgs(syncFilePath, task.Labels, task.ResourceTypes)
 
-	log.Debugw("syncing resources with multiple configs", zap.Any("configs", task.configs))
+	var failedConfigs []string
 	for _, config := range task.configs {
 		if err := d.executor.Execute(ctx, d.BackendMode, config, args); err != nil {
 			log.Errorw("failed to execute adc command", zap.Error(err), zap.Any("config", config))
-			return err
+			failedConfigs = append(failedConfigs, config.Name)
 		}
+	}
+	if len(failedConfigs) > 0 {
+		return fmt.Errorf("failed to execute adc command for configs: %s", strings.Join(failedConfigs, ", "))
 	}
 	return nil
 }

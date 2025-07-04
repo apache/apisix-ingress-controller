@@ -22,6 +22,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -50,10 +51,15 @@ func (e *DefaultADCExecutor) Execute(ctx context.Context, mode string, config ad
 }
 
 func (e *DefaultADCExecutor) runADC(ctx context.Context, mode string, config adcConfig, args []string) error {
+	var failedAddrs []string
 	for _, addr := range config.ServerAddrs {
 		if err := e.runForSingleServerWithTimeout(ctx, addr, mode, config, args); err != nil {
-			return err
+			log.Errorw("failed to run adc for server", zap.String("server", addr), zap.Error(err))
+			failedAddrs = append(failedAddrs, addr)
 		}
+	}
+	if len(failedAddrs) > 0 {
+		return fmt.Errorf("failed to run adc for servers: [%s]", strings.Join(failedAddrs, ", "))
 	}
 	return nil
 }
