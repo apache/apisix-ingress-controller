@@ -58,7 +58,9 @@ spec:
         adminKey:
           value: "%s"
 `
-	gatewayProxyYaml = fmt.Sprintf(gatewayProxyYaml, framework.ProviderType, s.AdminKey())
+	getGatewayProxySpec := func() string {
+		return fmt.Sprintf(gatewayProxyYaml, framework.ProviderType, s.AdminKey())
+	}
 
 	var gatewayClassYaml = `
 apiVersion: gateway.networking.k8s.io/v1
@@ -131,7 +133,7 @@ spec:
 
 	var beforeEachHTTP = func() {
 		By("create GatewayProxy")
-		err := s.CreateResourceFromString(gatewayProxyYaml)
+		err := s.CreateResourceFromString(getGatewayProxySpec())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 		time.Sleep(5 * time.Second)
 
@@ -161,7 +163,7 @@ spec:
 
 	var beforeEachHTTPS = func() {
 		By("create GatewayProxy")
-		err := s.CreateResourceFromString(gatewayProxyYaml)
+		err := s.CreateResourceFromString(getGatewayProxySpec())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 		time.Sleep(5 * time.Second)
 
