@@ -195,28 +195,35 @@ func (t *Translator) buildRoute(ar *apiv2.ApisixRoute, service *adc.Service, rul
 
 func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc.Service, ar *apiv2.ApisixRoute, rule apiv2.ApisixRouteHTTP) {
 	var (
-		upstream          = adc.NewDefaultUpstream()
 		upstreams         = make([]*adc.Upstream, 0)
 		weightedUpstreams = make([]adc.TrafficSplitConfigRuleWeightedUpstream, 0)
 		backendErr        error
 	)
 
 	for _, backend := range rule.Backends {
-		var upNodes adc.UpstreamNodes
+		upstream := adc.NewDefaultUpstream()
+		// try to get the apisixupstream with the same name as the backend service to be upstream config.
+		// err is ignored because it does not care about the externalNodes of the apisixupstream.
+		auNN := types.NamespacedName{Namespace: ar.GetNamespace(), Name: backend.ServiceName}
+		if au, ok := tctx.Upstreams[auNN]; ok {
+			upstream, _ = t.translateApisixUpstream(tctx, au)
+		}
+
 		if backend.ResolveGranularity == "service" {
-			upNodes, backendErr = t.translateApisixRouteBackendResolveGranularityService(tctx, utils.NamespacedName(ar), backend)
+			upstream.Nodes, backendErr = t.translateApisixRouteBackendResolveGranularityService(tctx, utils.NamespacedName(ar), backend)
 			if backendErr != nil {
 				t.Log.Error(backendErr, "failed to translate ApisixRoute backend with ResolveGranularity Service")
 				continue
 			}
 		} else {
-			upNodes, backendErr = t.translateApisixRouteBackendResolveGranularityEndpoint(tctx, utils.NamespacedName(ar), backend)
+			upstream.Nodes, backendErr = t.translateApisixRouteBackendResolveGranularityEndpoint(tctx, utils.NamespacedName(ar), backend)
 			if backendErr != nil {
 				t.Log.Error(backendErr, "failed to translate ApisixRoute backend with ResolveGranularity Endpoint")
 				continue
 			}
 		}
-		upstream.Nodes = append(upstream.Nodes, upNodes...)
+
+		upstreams = append(upstreams, upstream)
 	}
 
 	for _, upstreamRef := range rule.Upstreams {
@@ -241,21 +248,26 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 		upstreams = append(upstreams, upstream)
 	}
 
-	// If no .http[].backends is used and only .http[].upstreams is used, the first valid upstream is used as service.upstream;
-	// Other upstreams are configured in the traffic-split plugin
-	if len(rule.Backends) == 0 && len(upstreams) > 0 {
-		upstream = upstreams[0]
-		upstreams = upstreams[1:]
+	// no valid upstream
+	if backendErr != nil || len(upstreams) == 0 || len(upstreams[0].Nodes) == 0 {
+		return
 	}
 
-	// set the default upstream's weight in traffic-split
-	weight, err := strconv.Atoi(upstream.Labels["meta_weight"])
-	if err != nil {
-		weight = apiv2.DefaultWeight
+	// the first valid upstream is used as service.upstream;
+	// the others are configured in the traffic-split plugin
+	service.Upstream = upstreams[0]
+	upstreams = upstreams[1:]
+
+	// set weight in traffic-split for the default upstream
+	if len(upstreams) > 0 {
+		weight, err := strconv.Atoi(service.Upstream.Labels["meta_weight"])
+		if err != nil {
+			weight = apiv2.DefaultWeight
+		}
+		weightedUpstreams = append(weightedUpstreams, adc.TrafficSplitConfigRuleWeightedUpstream{
+			Weight: weight,
+		})
 	}
-	weightedUpstreams = append(weightedUpstreams, adc.TrafficSplitConfigRuleWeightedUpstream{
-		Weight: weight,
-	})
 
 	// set others upstreams in traffic-split
 	for _, item := range upstreams {
@@ -269,11 +281,6 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 		})
 	}
 
-	// set service
-	service.Upstream = upstream
-	if backendErr != nil && len(upstream.Nodes) == 0 {
-		t.addFaultInjectionPlugin(service)
-	}
 	if len(weightedUpstreams) > 0 {
 		service.Plugins["traffic-split"] = &adc.TrafficSplitConfig{
 			Rules: []adc.TrafficSplitConfigRule{
@@ -291,19 +298,8 @@ func (t *Translator) buildService(ar *apiv2.ApisixRoute, rule apiv2.ApisixRouteH
 	service.ID = id.GenID(service.Name)
 	service.Labels = label.GenLabel(ar)
 	service.Hosts = rule.Match.Hosts
+	service.Upstream = adc.NewDefaultUpstream()
 	return service
-}
-
-func (t *Translator) addFaultInjectionPlugin(service *adc.Service) {
-	if service.Plugins == nil {
-		service.Plugins = make(map[string]any)
-	}
-	service.Plugins["fault-injection"] = map[string]any{
-		"abort": map[string]any{
-			"http_status": 500,
-			"body":        "No existing backendRef provided",
-		},
-	}
 }
 
 func (t *Translator) translateApisixRouteBackendResolveGranularityService(tctx *provider.TranslateContext, arNN types.NamespacedName, backend apiv2.ApisixRouteHTTPBackend) (adc.UpstreamNodes, error) {

@@ -21,6 +21,7 @@ import (
 	"cmp"
 	"context"
 
+	"github.com/api7/gopkg/pkg/log"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -568,7 +569,7 @@ func ApisixRouteApisixUpstreamIndexFunc(obj client.Object) (keys []string) {
 	ar := obj.(*apiv2.ApisixRoute)
 	for _, rule := range ar.Spec.HTTP {
 		for _, backend := range rule.Backends {
-			if backend.Subset != "" && backend.ServiceName != "" {
+			if backend.ServiceName != "" {
 				keys = append(keys, GenIndexKey(ar.GetNamespace(), backend.ServiceName))
 			}
 		}
@@ -578,6 +579,7 @@ func ApisixRouteApisixUpstreamIndexFunc(obj client.Object) (keys []string) {
 			}
 		}
 	}
+	log.Debugf("ApisixRouteApisixUpstreamIndexFunc, au keys: %v", keys)
 	return
 }
 
