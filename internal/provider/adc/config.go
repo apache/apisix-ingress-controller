@@ -91,8 +91,8 @@ func (d *adcClient) getConfigsForGatewayProxy(tctx *provider.TranslateContext, g
 		if !ok {
 			return nil, fmt.Errorf("no service found for service reference: %s", namespacedName)
 		}
-		endpoint := tctx.EndpointSlices[namespacedName]
-		if endpoint == nil {
+		endpoints := tctx.EndpointSlices[namespacedName]
+		if len(endpoints) == 0 {
 			return nil, nil
 		}
 		upstreamNodes, err := d.translator.TranslateBackendRef(tctx, gatewayv1.BackendRef{
