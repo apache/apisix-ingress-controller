@@ -1445,7 +1445,7 @@ func distinctRequests(requests []reconcile.Request) []reconcile.Request {
 }
 
 func addProviderEndpointsToTranslateContext(tctx *provider.TranslateContext, c client.Client, serviceNN k8stypes.NamespacedName) error {
-	log.Debugw("to process provider endpints by provider.service", zap.Any("service", serviceNN))
+	log.Debugw("to process provider endpoints by provider.service", zap.Any("service", serviceNN))
 	var (
 		service corev1.Service
 	)
