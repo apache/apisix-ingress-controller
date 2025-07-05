@@ -382,14 +382,14 @@ func (t *Translator) translateBackendRef(tctx *provider.TranslateContext, ref ga
 // ref: https://github.com/Kong/kubernetes-ingress-controller/blob/57472721319e2c63e56cb8540425257e8e02520f/internal/dataplane/translator/subtranslator/httproute_atc.go#L279-L296
 func calculateHTTPRoutePriority(match *gatewayv1.HTTPRouteMatch, ruleIndex int, hosts []string) uint64 {
 	const (
-		// PreciseHostnameShiftBits assigns bit 43-50 for the length of hostname(max length=253).
-		PreciseHostnameShiftBits = 43
-		// HostnameLengthShiftBits assigns bits 35-42 for the length of hostname(max length=253).
-		HostnameLengthShiftBits = 35
-		// ExactPathShiftBits assigns bit 34 to mark if the match is exact path match.
-		ExactPathShiftBits = 34
-		// PathLengthShiftBits assigns bits 23-32 to path length. (max length = 1024, but must start with /)
-		PathLengthShiftBits = 23
+		// PreciseHostnameShiftBits assigns bit 31-38 for the length of hostname(max length=253).
+		// which has 8 bits, so the max length of hostname is 2^8-1 = 255.
+		PreciseHostnameShiftBits = 31
+
+		// HostnameLengthShiftBits assigns bits 23-30 for the length of hostname(max length=253).
+		// which has 8 bits, so the max length of hostname is 2^8-1 = 255.
+		HostnameLengthShiftBits = 23
+
 		// MethodMatchShiftBits assigns bit 22 to mark if method is specified.
 		MethodMatchShiftBits = 22
 		// HeaderNumberShiftBits assign bits 17-21 to number of headers. (max number of headers = 16)
@@ -428,20 +428,6 @@ func calculateHTTPRoutePriority(match *gatewayv1.HTTPRouteMatch, ruleIndex int, 
 
 	if maxHostnameLength > 0 {
 		priority |= (uint64(maxHostnameLength) << HostnameLengthShiftBits)
-	}
-
-	// ExactPathShiftBits
-	if match.Path != nil && match.Path.Type != nil && *match.Path.Type == gatewayv1.PathMatchExact {
-		priority |= (1 << ExactPathShiftBits)
-	}
-
-	// PathLengthShiftBits
-	// max length of path is 1024, but path must start with /, so we use PathLength-1 to fill the bits.
-	if match.Path != nil && match.Path.Value != nil {
-		pathLength := len(*match.Path.Value)
-		if pathLength > 0 {
-			priority |= (uint64(pathLength-1) << PathLengthShiftBits)
-		}
 	}
 
 	// MethodMatchShiftBits

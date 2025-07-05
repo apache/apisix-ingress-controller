@@ -31,6 +31,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+permissions:
+  pull-requests: write
+
 jobs:
   prepare:
     name: Prepare
@@ -124,3 +127,11 @@ jobs:
           echo '```yaml' >> report.md
           cat apisix-ingress-controller-conformance-report.yaml >> report.md
           echo '```' >> report.md
+
+      - name: Report Conformance Test Result to PR Comment
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: ./.github/actions/add-pr-comment
+        with:
+          message-id: 'apisix-conformance-test-report-${{ matrix.provider_type }}'
+          message-path: |
+            report.md
