@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/ptr"
 
+	"github.com/apache/apisix-ingress-controller/internal/provider/adc"
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
@@ -171,6 +172,23 @@ spec:
 
 				tunnel.Close()
 			}
+		})
+	})
+
+	Context("Backend server", func() {
+		It("backend server on apisix/apisix-standalone mode", func() {
+			var (
+				keyword string
+			)
+
+			if framework.ProviderType == adc.BackendModeAPISIX {
+				keyword = fmt.Sprintf(`{"config.ServerAddrs": ["%s"]}`, s.Deployer.GetAdminEndpoint())
+			} else {
+				keyword = fmt.Sprintf(`{"config.ServerAddrs": ["http://%s:9180"]}`, s.GetPodIP(s.Namespace(), "app.kubernetes.io/name=apisix"))
+			}
+
+			By(fmt.Sprintf("wait for keyword: %s", keyword))
+			s.WaitControllerManagerLog(keyword, 60, time.Minute)
 		})
 	})
 })
