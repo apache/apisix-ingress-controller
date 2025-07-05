@@ -24,7 +24,9 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/api7/gopkg/pkg/log"
 	"github.com/go-logr/logr"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -283,13 +285,12 @@ func (r *ApisixRouteReconciler) validateBackends(ctx context.Context, tc *provid
 	var backends = make(map[types.NamespacedName]struct{})
 	for _, backend := range http.Backends {
 		var (
-			service = corev1.Service{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      backend.ServiceName,
-					Namespace: in.Namespace,
-				},
+			au        apiv2.ApisixUpstream
+			service   corev1.Service
+			serviceNN = types.NamespacedName{
+				Namespace: in.GetNamespace(),
+				Name:      backend.ServiceName,
 			}
-			serviceNN = utils.NamespacedName(&service)
 		)
 		if _, ok := backends[serviceNN]; ok {
 			return ReasonError{
@@ -300,12 +301,24 @@ func (r *ApisixRouteReconciler) validateBackends(ctx context.Context, tc *provid
 		backends[serviceNN] = struct{}{}
 
 		if err := r.Get(ctx, serviceNN, &service); err != nil {
-			if err := client.IgnoreNotFound(err); err == nil {
+			if err = client.IgnoreNotFound(err); err == nil {
 				r.Log.Error(errors.New("service not found"), "Service", serviceNN)
 				continue
 			}
 			return err
 		}
+
+		// try to get apisixupstream with the same name as the backend service
+		log.Debugw("try to get apisixupstream with the same name as the backend service", zap.Stringer("Service", serviceNN))
+		if err := r.Get(ctx, serviceNN, &au); err != nil {
+			log.Debugw("no ApisixUpstream with the same name as the backend service found", zap.Stringer("Service", serviceNN), zap.Error(err))
+			if err = client.IgnoreNotFound(err); err != nil {
+				return err
+			}
+		} else {
+			tc.Upstreams[serviceNN] = &au
+		}
+
 		if service.Spec.Type == corev1.ServiceTypeExternalName {
 			tc.Services[serviceNN] = &service
 			continue
@@ -339,11 +352,7 @@ func (r *ApisixRouteReconciler) validateBackends(ctx context.Context, tc *provid
 
 		// backend.subset specifies a subset of upstream nodes.
 		// It specifies that the target pod's label should be a superset of the subset labels of the ApisixUpstream of the serviceName
-		subsetLabels, err := r.getSubsetLabels(ctx, in, backend)
-		if err != nil {
-			return err
-		}
-
+		subsetLabels := r.getSubsetLabels(tc, serviceNN, backend)
 		tc.EndpointSlices[serviceNN] = r.filterEndpointSlicesBySubsetLabels(ctx, endpoints.Items, subsetLabels)
 	}
 
@@ -512,7 +521,7 @@ func (r *ApisixRouteReconciler) listApisixRouteForApisixUpstream(ctx context.Con
 
 	var arList apiv2.ApisixRouteList
 	if err := r.List(ctx, &arList, client.MatchingFields{indexer.ApisixUpstreamRef: indexer.GenIndexKey(au.GetNamespace(), au.GetName())}); err != nil {
-		r.Log.Error(err, "failed to list ApisixUpstreams")
+		r.Log.Error(err, "failed to list ApisixRoutes")
 		return nil
 	}
 
@@ -569,35 +578,24 @@ func (r *ApisixRouteReconciler) listApisixRoutesForPluginConfig(ctx context.Cont
 	return pkgutils.DedupComparable(requests)
 }
 
-func (r *ApisixRouteReconciler) getSubsetLabels(ctx context.Context, ar *apiv2.ApisixRoute, backend apiv2.ApisixRouteHTTPBackend) (map[string]string, error) {
-	empty := make(map[string]string)
+func (r *ApisixRouteReconciler) getSubsetLabels(tctx *provider.TranslateContext, auNN types.NamespacedName, backend apiv2.ApisixRouteHTTPBackend) map[string]string {
 	if backend.Subset == "" {
-		return empty, nil
+		return nil
 	}
 
-	// Try to Get the ApisixUpstream with the same name as backend.ServiceName
-	var (
-		auNN = types.NamespacedName{
-			Namespace: ar.GetNamespace(),
-			Name:      backend.ServiceName,
-		}
-		au apiv2.ApisixUpstream
-	)
-	if err := r.Get(ctx, auNN, &au); err != nil {
-		if client.IgnoreNotFound(err) == nil {
-			return empty, nil
-		}
-		return nil, err
+	au, ok := tctx.Upstreams[auNN]
+	if !ok {
+		return nil
 	}
 
 	// try to get the subset labels from the ApisixUpstream subsets
 	for _, subset := range au.Spec.Subsets {
 		if backend.Subset == subset.Name {
-			return subset.Labels, nil
+			return subset.Labels
 		}
 	}
 
-	return empty, nil
+	return nil
 }
 
 func (r *ApisixRouteReconciler) filterEndpointSlicesBySubsetLabels(ctx context.Context, in []discoveryv1.EndpointSlice, labels map[string]string) []discoveryv1.EndpointSlice {

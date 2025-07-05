@@ -568,7 +568,7 @@ func ApisixRouteApisixUpstreamIndexFunc(obj client.Object) (keys []string) {
 	ar := obj.(*apiv2.ApisixRoute)
 	for _, rule := range ar.Spec.HTTP {
 		for _, backend := range rule.Backends {
-			if backend.Subset != "" && backend.ServiceName != "" {
+			if backend.ServiceName != "" {
 				keys = append(keys, GenIndexKey(ar.GetNamespace(), backend.ServiceName))
 			}
 		}

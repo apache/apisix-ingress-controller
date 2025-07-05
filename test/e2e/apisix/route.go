@@ -18,6 +18,7 @@
 package apisix
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -26,6 +27,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
@@ -247,11 +249,7 @@ spec:
 			var apisixRoute apiv2.ApisixRoute
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, "/get"))
 
-			By("when there is no replica got 500 by fault-injection")
-			err := s.ScaleHTTPBIN(0)
-			Expect(err).ShouldNot(HaveOccurred(), "scale httpbin to 0")
-			Eventually(request).WithArguments("/get").WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusInternalServerError))
-			s.NewAPISIXClient().GET("/get").WithHost("httpbin").Expect().Body().IsEqual("No existing backendRef provided")
+			Eventually(request).WithArguments("/get").WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusServiceUnavailable))
 		})
 
 		It("Test ApisixRoute resolveGranularity", func() {
@@ -500,6 +498,73 @@ spec:
 			Expect(upstreamAddrs).Should(HaveLen(2))
 			Eventually(upstreamAddrs).Should(HaveKey(endpoint))
 			Eventually(upstreamAddrs).Should(HaveKey(clusterIP))
+		})
+
+		It("Test backend implicit reference to apisixupstream", func() {
+			var err error
+
+			const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: default
+spec:
+  ingressClassName: apisix
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - httpbin
+      paths:
+      - /*
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+    plugins:
+    - name: response-rewrite
+      enable: true
+      config:
+        headers:
+          set:
+            "X-Upstream-Host": "$upstream_host"
+
+`
+			const apisixUpstreamSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: httpbin-service-e2e-test
+spec:
+  ingressClassName: apisix
+  passHost: rewrite
+  upstreamHost: hello.httpbin.org
+  loadbalancer:
+    type: "chash"
+    hashOn: "vars"
+    key: "server_name"
+`
+			expectUpstreamHostIs := func(expectedUpstreamHost string) func(ctx context.Context) (bool, error) {
+				return func(ctx context.Context) (done bool, err error) {
+					resp := s.NewAPISIXClient().GET("/get").WithHost("httpbin").Expect().Raw()
+					return resp.StatusCode == http.StatusOK && resp.Header.Get("X-Upstream-Host") == expectedUpstreamHost, nil
+				}
+			}
+
+			By("apply apisixroute")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, new(apiv2.ApisixRoute), apisixRouteSpec)
+
+			By("verify ApisixRoute works")
+			// expect upstream host is "httpbin"
+			err = wait.PollUntilContextTimeout(context.Background(), time.Second, 10*time.Second, true, expectUpstreamHostIs("httpbin"))
+			Expect(err).ShouldNot(HaveOccurred(), "verify ApisixRoute works")
+
+			By("apply apisixupstream")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-service-e2e-test"}, new(apiv2.ApisixUpstream), apisixUpstreamSpec)
+
+			By("verify backend implicit reference to apisixupstream works")
+			// expect upstream host is "hello.httpbin.org" which is rewritten by the apisixupstream
+			err = wait.PollUntilContextTimeout(context.Background(), time.Second, 10*time.Second, true, expectUpstreamHostIs("hello.httpbin.org"))
+			Expect(err).ShouldNot(HaveOccurred(), "check apisixupstream is referenced")
 		})
 	})
 })
