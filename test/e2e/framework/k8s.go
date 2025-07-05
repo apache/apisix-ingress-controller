@@ -48,6 +48,8 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/kubectl/pkg/scheme"
 	"k8s.io/utils/ptr"
+
+	"github.com/apache/apisix-ingress-controller/pkg/utils"
 )
 
 // buildRestConfig builds the rest.Config object from kubeconfig filepath and
@@ -207,11 +209,14 @@ func (f *Framework) GetPodIP(namespace, selector string) string {
 	return pods[0].Status.PodIP
 }
 
-func (f *Framework) GetPods(namespace, selector string) []corev1.Pod {
+func (f *Framework) GetPods(namespace, selector string, filters ...func(pod corev1.Pod) bool) []corev1.Pod {
 	podList, err := f.clientset.CoreV1().Pods(cmp.Or(namespace, _namespace)).List(f.Context, metav1.ListOptions{
 		LabelSelector: selector,
 	})
 	f.GomegaT.Expect(err).ShouldNot(HaveOccurred())
+	for _, filter := range filters {
+		podList.Items = utils.Filter(podList.Items, filter)
+	}
 	return podList.Items
 }
 
@@ -295,27 +300,10 @@ func (f *Framework) NewExpectResponse(httpBody any) *httpexpect.Response {
 	})
 }
 
-// ListPods query pods by label selector.
-func (f *Framework) ListPods(selector string) []corev1.Pod {
-	pods, err := f.clientset.CoreV1().Pods(_namespace).List(context.TODO(), metav1.ListOptions{
-		LabelSelector: selector,
+func (f *Framework) ListRunningPods(namespace, selector string) []corev1.Pod {
+	return f.GetPods(namespace, selector, func(pod corev1.Pod) bool {
+		return pod.Status.Phase == corev1.PodRunning && pod.DeletionTimestamp == nil
 	})
-	f.GomegaT.Expect(err).ShouldNot(HaveOccurred(), "list pod: ", selector)
-	return pods.Items
-}
-
-func (f *Framework) ListRunningPods(selector string) []corev1.Pod {
-	pods, err := f.clientset.CoreV1().Pods(_namespace).List(context.TODO(), metav1.ListOptions{
-		LabelSelector: selector,
-	})
-	f.GomegaT.Expect(err).ShouldNot(HaveOccurred(), "list pod: ", selector)
-	runningPods := make([]corev1.Pod, 0)
-	for _, p := range pods.Items {
-		if p.Status.Phase == corev1.PodRunning && p.DeletionTimestamp == nil {
-			runningPods = append(runningPods, p)
-		}
-	}
-	return runningPods
 }
 
 // ExecCommandInPod exec cmd in specify pod and return the output from stdout and stderr
@@ -362,12 +350,13 @@ func (f *Framework) GetPodLogs(name string, previous bool) string {
 	return string(logs)
 }
 
-func (f *Framework) WaitControllerManagerLog(keyword string, sinceSeconds int64, timeout time.Duration) {
-	f.WaitPodsLog("control-plane=controller-manager", keyword, sinceSeconds, timeout)
+func (f *Framework) WaitControllerManagerLog(namespace, keyword string, sinceSeconds int64, timeout time.Duration) {
+	f.WaitPodsLog(namespace, "control-plane=controller-manager", keyword, sinceSeconds, timeout)
 }
 
-func (f *Framework) WaitPodsLog(selector, keyword string, sinceSeconds int64, timeout time.Duration) {
-	pods := f.ListRunningPods(selector)
+func (f *Framework) WaitPodsLog(namespace, selector, keyword string, sinceSeconds int64, timeout time.Duration) {
+	pods := f.ListRunningPods(namespace, selector)
+	f.GomegaT.Expect(pods).ToNot(BeEmpty())
 	wg := sync.WaitGroup{}
 	for _, p := range pods {
 		wg.Add(1)

@@ -188,7 +188,7 @@ spec:
 			}
 
 			By(fmt.Sprintf("wait for keyword: %s", keyword))
-			s.WaitControllerManagerLog(keyword, 60, time.Minute)
+			s.WaitControllerManagerLog(s.Namespace(), keyword, 60, time.Minute)
 		})
 	})
 })

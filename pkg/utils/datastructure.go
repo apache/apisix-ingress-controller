@@ -58,3 +58,16 @@ func DedupComparable[T comparable](s []T) []T {
 	}
 	return results
 }
+
+func AppendFunc[T any](s []T, keep func(v T) bool, values ...T) []T {
+	for _, v := range values {
+		if keep(v) {
+			s = append(s, v)
+		}
+	}
+	return s
+}
+
+func Filter[T any](s []T, keep func(v T) bool) []T {
+	return AppendFunc(make([]T, 0), keep, s...)
+}
