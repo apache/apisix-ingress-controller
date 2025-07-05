@@ -313,21 +313,29 @@ func (s *Scaffold) createDataplaneTunnels(
 	if err := httpTunnel.ForwardPortE(s.t); err != nil {
 		return nil, nil, err
 	}
-	s.addFinalizers(func() {
-		httpTunnel.Close()
-		s.apisixHttpTunnel = nil
-	})
+	s.addFinalizers(s.closeApisixHttpTunnel)
 
 	if err := httpsTunnel.ForwardPortE(s.t); err != nil {
 		httpTunnel.Close()
 		return nil, nil, err
 	}
-	s.addFinalizers(func() {
-		httpsTunnel.Close()
-		s.apisixHttpsTunnel = nil
-	})
+	s.addFinalizers(s.closeApisixHttpsTunnel)
 
 	return httpTunnel, httpsTunnel, nil
+}
+
+func (s *Scaffold) closeApisixHttpTunnel() {
+	if s.apisixHttpTunnel != nil {
+		s.apisixHttpTunnel.Close()
+		s.apisixHttpTunnel = nil
+	}
+}
+
+func (s *Scaffold) closeApisixHttpsTunnel() {
+	if s.apisixHttpsTunnel != nil {
+		s.apisixHttpsTunnel.Close()
+		s.apisixHttpsTunnel = nil
+	}
 }
 
 // GetAdditionalGateway returns resources associated with a specific gateway
