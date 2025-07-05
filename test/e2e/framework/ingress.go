@@ -67,5 +67,5 @@ func (f *Framework) DeployIngress(opts IngressDeployOpts) {
 		LabelSelector: "control-plane=controller-manager",
 	})
 	f.GomegaT.Expect(err).ToNot(HaveOccurred(), "waiting for controller-manager pod ready")
-	f.WaitControllerManagerLog("All cache synced successfully", 0, time.Minute)
+	f.WaitControllerManagerLog(opts.Namespace, "All cache synced successfully", 60, time.Minute)
 }

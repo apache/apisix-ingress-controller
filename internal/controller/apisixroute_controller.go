@@ -607,14 +607,14 @@ func (r *ApisixRouteReconciler) filterEndpointSlicesBySubsetLabels(ctx context.C
 		in[i] = r.filterEndpointSliceByTargetPod(ctx, in[i], labels)
 	}
 
-	return utils.Filter(in, func(v discoveryv1.EndpointSlice) bool {
+	return pkgutils.Filter(in, func(v discoveryv1.EndpointSlice) bool {
 		return len(v.Endpoints) > 0
 	})
 }
 
 // filterEndpointSliceByTargetPod filters item.Endpoints which is not a subset of labels
 func (r *ApisixRouteReconciler) filterEndpointSliceByTargetPod(ctx context.Context, item discoveryv1.EndpointSlice, labels map[string]string) discoveryv1.EndpointSlice {
-	item.Endpoints = utils.Filter(item.Endpoints, func(v discoveryv1.Endpoint) bool {
+	item.Endpoints = pkgutils.Filter(item.Endpoints, func(v discoveryv1.Endpoint) bool {
 		if v.TargetRef == nil || v.TargetRef.Kind != KindPod {
 			return true
 		}

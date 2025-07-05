@@ -174,13 +174,14 @@ func Run(ctx context.Context, logger logr.Logger) error {
 
 	go func() {
 		setupLog.Info("starting provider sync")
-		initalSyncDelay := config.ControllerConfig.ProviderConfig.InitSyncDelay.Duration
-		time.AfterFunc(initalSyncDelay, func() {
+		initialSyncDelay := config.ControllerConfig.ProviderConfig.InitSyncDelay.Duration
+		time.AfterFunc(initialSyncDelay, func() {
 			setupLog.Info("trying to initialize provider")
 			if err := provider.Sync(ctx); err != nil {
 				setupLog.Error(err, "unable to sync resources to provider")
 				return
 			}
+			setupLog.Info("All cache synced successfully")
 		})
 
 		syncPeriod := config.ControllerConfig.ProviderConfig.SyncPeriod.Duration
