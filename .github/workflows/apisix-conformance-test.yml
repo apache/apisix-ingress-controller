@@ -129,6 +129,6 @@ jobs:
         if: ${{ github.event_name == 'pull_request' }}
         uses: ./.github/actions/add-pr-comment
         with:
-          message-id: 'apisix-conformance-test-report'
+          message-id: 'apisix-conformance-test-report-${{ matrix.provider_type }}'
           message-path: |
             report.md
