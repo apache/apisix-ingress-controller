@@ -380,8 +380,11 @@ func ParseRouteParentRefs(
 			listenerName = string(listener.Name)
 			ok, err := routeMatchesListenerAllowedRoutes(ctx, mgrc, route, listener.AllowedRoutes, gateway.Namespace, parentRef.Namespace)
 			if err != nil {
-				log.Warnf("failed matching listener %s to a route %s for gateway %s: %v",
-					listener.Name, route.GetName(), gateway.Name, err,
+				log.Warnw("failed matching listener to a route for gateway",
+					zap.String("listener", string(listener.Name)),
+					zap.String("route", route.GetName()),
+					zap.String("gateway", gateway.Name),
+					zap.Error(err),
 				)
 			}
 			if !ok {
@@ -941,10 +944,10 @@ func ProcessGatewayProxy(r client.Client, tctx *provider.TranslateContext, gatew
 							return err
 						}
 
-						log.Info("found secret for GatewayProxy provider",
-							"gateway", gateway.Name,
-							"gatewayproxy", gatewayProxy.Name,
-							"secret", secretRef.Name)
+						log.Infow("found secret for GatewayProxy provider",
+							zap.String("gateway", gateway.Name),
+							zap.String("gatewayproxy", gatewayProxy.Name),
+							zap.String("secret", secretRef.Name))
 
 						tctx.Secrets[k8stypes.NamespacedName{
 							Namespace: ns,
@@ -1445,7 +1448,7 @@ func distinctRequests(requests []reconcile.Request) []reconcile.Request {
 }
 
 func addProviderEndpointsToTranslateContext(tctx *provider.TranslateContext, c client.Client, serviceNN k8stypes.NamespacedName) error {
-	log.Debugf("to process provider endpints by provider.service: %s", serviceNN)
+	log.Debugw("to process provider endpints by provider.service", zap.Any("service", serviceNN))
 	var (
 		service corev1.Service
 	)

@@ -116,7 +116,7 @@ func (d *adcClient) getConfigsForGatewayProxy(tctx *provider.TranslateContext, g
 			config.ServerAddrs = append(config.ServerAddrs, "http://"+net.JoinHostPort(node.Host, strconv.Itoa(node.Port)))
 		}
 
-		log.Debugf("add server address to config.ServiceAddrs: %v", config.ServerAddrs)
+		log.Debugw("add server address to config.ServiceAddrs", zap.Any("serverAddrs", config.ServerAddrs))
 	}
 
 	return &config, nil

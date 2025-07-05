@@ -55,7 +55,7 @@ func (s *Store) Insert(name string, resourceTypes []string, resources adctypes.R
 		s.cacheMap[name] = db
 		targetCache = s.cacheMap[name]
 	}
-	log.Debugf("Inserting resources into cache for %s", name)
+	log.Debugw("Inserting resources into cache for", zap.String("name", name))
 	selector := &cache.KindLabelSelector{
 		Kind:      Labels[label.LabelKind],
 		Name:      Labels[label.LabelName],

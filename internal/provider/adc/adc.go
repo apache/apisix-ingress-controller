@@ -395,7 +395,7 @@ func prepareSyncFile(resources any) (string, func(), error) {
 		return "", nil, err
 	}
 
-	log.Debugf("generated adc file, filename: %s, json: %s\n", tmpFile.Name(), string(data))
+	log.Debugw("generated adc file", zap.String("filename", tmpFile.Name()), zap.String("json", string(data)))
 
 	return tmpFile.Name(), cleanup, nil
 }
