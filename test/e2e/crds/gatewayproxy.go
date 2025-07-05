@@ -187,7 +187,6 @@ spec:
 				keyword = fmt.Sprintf(`{"config.ServerAddrs": ["http://%s:9180"]}`, s.GetPodIP(s.Namespace(), "app.kubernetes.io/name=apisix"))
 			}
 
-			s.Deployer.DeployIngress()
 			By(fmt.Sprintf("wait for keyword: %s", keyword))
 			s.WaitControllerManagerLog(keyword, 60, time.Minute)
 		})

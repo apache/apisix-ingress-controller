@@ -168,17 +168,12 @@ func (s *APISIXDeployer) DeployDataplane(deployOpts DeployDataplaneOptions) {
 		opts.Replicas = deployOpts.Replicas
 	}
 
-	if s.adminTunnel != nil {
-		s.adminTunnel.Close()
-		s.adminTunnel = nil
-	}
-	if s.apisixHttpTunnel != nil {
-		s.apisixHttpTunnel.Close()
-		s.apisixHttpTunnel = nil
-	}
-	if s.apisixHttpsTunnel != nil {
-		s.apisixHttpsTunnel.Close()
-		s.apisixHttpsTunnel = nil
+	for _, close := range []func(){
+		s.closeAdminTunnel,
+		s.closeApisixHttpTunnel,
+		s.closeApisixHttpsTunnel,
+	} {
+		close()
 	}
 
 	svc := s.deployDataplane(&opts)
@@ -305,12 +300,16 @@ func (s *APISIXDeployer) createAdminTunnel(svc *corev1.Service) (*k8s.Tunnel, er
 	if err := adminTunnel.ForwardPortE(s.t); err != nil {
 		return nil, err
 	}
-	s.addFinalizers(func() {
-		adminTunnel.Close()
-		s.adminTunnel = nil
-	})
+	s.addFinalizers(s.closeAdminTunnel)
 
 	return adminTunnel, nil
+}
+
+func (s *APISIXDeployer) closeAdminTunnel() {
+	if s.adminTunnel != nil {
+		s.adminTunnel.Close()
+		s.adminTunnel = nil
+	}
 }
 
 func (s *APISIXDeployer) CreateAdditionalGateway(namePrefix string) (string, *corev1.Service, error) {

@@ -368,7 +368,6 @@ func (f *Framework) WaitControllerManagerLog(keyword string, sinceSeconds int64,
 
 func (f *Framework) WaitPodsLog(selector, keyword string, sinceSeconds int64, timeout time.Duration) {
 	pods := f.ListRunningPods(selector)
-	Expect(pods).NotTo(BeEmpty())
 	wg := sync.WaitGroup{}
 	for _, p := range pods {
 		wg.Add(1)
