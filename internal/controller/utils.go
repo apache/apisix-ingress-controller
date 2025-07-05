@@ -898,7 +898,7 @@ func SplitMetaNamespaceKey(key string) (namespace, name string, err error) {
 	return "", "", fmt.Errorf("unexpected key format: %q", key)
 }
 
-func ProcessGatewayProxy(r client.Client, tctx *provider.TranslateContext, gateway *gatewayv1.Gateway, rk types.NamespacedNameKind) error {
+func ProcessGatewayProxy(r client.Client, log logr.Logger, tctx *provider.TranslateContext, gateway *gatewayv1.Gateway, rk types.NamespacedNameKind) error {
 	if gateway == nil {
 		return nil
 	}
@@ -917,10 +917,10 @@ func ProcessGatewayProxy(r client.Client, tctx *provider.TranslateContext, gatew
 			Namespace: ns,
 			Name:      paramRef.Name,
 		}, gatewayProxy); err != nil {
-			log.Errorw("failed to get GatewayProxy", zap.String("namespace", ns), zap.String("name", paramRef.Name), zap.Error(err))
+			log.Error(err, "failed to get GatewayProxy", "namespace", ns, "name", paramRef.Name)
 			return err
 		} else {
-			log.Infow("found GatewayProxy for Gateway", zap.String("namespace", gateway.Namespace), zap.String("name", gateway.Name))
+			log.Info("found GatewayProxy for Gateway", "namespace", gateway.Namespace, "name", gateway.Name)
 			tctx.GatewayProxies[gatewayKind] = *gatewayProxy
 			tctx.ResourceParentRefs[rk] = append(tctx.ResourceParentRefs[rk], gatewayKind)
 
@@ -944,10 +944,7 @@ func ProcessGatewayProxy(r client.Client, tctx *provider.TranslateContext, gatew
 							return err
 						}
 
-						log.Infow("found secret for GatewayProxy provider",
-							zap.String("gateway", gateway.Name),
-							zap.String("gatewayproxy", gatewayProxy.Name),
-							zap.String("secret", secretRef.Name))
+						log.Info("found secret for GatewayProxy provider", "gateway", gateway.Name, "gatewayproxy", gatewayProxy.Name, "secret", secretRef.Name)
 
 						tctx.Secrets[k8stypes.NamespacedName{
 							Namespace: ns,
@@ -1453,7 +1450,7 @@ func addProviderEndpointsToTranslateContext(tctx *provider.TranslateContext, c c
 		service corev1.Service
 	)
 	if err := c.Get(tctx, serviceNN, &service); err != nil {
-		log.Error(err, "failed to get service from GatewayProxy provider", "key", serviceNN)
+		log.Errorw("failed to get service from GatewayProxy provider", zap.Error(err), zap.Any("key", serviceNN))
 		return err
 	}
 	tctx.Services[serviceNN] = &service
@@ -1467,7 +1464,7 @@ func addProviderEndpointsToTranslateContext(tctx *provider.TranslateContext, c c
 		client.MatchingLabels{
 			discoveryv1.LabelServiceName: serviceNN.Name,
 		}); err != nil {
-		log.Error(err, "failed to get endpoints for GatewayProxy provider", "endpoints", serviceNN)
+		log.Errorw("failed to get endpoints for GatewayProxy provider", zap.Error(err), zap.Any("endpoints", serviceNN))
 		return err
 	}
 	tctx.EndpointSlices[serviceNN] = esList.Items

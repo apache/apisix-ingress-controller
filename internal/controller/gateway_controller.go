@@ -411,7 +411,7 @@ func (r *GatewayReconciler) listReferenceGrantsForGateway(ctx context.Context, o
 }
 
 func (r *GatewayReconciler) processInfrastructure(tctx *provider.TranslateContext, gateway *gatewayv1.Gateway) error {
-	return ProcessGatewayProxy(r.Client, tctx, gateway, utils.NamespacedNameKind(gateway))
+	return ProcessGatewayProxy(r.Client, r.Log, tctx, gateway, utils.NamespacedNameKind(gateway))
 }
 
 func (r *GatewayReconciler) processListenerConfig(tctx *provider.TranslateContext, gateway *gatewayv1.Gateway) {

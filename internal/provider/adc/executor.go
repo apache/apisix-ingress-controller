@@ -86,7 +86,7 @@ func (e *DefaultADCExecutor) runForSingleServer(ctx context.Context, serverAddr,
 	cmd.Stderr = &stderr
 	cmd.Env = append(os.Environ(), env...)
 
-	log.Debug("running adc command",
+	log.Debugw("running adc command",
 		zap.String("command", strings.Join(cmd.Args, " ")),
 		zap.Strings("env", env),
 	)
