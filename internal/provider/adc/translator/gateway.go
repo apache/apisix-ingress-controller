@@ -96,11 +96,12 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 					continue
 				}
 				if secret.Data == nil {
-					log.Error("secret data is nil", "secret", secret)
+					log.Errorw("secret data is nil", zap.Any("secret", secret))
 					return nil, fmt.Errorf("no secret data found for %s/%s", ns, name)
 				}
 				cert, key, err := extractKeyPair(secret, true)
 				if err != nil {
+					log.Errorw("failed to extract key pair", zap.Error(err), zap.Any("secret", secret))
 					return nil, err
 				}
 				sslObj.Certificates = append(sslObj.Certificates, adctypes.Certificate{

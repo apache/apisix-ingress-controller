@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/api7/gopkg/pkg/log"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -412,7 +411,7 @@ func (r *GatewayReconciler) listReferenceGrantsForGateway(ctx context.Context, o
 }
 
 func (r *GatewayReconciler) processInfrastructure(tctx *provider.TranslateContext, gateway *gatewayv1.Gateway) error {
-	return ProcessGatewayProxy(r.Client, tctx, gateway, utils.NamespacedNameKind(gateway))
+	return ProcessGatewayProxy(r.Client, r.Log, tctx, gateway, utils.NamespacedNameKind(gateway))
 }
 
 func (r *GatewayReconciler) processListenerConfig(tctx *provider.TranslateContext, gateway *gatewayv1.Gateway) {
@@ -432,12 +431,12 @@ func (r *GatewayReconciler) processListenerConfig(tctx *provider.TranslateContex
 					Namespace: ns,
 					Name:      string(ref.Name),
 				}, &secret); err != nil {
-					log.Error(err, "failed to get secret", "namespace", ns, "name", ref.Name)
+					r.Log.Error(err, "failed to get secret", "namespace", ns, "name", ref.Name)
 					SetGatewayListenerConditionProgrammed(gateway, string(listener.Name), false, err.Error())
 					SetGatewayListenerConditionResolvedRefs(gateway, string(listener.Name), false, err.Error())
 					break
 				}
-				log.Info("Setting secret for listener", "listener", listener.Name, "secret", secret.Name, " namespace", ns)
+				r.Log.Info("Setting secret for listener", "listener", listener.Name, "secret", secret.Name, " namespace", ns)
 				tctx.Secrets[types.NamespacedName{Namespace: ns, Name: string(ref.Name)}] = &secret
 			}
 		}

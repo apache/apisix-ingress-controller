@@ -143,7 +143,7 @@ func (a *adcDataplaneResource) dumpResources(ctx context.Context) (*translator.T
 	cmd.Env = append(cmd.Env, os.Environ()...)
 	cmd.Env = append(cmd.Env, adcEnv...)
 
-	log.Debug("running adc command", zap.String("command", cmd.String()), zap.Strings("env", adcEnv))
+	log.Debugw("running adc command", zap.String("command", cmd.String()), zap.Strings("env", adcEnv))
 
 	if err := cmd.Run(); err != nil {
 		stderrStr := stderr.String()

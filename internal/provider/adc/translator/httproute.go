@@ -274,7 +274,8 @@ func (t *Translator) fillHTTPRoutePolicies(routes []*adctypes.Route, policies []
 			for _, data := range policy.Spec.Vars {
 				var v []adctypes.StringOrSlice
 				if err := json.Unmarshal(data.Raw, &v); err != nil {
-					log.Errorf("failed to unmarshal spec.Vars item to []StringOrSlice, data: %s", string(data.Raw)) // todo: update status
+					log.Errorw("failed to unmarshal spec.Vars item to []StringOrSlice", zap.Error(err), zap.String("data", string(data.Raw)))
+					// todo: update status
 					continue
 				}
 				route.Vars = append(route.Vars, v)

@@ -21,7 +21,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/api7/gopkg/pkg/log"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -115,7 +114,7 @@ func (r *ApisixTlsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// get the ingress class
 	ingressClass, err := GetIngressClass(tctx, r.Client, r.Log, tls.Spec.IngressClassName)
 	if err != nil {
-		log.Error(err, "failed to get IngressClass")
+		r.Log.Error(err, "failed to get IngressClass")
 		r.updateStatus(&tls, metav1.Condition{
 			Type:               string(apiv2.ConditionTypeAccepted),
 			Status:             metav1.ConditionFalse,
@@ -129,7 +128,7 @@ func (r *ApisixTlsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// process IngressClass parameters if they reference GatewayProxy
 	if err := ProcessIngressClassParameters(tctx, r.Client, r.Log, &tls, ingressClass); err != nil {
-		log.Error(err, "failed to process IngressClass parameters", "ingressClass", ingressClass.Name)
+		r.Log.Error(err, "failed to process IngressClass parameters", "ingressClass", ingressClass.Name)
 		r.updateStatus(&tls, metav1.Condition{
 			Type:               string(apiv2.ConditionTypeAccepted),
 			Status:             metav1.ConditionFalse,
@@ -143,7 +142,7 @@ func (r *ApisixTlsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// process ApisixTls validation
 	if err := r.processApisixTls(ctx, tctx, &tls); err != nil {
-		log.Error(err, "failed to process ApisixTls")
+		r.Log.Error(err, "failed to process ApisixTls")
 		r.updateStatus(&tls, metav1.Condition{
 			Type:               string(apiv2.ConditionTypeAccepted),
 			Status:             metav1.ConditionFalse,
@@ -156,7 +155,7 @@ func (r *ApisixTlsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if err := r.Provider.Update(ctx, tctx, &tls); err != nil {
-		log.Error(err, "failed to sync apisix tls to provider")
+		r.Log.Error(err, "failed to sync apisix tls to provider")
 		// Update status with failure condition
 		r.updateStatus(&tls, metav1.Condition{
 			Type:               string(apiv2.ConditionTypeAccepted),

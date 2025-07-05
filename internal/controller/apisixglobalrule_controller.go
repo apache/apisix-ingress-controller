@@ -21,7 +21,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/api7/gopkg/pkg/log"
 	"github.com/go-logr/logr"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -83,19 +82,19 @@ func (r *ApisixGlobalRuleReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	// get the ingress class
 	ingressClass, err := GetIngressClass(tctx, r.Client, r.Log, globalRule.Spec.IngressClassName)
 	if err != nil {
-		log.Error(err, "failed to get IngressClass")
+		r.Log.Error(err, "failed to get IngressClass")
 		return ctrl.Result{}, err
 	}
 
 	// process IngressClass parameters if they reference GatewayProxy
 	if err := ProcessIngressClassParameters(tctx, r.Client, r.Log, &globalRule, ingressClass); err != nil {
-		log.Error(err, "failed to process IngressClass parameters", "ingressClass", ingressClass.Name)
+		r.Log.Error(err, "failed to process IngressClass parameters", "ingressClass", ingressClass.Name)
 		return ctrl.Result{}, err
 	}
 
 	// Sync the global rule to APISIX
 	if err := r.Provider.Update(ctx, tctx, &globalRule); err != nil {
-		log.Error(err, "failed to sync global rule to provider")
+		r.Log.Error(err, "failed to sync global rule to provider")
 		// Update status with failure condition
 		r.updateStatus(&globalRule, metav1.Condition{
 			Type:               string(apiv2.ConditionTypeAccepted),

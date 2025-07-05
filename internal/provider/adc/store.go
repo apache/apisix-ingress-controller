@@ -55,7 +55,7 @@ func (s *Store) Insert(name string, resourceTypes []string, resources adctypes.R
 		s.cacheMap[name] = db
 		targetCache = s.cacheMap[name]
 	}
-	log.Debugf("Inserting resources into cache for %s", name)
+	log.Debugw("Inserting resources into cache for", zap.String("name", name))
 	selector := &cache.KindLabelSelector{
 		Kind:      Labels[label.LabelKind],
 		Name:      Labels[label.LabelName],
@@ -162,41 +162,41 @@ func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]st
 		case "service":
 			services, err := targetCache.ListServices(selector)
 			if err != nil {
-				log.Errorf("failed to list services: %v", err)
+				log.Errorw("failed to list services", zap.Error(err))
 			}
 			for _, service := range services {
 				if err := targetCache.DeleteService(service); err != nil {
-					log.Errorf("failed to delete service %s: %v", service.ID, err)
+					log.Errorw("failed to delete service", zap.Error(err), zap.String("service", service.ID))
 				}
 			}
 		case "ssl":
 			ssls, err := targetCache.ListSSL(selector)
 			if err != nil {
-				log.Errorf("failed to list ssl: %v", err)
+				log.Errorw("failed to list ssl", zap.Error(err))
 			}
 			for _, ssl := range ssls {
 				if err := targetCache.DeleteSSL(ssl); err != nil {
-					log.Errorf("failed to delete ssl %s: %v", ssl.ID, err)
+					log.Errorw("failed to delete ssl", zap.Error(err), zap.String("ssl", ssl.ID))
 				}
 			}
 		case "consumer":
 			consumers, err := targetCache.ListConsumers(selector)
 			if err != nil {
-				log.Errorf("failed to list consumers: %v", err)
+				log.Errorw("failed to list consumers", zap.Error(err))
 			}
 			for _, consumer := range consumers {
 				if err := targetCache.DeleteConsumer(consumer); err != nil {
-					log.Errorf("failed to delete consumer %s: %v", consumer.Username, err)
+					log.Errorw("failed to delete consumer", zap.Error(err), zap.String("consumer", consumer.Username))
 				}
 			}
 		case "global_rule":
 			globalRules, err := targetCache.ListGlobalRules(selector)
 			if err != nil {
-				log.Errorf("failed to list global rules: %v", err)
+				log.Errorw("failed to list global rules", zap.Error(err))
 			}
 			for _, globalRule := range globalRules {
 				if err := targetCache.DeleteGlobalRule(globalRule); err != nil {
-					log.Errorf("failed to delete global rule %s: %v", globalRule.ID, err)
+					log.Errorw("failed to delete global rule", zap.Error(err), zap.String("global rule", globalRule.ID))
 				}
 			}
 		case "plugin_metadata":

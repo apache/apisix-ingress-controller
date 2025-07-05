@@ -86,7 +86,7 @@ func (e *DefaultADCExecutor) runForSingleServer(ctx context.Context, serverAddr,
 	cmd.Stderr = &stderr
 	cmd.Env = append(os.Environ(), env...)
 
-	log.Debug("running adc command",
+	log.Debugw("running adc command",
 		zap.String("command", strings.Join(cmd.Args, " ")),
 		zap.Strings("env", env),
 	)
@@ -123,7 +123,7 @@ func (e *DefaultADCExecutor) buildCmdError(runErr error, stdout, stderr []byte) 
 
 func (e *DefaultADCExecutor) handleOutput(output []byte) error {
 	var result adctypes.SyncResult
-	log.Debugf("adc output: %s", string(output))
+	log.Debugw("adc output", zap.String("output", string(output)))
 	if lines := bytes.Split(output, []byte{'\n'}); len(lines) > 0 {
 		output = lines[len(lines)-1]
 	}

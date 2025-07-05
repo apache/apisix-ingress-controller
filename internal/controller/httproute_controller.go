@@ -177,7 +177,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	tctx.RouteParentRefs = hr.Spec.ParentRefs
 	rk := utils.NamespacedNameKind(hr)
 	for _, gateway := range gateways {
-		if err := ProcessGatewayProxy(r.Client, tctx, gateway.Gateway, rk); err != nil {
+		if err := ProcessGatewayProxy(r.Client, r.Log, tctx, gateway.Gateway, rk); err != nil {
 			acceptStatus.status = false
 			acceptStatus.msg = err.Error()
 		}

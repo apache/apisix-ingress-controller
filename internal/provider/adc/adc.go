@@ -366,7 +366,12 @@ func (d *adcClient) sync(ctx context.Context, task Task) error {
 	var failedConfigs []string
 	for _, config := range task.configs {
 		if err := d.executor.Execute(ctx, d.BackendMode, config, args); err != nil {
-			log.Errorw("failed to execute adc command", zap.Error(err), zap.Any("config", config))
+			log.Errorw("failed to execute adc command",
+				zap.Error(err),
+				zap.String("configName", config.Name),
+				zap.Any("serverAddrs", config.ServerAddrs),
+				zap.Bool("tlsVerify", config.TlsVerify),
+			)
 			failedConfigs = append(failedConfigs, config.Name)
 		}
 	}
@@ -395,7 +400,7 @@ func prepareSyncFile(resources any) (string, func(), error) {
 		return "", nil, err
 	}
 
-	log.Debugf("generated adc file, filename: %s, json: %s\n", tmpFile.Name(), string(data))
+	log.Debugw("generated adc file", zap.String("filename", tmpFile.Name()), zap.String("json", string(data)))
 
 	return tmpFile.Name(), cleanup, nil
 }
