@@ -40,15 +40,51 @@ Before installing APISIX ingress controller, ensure you have:
 2. [kubectl](https://kubernetes.io/docs/tasks/tools/) installed and configured to access your cluster
 3. [Helm](https://helm.sh/) (version 3.8+) installed
 
-## Install APISIX Ingress Controller
+Make sure to update the Helm repositories:
 
-The APISIX ingress controller can be installed using the Helm chart provided by the Apache APISIX project. The following steps will guide you through the installation process.
-
-```shell
+```bash
 helm repo add apisix https://charts.apiseven.com
 helm repo add bitnami https://charts.bitnami.com/bitnami
 helm repo update
+```
 
+## Install APISIX and APISIX Ingress Controller
+
+The script below installs APISIX and APISIX Ingress Controller:
+
+```bash
+helm install apisix \
+  --namespace ingress-apisix \
+  --create-namespace \
+  --set ingress-controller.enabled=true \
+  --set ingress-controller.apisix.adminService.namespace=ingress-apisix \
+  --set ingress-controller.gatewayProxy.createDefault=true \
+  apisix/apisix
+```
+
+## Install APISIX and APISIX Ingress Controller (Standalone API-driven mode)
+
+To run APISIX in [APISIX Standalone API-driven mode](https://apisix.apache.org/docs/apisix/deployment-modes/#api-driven-experimental), use the following script to install APISIX and the APISIX Ingress Controller:
+
+```bash
+helm install apisix \
+  --namespace ingress-apisix \
+  --create-namespace \
+  --set apisix.deployment.role=traditional \
+  --set apisix.deployment.role_traditional.config_provider=yaml \
+  --set etcd.enabled=false \
+  --set ingress-controller.enabled=true \
+  --set ingress-controller.config.provider.type=apisix-standalone \
+  --set ingress-controller.apisix.adminService.namespace=ingress-apisix \
+  --set ingress-controller.gatewayProxy.createDefault=true \
+  apisix/apisix
+```
+
+## Install APISIX Ingress Controller
+
+The script below installs APISIX Ingress Controller:
+
+```bash
 # Set the access address and adminkey for apisix
 helm install apisix-ingress-controller \
   --create-namespace \

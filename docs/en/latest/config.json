@@ -2,6 +2,10 @@
     "version": "0.3.0",
     "sidebar": [
         {
+            "type": "doc",
+            "id": "getting-started"
+        },
+        {
             "type": "category",
             "label": "Concepts",
             "items": [
