@@ -21,6 +21,7 @@ import (
 	"net"
 	"regexp"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -90,4 +91,11 @@ func IsSubsetOf(a, b map[string]string) bool {
 		}
 	}
 	return true
+}
+
+func ConditionStatus(status bool) metav1.ConditionStatus {
+	if status {
+		return metav1.ConditionTrue
+	}
+	return metav1.ConditionFalse
 }

@@ -32,7 +32,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -45,6 +45,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 	pkgutils "github.com/apache/apisix-ingress-controller/pkg/utils"
 )
@@ -134,7 +135,7 @@ func (r *ApisixRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, err
 	}
 	if err = r.Provider.Update(ctx, tctx, &ar); err != nil {
-		err = ReasonError{
+		err = types.ReasonError{
 			Reason:  string(apiv2.ConditionReasonSyncFailed),
 			Message: err.Error(),
 		}
@@ -152,7 +153,7 @@ func (r *ApisixRouteReconciler) processApisixRoute(ctx context.Context, tc *prov
 	for httpIndex, http := range in.Spec.HTTP {
 		// check rule names
 		if _, ok := rules[http.Name]; ok {
-			return ReasonError{
+			return types.ReasonError{
 				Reason:  string(apiv2.ConditionReasonInvalidSpec),
 				Message: "duplicate route rule name",
 			}
@@ -178,7 +179,7 @@ func (r *ApisixRouteReconciler) processApisixRoute(ctx context.Context, tc *prov
 
 		// check vars
 		if _, err := http.Match.NginxVars.ToVars(); err != nil {
-			return ReasonError{
+			return types.ReasonError{
 				Reason:  string(apiv2.ConditionReasonInvalidSpec),
 				Message: fmt.Sprintf(".spec.http[%d].match.exprs: %s", httpIndex, err.Error()),
 			}
@@ -186,7 +187,7 @@ func (r *ApisixRouteReconciler) processApisixRoute(ctx context.Context, tc *prov
 
 		// validate remote address
 		if err := utils.ValidateRemoteAddrs(http.Match.RemoteAddrs); err != nil {
-			return ReasonError{
+			return types.ReasonError{
 				Reason:  string(apiv2.ConditionReasonInvalidSpec),
 				Message: fmt.Sprintf(".spec.http[%d].match.remoteAddrs: %s", httpIndex, err.Error()),
 			}
@@ -220,7 +221,7 @@ func (r *ApisixRouteReconciler) validatePluginConfig(ctx context.Context, tc *pr
 		pcNN = utils.NamespacedName(&pc)
 	)
 	if err := r.Get(ctx, pcNN, &pc); err != nil {
-		return ReasonError{
+		return types.ReasonError{
 			Reason:  string(apiv2.ConditionReasonInvalidSpec),
 			Message: fmt.Sprintf("failed to get ApisixPluginConfig: %s", pcNN),
 		}
@@ -230,13 +231,13 @@ func (r *ApisixRouteReconciler) validatePluginConfig(ctx context.Context, tc *pr
 	if in.Spec.IngressClassName != pc.Spec.IngressClassName && pc.Spec.IngressClassName != "" {
 		var pcIC networkingv1.IngressClass
 		if err := r.Get(ctx, client.ObjectKey{Name: pc.Spec.IngressClassName}, &pcIC); err != nil {
-			return ReasonError{
+			return types.ReasonError{
 				Reason:  string(apiv2.ConditionReasonInvalidSpec),
 				Message: fmt.Sprintf("failed to get IngressClass %s for ApisixPluginConfig %s: %v", pc.Spec.IngressClassName, pcNN, err),
 			}
 		}
 		if !matchesController(pcIC.Spec.Controller) {
-			return ReasonError{
+			return types.ReasonError{
 				Reason:  string(apiv2.ConditionReasonInvalidSpec),
 				Message: fmt.Sprintf("ApisixPluginConfig %s references IngressClass %s with non-matching controller", pcNN, pc.Spec.IngressClassName),
 			}
@@ -271,7 +272,7 @@ func (r *ApisixRouteReconciler) validateSecrets(ctx context.Context, tc *provide
 		secretNN = utils.NamespacedName(&secret)
 	)
 	if err := r.Get(ctx, secretNN, &secret); err != nil {
-		return ReasonError{
+		return types.ReasonError{
 			Reason:  string(apiv2.ConditionReasonInvalidSpec),
 			Message: fmt.Sprintf("failed to get Secret: %s", secretNN),
 		}
@@ -282,18 +283,18 @@ func (r *ApisixRouteReconciler) validateSecrets(ctx context.Context, tc *provide
 }
 
 func (r *ApisixRouteReconciler) validateBackends(ctx context.Context, tc *provider.TranslateContext, in *apiv2.ApisixRoute, http apiv2.ApisixRouteHTTP) error {
-	var backends = make(map[types.NamespacedName]struct{})
+	var backends = make(map[k8stypes.NamespacedName]struct{})
 	for _, backend := range http.Backends {
 		var (
 			au        apiv2.ApisixUpstream
 			service   corev1.Service
-			serviceNN = types.NamespacedName{
+			serviceNN = k8stypes.NamespacedName{
 				Namespace: in.GetNamespace(),
 				Name:      backend.ServiceName,
 			}
 		)
 		if _, ok := backends[serviceNN]; ok {
-			return ReasonError{
+			return types.ReasonError{
 				Reason:  string(apiv2.ConditionReasonInvalidSpec),
 				Message: fmt.Sprintf("duplicate backend service: %s", serviceNN),
 			}
@@ -344,7 +345,7 @@ func (r *ApisixRouteReconciler) validateBackends(ctx context.Context, tc *provid
 				discoveryv1.LabelServiceName: service.Name,
 			},
 		); err != nil {
-			return ReasonError{
+			return types.ReasonError{
 				Reason:  string(apiv2.ConditionReasonInvalidSpec),
 				Message: fmt.Sprintf("failed to list endpoint slices: %v", err),
 			}
@@ -366,7 +367,7 @@ func (r *ApisixRouteReconciler) validateUpstreams(ctx context.Context, tc *provi
 		}
 		var (
 			ups   apiv2.ApisixUpstream
-			upsNN = types.NamespacedName{
+			upsNN = k8stypes.NamespacedName{
 				Namespace: ar.GetNamespace(),
 				Name:      upstream.Name,
 			}
@@ -384,7 +385,7 @@ func (r *ApisixRouteReconciler) validateUpstreams(ctx context.Context, tc *provi
 			if node.Type == apiv2.ExternalTypeService {
 				var (
 					service   corev1.Service
-					serviceNN = types.NamespacedName{Namespace: ups.GetNamespace(), Name: node.Name}
+					serviceNN = k8stypes.NamespacedName{Namespace: ups.GetNamespace(), Name: node.Name}
 				)
 				if err := r.Get(ctx, serviceNN, &service); err != nil {
 					r.Log.Error(err, "failed to get service in ApisixUpstream", "ApisixUpstream", upsNN, "Service", serviceNN)
@@ -400,7 +401,7 @@ func (r *ApisixRouteReconciler) validateUpstreams(ctx context.Context, tc *provi
 		if ups.Spec.TLSSecret != nil && ups.Spec.TLSSecret.Name != "" {
 			var (
 				secret   corev1.Secret
-				secretNN = types.NamespacedName{Namespace: cmp.Or(ups.Spec.TLSSecret.Namespace, ar.GetNamespace()), Name: ups.Spec.TLSSecret.Name}
+				secretNN = k8stypes.NamespacedName{Namespace: cmp.Or(ups.Spec.TLSSecret.Namespace, ar.GetNamespace()), Name: ups.Spec.TLSSecret.Name}
 			)
 			if err := r.Get(ctx, secretNN, &secret); err != nil {
 				r.Log.Error(err, "failed to get secret in ApisixUpstream", "ApisixUpstream", upsNN, "Secret", secretNN)
@@ -578,7 +579,7 @@ func (r *ApisixRouteReconciler) listApisixRoutesForPluginConfig(ctx context.Cont
 	return pkgutils.DedupComparable(requests)
 }
 
-func (r *ApisixRouteReconciler) getSubsetLabels(tctx *provider.TranslateContext, auNN types.NamespacedName, backend apiv2.ApisixRouteHTTPBackend) map[string]string {
+func (r *ApisixRouteReconciler) getSubsetLabels(tctx *provider.TranslateContext, auNN k8stypes.NamespacedName, backend apiv2.ApisixRouteHTTPBackend) map[string]string {
 	if backend.Subset == "" {
 		return nil
 	}
@@ -621,7 +622,7 @@ func (r *ApisixRouteReconciler) filterEndpointSliceByTargetPod(ctx context.Conte
 
 		var (
 			pod   corev1.Pod
-			podNN = types.NamespacedName{
+			podNN = k8stypes.NamespacedName{
 				Namespace: v.TargetRef.Namespace,
 				Name:      v.TargetRef.Name,
 			}

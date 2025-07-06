@@ -17,8 +17,19 @@
 
 package types
 
+import (
+	k8stypes "k8s.io/apimachinery/pkg/types"
+)
+
 type NamespacedNameKind struct {
 	Namespace string
 	Name      string
 	Kind      string
+}
+
+func (n *NamespacedNameKind) NamespacedName() k8stypes.NamespacedName {
+	return k8stypes.NamespacedName{
+		Namespace: n.Namespace,
+		Name:      n.Name,
+	}
 }

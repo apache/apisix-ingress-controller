@@ -156,7 +156,7 @@ func Run(ctx context.Context, logger logr.Logger) error {
 		return err
 	}
 
-	provider, err := adc.New(&adc.Options{
+	provider, err := adc.New(updater.Writer(), &adc.Options{
 		SyncTimeout:   config.ControllerConfig.ExecADCTimeout.Duration,
 		SyncPeriod:    config.ControllerConfig.ProviderConfig.SyncPeriod.Duration,
 		InitSyncDelay: config.ControllerConfig.ProviderConfig.InitSyncDelay.Duration,

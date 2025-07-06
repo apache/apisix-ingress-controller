@@ -31,7 +31,7 @@ import (
 	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -49,6 +49,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
@@ -186,7 +187,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	var backendRefErr error
 	if err := r.processHTTPRoute(tctx, hr); err != nil {
 		// When encountering a backend reference error, it should not affect the acceptance status
-		if IsSomeReasonError(err, gatewayv1.RouteReasonInvalidKind) {
+		if types.IsSomeReasonError(err, gatewayv1.RouteReasonInvalidKind) {
 			backendRefErr = err
 		} else {
 			acceptStatus.status = false
@@ -340,10 +341,10 @@ func (r *HTTPRouteReconciler) listHTTPRoutesForBackendTrafficPolicy(ctx context.
 		}
 		httprouteList = append(httprouteList, hrList.Items...)
 	}
-	var namespacedNameMap = make(map[types.NamespacedName]struct{})
+	var namespacedNameMap = make(map[k8stypes.NamespacedName]struct{})
 	requests := make([]reconcile.Request, 0, len(httprouteList))
 	for _, hr := range httprouteList {
-		key := types.NamespacedName{
+		key := k8stypes.NamespacedName{
 			Namespace: hr.Namespace,
 			Name:      hr.Name,
 		}
@@ -391,12 +392,12 @@ func (r *HTTPRouteReconciler) listHTTPRouteByHTTPRoutePolicy(ctx context.Context
 		return nil
 	}
 
-	var keys = make(map[types.NamespacedName]struct{})
+	var keys = make(map[k8stypes.NamespacedName]struct{})
 	for _, ref := range httpRoutePolicy.Spec.TargetRefs {
 		if ref.Kind != "HTTPRoute" {
 			continue
 		}
-		key := types.NamespacedName{
+		key := k8stypes.NamespacedName{
 			Namespace: obj.GetNamespace(),
 			Name:      string(ref.Name),
 		}
@@ -441,10 +442,10 @@ func (r *HTTPRouteReconciler) listHTTPRouteForGenericEvent(ctx context.Context, 
 	}
 }
 
-func (r *HTTPRouteReconciler) processHTTPRouteBackendRefs(tctx *provider.TranslateContext, hrNN types.NamespacedName) error {
+func (r *HTTPRouteReconciler) processHTTPRouteBackendRefs(tctx *provider.TranslateContext, hrNN k8stypes.NamespacedName) error {
 	var terr error
 	for _, backend := range tctx.BackendRefs {
-		targetNN := types.NamespacedName{
+		targetNN := k8stypes.NamespacedName{
 			Namespace: hrNN.Namespace,
 			Name:      string(backend.Name),
 		}
@@ -453,7 +454,7 @@ func (r *HTTPRouteReconciler) processHTTPRouteBackendRefs(tctx *provider.Transla
 		}
 
 		if backend.Kind != nil && *backend.Kind != "Service" {
-			terr = newInvalidKindError(*backend.Kind)
+			terr = types.NewInvalidKindError(*backend.Kind)
 			continue
 		}
 
@@ -466,7 +467,7 @@ func (r *HTTPRouteReconciler) processHTTPRouteBackendRefs(tctx *provider.Transla
 		if err := r.Get(tctx, targetNN, &service); err != nil {
 			terr = err
 			if client.IgnoreNotFound(err) == nil {
-				terr = ReasonError{
+				terr = types.ReasonError{
 					Reason:  string(gatewayv1.RouteReasonBackendNotFound),
 					Message: fmt.Sprintf("Service %s not found", targetNN),
 				}
@@ -490,7 +491,7 @@ func (r *HTTPRouteReconciler) processHTTPRouteBackendRefs(tctx *provider.Transla
 					Namespace: (*gatewayv1.Namespace)(&targetNN.Namespace),
 				},
 			); !permitted {
-				terr = ReasonError{
+				terr = types.ReasonError{
 					Reason:  string(v1beta1.RouteReasonRefNotPermitted),
 					Message: fmt.Sprintf("%s is in a different namespace than the HTTPRoute %s and no ReferenceGrant allowing reference is configured", targetNN, hrNN),
 				}
@@ -549,7 +550,7 @@ func (r *HTTPRouteReconciler) processHTTPRoute(tctx *provider.TranslateContext, 
 					terror = err
 					continue
 				}
-				tctx.PluginConfigs[types.NamespacedName{
+				tctx.PluginConfigs[k8stypes.NamespacedName{
 					Namespace: httpRoute.GetNamespace(),
 					Name:      string(filter.ExtensionRef.Name),
 				}] = pluginconfig
@@ -557,7 +558,7 @@ func (r *HTTPRouteReconciler) processHTTPRoute(tctx *provider.TranslateContext, 
 		}
 		for _, backend := range rule.BackendRefs {
 			if backend.Kind != nil && *backend.Kind != "Service" {
-				terror = newInvalidKindError(*backend.Kind)
+				terror = types.NewInvalidKindError(*backend.Kind)
 				continue
 			}
 			tctx.BackendRefs = append(tctx.BackendRefs, gatewayv1.BackendRef{
@@ -659,7 +660,7 @@ func (r *HTTPRouteReconciler) listHTTPRoutesForReferenceGrant(ctx context.Contex
 
 	var httpRouteList gatewayv1.HTTPRouteList
 	if err := r.List(ctx, &httpRouteList); err != nil {
-		r.Log.Error(err, "failed to list httproutes for reference ReferenceGrant", "ReferenceGrant", types.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()})
+		r.Log.Error(err, "failed to list httproutes for reference ReferenceGrant", "ReferenceGrant", k8stypes.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()})
 		return nil
 	}
 

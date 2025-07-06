@@ -250,6 +250,16 @@ func (s *APISIXDeployer) deployDataplane(opts *APISIXDeployOptions) *corev1.Serv
 	return svc
 }
 
+func (s *APISIXDeployer) ScaleDataplane(replicas int) {
+	s.deployDataplane(&APISIXDeployOptions{
+		Namespace:        s.namespace,
+		AdminKey:         s.opts.APISIXAdminAPIKey,
+		ServiceHTTPPort:  9080,
+		ServiceHTTPSPort: 9443,
+		Replicas:         ptr.To(replicas),
+	})
+}
+
 func (s *APISIXDeployer) DeployIngress() {
 	s.Framework.DeployIngress(framework.IngressDeployOpts{
 		ControllerName:     s.opts.ControllerName,

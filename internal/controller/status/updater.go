@@ -111,7 +111,8 @@ func (u *UpdateHandler) Start(ctx context.Context) error {
 			return nil
 		case update := <-u.updateChannel:
 			u.log.Info("received a status update", "namespace", update.NamespacedName.Namespace,
-				"name", update.NamespacedName.Name)
+				"name", update.NamespacedName.Name,
+				"resource", update.Resource.GetObjectKind().GroupVersionKind().String())
 
 			u.apply(ctx, update)
 		}

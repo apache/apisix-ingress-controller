@@ -18,12 +18,14 @@
 package adc
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/api7/gopkg/pkg/log"
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
+	"github.com/apache/apisix-ingress-controller/api/adc"
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/provider/adc/cache"
@@ -243,4 +245,90 @@ func (s *Store) GetResources(name string) (*adctypes.Resources, error) {
 		GlobalRules:    globalrule,
 		PluginMetadata: metadata,
 	}, nil
+}
+
+func (s *Store) ListGlobalRules(name string) ([]*adctypes.GlobalRuleItem, error) {
+	s.Lock()
+	defer s.Unlock()
+	targetCache, ok := s.cacheMap[name]
+	if !ok {
+		return nil, fmt.Errorf("cache not found for name: %s", name)
+	}
+	globalRules, err := targetCache.ListGlobalRules()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list global rules: %w", err)
+	}
+	return globalRules, nil
+}
+
+func (s *Store) GetResourceLabel(name, resourceType string, id string) (map[string]string, error) {
+	s.Lock()
+	defer s.Unlock()
+	targetCache, ok := s.cacheMap[name]
+	if !ok {
+		return nil, fmt.Errorf("cache not found for name: %s", name)
+	}
+	switch resourceType {
+	case "service":
+		service, err := targetCache.GetService(id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get service: %w", err)
+		}
+		return GetLabels(service), nil
+	case "route":
+		services, err := targetCache.ListServices()
+		if err != nil {
+			return nil, fmt.Errorf("failed to list services: %w", err)
+		}
+		for _, service := range services {
+			for _, route := range service.Routes {
+				if route.ID == id {
+					// Return labels from the service that contains the route
+					return GetLabels(route), nil
+				}
+			}
+		}
+		return nil, fmt.Errorf("route not found: %s", id)
+	case "ssl":
+		ssl, err := targetCache.GetSSL(id)
+		if err != nil {
+			return nil, err
+		}
+		if ssl != nil {
+			return GetLabels(ssl), nil
+		}
+	case "consumer":
+		consumer, err := targetCache.GetConsumer(id)
+		if err != nil {
+			return nil, err
+		}
+		if consumer != nil {
+			return GetLabels(consumer), nil
+		}
+	case "global_rule":
+		globalRule, err := targetCache.GetGlobalRule(id)
+		if err != nil {
+			return nil, err
+		}
+		if globalRule != nil {
+			return GetLabels(globalRule), nil
+		}
+	default:
+		return nil, fmt.Errorf("unknown resource type: %s", resourceType)
+	}
+	return nil, nil
+}
+
+func GetLabels(obj adc.Object) map[string]string {
+	return obj.GetLabels()
+}
+
+func (s *Store) GetPluginMetadata(name string) (adctypes.PluginMetadata, bool) {
+	s.Lock()
+	defer s.Unlock()
+	metadata, ok := s.pluginMetadataMap[name]
+	if !ok {
+		return adctypes.PluginMetadata{}, false
+	}
+	return metadata.DeepCopy(), true
 }
