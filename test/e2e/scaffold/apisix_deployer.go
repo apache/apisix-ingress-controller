@@ -122,6 +122,11 @@ func (s *APISIXDeployer) AfterEach() {
 		if output != "" {
 			_, _ = fmt.Fprintln(GinkgoWriter, output)
 		}
+		apisixoutput := s.GetDeploymentLogs("apisix")
+		if apisixoutput != "" {
+			_, _ = fmt.Fprintln(GinkgoWriter, apisixoutput)
+		}
+		return
 	}
 
 	// Delete all additional gateways
