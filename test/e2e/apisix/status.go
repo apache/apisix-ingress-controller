@@ -140,7 +140,7 @@ spec:
 			assertion(getRequest("/get")).Should(Equal(200), "should be able to access the route")
 		})
 
-		FIt("dataplane unavailable", func() {
+		It("dataplane unavailable", func() {
 			By("apply ApisixRoute")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, ar)
 
