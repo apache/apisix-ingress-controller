@@ -56,10 +56,10 @@ jobs:
       matrix:
         provider_type:
         - apisix-standalone
-        #- apisix
+        - apisix
         cases_subset:
         - apisix.apache.org
-        #- networking.k8s.io
+        - networking.k8s.io
       fail-fast: false
     runs-on: ubuntu-latest
     steps:
@@ -112,8 +112,3 @@ jobs:
           TEST_LABEL: ${{ matrix.cases_subset }}
         run: |
           make e2e-test
-
-      - name: Run debugger
-        if: ${{ failure() }}
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 60

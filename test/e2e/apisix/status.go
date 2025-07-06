@@ -55,7 +55,7 @@ var _ = Describe("Test ApisixRoute", Label("apisix.apache.org", "v2", "apisixrou
 		time.Sleep(5 * time.Second)
 	})
 
-	FContext("Test ApisixRoute Sync Status", func() {
+	Context("Test ApisixRoute Sync Status", func() {
 		const ar = `
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute

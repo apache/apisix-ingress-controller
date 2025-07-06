@@ -322,13 +322,3 @@ func (s *Store) GetResourceLabel(name, resourceType string, id string) (map[stri
 func GetLabels(obj adc.Object) map[string]string {
 	return obj.GetLabels()
 }
-
-func (s *Store) GetPluginMetadata(name string) (adctypes.PluginMetadata, bool) {
-	s.Lock()
-	defer s.Unlock()
-	metadata, ok := s.pluginMetadataMap[name]
-	if !ok {
-		return adctypes.PluginMetadata{}, false
-	}
-	return metadata.DeepCopy(), true
-}
