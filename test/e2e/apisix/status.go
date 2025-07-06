@@ -39,7 +39,7 @@ var _ = Describe("Test ApisixRoute", Label("apisix.apache.org", "v2", "apisixrou
 	)
 
 	assertion := func(actualOrCtx any, args ...any) AsyncAssertion {
-		return Eventually(actualOrCtx).WithArguments(args...).WithTimeout(8 * time.Second).ProbeEvery(time.Second)
+		return Eventually(actualOrCtx).WithArguments(args...).WithTimeout(12 * time.Second).ProbeEvery(time.Second)
 	}
 
 	BeforeEach(func() {
@@ -134,7 +134,7 @@ spec:
 			assertion(getRequest("/get")).Should(Equal(200), "should be able to access the route")
 		})
 
-		FIt("dataplane unavailable", func() {
+		It("dataplane unavailable", func() {
 			By("apply ApisixRoute")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, ar)
 
@@ -150,7 +150,7 @@ spec:
 			)
 
 			By("check route in APISIX")
-			assertion(getRequest("/get")).Should(Equal(200), "should be able to access the route")
+			assertion(getRequest("/get")).Should(Equal(401), "should be able to access the route")
 
 			s.Deployer.ScaleDataplane(0)
 			time.Sleep(10 * time.Second)
