@@ -21,3 +21,6 @@
 [submodule ".github/actions/markdown-link-check"]
 	path = .github/actions/markdown-link-check
 	url = https://github.com/gaurav-nelson/github-action-markdown-link-check.git
+[submodule ".github/actions/add-pr-comment"]
+	path = .github/actions/add-pr-comment
+	url = https://github.com/mshick/add-pr-comment.git

@@ -25,6 +25,7 @@ import (
 
 	"github.com/api7/gopkg/pkg/log"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -233,7 +234,7 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 		}
 		au, ok := tctx.Upstreams[upsNN]
 		if !ok {
-			log.Debugf("failed to retrieve ApisixUpstream from tctx, ApisixUpstream: %s", upsNN)
+			log.Debugw("failed to retrieve ApisixUpstream from tctx", zap.Any("ApisixUpstream", upsNN))
 			continue
 		}
 		upstream, err := t.translateApisixUpstream(tctx, au)

@@ -167,7 +167,7 @@ spec:
 			)
 
 			s.Deployer.ScaleDataplane(1)
-			time.Sleep(10 * time.Minute)
+			time.Sleep(10 * time.Second)
 
 			By("check ApisixRoute status after scaling up")
 			assertion(func() string {
