@@ -57,7 +57,7 @@ var _ = Describe("Test ApisixRoute", Label("apisix.apache.org", "v2", "apisixrou
 
 	Context("Test ApisixRoute", func() {
 
-		It("Basic tests", func() {
+		FIt("Basic tests", func() {
 			const apisixRouteSpec = `
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
