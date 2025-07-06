@@ -97,8 +97,10 @@ spec:
       enable: true
 `
 
-		getRequest := func(path string) int {
-			return s.NewAPISIXClient().GET(path).WithHost("httpbin").Expect().Raw().StatusCode
+		getRequest := func(path string) func() int {
+			return func() int {
+				return s.NewAPISIXClient().GET(path).WithHost("httpbin").Expect().Raw().StatusCode
+			}
 		}
 
 		It("unknown plugin", func() {
