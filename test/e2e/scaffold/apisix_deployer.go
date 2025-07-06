@@ -251,12 +251,8 @@ func (s *APISIXDeployer) deployDataplane(opts *APISIXDeployOptions) *corev1.Serv
 }
 
 func (s *APISIXDeployer) ScaleDataplane(replicas int) {
-	s.deployDataplane(&APISIXDeployOptions{
-		Namespace:        s.namespace,
-		AdminKey:         s.opts.APISIXAdminAPIKey,
-		ServiceHTTPPort:  9080,
-		ServiceHTTPSPort: 9443,
-		Replicas:         ptr.To(replicas),
+	s.DeployDataplane(DeployDataplaneOptions{
+		Replicas: ptr.To(replicas),
 	})
 }
 
