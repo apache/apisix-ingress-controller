@@ -77,6 +77,15 @@ const (
 	PassHostRewrite = "rewrite"
 )
 
+const (
+	TypeRoute          = "route"
+	TypeService        = "service"
+	TypeConsumer       = "consumer"
+	TypeSSL            = "ssl"
+	TypeGlobalRule     = "global_rule"
+	TypePluginMetadata = "plugin_metadata"
+)
+
 type Object interface {
 	GetLabels() map[string]string
 }

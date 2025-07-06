@@ -25,7 +25,6 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
-	"github.com/apache/apisix-ingress-controller/api/adc"
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/provider/adc/cache"
@@ -65,7 +64,7 @@ func (s *Store) Insert(name string, resourceTypes []string, resources adctypes.R
 	}
 	for _, resourceType := range resourceTypes {
 		switch resourceType {
-		case "service":
+		case adctypes.TypeService:
 			services, err := targetCache.ListServices(selector)
 			if err != nil {
 				return err
@@ -80,7 +79,7 @@ func (s *Store) Insert(name string, resourceTypes []string, resources adctypes.R
 					return err
 				}
 			}
-		case "consumer":
+		case adctypes.TypeConsumer:
 			consumers, err := targetCache.ListConsumers(selector)
 			if err != nil {
 				return err
@@ -95,7 +94,7 @@ func (s *Store) Insert(name string, resourceTypes []string, resources adctypes.R
 					return err
 				}
 			}
-		case "ssl":
+		case adctypes.TypeSSL:
 			ssls, err := targetCache.ListSSL(selector)
 			if err != nil {
 				return err
@@ -111,7 +110,7 @@ func (s *Store) Insert(name string, resourceTypes []string, resources adctypes.R
 					return err
 				}
 			}
-		case "global_rule":
+		case adctypes.TypeGlobalRule:
 			// List existing global rules that match the selector
 			globalRules, err := targetCache.ListGlobalRules(selector)
 			if err != nil {
@@ -138,7 +137,7 @@ func (s *Store) Insert(name string, resourceTypes []string, resources adctypes.R
 					return err
 				}
 			}
-		case "plugin_metadata":
+		case adctypes.TypePluginMetadata:
 			s.pluginMetadataMap[name] = resources.PluginMetadata
 		default:
 			continue
@@ -161,7 +160,7 @@ func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]st
 	}
 	for _, resourceType := range resourceTypes {
 		switch resourceType {
-		case "service":
+		case adctypes.TypeService:
 			services, err := targetCache.ListServices(selector)
 			if err != nil {
 				log.Errorw("failed to list services", zap.Error(err))
@@ -171,7 +170,7 @@ func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]st
 					log.Errorw("failed to delete service", zap.Error(err), zap.String("service", service.ID))
 				}
 			}
-		case "ssl":
+		case adctypes.TypeSSL:
 			ssls, err := targetCache.ListSSL(selector)
 			if err != nil {
 				log.Errorw("failed to list ssl", zap.Error(err))
@@ -181,7 +180,7 @@ func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]st
 					log.Errorw("failed to delete ssl", zap.Error(err), zap.String("ssl", ssl.ID))
 				}
 			}
-		case "consumer":
+		case adctypes.TypeConsumer:
 			consumers, err := targetCache.ListConsumers(selector)
 			if err != nil {
 				log.Errorw("failed to list consumers", zap.Error(err))
@@ -191,7 +190,7 @@ func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]st
 					log.Errorw("failed to delete consumer", zap.Error(err), zap.String("consumer", consumer.Username))
 				}
 			}
-		case "global_rule":
+		case adctypes.TypeGlobalRule:
 			globalRules, err := targetCache.ListGlobalRules(selector)
 			if err != nil {
 				log.Errorw("failed to list global rules", zap.Error(err))
@@ -201,7 +200,7 @@ func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]st
 					log.Errorw("failed to delete global rule", zap.Error(err), zap.String("global rule", globalRule.ID))
 				}
 			}
-		case "plugin_metadata":
+		case adctypes.TypePluginMetadata:
 			delete(s.pluginMetadataMap, name)
 		}
 	}
@@ -319,6 +318,6 @@ func (s *Store) GetResourceLabel(name, resourceType string, id string) (map[stri
 	return nil, nil
 }
 
-func GetLabels(obj adc.Object) map[string]string {
+func GetLabels(obj adctypes.Object) map[string]string {
 	return obj.GetLabels()
 }

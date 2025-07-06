@@ -23,8 +23,9 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/apache/apisix-ingress-controller/api/adc"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+
+	"github.com/apache/apisix-ingress-controller/api/adc"
 )
 
 type ReasonError struct {
@@ -62,7 +63,7 @@ type ADCExecutionErrors struct {
 }
 
 func (e ADCExecutionErrors) Error() string {
-	var messages []string
+	messages := make([]string, 0, len(e.Errors))
 	for _, err := range e.Errors {
 		messages = append(messages, err.Error())
 	}
@@ -75,7 +76,7 @@ type ADCExecutionError struct {
 }
 
 func (e ADCExecutionError) Error() string {
-	var messages []string
+	messages := make([]string, 0, len(e.FailedErrors))
 	for _, failed := range e.FailedErrors {
 		messages = append(messages, failed.Error())
 	}

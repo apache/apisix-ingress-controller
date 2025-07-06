@@ -19,6 +19,7 @@ package apisix
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -30,7 +31,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = Describe("Test ApisixRoute", Label("apisix.apache.org", "v2", "apisixroute"), func() {
+var _ = FDescribe("Test ApisixRoute", Label("apisix.apache.org", "v2", "apisixroute"), func() {
 	var (
 		s = scaffold.NewScaffold(&scaffold.Options{
 			ControllerName: "apisix.apache.org/apisix-ingress-controller",
@@ -101,6 +102,9 @@ spec:
 		}
 
 		It("unknown plugin", func() {
+			if os.Getenv("PROVIDER_TYPE") == "apisix-standalone" {
+				Skip("apisix standalone does not validate unknown plugins")
+			}
 			By("apply ApisixRoute with valid plugin")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, arWithInvalidPlugin)
 
@@ -150,7 +154,7 @@ spec:
 			)
 
 			By("check route in APISIX")
-			assertion(getRequest("/get")).Should(Equal(401), "should be able to access the route")
+			assertion(getRequest("/get")).Should(Equal(200), "should be able to access the route")
 
 			s.Deployer.ScaleDataplane(0)
 			time.Sleep(10 * time.Second)

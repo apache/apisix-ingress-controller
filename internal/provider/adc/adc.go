@@ -451,7 +451,7 @@ func (d *adcClient) resolveADCExecutionErrors(statusesMap map[string]types.ADCEx
 		for _, execErr := range execErrors.Errors {
 			for _, failedStatus := range execErr.FailedErrors {
 				if len(failedStatus.FailedStatuses) == 0 {
-					resouce, err := d.store.GetResources(execErr.Name) // ensure the config exists in store
+					resource, err := d.store.GetResources(execErr.Name)
 					if err != nil {
 						log.Errorw("failed to get resources from store", zap.String("configName", configName), zap.Error(err))
 						continue
@@ -470,15 +470,15 @@ func (d *adcClient) resolveADCExecutionErrors(statusesMap map[string]types.ADCEx
 							statusUpdateMap[statusKey] = []string{failedStatus.Error()}
 						}
 					}
-					for _, service := range resouce.Services {
+					for _, service := range resource.Services {
 						fillStatusUpdateMapFunc(service)
 					}
 
-					for _, consumer := range resouce.Consumers {
+					for _, consumer := range resource.Consumers {
 						fillStatusUpdateMapFunc(consumer)
 					}
 
-					for _, ssl := range resouce.SSLs {
+					for _, ssl := range resource.SSLs {
 						fillStatusUpdateMapFunc(ssl)
 					}
 
