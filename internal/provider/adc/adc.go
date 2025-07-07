@@ -30,7 +30,6 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
@@ -39,7 +38,6 @@ import (
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
-	cutils "github.com/apache/apisix-ingress-controller/internal/controller/utils"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/provider/adc/translator"
 	"github.com/apache/apisix-ingress-controller/internal/types"
@@ -351,7 +349,7 @@ func (d *adcClient) Sync(ctx context.Context) error {
 			}
 		}
 	}
-	d.handlerADCExecutionErrors(failedMap)
+	d.handleADCExecutionErrors(failedMap)
 	if len(failedConfigs) > 0 {
 		return fmt.Errorf("failed to sync %d configs: %s",
 			len(failedConfigs),
@@ -416,149 +414,7 @@ func prepareSyncFile(resources any) (string, func(), error) {
 	return tmpFile.Name(), cleanup, nil
 }
 
-func (d *adcClient) handlerADCExecutionErrors(statusesMap map[string]types.ADCExecutionErrors) {
+func (d *adcClient) handleADCExecutionErrors(statusesMap map[string]types.ADCExecutionErrors) {
 	statusUpdateMap := d.resolveADCExecutionErrors(statusesMap)
-	d.handlerStatusUpdate(statusUpdateMap)
-}
-
-func (d *adcClient) handlerStatusUpdate(statusUpdateMap map[types.NamespacedNameKind][]string) {
-	for nnk, msgs := range statusUpdateMap {
-		d.updateStatus(nnk, cutils.NewConditionTypeAccepted(
-			apiv2.ConditionReasonSyncFailed,
-			false,
-			0,
-			strings.Join(msgs, "; "),
-		))
-	}
-
-	for nnk := range d.statusUpdateMap {
-		if _, ok := statusUpdateMap[nnk]; !ok {
-			d.updateStatus(nnk, cutils.NewConditionTypeAccepted(
-				apiv2.ConditionReasonAccepted,
-				true,
-				0,
-				"",
-			))
-		}
-	}
-	d.statusUpdateMap = statusUpdateMap
-}
-
-func (d *adcClient) resolveADCExecutionErrors(statusesMap map[string]types.ADCExecutionErrors) map[types.NamespacedNameKind][]string {
-	statusUpdateMap := map[types.NamespacedNameKind][]string{}
-	for configName, execErrors := range statusesMap {
-		log.Warnw("sync failed", zap.String("configName", configName), zap.Any("statuses", execErrors))
-		for _, execErr := range execErrors.Errors {
-			for _, failedStatus := range execErr.FailedErrors {
-				if len(failedStatus.FailedStatuses) == 0 {
-					resource, err := d.store.GetResources(execErr.Name)
-					if err != nil {
-						log.Errorw("failed to get resources from store", zap.String("configName", configName), zap.Error(err))
-						continue
-					}
-
-					fillStatusUpdateMapFunc := func(obj adctypes.Object) {
-						labels := obj.GetLabels()
-						statusKey := types.NamespacedNameKind{
-							Name:      labels[label.LabelName],
-							Namespace: labels[label.LabelNamespace],
-							Kind:      labels[label.LabelKind],
-						}
-						if msgs, ok := statusUpdateMap[statusKey]; ok {
-							statusUpdateMap[statusKey] = append(msgs, failedStatus.Error())
-						} else {
-							statusUpdateMap[statusKey] = []string{failedStatus.Error()}
-						}
-					}
-					for _, service := range resource.Services {
-						fillStatusUpdateMapFunc(service)
-					}
-
-					for _, consumer := range resource.Consumers {
-						fillStatusUpdateMapFunc(consumer)
-					}
-
-					for _, ssl := range resource.SSLs {
-						fillStatusUpdateMapFunc(ssl)
-					}
-
-					globalRuleItems, err := d.store.ListGlobalRules(configName)
-					if err != nil {
-						log.Errorw("failed to list global rules", zap.String("configName", configName), zap.Error(err))
-					}
-					for _, globalRule := range globalRuleItems {
-						fillStatusUpdateMapFunc(globalRule)
-					}
-					continue
-				}
-
-				for _, status := range failedStatus.FailedStatuses {
-					id := status.Event.ResourceID
-					labels, err := d.store.GetResourceLabel(configName, status.Event.ResourceType, id)
-					if err != nil {
-						log.Errorw("failed to get resource label", zap.String("configName", configName), zap.String("resourceType", status.Event.ResourceType), zap.String("id", id), zap.Error(err))
-						continue
-					}
-					statusKey := types.NamespacedNameKind{
-						Name:      labels[label.LabelName],
-						Namespace: labels[label.LabelNamespace],
-						Kind:      labels[label.LabelKind],
-					}
-					msg := fmt.Sprintf("ServerAddr: %s, Error: %s",
-						failedStatus.ServerAddr, status.Reason)
-					if msgs, ok := statusUpdateMap[statusKey]; ok {
-						statusUpdateMap[statusKey] = append(msgs, msg)
-					} else {
-						statusUpdateMap[statusKey] = []string{msg}
-					}
-				}
-			}
-		}
-	}
-	return statusUpdateMap
-}
-
-func (d *adcClient) updateStatus(nnk types.NamespacedNameKind, condition metav1.Condition) {
-	switch nnk.Kind {
-	case types.KindApisixRoute:
-		d.updater.Update(status.Update{
-			NamespacedName: nnk.NamespacedName(),
-			Resource:       &apiv2.ApisixRoute{},
-			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
-				cp := obj.(*apiv2.ApisixRoute).DeepCopy()
-				cutils.SetApisixCRDConditionWithGeneration(&cp.Status, cp.GetGeneration(), condition)
-				return cp
-			}),
-		})
-	case types.KindApisixGlobalRule:
-		d.updater.Update(status.Update{
-			NamespacedName: nnk.NamespacedName(),
-			Resource:       &apiv2.ApisixGlobalRule{},
-			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
-				cp := obj.(*apiv2.ApisixGlobalRule).DeepCopy()
-				cutils.SetApisixCRDConditionWithGeneration(&cp.Status, cp.GetGeneration(), condition)
-				return cp
-			}),
-		})
-	case types.KindApisixTls:
-		d.updater.Update(status.Update{
-			NamespacedName: nnk.NamespacedName(),
-			Resource:       &apiv2.ApisixTls{},
-			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
-				cp := obj.(*apiv2.ApisixTls).DeepCopy()
-				cutils.SetApisixCRDConditionWithGeneration(&cp.Status, cp.GetGeneration(), condition)
-				return cp
-			}),
-		})
-	case types.KindApisixConsumer:
-		d.updater.Update(status.Update{
-			NamespacedName: nnk.NamespacedName(),
-			Resource:       &apiv2.ApisixConsumer{},
-			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
-				cp := obj.(*apiv2.ApisixConsumer).DeepCopy()
-				cutils.SetApisixCRDConditionWithGeneration(&cp.Status, cp.GetGeneration(), condition)
-				return cp
-			}),
-		})
-	}
+	d.handleStatusUpdate(statusUpdateMap)
 }

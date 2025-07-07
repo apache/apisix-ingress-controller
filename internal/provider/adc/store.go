@@ -268,13 +268,13 @@ func (s *Store) GetResourceLabel(name, resourceType string, id string) (map[stri
 		return nil, fmt.Errorf("cache not found for name: %s", name)
 	}
 	switch resourceType {
-	case "service":
+	case adctypes.TypeService:
 		service, err := targetCache.GetService(id)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get service: %w", err)
 		}
-		return GetLabels(service), nil
-	case "route":
+		return service.Labels, nil
+	case adctypes.TypeRoute:
 		services, err := targetCache.ListServices()
 		if err != nil {
 			return nil, fmt.Errorf("failed to list services: %w", err)
@@ -283,41 +283,37 @@ func (s *Store) GetResourceLabel(name, resourceType string, id string) (map[stri
 			for _, route := range service.Routes {
 				if route.ID == id {
 					// Return labels from the service that contains the route
-					return GetLabels(route), nil
+					return route.GetLabels(), nil
 				}
 			}
 		}
 		return nil, fmt.Errorf("route not found: %s", id)
-	case "ssl":
+	case adctypes.TypeSSL:
 		ssl, err := targetCache.GetSSL(id)
 		if err != nil {
 			return nil, err
 		}
 		if ssl != nil {
-			return GetLabels(ssl), nil
+			return ssl.GetLabels(), nil
 		}
-	case "consumer":
+	case adctypes.TypeConsumer:
 		consumer, err := targetCache.GetConsumer(id)
 		if err != nil {
 			return nil, err
 		}
 		if consumer != nil {
-			return GetLabels(consumer), nil
+			return consumer.Labels, nil
 		}
-	case "global_rule":
+	case adctypes.TypeGlobalRule:
 		globalRule, err := targetCache.GetGlobalRule(id)
 		if err != nil {
 			return nil, err
 		}
 		if globalRule != nil {
-			return GetLabels(globalRule), nil
+			return globalRule.GetLabels(), nil
 		}
 	default:
 		return nil, fmt.Errorf("unknown resource type: %s", resourceType)
 	}
 	return nil, nil
-}
-
-func GetLabels(obj adctypes.Object) map[string]string {
-	return obj.GetLabels()
 }

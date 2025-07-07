@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package controller
+package utils
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -54,4 +54,18 @@ func NewConditionTypeAccepted(reason apiv2.ApisixRouteConditionReason, status bo
 		Message:            msg,
 	}
 	return condition
+}
+
+func MergeCondition(conditions []metav1.Condition, newCondition metav1.Condition) []metav1.Condition {
+	if newCondition.LastTransitionTime.IsZero() {
+		newCondition.LastTransitionTime = metav1.Now()
+	}
+	newConditions := []metav1.Condition{}
+	for _, condition := range conditions {
+		if condition.Type != newCondition.Type {
+			newConditions = append(newConditions, condition)
+		}
+	}
+	newConditions = append(newConditions, newCondition)
+	return newConditions
 }
