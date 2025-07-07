@@ -327,6 +327,7 @@ data:
     controller_name: {{ .ControllerName | default "apisix.apache.org/apisix-ingress-controller" }}
 
     leader_election_id: "apisix-ingress-controller-leader"
+
     provider:
       type: {{ .ProviderType | default "apisix" }}
       sync_period: {{ .ProviderSyncPeriod | default "0s" }}

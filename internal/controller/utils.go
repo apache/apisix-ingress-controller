@@ -287,7 +287,7 @@ func SetRouteConditionResolvedRefs(routeParentStatus *gatewayv1.RouteParentStatu
 		condition.Status = metav1.ConditionFalse
 		condition.Message = err.Error()
 
-		var re ReasonError
+		var re types.ReasonError
 		if errors.As(err, &re) {
 			condition.Reason = re.Reason
 		}
@@ -439,7 +439,7 @@ func SetApisixCRDConditionAccepted(status *apiv2.ApisixStatus, generation int64,
 		condition.Reason = string(apiv2.ConditionReasonInvalidSpec)
 		condition.Message = err.Error()
 
-		var re ReasonError
+		var re types.ReasonError
 		if errors.As(err, &re) {
 			condition.Reason = re.Reason
 		}
@@ -982,36 +982,6 @@ func FullTypeName(a any) string {
 		pkgPath = typeOf.Elem().PkgPath()
 	}
 	return path.Join(path.Dir(pkgPath), name)
-}
-
-type ReasonError struct {
-	Reason  string
-	Message string
-}
-
-func (e ReasonError) Error() string {
-	return e.Message
-}
-
-func IsSomeReasonError[Reason ~string](err error, reasons ...Reason) bool {
-	if err == nil {
-		return false
-	}
-	var re ReasonError
-	if !errors.As(err, &re) {
-		return false
-	}
-	if len(reasons) == 0 {
-		return true
-	}
-	return slices.Contains(reasons, Reason(re.Reason))
-}
-
-func newInvalidKindError[Kind ~string](kind Kind) ReasonError {
-	return ReasonError{
-		Reason:  string(gatewayv1.RouteReasonInvalidKind),
-		Message: fmt.Sprintf("Invalid kind %s, only Service is supported", kind),
-	}
 }
 
 // filterHostnames accepts a list of gateways and an HTTPRoute, and returns a copy of the HTTPRoute with only the hostnames that match the listener hostnames of the gateways.

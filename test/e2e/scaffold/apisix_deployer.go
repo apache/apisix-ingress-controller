@@ -250,6 +250,12 @@ func (s *APISIXDeployer) deployDataplane(opts *APISIXDeployOptions) *corev1.Serv
 	return svc
 }
 
+func (s *APISIXDeployer) ScaleDataplane(replicas int) {
+	s.DeployDataplane(DeployDataplaneOptions{
+		Replicas: ptr.To(replicas),
+	})
+}
+
 func (s *APISIXDeployer) DeployIngress() {
 	s.Framework.DeployIngress(framework.IngressDeployOpts{
 		ControllerName:     s.opts.ControllerName,

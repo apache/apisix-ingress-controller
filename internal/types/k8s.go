@@ -15,33 +15,23 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package scaffold
+package types
 
-import (
-	corev1 "k8s.io/api/core/v1"
+const DefaultIngressClassAnnotation = "ingressclass.kubernetes.io/is-default-class"
+
+const (
+	KindGateway            = "Gateway"
+	KindHTTPRoute          = "HTTPRoute"
+	KindGatewayClass       = "GatewayClass"
+	KindIngress            = "Ingress"
+	KindIngressClass       = "IngressClass"
+	KindGatewayProxy       = "GatewayProxy"
+	KindSecret             = "Secret"
+	KindService            = "Service"
+	KindApisixRoute        = "ApisixRoute"
+	KindApisixGlobalRule   = "ApisixGlobalRule"
+	KindApisixPluginConfig = "ApisixPluginConfig"
+	KindPod                = "Pod"
+	KindApisixTls          = "ApisixTls"
+	KindApisixConsumer     = "ApisixConsumer"
 )
-
-// Deployer defines the interface for deploying data plane components
-type Deployer interface {
-	DeployDataplane(opts DeployDataplaneOptions)
-	DeployIngress()
-	ScaleIngress(replicas int)
-	ScaleDataplane(replicas int)
-	BeforeEach()
-	AfterEach()
-	CreateAdditionalGateway(namePrefix string) (string, *corev1.Service, error)
-	CleanupAdditionalGateway(identifier string) error
-	GetAdminEndpoint(...*corev1.Service) string
-	DefaultDataplaneResource() DataplaneResource
-}
-
-var NewDeployer func(*Scaffold) Deployer
-
-type DeployDataplaneOptions struct {
-	Namespace         string
-	ServiceType       string
-	SkipCreateTunnels bool
-	ServiceHTTPPort   int
-	ServiceHTTPSPort  int
-	Replicas          *int
-}
