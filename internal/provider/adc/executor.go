@@ -100,7 +100,7 @@ func (e *DefaultADCExecutor) runForSingleServer(ctx context.Context, serverAddr,
 
 	log.Debugw("running adc command",
 		zap.String("command", strings.Join(cmd.Args, " ")),
-		zap.Strings("env", env),
+		zap.Strings("env", filterSensitiveEnv(env)),
 	)
 
 	if err := cmd.Run(); err != nil {
@@ -136,6 +136,19 @@ func (e *DefaultADCExecutor) prepareEnv(serverAddr, mode, token string) []string
 		"ADC_SERVER=" + serverAddr,
 		"ADC_TOKEN=" + token,
 	}
+}
+
+// filterSensitiveEnv filters out sensitive information from environment variables for logging
+func filterSensitiveEnv(env []string) []string {
+	filtered := make([]string, 0, len(env))
+	for _, envVar := range env {
+		if strings.Contains(envVar, "ADC_TOKEN=") {
+			filtered = append(filtered, "ADC_TOKEN=***")
+		} else {
+			filtered = append(filtered, envVar)
+		}
+	}
+	return filtered
 }
 
 func (e *DefaultADCExecutor) buildCmdError(runErr error, stdout, stderr []byte) error {
