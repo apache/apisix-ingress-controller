@@ -19,6 +19,7 @@
 
 # Table of Contents
 
+- [2.0.0-rc2](#200-rc2)
 - [2.0.0-rc1](#200-rc1)
 - [1.8.0](#180)
 - [1.7.0](#170)
@@ -39,6 +40,75 @@
 - [0.3.0](#030)
 - [0.2.0](#020)
 - [0.1.0](#010)
+
+# 2.0.0-rc2
+
+apisix-ingress-controller 2.0.0-rc2
+
+Welcome to the 2.0.0-rc2 release of apisix-ingress-controller!
+
+This is a Patch version release.
+
+## Highlights
+
+### Features
+
+* feat: support gatewayproxy controller to discovery of dataplane endpoints [#2444](https://github.com/apache/apisix-ingress-controller/pull/2444)
+* feat: add synchronization status to CRD [#2460](https://github.com/apache/apisix-ingress-controller/pull/2460)
+
+### Bugfix
+
+* fix: should not contain plaintext token in log message [#2462](https://github.com/apache/apisix-ingress-controller/pull/2462)
+* fix: add more event filter across controllers [#2449](https://github.com/apache/apisix-ingress-controller/pull/2449)
+* fix: a failing endpoint shouldn't affect others [#2452](https://github.com/apache/apisix-ingress-controller/pull/2452)
+* fix: Add provider endpoints to translate context [#2442](https://github.com/apache/apisix-ingress-controller/pull/2442)
+* fix: config not provided should not be retried [#2454](https://github.com/apache/apisix-ingress-controller/pull/2454)
+* fix: apisixroute backend service reference to apisixupstream [#2453](https://github.com/apache/apisix-ingress-controller/pull/2453)
+* fix: adc backend server on different mode [#2455](https://github.com/apache/apisix-ingress-controller/pull/2455)
+* fix: support filter endpoint when translate backend ref [#2451](https://github.com/apache/apisix-ingress-controller/pull/2451)
+* fix: reduce the complexity of calculating route priority [#2459](https://github.com/apache/apisix-ingress-controller/pull/2459)
+
+Please try out the release binaries and report any issues at
+https://github.com/apache/apisix-ingress-controller/issues.
+
+### Contributors
+
+* AlinsRan
+* Ashing Zheng
+* 悟空
+
+### Changes
+<details><summary>20 commits</summary>
+<p>
+
+  * [`6c5847c`](https://github.com/apache/apisix-ingress-controller/commit/6c5847c05d35c75ac691e587838061dc74089295) fix: should not contain plaintext token in log message. (#2462)
+  * [`cdc6b38`](https://github.com/apache/apisix-ingress-controller/commit/cdc6b38615a41570bd1a13feff453155a5dc90c5) chore: unified logger print (#2456)
+  * [`9d7e018`](https://github.com/apache/apisix-ingress-controller/commit/9d7e01831f5b1b1e97bdaa522ff8a5161ba19290) feat: add synchronization status to CRD (#2460)
+  * [`df2362b`](https://github.com/apache/apisix-ingress-controller/commit/df2362b0c535fe1455cf09f3216dd92bd7a2ac21) doc: add getting-started doc (#2450)
+  * [`d317e5e`](https://github.com/apache/apisix-ingress-controller/commit/d317e5e29ef24eca7cde6c4c73f2fb0138887f31) fix: reduce the complexity of calculating route priority (#2459)
+  * [`3a017c7`](https://github.com/apache/apisix-ingress-controller/commit/3a017c79c9848a9e9e7060fc325b605df7aad05f) fix: adc backend server on different mode (#2455)
+  * [`43bbe76`](https://github.com/apache/apisix-ingress-controller/commit/43bbe76801dd0b1243221277b91fc713bac1d157) fix: apisixroute backend service reference to apisixupstream (#2453)
+  * [`4f22fb6`](https://github.com/apache/apisix-ingress-controller/commit/4f22fb6a4cf195a77cfd488603bf2929d3f24f44) fix: config not provided should not be retried (#2454)
+  * [`bce4c69`](https://github.com/apache/apisix-ingress-controller/commit/bce4c6963c54d4c97ad3eef6f09d2d85e475dbce) fix: a failing endpoint shouldn't affect others (#2452)
+  * [`d8be46e`](https://github.com/apache/apisix-ingress-controller/commit/d8be46e71934beec746356e105f1fad2e5a3a580) fix: support filter endpoint when translate backend ref. (#2451)
+  * [`18f03ea`](https://github.com/apache/apisix-ingress-controller/commit/18f03ea661205b2da69170d8a40470fe791a67c9) fix: add more event filter across controllers (#2449)
+  * [`dc03c31`](https://github.com/apache/apisix-ingress-controller/commit/dc03c314bff2bfeec1d10ecb1923ea48c4ae5a01) chore: Update artifact and report names with provider type (#2447)
+  * [`634bc52`](https://github.com/apache/apisix-ingress-controller/commit/634bc5224c059c2958038f9a49530d65f779d029) feat(ci): support build dev image (#2448)
+  * [`6352263`](https://github.com/apache/apisix-ingress-controller/commit/635226396969b939e91bd3a05f5825252c1a5686) feat: gatewayproxy controller (#2444)
+  * [`40a2d2c`](https://github.com/apache/apisix-ingress-controller/commit/40a2d2c72398168ac0d863e9f2f9539cb265b3d7) doc: add config.json (#2446)
+  * [`5d20cec`](https://github.com/apache/apisix-ingress-controller/commit/5d20cec8d329a039edc0ecc93ea0cdfe4ac7d80b) docs: add install and developer-guide doc (#2439)
+  * [`66e87fc`](https://github.com/apache/apisix-ingress-controller/commit/66e87fcfcfac422457661959d71f97a8f783f2a9) docs: remove unless commit in changelog 200-rc1 (#2441)
+  * [`fdcc436`](https://github.com/apache/apisix-ingress-controller/commit/fdcc4360f0fc51852f4dc0df22fca171416eb381) chore: move generate-crd to assets (#2445)
+  * [`dfc76d6`](https://github.com/apache/apisix-ingress-controller/commit/dfc76d6fc8a83c24e327026e8abb0d125fbe15fb) fix: Add provider endpoints to translate context (#2442)
+  * [`409a474`](https://github.com/apache/apisix-ingress-controller/commit/409a474ffec94d7db3f2b5187d42124b205fce40) chore: move doc to en/latest directory (#2443)
+</p>
+</details>
+
+### Dependency Changes
+
+This release has no dependency changes
+
+Previous release can be found at [2.0.0-rc1](https://github.com/apache/apisix-ingress-controller/releases/tag/2.0.0-rc1)
 
 # 2.0.0-rc1
 
