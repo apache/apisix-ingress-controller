@@ -51,6 +51,20 @@ type adcConfig struct {
 	TlsVerify   bool
 }
 
+// MarshalJSON implements custom JSON marshaling for adcConfig
+// It excludes the Token field for security reasons
+func (c adcConfig) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Name        string   `json:"name"`
+		ServerAddrs []string `json:"serverAddrs"`
+		TlsVerify   bool     `json:"tlsVerify"`
+	}{
+		Name:        c.Name,
+		ServerAddrs: c.ServerAddrs,
+		TlsVerify:   c.TlsVerify,
+	})
+}
+
 type BackendMode string
 
 const (
