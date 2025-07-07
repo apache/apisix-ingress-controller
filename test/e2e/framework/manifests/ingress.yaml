@@ -328,8 +328,6 @@ data:
 
     leader_election_id: "apisix-ingress-controller-leader"
 
-    exec_adc_timeout: 3s                   # The timeout for the ADC to execute.
-
     provider:
       type: {{ .ProviderType | default "apisix" }}
       sync_period: {{ .ProviderSyncPeriod | default "0s" }}
