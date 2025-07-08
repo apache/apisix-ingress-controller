@@ -62,8 +62,9 @@ func NewAPISIXDeployer(s *Scaffold) *APISIXDeployer {
 func (s *APISIXDeployer) BeforeEach() {
 	s.namespace = fmt.Sprintf("ingress-apisix-e2e-tests-%s-%d", s.opts.Name, time.Now().Nanosecond())
 	s.kubectlOptions = &k8s.KubectlOptions{
-		ConfigPath: s.opts.Kubeconfig,
-		Namespace:  s.namespace,
+		ConfigPath:     s.opts.Kubeconfig,
+		Namespace:      s.namespace,
+		RequestTimeout: 15 * time.Second,
 	}
 	if s.opts.ControllerName == "" {
 		s.opts.ControllerName = fmt.Sprintf("%s/%d", DefaultControllerName, time.Now().Nanosecond())
