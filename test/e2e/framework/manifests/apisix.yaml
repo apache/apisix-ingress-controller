@@ -93,6 +93,13 @@ spec:
           volumeMounts:
             - name: config-writable
               mountPath: /usr/local/apisix/conf
+          readinessProbe:
+            failureThreshold: 6
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 9080
       volumes:
         - name: config-source
           configMap:
