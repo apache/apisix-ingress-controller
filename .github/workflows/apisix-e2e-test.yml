@@ -115,4 +115,4 @@ jobs:
           PROVIDER_TYPE: ${{ matrix.provider_type }}
           TEST_LABEL: ${{ matrix.cases_subset }}
         run: |
-          make ginkgo-e2e-test
+          make e2e-test
