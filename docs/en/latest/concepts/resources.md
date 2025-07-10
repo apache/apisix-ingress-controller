@@ -70,7 +70,7 @@ Enable additional features not included in the standard Kubernetes Gateway API, 
 
 ![Gateway API Extensions Overview](../../../assets/images/gateway-api-extensions-resources.png)
 
-## Ingress API Extensions
+### Ingress API Extensions
 
 APISIX Ingress Controller CRDs extend Kubernetes functionality to provide declarative configuration management for the Apache APISIX gateway, supporting advanced routing, traffic management, and security policies.
 
