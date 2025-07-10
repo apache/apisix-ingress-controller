@@ -1799,7 +1799,7 @@ spec:
 			}
 
 			By("verify both upstreams received requests")
-			Expect(len(upstreamHosts)).Should(Equal(2))
+			Expect(upstreamHosts).Should(HaveLen(2))
 
 			for host, count := range upstreamHosts {
 				Expect(count).Should(BeNumerically(">", 0), fmt.Sprintf("upstream %s should receive requests", host))
