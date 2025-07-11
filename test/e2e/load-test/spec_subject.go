@@ -54,6 +54,15 @@ var _ = Describe("Load Test", func() {
 	)
 
 	BeforeEach(func() {
+		By("config ingress controller ProviderSyncPeriod")
+		s.DeployIngress(framework.IngressDeployOpts{
+			ControllerName:     s.GetControllerName(),
+			ProviderType:       framework.ProviderType,
+			ProviderSyncPeriod: 1 * time.Second,
+			Namespace:          s.Namespace(),
+			Replicas:           1,
+		})
+
 		By("create GatewayProxy")
 		gatewayProxy := fmt.Sprintf(gatewayProxyYaml, framework.ProviderType, s.AdminKey())
 		err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
@@ -68,7 +77,7 @@ var _ = Describe("Load Test", func() {
 
 	Context("Load Test 2000 ApisixRoute", func() {
 		It("test 2000 ApisixRoute", func() {
-			const total = 1000
+			const total = 2000
 
 			const apisixRouteSpec = `
 apiVersion: apisix.apache.org/v2
@@ -81,7 +90,7 @@ spec:
   - name: rule0
     match:
       paths:
-      - /*
+      - /get
       exprs:
       - subject:
           scope: Header
@@ -97,7 +106,8 @@ spec:
 			var text = bytes.NewBuffer(nil)
 			for i := range total {
 				name := getRouteName(i)
-				text.WriteString(fmt.Sprintf(apisixRouteSpec, name, name))
+				_, err := fmt.Fprintf(text, apisixRouteSpec, name, name)
+				Expect(err).NotTo(HaveOccurred())
 				text.WriteString("\n---\n")
 			}
 
@@ -106,7 +116,6 @@ spec:
 
 			By("count time")
 			now := time.Now()
-			time.Sleep(30 * time.Second)
 
 			var c = make(chan int, total)
 			for i := range total {
@@ -122,10 +131,14 @@ spec:
 				i := <-c
 				name := getRouteName(i)
 				By(fmt.Sprintf("[%d/%d]try to verify %s", totalWorks, total, name))
-				if s.NewAPISIXClient().GET("/get").WithHeader("X-Route-Name", name).Expect().Raw().StatusCode == http.StatusOK {
+				statusCode := s.NewAPISIXClient().GET("/get").WithHeader("X-Route-Name", name).Expect().Raw().StatusCode
+				if statusCode == http.StatusOK {
 					totalWorks++
 					By(fmt.Sprintf("[%d/%d]%s works", totalWorks, total, name))
 					continue
+				}
+				if statusCode != http.StatusNotFound {
+					Fail("status code should be 404")
 				}
 				time.Sleep(100 * time.Millisecond)
 				c <- i
@@ -139,7 +152,7 @@ spec:
 			// 	task := func(name string) {
 			// 		defer w.Done()
 			// 		By(fmt.Sprintf("to check ApisixRoute %s works", name))
-			// 		err := wait.PollUntilContextTimeout(context.Background(), 3*time.Second, 10*time.Minute, true, func(ctx context.Context) (done bool, err error) {
+			// 		err := wait.PollUntilContextTimeout(context.Background(), 100*time.Millisecond, time.Minute, true, func(ctx context.Context) (done bool, err error) {
 			// 			resp := s.NewAPISIXClient().GET("/get").WithHeader("X-Route-Name", name).Expect().Raw()
 			// 			return resp.StatusCode == http.StatusOK, nil
 			// 		})
@@ -148,9 +161,41 @@ spec:
 			// 	}
 			// 	go task(name)
 			// }
-			//
 			// w.Wait()
-			fmt.Printf("======2000 ApisixRoutes 生效时间为: %s =========", time.Since(now))
+
+			fmt.Printf("======%d ApisixRoutes takes effect for: %s =========\n", total, time.Since(now))
+
+			By("Test the time required for an ApisixRoute update to take effect")
+			var apisixRouteSpec0 = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: %s
+spec:
+  ingressClassName: apisix
+  http:
+  - name: rule0
+    match:
+      paths:
+      - /headers
+      exprs:
+      - subject:
+          scope: Header
+          name: X-Route-Name
+        op: Equal
+        value: %s
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+`
+			name := getRouteName(10)
+			err = s.CreateResourceFromString(fmt.Sprintf(apisixRouteSpec0, name, name))
+			Expect(err).NotTo(HaveOccurred())
+			now = time.Now()
+			Eventually(func() int {
+				return s.NewAPISIXClient().GET("/headers").WithHeader("X-Route-Name", name).Expect().Raw().StatusCode
+			}).WithTimeout(time.Minute).ProbeEvery(100 * time.Millisecond).Should(Equal(http.StatusOK))
+			fmt.Printf("====== 更新 ApisixRoute 生效时间为: %s =========\n", time.Since(now))
 		})
 	})
 })
