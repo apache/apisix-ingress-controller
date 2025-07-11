@@ -90,6 +90,9 @@ spec:
             - name: admin
               containerPort: 9180
               protocol: TCP
+            - name: control
+              containerPort: 9090
+              protocol: TCP
           volumeMounts:
             - name: config-writable
               mountPath: /usr/local/apisix/conf
@@ -123,3 +126,18 @@ spec:
   selector:
     app.kubernetes.io/name: apisix 
   type: {{ .ServiceType | default "NodePort" }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apisix-control-api
+  labels:
+    app.kubernetes.io/name: apisix-control-api
+spec:
+  ports:
+    - port: 9090
+      name: control
+      protocol: TCP
+      targetPort: 9090
+  selector:
+    app.kubernetes.io/name: apisix

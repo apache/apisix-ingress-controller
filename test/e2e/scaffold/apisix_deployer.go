@@ -260,7 +260,7 @@ func (s *APISIXDeployer) DeployIngress() {
 	s.Framework.DeployIngress(framework.IngressDeployOpts{
 		ControllerName:     s.opts.ControllerName,
 		ProviderType:       framework.ProviderType,
-		ProviderSyncPeriod: 200 * time.Millisecond,
+		ProviderSyncPeriod: getProviderSyncPeriod(),
 		Namespace:          s.namespace,
 		Replicas:           1,
 	})
@@ -270,10 +270,18 @@ func (s *APISIXDeployer) ScaleIngress(replicas int) {
 	s.Framework.DeployIngress(framework.IngressDeployOpts{
 		ControllerName:     s.opts.ControllerName,
 		ProviderType:       framework.ProviderType,
-		ProviderSyncPeriod: 200 * time.Millisecond,
+		ProviderSyncPeriod: getProviderSyncPeriod(),
 		Namespace:          s.namespace,
 		Replicas:           replicas,
 	})
+}
+
+func getProviderSyncPeriod() time.Duration {
+	providerSyncPeriod, err := time.ParseDuration(framework.ProviderSyncPeriod)
+	if err != nil {
+		providerSyncPeriod = 200 * time.Millisecond
+	}
+	return providerSyncPeriod
 }
 
 // getEnvOrDefault returns environment variable value or default

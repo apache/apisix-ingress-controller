@@ -56,6 +56,12 @@ type LabelIndexer struct {
 	GetLabels func(obj any) map[string]string
 }
 
+// ref: https://pkg.go.dev/github.com/hashicorp/go-memdb#Txn.Get
+// by adding suffixes to avoid prefix matching
+func (emi *LabelIndexer) genKey(labelValues []string) []byte {
+	return []byte(strings.Join(labelValues, "/") + "\x00")
+}
+
 func (emi *LabelIndexer) FromObject(obj any) (bool, []byte, error) {
 	labels := emi.GetLabels(obj)
 	var labelValues []string
@@ -69,7 +75,7 @@ func (emi *LabelIndexer) FromObject(obj any) (bool, []byte, error) {
 		return false, nil, nil
 	}
 
-	return true, []byte(strings.Join(labelValues, "/")), nil
+	return true, emi.genKey(labelValues), nil
 }
 
 func (emi *LabelIndexer) FromArgs(args ...any) ([]byte, error) {
@@ -86,5 +92,5 @@ func (emi *LabelIndexer) FromArgs(args ...any) ([]byte, error) {
 		labelValues = append(labelValues, value)
 	}
 
-	return []byte(strings.Join(labelValues, "/")), nil
+	return emi.genKey(labelValues), nil
 }
