@@ -70,7 +70,7 @@ In 2.0.0, all data plane configurations must originate from the Ingress Controll
 
 In APISIX Ingress Controller 2.0.0, ADC performs scheduled resource synchronization by comparing resources against the admin API response.
 
-Because the admin API fills in default values, the submitted content may differ from the returned result. This breaks the diff, triggering full updates to data plane resources, causing cache invalidation and significant performance impact.
+Because the Admin API fills in default values, the submitted content may differ from the returned result. This breaks the diff, triggering full updates to data plane resources, causing cache invalidation and significant performance impact.
 
 ### Ingress Configuration Changes
 
