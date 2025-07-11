@@ -58,7 +58,7 @@ var _ = Describe("Load Test", func() {
 		s.DeployIngress(framework.IngressDeployOpts{
 			ControllerName:     s.GetControllerName(),
 			ProviderType:       framework.ProviderType,
-			ProviderSyncPeriod: 1 * time.Second,
+			ProviderSyncPeriod: 5 * time.Second,
 			Namespace:          s.Namespace(),
 			Replicas:           1,
 		})
@@ -163,7 +163,7 @@ spec:
 			// }
 			// w.Wait()
 
-			fmt.Printf("======%d ApisixRoutes takes effect for: %s =========\n", total, time.Since(now))
+			fmt.Printf("======Apply %d ApisixRoutes takes effect for: %s =========\n", total, time.Since(now))
 
 			By("Test the time required for an ApisixRoute update to take effect")
 			var apisixRouteSpec0 = `
@@ -195,7 +195,7 @@ spec:
 			Eventually(func() int {
 				return s.NewAPISIXClient().GET("/headers").WithHeader("X-Route-Name", name).Expect().Raw().StatusCode
 			}).WithTimeout(time.Minute).ProbeEvery(100 * time.Millisecond).Should(Equal(http.StatusOK))
-			fmt.Printf("====== 更新 ApisixRoute 生效时间为: %s =========\n", time.Since(now))
+			fmt.Printf("====== Update a ApisixRoute takes effect for: %s =========\n", time.Since(now))
 		})
 	})
 })
