@@ -123,25 +123,6 @@ spec:
       port: 80
 `
 
-	var resourceApplied = func(resourceType, resourceName, resourceRaw string, observedGeneration int) {
-		Expect(s.CreateResourceFromString(resourceRaw)).
-			NotTo(HaveOccurred(), fmt.Sprintf("creating %s", resourceType))
-
-		Eventually(func() string {
-			hryaml, err := s.GetResourceYaml(resourceType, resourceName)
-			Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("getting %s yaml", resourceType))
-			return hryaml
-		}).WithTimeout(8*time.Second).ProbeEvery(2*time.Second).
-			Should(
-				SatisfyAll(
-					ContainSubstring(`status: "True"`),
-					ContainSubstring(fmt.Sprintf("observedGeneration: %d", observedGeneration)),
-				),
-				fmt.Sprintf("checking %s condition status", resourceType),
-			)
-		time.Sleep(3 * time.Second)
-	}
-
 	var (
 		gatewayClassName string
 	)
@@ -176,43 +157,40 @@ spec:
 		Expect(gwyaml).To(ContainSubstring("message: the gateway has been accepted by the apisix-ingress-controller"), "checking Gateway condition message")
 	})
 
-	AfterEach(func() {
-		By("Clean up resources")
-		_ = s.DeleteResourceFromString(fmt.Sprintf(httpRouteForTest, "apisix"))
-		_ = s.DeleteResourceFromString(fmt.Sprintf(gatewayWithProxy, gatewayClassName))
-		_ = s.DeleteResourceFromString(fmt.Sprintf(gatewayProxyWithEnabledPlugin, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
-	})
-
 	Context("Test Gateway with enabled GatewayProxy plugin", func() {
 		It("Should apply plugin configuration when enabled", func() {
 			By("Create HTTPRoute for Gateway with GatewayProxy")
-			resourceApplied("HTTPRoute", "test-route", fmt.Sprintf(httpRouteForTest, "apisix"), 1)
+			s.ResourceApplied("HTTPRoute", "test-route", fmt.Sprintf(httpRouteForTest, "apisix"), 1)
 
 			By("Check if the plugin is applied")
-			resp := s.NewAPISIXClient().
-				GET("/get").
-				WithHost("example.com").
-				Expect().
-				Status(200)
-
-			resp.Header("X-Proxy-Test").IsEqual("enabled")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "example.com",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(200),
+					scaffold.WithExpectedHeader("X-Proxy-Test", "enabled"),
+				},
+			})
 
 			By("Update GatewayProxy with disabled plugin")
 			err := s.CreateResourceFromString(fmt.Sprintf(gatewayProxyWithDisabledPlugin, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
 			Expect(err).NotTo(HaveOccurred(), "updating GatewayProxy with disabled plugin")
-			time.Sleep(5 * time.Second)
 
 			By("Create HTTPRoute for Gateway with GatewayProxy")
-			resourceApplied("HTTPRoute", "test-route", fmt.Sprintf(httpRouteForTest, "apisix"), 1)
+			s.ResourceApplied("HTTPRoute", "test-route", fmt.Sprintf(httpRouteForTest, "apisix"), 1)
 
 			By("Check if the plugin is not applied")
-			resp = s.NewAPISIXClient().
-				GET("/get").
-				WithHost("example.com").
-				Expect().
-				Status(200)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "example.com",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(200),
+					scaffold.WithExpectedHeader("X-Proxy-Test", ""),
+				},
+			})
 
-			resp.Header("X-Proxy-Test").IsEmpty()
 		})
 	})
 
@@ -238,20 +216,19 @@ spec:
 			By("Update GatewayProxy with invalid endpoint")
 			err := s.CreateResourceFromString(fmt.Sprintf(gatewayProxyWithInvalidEndpoint, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy with enabled plugin")
-			time.Sleep(5 * time.Second)
 
 			By("Create HTTPRoute")
-			resourceApplied("HTTPRoute", "test-route", fmt.Sprintf(httpRouteForTest, "apisix"), 1)
+			s.ResourceApplied("HTTPRoute", "test-route", fmt.Sprintf(httpRouteForTest, "apisix"), 1)
 
-			expectRequest := func() bool {
-				resp := s.NewAPISIXClient().
-					GET("/get").
-					WithHost("example.com").
-					Expect().Raw()
-				return resp.StatusCode == 200 && resp.Header.Get("X-Proxy-Test") == ""
-			}
-
-			Eventually(expectRequest).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(BeTrue())
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "example.com",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(200),
+					scaffold.WithExpectedHeader("X-Proxy-Test", ""),
+				},
+			})
 		})
 	})
 
@@ -311,12 +288,10 @@ spec:
 			err := s.CreateResourceFromString(gatewayProxyWithValidProvider)
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy with valid provider")
 
-			Eventually(func() string {
-				gpYaml, err := s.GetResourceYaml("GatewayProxy", "apisix-proxy-config")
-				Expect(err).NotTo(HaveOccurred(), "getting GatewayProxy yaml")
+			s.RetryAssertion(func() string {
+				gpYaml, _ := s.GetResourceYaml("GatewayProxy", "apisix-proxy-config")
 				return gpYaml
-			}).WithTimeout(8*time.Second).ProbeEvery(2*time.Second).
-				Should(ContainSubstring(`"type":"ControlPlane"`), "checking GatewayProxy is applied")
+			}).Should(ContainSubstring(`"type":"ControlPlane"`), "checking GatewayProxy is applied")
 		})
 	})
 })

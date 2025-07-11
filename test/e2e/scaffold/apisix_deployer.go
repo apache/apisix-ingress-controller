@@ -53,7 +53,7 @@ type APISIXDeployer struct {
 	adminTunnel *k8s.Tunnel
 }
 
-func NewAPISIXDeployer(s *Scaffold) *APISIXDeployer {
+func NewAPISIXDeployer(s *Scaffold) Deployer {
 	return &APISIXDeployer{
 		Scaffold: s,
 	}
@@ -66,7 +66,7 @@ func (s *APISIXDeployer) BeforeEach() {
 		Namespace:  s.namespace,
 	}
 	if s.opts.ControllerName == "" {
-		s.opts.ControllerName = fmt.Sprintf("%s/%d", DefaultControllerName, time.Now().Nanosecond())
+		s.opts.ControllerName = fmt.Sprintf("%s/%s", DefaultControllerName, s.namespace)
 	}
 	s.finalizers = nil
 	if s.label == nil {
@@ -130,13 +130,13 @@ func (s *APISIXDeployer) AfterEach() {
 		Expect(err).NotTo(HaveOccurred(), "cleaning up additional gateway")
 	}
 
-	// if the test case is successful, just delete namespace
-	err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
-	Expect(err).NotTo(HaveOccurred(), "deleting namespace "+s.namespace)
-
 	for i := len(s.finalizers) - 1; i >= 0; i-- {
 		runWithRecover(s.finalizers[i])
 	}
+
+	// if the test case is successful, just delete namespace
+	err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
+	Expect(err).NotTo(HaveOccurred(), "deleting namespace "+s.namespace)
 
 	// Wait for a while to prevent the worker node being overwhelming
 	// (new cases will be run).

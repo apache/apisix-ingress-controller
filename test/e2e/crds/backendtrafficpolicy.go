@@ -19,7 +19,6 @@ package gatewayapi
 
 import (
 	"fmt"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -130,33 +129,55 @@ spec:
 		})
 		It("should rewrite upstream host", func() {
 			s.ResourceApplied("BackendTrafficPolicy", "httpbin", createUpstreamHost, 1)
-			s.NewAPISIXClient().
-				GET("/headers").
-				WithHost("httpbin.org").
-				Expect().
-				Status(200).
-				Body().Contains("httpbin.example.com")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/headers",
+				Host:   "httpbin.org",
+				Headers: map[string]string{
+					"Host": "httpbin.org",
+				},
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(200),
+					scaffold.WithExpectedBodyContains(
+						"httpbin.example.com",
+					),
+				},
+			})
 
 			s.ResourceApplied("BackendTrafficPolicy", "httpbin", updateUpstreamHost, 2)
-			s.NewAPISIXClient().
-				GET("/headers").
-				WithHost("httpbin.org").
-				Expect().
-				Status(200).
-				Body().Contains("httpbin.update.example.com")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/headers",
+				Host:   "httpbin.org",
+				Headers: map[string]string{
+					"Host": "httpbin.org",
+				},
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(200),
+					scaffold.WithExpectedBodyContains(
+						"httpbin.update.example.com",
+					),
+				},
+			})
 
 			err := s.DeleteResourceFromString(createUpstreamHost)
 			Expect(err).NotTo(HaveOccurred(), "deleting BackendTrafficPolicy")
-			time.Sleep(5 * time.Second)
 
-			s.NewAPISIXClient().
-				GET("/headers").
-				WithHost("httpbin.org").
-				Expect().
-				Status(200).
-				Body().
-				NotContains("httpbin.update.example.com").
-				NotContains("httpbin.example.com")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/headers",
+				Host:   "httpbin.org",
+				Headers: map[string]string{
+					"Host": "httpbin.org",
+				},
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(200),
+					scaffold.WithExpectedBodyNotContains(
+						"httpbin.update.example.com",
+						"httpbin.example.com",
+					),
+				},
+			})
 		})
 	})
 })
@@ -231,7 +252,6 @@ spec:
 		By("create Ingress with GatewayProxy IngressClass")
 		err = s.CreateResourceFromString(defaultIngress)
 		Expect(err).NotTo(HaveOccurred(), "creating Ingress with GatewayProxy IngressClass")
-		time.Sleep(5 * time.Second)
 	}
 
 	Context("Rewrite Upstream Host", func() {
@@ -265,34 +285,36 @@ spec:
 
 		BeforeEach(beforeEach)
 		It("should rewrite upstream host", func() {
+			reqAssert := &scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/headers",
+				Host:   "httpbin.org",
+				Headers: map[string]string{
+					"Host": "httpbin.org",
+				},
+			}
 			s.ResourceApplied("BackendTrafficPolicy", "httpbin", createUpstreamHost, 1)
-			s.NewAPISIXClient().
-				GET("/headers").
-				WithHost("httpbin.org").
-				Expect().
-				Status(200).
-				Body().Contains("httpbin.example.com")
+			s.RequestAssert(reqAssert.SetChecks(
+				scaffold.WithExpectedStatus(200),
+				scaffold.WithExpectedBodyContains("httpbin.example.com"),
+			))
 
 			s.ResourceApplied("BackendTrafficPolicy", "httpbin", updateUpstreamHost, 2)
-			s.NewAPISIXClient().
-				GET("/headers").
-				WithHost("httpbin.org").
-				Expect().
-				Status(200).
-				Body().Contains("httpbin.update.example.com")
+			s.RequestAssert(reqAssert.SetChecks(
+				scaffold.WithExpectedStatus(200),
+				scaffold.WithExpectedBodyContains("httpbin.update.example.com"),
+			))
 
 			err := s.DeleteResourceFromString(createUpstreamHost)
 			Expect(err).NotTo(HaveOccurred(), "deleting BackendTrafficPolicy")
-			time.Sleep(5 * time.Second)
 
-			s.NewAPISIXClient().
-				GET("/headers").
-				WithHost("httpbin.org").
-				Expect().
-				Status(200).
-				Body().
-				NotContains("httpbin.update.example.com").
-				NotContains("httpbin.example.com")
+			s.RequestAssert(reqAssert.SetChecks(
+				scaffold.WithExpectedStatus(200),
+				scaffold.WithExpectedBodyNotContains(
+					"httpbin.update.example.com",
+					"httpbin.example.com",
+				),
+			))
 		})
 	})
 })

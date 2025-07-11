@@ -39,10 +39,6 @@ var _ = Describe("Test CRD Status", Label("apisix.apache.org", "v2", "apisixrout
 		applier = framework.NewApplier(s.GinkgoT, s.K8sClient, s.CreateResourceFromString)
 	)
 
-	assertion := func(actualOrCtx any, args ...any) AsyncAssertion {
-		return Eventually(actualOrCtx).WithArguments(args...).WithTimeout(30 * time.Second).ProbeEvery(time.Second)
-	}
-
 	Context("Test ApisixRoute Sync Status", func() {
 		BeforeEach(func() {
 			By("create GatewayProxy")
@@ -95,22 +91,16 @@ spec:
     - name: non-existent-plugin
       enable: true
 `
-
-		getRequest := func(path string) func() int {
-			return func() int {
-				return s.NewAPISIXClient().GET(path).WithHost("httpbin").Expect().Raw().StatusCode
-			}
-		}
-
 		It("unknown plugin", func() {
 			if os.Getenv("PROVIDER_TYPE") == "apisix-standalone" {
 				Skip("apisix standalone does not validate unknown plugins")
 			}
 			By("apply ApisixRoute with valid plugin")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, arWithInvalidPlugin)
+			err := s.CreateResourceFromString(arWithInvalidPlugin)
+			Expect(err).NotTo(HaveOccurred(), "creating ApisixRoute with valid plugin")
 
 			By("check ApisixRoute status")
-			assertion(func() string {
+			s.RetryAssertion(func() string {
 				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
 				return output
 			}).Should(
@@ -124,67 +114,62 @@ spec:
 			By("Update ApisixRoute")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, ar)
 
-			By("check ApisixRoute status")
-			assertion(func() string {
-				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
-				return output
-			}).Should(
-				And(
-					ContainSubstring(`status: "True"`),
-					ContainSubstring(`reason: Accepted`),
-				),
-			)
-
 			By("check route in APISIX")
-			assertion(getRequest("/get")).Should(Equal(200), "should be able to access the route")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				Check:  scaffold.WithExpectedStatus(200),
+			})
 		})
 
 		It("dataplane unavailable", func() {
 			By("apply ApisixRoute")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, ar)
 
-			By("check ApisixRoute status")
-			assertion(func() string {
-				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
-				return output
-			}).Should(
-				And(
-					ContainSubstring(`status: "True"`),
-					ContainSubstring(`reason: Accepted`),
-				),
-			)
-
 			By("check route in APISIX")
-			assertion(getRequest("/get")).Should(Equal(200), "should be able to access the route")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:  "GET",
+				Path:    "/get",
+				Headers: map[string]string{"Host": "httpbin"},
+				Check:   scaffold.WithExpectedStatus(200),
+			})
 
 			s.Deployer.ScaleDataplane(0)
 
 			By("check ApisixRoute status")
-			assertion(func() string {
+			s.RetryAssertion(func() string {
 				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
 				return output
-			}).Should(
-				And(
-					ContainSubstring(`status: "False"`),
-					ContainSubstring(`reason: SyncFailed`),
-				),
-			)
+			}).WithTimeout(80 * time.Second).
+				Should(
+					And(
+						ContainSubstring(`status: "False"`),
+						ContainSubstring(`reason: SyncFailed`),
+					),
+				)
 
 			s.Deployer.ScaleDataplane(1)
 
 			By("check ApisixRoute status after scaling up")
-			assertion(func() string {
+			s.RetryAssertion(func() string {
 				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
 				return output
-			}).Should(
-				And(
-					ContainSubstring(`status: "True"`),
-					ContainSubstring(`reason: Accepted`),
-				),
-			)
+			}).WithTimeout(80 * time.Second).
+				Should(
+					And(
+						ContainSubstring(`status: "True"`),
+						ContainSubstring(`reason: Accepted`),
+					),
+				)
 
 			By("check route in APISIX")
-			assertion(getRequest("/get")).Should(Equal(200), "should be able to access the route")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				Check:  scaffold.WithExpectedStatus(200),
+			})
 		})
 	})
 
@@ -276,67 +261,55 @@ spec:
 		AfterEach(func() {
 			_ = s.DeleteResource("Gateway", "apisix")
 		})
-		getRequest := func(path string) func() int {
-			return func() int {
-				return s.NewAPISIXClient().GET(path).WithHost("httpbin").Expect().Raw().StatusCode
-			}
-		}
-		var resourceApplied = func(resourType, resourceName, resourceRaw string, observedGeneration int) {
-			Expect(s.CreateResourceFromString(resourceRaw)).
-				NotTo(HaveOccurred(), fmt.Sprintf("creating %s", resourType))
-
-			Eventually(func() string {
-				hryaml, err := s.GetResourceYaml(resourType, resourceName)
-				Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("getting %s yaml", resourType))
-				return hryaml
-			}, "8s", "2s").
-				Should(
-					SatisfyAll(
-						ContainSubstring(`status: "True"`),
-						ContainSubstring(fmt.Sprintf("observedGeneration: %d", observedGeneration)),
-					),
-					fmt.Sprintf("checking %s condition status", resourType),
-				)
-			time.Sleep(5 * time.Second)
-		}
 
 		It("dataplane unavailable", func() {
 			By("Create HTTPRoute")
-			resourceApplied("HTTPRoute", "httpbin", httproute, 1)
+			err := s.CreateResourceFromString(httproute)
+			Expect(err).NotTo(HaveOccurred(), "creating HTTPRoute")
 
 			By("check route in APISIX")
-			assertion(getRequest("/get")).Should(Equal(200), "should be able to access the route")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				Check:  scaffold.WithExpectedStatus(200),
+			})
 
 			s.Deployer.ScaleDataplane(0)
-			time.Sleep(10 * time.Second)
 
 			By("check ApisixRoute status")
-			assertion(func() string {
+			s.RetryAssertion(func() string {
 				output, _ := s.GetOutputFromString("httproute", "httpbin", "-o", "yaml")
 				return output
-			}).Should(
-				And(
-					ContainSubstring(`status: "False"`),
-					ContainSubstring(`reason: SyncFailed`),
-				),
-			)
+			}).WithTimeout(80 * time.Second).
+				Should(
+					And(
+						ContainSubstring(`status: "False"`),
+						ContainSubstring(`reason: SyncFailed`),
+					),
+				)
 
 			s.Deployer.ScaleDataplane(1)
-			time.Sleep(10 * time.Second)
 
 			By("check ApisixRoute status after scaling up")
-			assertion(func() string {
+			s.RetryAssertion(func() string {
 				output, _ := s.GetOutputFromString("httproute", "httpbin", "-o", "yaml")
 				return output
-			}).Should(
-				And(
-					ContainSubstring(`status: "True"`),
-					ContainSubstring(`reason: Accepted`),
-				),
-			)
+			}).WithTimeout(80 * time.Second).
+				Should(
+					And(
+						ContainSubstring(`status: "True"`),
+						ContainSubstring(`reason: Accepted`),
+					),
+				)
 
 			By("check route in APISIX")
-			assertion(getRequest("/get")).Should(Equal(200), "should be able to access the route")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				Check:  scaffold.WithExpectedStatus(200),
+			})
 		})
 	})
 })

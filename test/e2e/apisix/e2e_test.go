@@ -38,9 +38,7 @@ func TestAPISIXE2E(t *testing.T) {
 	_ = framework.NewFramework()
 
 	// init newDeployer function
-	scaffold.NewDeployer = func(s *scaffold.Scaffold) scaffold.Deployer {
-		return scaffold.NewAPISIXDeployer(s)
-	}
+	scaffold.NewDeployer = scaffold.NewAPISIXDeployer
 
 	_, _ = fmt.Fprintf(GinkgoWriter, "Starting APISIX standalone e2e suite\n")
 	RunSpecs(t, "apisix standalone e2e suite")
