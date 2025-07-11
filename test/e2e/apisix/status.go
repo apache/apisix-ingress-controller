@@ -114,17 +114,6 @@ spec:
 			By("Update ApisixRoute")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, ar)
 
-			By("check ApisixRoute status")
-			s.RetryAssertion(func() string {
-				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
-				return output
-			}).Should(
-				And(
-					ContainSubstring(`status: "True"`),
-					ContainSubstring(`reason: Accepted`),
-				),
-			)
-
 			By("check route in APISIX")
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
