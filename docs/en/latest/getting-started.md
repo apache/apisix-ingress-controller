@@ -43,9 +43,9 @@ Before installing APISIX Ingress Controller, ensure you have:
 1. A working Kubernetes cluster (version 1.26+)
 2. [Helm](https://helm.sh/) (version 3.8+) installed
 
-### Install APISIX and APISIX Ingress Controller
+### Install APISIX and APISIX Ingress Controller (Standalone API-driven mode)
 
-Install the Gateway API CRDs, APISIX, and APISIX Ingress Controller using the following commands:
+Install the Gateway API CRDs, [APISIX Standalone API-driven mode](https://apisix.apache.org/docs/apisix/deployment-modes/#api-driven-experimental), and APISIX Ingress Controller using the following commands:
 
 ```bash
 helm repo add apisix https://charts.apiseven.com
@@ -55,7 +55,11 @@ helm repo update
 helm install apisix \
   --namespace ingress-apisix \
   --create-namespace \
+  --set apisix.deployment.role=traditional \
+  --set apisix.deployment.role_traditional.config_provider=yaml \
+  --set etcd.enabled=false \
   --set ingress-controller.enabled=true \
+  --set ingress-controller.config.provider.type=apisix-standalone \
   --set ingress-controller.apisix.adminService.namespace=ingress-apisix \
   --set ingress-controller.gatewayProxy.createDefault=true \
   apisix/apisix
@@ -66,7 +70,7 @@ helm install apisix \
 Install the httpbin example application to test the configuration:
 
 ```bash
-https://raw.githubusercontent.com/apache/apisix-ingress-controller/refs/heads/v2.0.0/examples/httpbin/deployment.yaml
+kubectl apply -f https://raw.githubusercontent.com/apache/apisix-ingress-controller/refs/heads/v2.0.0/examples/httpbin/deployment.yaml
 ```
 
 ### Configure a Route
