@@ -64,7 +64,7 @@ etcdserver:
 
 ##### Controller-Only Configuration Source
 
-In APISIX Ingress Controller 2.0.0, a full-sync mode is used. All Data Plane configurations must originate from the Ingress Controller. Any additional route configurations made via the Admin API or other external methods will be ignored.
+Starting with APISIX Ingress Controller 2.0.0, the controller is the single source of truth. Manual Admin API changes will be overwritten on the next full sync. The prior approach, which allowed controller-managed and manually added configurations to coexist, was incorrect and is now deprecated.
 
 ### Ingress Configuration Changes
 
