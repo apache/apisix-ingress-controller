@@ -201,6 +201,6 @@ Ingress annotations used in version 1.x.x are not fully supported in 2.0.0. If y
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | Architecture     | The `mock-etcd` component has been removed. Configuration is now centralized through the Controller.                              |
 | Configuration    | Static configuration fields have been removed. Use `GatewayProxy` CRD to configure the data plane.                                |
-| Data Plane       | The Admin API configuration method is still supported, and support for the Standalone API-driven mode introduced in APISIX 3.13+. |
+| Data Plane       | The Admin API configuration method is still supported. Support for the Standalone API-driven mode was introduced in APISIX 3.13.0 and later. |
 | API              | Some fields in `Ingress Annotations` and `ApisixUpstream` are not yet supported.                                                  |
 | Upgrade Strategy | Blue-green deployment or canary release is recommended before full switchover.                                                    |
