@@ -501,7 +501,7 @@ func (r *HTTPRouteReconciler) processHTTPRouteBackendRefs(tctx *provider.Transla
 
 		if service.Spec.Type == corev1.ServiceTypeExternalName {
 			tctx.Services[targetNN] = &service
-			return nil
+			continue
 		}
 
 		portExists := false

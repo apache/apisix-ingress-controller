@@ -1812,4 +1812,100 @@ spec:
 			})
 		})
 	})
+
+	Context("Test HTTPRoute Load Balancing", func() {
+		BeforeEach(beforeEachHTTP)
+		It("Test load balancing with ExternalName services", func() {
+			const servicesSpec = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpbin-external-domain
+spec:
+  type: ExternalName
+  externalName: httpbin.org
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mockapi7-external-domain
+spec:
+  type: ExternalName
+  externalName: mock.api7.ai
+---
+apiVersion: apisix.apache.org/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: passhost-node
+spec:
+  targetRefs:
+  - name: httpbin-external-domain
+    kind: Service
+    group: ""
+  - name: mockapi7-external-domain
+    kind: Service
+    group: ""
+  passHost: node
+  scheme: https
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: lb-route
+spec:
+  parentRefs:
+  - name: apisix
+  rules:
+  - matches:
+    - path:
+        type: Exact
+        value: /headers
+    backendRefs:
+    - name: httpbin-external-domain
+      port: 443
+      weight: 1
+    - name: mockapi7-external-domain
+      port: 443
+      weight: 1
+`
+
+			By("apply services and HTTPRoute")
+			err := s.CreateResourceFromString(servicesSpec)
+			Expect(err).ShouldNot(HaveOccurred(), "apply services and HTTPRoute")
+			time.Sleep(5 * time.Second)
+
+			By("verify load balancing works")
+			// Test multiple requests to verify load balancing
+			upstreamHosts := make(map[string]int)
+			totalRequests := 20
+
+			for i := 0; i < totalRequests; i++ {
+				resp := s.NewAPISIXClient().GET("/headers").Expect().Status(http.StatusOK)
+
+				// Parse JSON response to get the Host header
+				var responseBody map[string]any
+				resp.JSON().Decode(&responseBody)
+
+				if headers, ok := responseBody["headers"].(map[string]any); ok {
+					var host string
+					if host, ok = headers["Host"].(string); !ok {
+						host, ok = headers["host"].(string)
+					}
+					if ok && host != "" {
+						upstreamHosts[host]++
+					}
+					Expect(ok).To(BeTrue(), "Host header should be present")
+					Expect(host).Should(Or(Equal("httpbin.org"), Equal("mock.api7.ai")))
+				}
+				time.Sleep(100 * time.Millisecond) // Small delay between requests
+			}
+
+			By("verify both upstreams received requests")
+			Expect(upstreamHosts).Should(HaveLen(2))
+
+			for host, count := range upstreamHosts {
+				Expect(count).Should(BeNumerically(">", 0), fmt.Sprintf("upstream %s should receive requests", host))
+			}
+		})
+	})
 })
