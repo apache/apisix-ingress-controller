@@ -20,7 +20,6 @@ package controller
 import (
 	"cmp"
 	"context"
-	"fmt"
 	"slices"
 
 	networkingv1 "k8s.io/api/networking/v1"
@@ -92,13 +91,9 @@ func (r *HTTPRouteReconciler) processHTTPRoutePolicies(tctx *provider.TranslateC
 				NamespacedName: utils.NamespacedName(&policy),
 				Resource:       policy.DeepCopy(),
 				Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
-					t, ok := obj.(*v1alpha1.HTTPRoutePolicy)
-					if !ok {
-						err := fmt.Errorf("unsupported object type %T", obj)
-						panic(err)
-					}
-					t.Status = policy.Status
-					return t
+					cp := obj.(*v1alpha1.HTTPRoutePolicy).DeepCopy()
+					cp.Status = policy.Status
+					return cp
 				}),
 			})
 		}
@@ -170,13 +165,9 @@ func (r *IngressReconciler) processHTTPRoutePolicies(tctx *provider.TranslateCon
 				NamespacedName: utils.NamespacedName(&policy),
 				Resource:       policy.DeepCopy(),
 				Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
-					t, ok := obj.(*v1alpha1.HTTPRoutePolicy)
-					if !ok {
-						err := fmt.Errorf("unsupported object type %T", obj)
-						panic(err)
-					}
-					t.Status = policy.Status
-					return t
+					cp := obj.(*v1alpha1.HTTPRoutePolicy).DeepCopy()
+					cp.Status = policy.Status
+					return cp
 				}),
 			})
 		}
@@ -282,13 +273,9 @@ func updateDeleteAncestors(updater status.Updater, policy v1alpha1.HTTPRoutePoli
 			NamespacedName: utils.NamespacedName(&policy),
 			Resource:       policy.DeepCopy(),
 			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
-				t, ok := obj.(*v1alpha1.HTTPRoutePolicy)
-				if !ok {
-					err := fmt.Errorf("unsupported object type %T", obj)
-					panic(err)
-				}
-				t.Status = policy.Status
-				return t
+				cp := obj.(*v1alpha1.HTTPRoutePolicy).DeepCopy()
+				cp.Status = policy.Status
+				return cp
 			}),
 		})
 	}

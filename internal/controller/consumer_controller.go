@@ -19,7 +19,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -276,13 +275,9 @@ func (r *ConsumerReconciler) updateStatus(consumer *v1alpha1.Consumer, err error
 		NamespacedName: utils.NamespacedName(consumer),
 		Resource:       consumer.DeepCopy(),
 		Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
-			t, ok := obj.(*v1alpha1.Consumer)
-			if !ok {
-				err := fmt.Errorf("unsupported object type %T", obj)
-				panic(err)
-			}
-			t.Status = consumer.Status
-			return t
+			cp := obj.(*v1alpha1.Consumer).DeepCopy()
+			cp.Status = consumer.Status
+			return cp
 		}),
 	})
 }

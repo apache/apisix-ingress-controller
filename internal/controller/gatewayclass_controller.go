@@ -122,7 +122,6 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			Resource:       gc.DeepCopy(),
 			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
 				cp := obj.(*gatewayv1.GatewayClass).DeepCopy()
-
 				cp.Status = gc.Status
 				return cp
 			}),
