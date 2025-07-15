@@ -356,6 +356,42 @@ spec:
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-service-e2e-test"}, new(apiv2.ApisixUpstream), apisixUpstreamSpec1)
 			Eventually(request).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 		})
+
+		It("Multiple ApisixRoute with same prefix name", func() {
+			const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: %s
+spec:
+  ingressClassName: apisix
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - %s
+      paths:
+      - /*
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+`
+			By("apply ApisixRoute")
+			var apisixRoute apiv2.ApisixRoute
+			for _, id := range []string{"11111", "1111", "111", "11", "1"} {
+				name := fmt.Sprintf("route-%s", id)
+				host := fmt.Sprintf("httpbin-%s", id)
+				applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: name}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, name, host))
+			}
+
+			By("verify ApisixRoute works")
+			for _, id := range []string{"1", "11", "111", "1111", "11111"} {
+				host := fmt.Sprintf("httpbin-%s", id)
+				Eventually(func() int {
+					return s.NewAPISIXClient().GET("/get").WithHost(host).Expect().Raw().StatusCode
+				}).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+			}
+		})
 	})
 
 	Context("Test ApisixRoute reference ApisixUpstream", func() {
