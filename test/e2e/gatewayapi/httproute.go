@@ -401,7 +401,7 @@ metadata:
   name: httpbin-external-domain
 spec:
   type: ExternalName
-  externalName: postman-echo.com
+  externalName: httpbin-service-e2e-test
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
