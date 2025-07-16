@@ -1462,7 +1462,7 @@ spec:
 				Path:   "/headers",
 				Host:   "httpbin.example",
 				Checks: []scaffold.ResponseCheckFunc{
-					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedStatus(http.StatusMovedPermanently),
 					scaffold.WithExpectedHeader("Location", "http://httpbin.org/headers"),
 				},
 			})
