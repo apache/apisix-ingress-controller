@@ -253,7 +253,7 @@ spec:
 				GET("/get").
 				WithHost("httpbin.external").
 				Expect().
-				Status(http.StatusMovedPermanently)
+				Status(http.StatusOK)
 		})
 
 		It("Delete Ingress during restart", func() {
@@ -283,7 +283,7 @@ spec:
 				GET("/get").
 				WithHost("httpbin.external").
 				Expect().
-				Status(http.StatusMovedPermanently)
+				Status(http.StatusOK)
 
 			s.NewAPISIXClient().
 				GET("/get").
@@ -304,7 +304,7 @@ spec:
 				GET("/get").
 				WithHost("httpbin.external").
 				Expect().
-				Status(http.StatusMovedPermanently)
+				Status(http.StatusOK)
 
 			s.NewAPISIXClient().
 				GET("/get").

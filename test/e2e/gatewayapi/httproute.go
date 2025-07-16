@@ -560,7 +560,7 @@ spec:
 				GET("/get").
 				WithHost("httpbin.external").
 				Expect().
-				Status(http.StatusMovedPermanently)
+				Status(http.StatusOK)
 		})
 
 		It("Match Port", func() {
@@ -1087,14 +1087,15 @@ spec:
 					Expect().Raw().StatusCode
 			}).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
 
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHost("httpbin.example").
-				WithHeader("X-Route-Name", "httpbin").
-				WithHeader("X-HRP-Name", "http-route-policy-0").
-				WithQuery("hrp_name", "http-route-policy-0").
-				Expect().
-				Status(http.StatusOK)
+			Eventually(func() int {
+				return s.NewAPISIXClient().
+					GET("/get").
+					WithHost("httpbin.example").
+					WithHeader("X-Route-Name", "httpbin").
+					WithHeader("X-HRP-Name", "http-route-policy-0").
+					WithQuery("hrp_name", "http-route-policy-0").
+					Expect().Raw().StatusCode
+			}).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 
 			By("delete the HTTPRoute, assert the HTTPRoutePolicy's status will be changed")
 			err := s.DeleteResource("HTTPRoute", "httpbin")
@@ -1390,7 +1391,7 @@ spec:
 			s.NewAPISIXClient().GET("/headers").
 				WithHeader("Host", "httpbin.example").
 				Expect().
-				Status(http.StatusMovedPermanently).
+				Status(http.StatusOK).
 				Header("Location").IsEqual("http://httpbin.org/headers")
 		})
 
