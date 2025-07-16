@@ -17,6 +17,8 @@ spec:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
+        description: BackendTrafficPolicy defines configuration for traffic handling
+          policies applied to backend services.
         properties:
           apiVersion:
             description: |-
@@ -48,9 +50,9 @@ spec:
                   hashOn:
                     default: vars
                     description: |-
-                      HashOn specified the type of field used for hashing, required when Type is `chash`.
+                      HashOn specified the type of field used for hashing, required when type is `chash`.
                       Default is `vars`.
-                      Can be one of `vars`, `header`, `cookie`, `consumer`, or `vars_combinations`.
+                      Can be `vars`, `header`, `cookie`, `consumer`, or `vars_combinations`.
                     enum:
                     - vars
                     - header
@@ -60,7 +62,7 @@ spec:
                     type: string
                   key:
                     description: |-
-                      Key is used with HashOn, generally required when Type is `chash`.
+                      Key is used with HashOn, generally required when type is `chash`.
                       When HashOn is `header` or `cookie`, specifies the name of the header or cookie.
                       When HashOn is `consumer`, key is not required, as the consumer name is used automatically.
                       When HashOn is `vars` or `vars_combinations`, key refers to one or a combination of
@@ -69,9 +71,9 @@ spec:
                   type:
                     default: roundrobin
                     description: |-
-                      Type specifies the load balancing algorithms.
+                      Type specifies the load balancing algorithms to route traffic to the backend.
                       Default is `roundrobin`.
-                      Can be one of `roundrobin`, `chash`, `ewma`, or `least_conn`.
+                      Can be `roundrobin`, `chash`, `ewma`, or `least_conn`.
                     enum:
                     - roundrobin
                     - chash
@@ -88,8 +90,10 @@ spec:
                 description: |-
                   PassHost configures how the host header should be determined when a
                   request is forwarded to the upstream.
-                  Default is `pass`.
-                  Can be one of `pass`, `node` or `rewrite`.
+                  Default is `pass`. Can be `pass`, `node` or `rewrite`:
+                  * `pass`: preserve the original Host header
+                  * `node`: use the upstream node’s host
+                  * `rewrite`: set to a custom host via `upstreamHost`
                 enum:
                 - pass
                 - node
@@ -105,7 +109,7 @@ spec:
                 description: |-
                   Scheme is the protocol used to communicate with the upstream.
                   Default is `http`.
-                  Can be one of `http`, `https`, `grpc`, or `grpcs`.
+                  Can be `http`, `https`, `grpc`, or `grpcs`.
                 enum:
                 - http
                 - https

@@ -47,7 +47,7 @@ spec:
     name: v2
     schema:
       openAPIV3Schema:
-        description: ApisixRoute is the Schema for the apisixroutes API.
+        description: ApisixRoute is defines configuration for HTTP and stream routes.
         properties:
           apiVersion:
             description: |-
@@ -67,55 +67,67 @@ spec:
           metadata:
             type: object
           spec:
-            description: ApisixRouteSpec is the spec definition for ApisixRouteSpec.
+            description: ApisixRouteSpec defines HTTP and stream route configuration.
             properties:
               http:
+                description: |-
+                  HTTP defines a list of HTTP route rules.
+                  Each rule specifies conditions to match HTTP requests and how to forward them.
                 items:
-                  description: ApisixRouteHTTP represents a single route in for HTTP
-                    traffic.
+                  description: ApisixRouteHTTP represents a single HTTP route configuration.
                   properties:
                     authentication:
-                      description: |-
-                        ApisixRouteAuthentication is the authentication-related
-                        configuration in ApisixRoute.
+                      description: Authentication holds authentication-related configuration
+                        for this route.
                       properties:
                         enable:
+                          description: Enable toggles authentication on or off.
                           type: boolean
                         jwtAuth:
-                          description: |-
-                            ApisixRouteAuthenticationJwtAuth is the jwt auth related
-                            configuration in ApisixRouteAuthentication.
+                          description: JwtAuth defines configuration for JWT authentication.
                           properties:
                             cookie:
+                              description: Cookie specifies the cookie name to look
+                                for the JWT token.
                               type: string
                             header:
+                              description: Header specifies the HTTP header name to
+                                look for the JWT token.
                               type: string
                             query:
+                              description: Query specifies the URL query parameter
+                                name to look for the JWT token.
                               type: string
                           type: object
                         keyAuth:
-                          description: |-
-                            ApisixRouteAuthenticationKeyAuth is the keyAuth-related
-                            configuration in ApisixRouteAuthentication.
+                          description: KeyAuth defines configuration for key authentication.
                           properties:
                             header:
+                              description: Header specifies the HTTP header name to
+                                look for the key authentication token.
                               type: string
                           type: object
                         ldapAuth:
-                          description: |-
-                            ApisixRouteAuthenticationLDAPAuth is the LDAP auth related
-                            configuration in ApisixRouteAuthentication.
+                          description: LDAPAuth defines configuration for LDAP authentication.
                           properties:
                             base_dn:
+                              description: BaseDN is the base distinguished name (DN)
+                                for LDAP searches.
                               type: string
                             ldap_uri:
+                              description: LDAPURI is the URI of the LDAP server.
                               type: string
                             uid:
+                              description: UID is the user identifier attribute in
+                                LDAP.
                               type: string
                             use_tls:
+                              description: UseTLS indicates whether to use TLS for
+                                the LDAP connection.
                               type: boolean
                           type: object
                         type:
+                          description: Type specifies the authentication type.
                           type: string
                       required:
                       - enable
@@ -123,39 +135,42 @@ spec:
                       type: object
                     backends:
                       description: |-
-                        Backends represents potential backends to proxy after the route
-                        rule matched. When number of backends are more than one, traffic-split
-                        plugin in APISIX will be used to split traffic based on the backend weight.
+                        Backends lists potential backend services to proxy requests to.
+                        If more than one backend is specified, the `traffic-split` plugin is used
+                        to distribute traffic according to backend weights.
                       items:
                         description: ApisixRouteHTTPBackend represents an HTTP backend
-                          (a Kubernetes Service).
+                          (Kubernetes Service).
                         properties:
                           resolveGranularity:
                             description: |-
-                              The resolve granularity, can be "endpoints" or "service",
-                              when set to "endpoints", the pod ips will be used; other
-                              wise, the service ClusterIP or ExternalIP will be used,
-                              default is endpoints.
+                              ResolveGranularity determines how the backend service is resolved.
+                              Valid values are `endpoints` and `service`. When set to `endpoints`,
+                              individual pod IPs will be used; otherwise, the Service's ClusterIP or ExternalIP is used.
+                              The default is `endpoints`.
                             type: string
                           serviceName:
                             description: |-
-                              The name (short) of the service, note cross namespace is forbidden,
-                              so be sure the ApisixRoute and Service are in the same namespace.
+                              ServiceName is the name of the Kubernetes Service.
+                              Cross-namespace references are not supported—ensure the ApisixRoute
+                              and the Service are in the same namespace.
                             type: string
                           servicePort:
                             anyOf:
                             - type: integer
                             - type: string
-                            description: The service port, could be the name or the
-                              port number.
+                            description: |-
+                              ServicePort is the port of the Kubernetes Service.
+                              This can be either the port name or port number.
                             x-kubernetes-int-or-string: true
                           subset:
                             description: |-
-                              Subset specifies a subset for the target Service. The subset should be pre-defined
-                              in ApisixUpstream about this service.
+                              Subset specifies a named subset of the target Service.
+                              The subset must be pre-defined in the corresponding ApisixUpstream resource.
                             type: string
                           weight:
-                            description: Weight of this backend.
+                            description: Weight specifies the relative traffic weight
+                              for this backend.
                             type: integer
                         required:
                         - serviceName
@@ -163,51 +178,41 @@ spec:
                         type: object
                       type: array
                     match:
-                      description: ApisixRouteHTTPMatch represents the match condition
-                        for hitting this route.
+                      description: Match defines the HTTP request matching criteria.
                       properties:
                         exprs:
-                          description: |-
-                            NginxVars represents generic match predicates,
-                            it uses Nginx variable systems, so any predicate
-                            like headers, querystring and etc can be leveraged
-                            here to match the route.
-                            For instance, it can be:
-                            nginxVars:
-                              - subject: "$remote_addr"
-                                op: in
-                                value:
-                                  - "127.0.0.1"
-                                  - "10.0.5.11"
+                          description: NginxVars defines match conditions based on
+                            Nginx variables.
                           items:
                             description: ApisixRouteHTTPMatchExpr represents a binary
-                              route match expression .
+                              expression used to match requests based on Nginx variables.
                             properties:
                               op:
-                                description: Op is the operator.
+                                description: |-
+                                  Op specifies the operator used in the expression.
+                                  Can be `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanEqual`, `LessThan`, `LessThanEqual`, `RegexMatch`,
+                                  `RegexNotMatch`, `RegexMatchCaseInsensitive`, `RegexNotMatchCaseInsensitive`, `In`, or `NotIn`.
                                 type: string
                               set:
                                 description: |-
-                                  Set is an array type object of the expression.
-                                  It should be used when the Op is "in" or "not_in";
+                                  Set provides a list of acceptable values for the expression.
+                                  This should be used when Op is `In` or `NotIn`.
                                 items:
                                   type: string
                                 type: array
                               subject:
                                 description: |-
-                                  Subject is the expression subject, it can
-                                  be any string composed by literals and nginx
-                                  vars.
+                                  Subject defines the left-hand side of the expression.
+                                  It can be any [built-in variable](/apisix/reference/built-in-variables) or string literal.
                                 properties:
                                   name:
-                                    description: The name of subject.
+                                    description: Name is the name of the header or
+                                      query parameter.
                                     type: string
                                   scope:
                                     description: |-
-                                      The subject scope, can be:
-                                      ScopeQuery, ScopeHeader, ScopePath
-                                      when subject is ScopePath, Name field
-                                      will be ignored.
+                                      Scope specifies the subject scope and can be `Header`, `Query`, or `Path`.
+                                      When Scope is `Path`, Name will be ignored.
                                     type: string
                                 required:
                                 - name
@@ -215,10 +220,9 @@ spec:
                                 type: object
                               value:
                                 description: |-
-                                  Value is the normal type object for the expression,
-                                  it should be used when the Op is not "in" and "not_in".
-                                  Set and Value are exclusive so only of them can be set
-                                  in the same time.
+                                  Value defines a single value to compare against the subject.
+                                  This should be used when Op is not `In` or `NotIn`.
+                                  Set and Value are mutually exclusive—only one should be set at a time.
                                 type: string
                             required:
                             - op
@@ -227,36 +231,37 @@ spec:
                           type: array
                         filter_func:
                           description: |-
-                            Matches based on a user-defined filtering function.
-                            These functions can accept an input parameter `vars`
-                            which can be used to access the Nginx variables.
+                            FilterFunc is a user-defined function for advanced request filtering.
+                            The function can use Nginx variables through the `vars` parameter.
+                            This field is supported in APISIX but not in API7 Enterprise.
                           type: string
                         hosts:
                           description: |-
-                            HTTP Host predicates, host can be a wildcard domain or
-                            an exact domain. For wildcard domain, only one generic
-                            level is allowed, for instance, "*.foo.com" is valid but
-                            "*.*.foo.com" is not.
+                            Hosts specifies Host header values to match.
+                            Supports exact and wildcard domains.
+                            Only one level of wildcard is allowed (e.g., `*.example.com` is valid,
+                            but `*.*.example.com` is not).
                           items:
                             type: string
                           type: array
                         methods:
-                          description: HTTP request method predicates.
+                          description: Methods specifies the HTTP methods to match.
                           items:
                             type: string
                           type: array
                         paths:
                           description: |-
-                            URI path predicates, at least one path should be
-                            configured, path could be exact or prefix, for prefix path,
-                            append "*" after it, for instance, "/foo*".
+                            Paths is a list of URI path patterns to match.
+                            At least one path must be specified.
+                            Supports exact matches and prefix matches.
+                            For prefix matches, append `*` to the path, such as `/foo*`.
                           items:
                             type: string
                           type: array
                         remoteAddrs:
                           description: |-
-                            Remote address predicates, items can be valid IPv4 address
-                            or IPv6 address or CIDR.
+                            RemoteAddrs is a list of source IP addresses or CIDR ranges to match.
+                            Supports both IPv4 and IPv6 formats.
                           items:
                             type: string
                           type: array
@@ -264,15 +269,20 @@ spec:
                       - paths
                       type: object
                     name:
-                      description: The rule name, cannot be empty.
+                      description: Name is the unique rule name and cannot be empty.
                       type: string
                     plugin_config_name:
+                      description: PluginConfigName specifies the name of the plugin
+                        config to apply.
                       type: string
                     plugin_config_namespace:
-                      description: By default, PluginConfigNamespace will be the same
-                        as the namespace of ApisixRoute
+                      description: |-
+                        PluginConfigNamespace specifies the namespace of the plugin config.
+                        Defaults to the namespace of the ApisixRoute if not set.
                       type: string
                     plugins:
+                      description: Plugins lists additional plugins applied to this
+                        route.
                       items:
                         description: ApisixRoutePlugin represents an APISIX plugin.
                         properties:
@@ -297,97 +307,117 @@ spec:
                       type: array
                     priority:
                       description: |-
-                        Route priority, when multiple routes contains
-                        same URI path (for path matching), route with
-                        higher priority will take effect.
+                        Priority defines the route priority when multiple routes share the same URI path.
+                        Higher values mean higher priority in route matching.
                       type: integer
                     timeout:
-                      description: UpstreamTimeout is settings for the read, send
-                        and connect to the upstream.
+                      description: Timeout specifies upstream timeout settings.
                       properties:
                         connect:
+                          description: Connect timeout for establishing a connection
+                            to the upstream.
                           type: string
                         read:
+                          description: Read timeout for reading data from the upstream.
                           type: string
                         send:
+                          description: Send timeout for sending data to the upstream.
                           type: string
                       type: object
                     upstreams:
-                      description: Upstreams refer to ApisixUpstream CRD
+                      description: Upstreams references ApisixUpstream CRDs.
                       items:
-                        description: ApisixRouteUpstreamReference contains a ApisixUpstream
-                          CRD reference
+                        description: |-
+                          ApisixRouteUpstreamReference references an ApisixUpstream CRD to be used as a backend.
+                          It can be used in traffic-splitting scenarios or to select a specific upstream configuration.
                         properties:
                           name:
+                            description: Name is the name of the ApisixUpstream resource.
                             type: string
                           weight:
+                            description: Weight is the weight assigned to this upstream.
                             type: integer
                         type: object
                       type: array
                     websocket:
+                      description: Websocket enables or disables websocket support
+                        for this route.
                       type: boolean
                   required:
                   - name
                   type: object
                 type: array
               ingressClassName:
+                description: |-
+                  IngressClassName is the name of the IngressClass this route belongs to.
+                  It allows multiple controllers to watch and reconcile different routes.
                 type: string
               stream:
+                description: |-
+                  Stream defines a list of stream route rules.
+                  Each rule specifies conditions to match TCP/UDP traffic and how to forward them.
                 items:
-                  description: ApisixRouteStream is the configuration for level 4
-                    route
+                  description: ApisixRouteStream defines the configuration for a Layer
+                    4 (TCP/UDP) route.
                   properties:
                     backend:
-                      description: ApisixRouteStreamBackend represents a TCP backend
-                        (a Kubernetes Service).
+                      description: Backend specifies the destination service to which
+                        traffic should be forwarded.
                       properties:
                         resolveGranularity:
                           description: |-
-                            The resolve granularity, can be "endpoints" or "service",
-                            when set to "endpoints", the pod ips will be used; other
-                            wise, the service ClusterIP or ExternalIP will be used,
-                            default is endpoints.
+                            ResolveGranularity determines how the backend service is resolved.
+                            Valid values are `endpoints` and `service`. When set to `endpoints`,
+                            individual pod IPs will be used; otherwise, the Service's ClusterIP or ExternalIP is used.
+                            The default is `endpoints`.
                           type: string
                         serviceName:
                           description: |-
-                            The name (short) of the service, note cross namespace is forbidden,
-                            so be sure the ApisixRoute and Service are in the same namespace.
+                            ServiceName is the name of the Kubernetes Service.
+                            Cross-namespace references are not supported—ensure the ApisixRoute
+                            and the Service are in the same namespace.
                           type: string
                         servicePort:
                           anyOf:
                           - type: integer
                           - type: string
-                          description: The service port, could be the name or the
-                            port number.
+                          description: |-
+                            ServicePort is the port of the Kubernetes Service.
+                            This can be either the port name or port number.
                           x-kubernetes-int-or-string: true
                         subset:
                           description: |-
-                            Subset specifies a subset for the target Service. The subset should be pre-defined
-                            in ApisixUpstream about this service.
+                            Subset specifies a named subset of the target Service.
+                            The subset must be pre-defined in the corresponding ApisixUpstream resource.
                           type: string
                       required:
                       - serviceName
                       - servicePort
                       type: object
                     match:
-                      description: ApisixRouteStreamMatch represents the match conditions
-                        of stream route.
+                      description: Match defines the criteria used to match incoming
+                        TCP or UDP connections.
                       properties:
                         host:
+                          description: Host is the destination host address used to
+                            match the incoming TCP/UDP traffic.
                           type: string
                         ingressPort:
                           description: |-
-                            IngressPort represents the port listening on the Ingress proxy server.
-                            It should be pre-defined as APISIX doesn't support dynamic listening.
+                            IngressPort is the port on which the APISIX Ingress proxy server listens.
+                            This must be a statically configured port, as APISIX does not support dynamic port binding.
                           format: int32
                           type: integer
                       required:
                       - ingressPort
                       type: object
                     name:
-                      description: The rule name cannot be empty.
+                      description: Name is a unique identifier for the route. This
+                        field must not be empty.
                       type: string
                     plugins:
+                      description: Plugins defines a list of plugins to apply to this
+                        route.
                       items:
                         description: ApisixRoutePlugin represents an APISIX plugin.
                         properties:
@@ -411,6 +441,8 @@ spec:
                         type: object
                       type: array
                     protocol:
+                      description: Protocol specifies the L4 protocol to match. Can
+                        be `tcp` or `udp`.
                       type: string
                   required:
                   - backend

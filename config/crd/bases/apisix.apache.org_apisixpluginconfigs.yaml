@@ -19,8 +19,8 @@ spec:
   - name: v2
     schema:
       openAPIV3Schema:
-        description: ApisixPluginConfig is the Schema for the apisixpluginconfigs
-          API.
+        description: ApisixPluginConfig defines a reusable set of plugin configuration
+          that can be referenced by routes.
         properties:
           apiVersion:
             description: |-
@@ -40,15 +40,15 @@ spec:
           metadata:
             type: object
           spec:
-            description: ApisixPluginConfigSpec defines the desired state of ApisixPluginConfigSpec.
+            description: ApisixPluginConfigSpec defines the plugin config configuration.
             properties:
               ingressClassName:
                 description: |-
                   IngressClassName is the name of an IngressClass cluster resource.
-                  The controller uses this field to decide whether the resource should be managed or not.
+                  The controller uses this field to decide whether the resource should be managed.
                 type: string
               plugins:
-                description: Plugins contain a list of ApisixRoutePlugin
+                description: Plugins contain a list of plugins.
                 items:
                   description: ApisixRoutePlugin represents an APISIX plugin.
                   properties:

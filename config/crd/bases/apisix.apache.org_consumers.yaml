@@ -17,6 +17,7 @@ spec:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
+        description: Consumer defines configuration for a consumer.
         properties:
           apiVersion:
             description: |-
@@ -37,7 +38,7 @@ spec:
             type: object
           spec:
             description: |-
-              ConsumerSpec defines the configuration for a consumer, including consumer name,
+              ConsumerSpec defines configuration for a consumer, including consumer name,
               authentication credentials, and plugin settings.
             properties:
               credentials:
@@ -66,7 +67,7 @@ spec:
                     type:
                       description: |-
                         Type specifies the type of authentication to configure credentials for.
-                        Can be one of `jwt-auth`, `basic-auth`, `key-auth`, or `hmac-auth`.
+                        Can be `jwt-auth`, `basic-auth`, `key-auth`, or `hmac-auth`.
                       enum:
                       - jwt-auth
                       - basic-auth

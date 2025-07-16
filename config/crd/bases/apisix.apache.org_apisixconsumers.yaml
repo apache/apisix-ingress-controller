@@ -19,7 +19,8 @@ spec:
   - name: v2
     schema:
       openAPIV3Schema:
-        description: ApisixConsumer is the Schema for the apisixconsumers API.
+        description: ApisixConsumer defines configuration of a consumer and their
+          authentication details.
         properties:
           apiVersion:
             description: |-
@@ -39,18 +40,18 @@ spec:
           metadata:
             type: object
           spec:
-            description: ApisixConsumerSpec defines the desired state of ApisixConsumer.
+            description: ApisixConsumerSpec defines the consumer authentication configuration.
             properties:
               authParameter:
+                description: AuthParameter defines the authentication credentials
+                  and configuration for this consumer.
                 properties:
                   basicAuth:
-                    description: ApisixConsumerBasicAuth defines the configuration
-                      for basic auth.
+                    description: BasicAuth configures the basic authentication details.
                     properties:
                       secretRef:
-                        description: |-
-                          LocalObjectReference contains enough information to let you locate the
-                          referenced object inside the same namespace.
+                        description: SecretRef references a Kubernetes Secret containing
+                          the basic authentication credentials.
                         properties:
                           name:
                             default: ""
@@ -64,12 +65,13 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                       value:
-                        description: ApisixConsumerBasicAuthValue defines the in-place
-                          username and password configuration for basic auth.
+                        description: Value specifies the basic authentication credentials.
                         properties:
                           password:
+                            description: Password is the basic authentication password.
                             type: string
                           username:
+                            description: Username is the basic authentication username.
                             type: string
                         required:
                         - password
@@ -77,13 +79,11 @@ spec:
                         type: object
                     type: object
                   hmacAuth:
-                    description: ApisixConsumerHMACAuth defines the configuration
-                      for the hmac auth.
+                    description: HMACAuth configures the HMAC authentication details.
                     properties:
                       secretRef:
-                        description: |-
-                          LocalObjectReference contains enough information to let you locate the
-                          referenced object inside the same namespace.
+                        description: SecretRef references a Kubernetes Secret containing
+                          the HMAC credentials.
                         properties:
                           name:
                             default: ""
@@ -97,30 +97,47 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                       value:
-                        description: ApisixConsumerHMACAuthValue defines the in-place
-                          configuration for hmac auth.
+                        description: Value specifies HMAC authentication credentials.
                         properties:
                           access_key:
+                            description: AccessKey is the identifier used to look
+                              up the HMAC secret.
                             type: string
                           algorithm:
+                            description: Algorithm specifies the hashing algorithm
+                              (e.g., "hmac-sha256").
                             type: string
                           clock_skew:
+                            description: ClockSkew is the allowed time difference
+                              (in seconds) between client and server clocks.
                             format: int64
                             type: integer
                           encode_uri_params:
+                            description: EncodeURIParams indicates whether URI parameters
+                              are encoded when calculating the signature.
                             type: boolean
                           keep_headers:
+                            description: KeepHeaders determines whether the HMAC signature
+                              headers are preserved after verification.
                             type: boolean
                           max_req_body:
+                            description: MaxReqBody sets the maximum size (in bytes)
+                              of the request body that can be validated.
                             format: int64
                             type: integer
                           secret_key:
+                            description: SecretKey is the HMAC secret used to sign
+                              the request.
                             type: string
                           signed_headers:
+                            description: SignedHeaders lists the headers that must
+                              be included in the signature.
                             items:
                               type: string
                             type: array
                           validate_request_body:
+                            description: ValidateRequestBody enables HMAC validation
+                              of the request body.
                             type: boolean
                         required:
                         - access_key
@@ -128,13 +145,11 @@ spec:
                         type: object
                     type: object
                   jwtAuth:
-                    description: ApisixConsumerJwtAuth defines the configuration for
-                      the jwt auth.
+                    description: JwtAuth configures the JWT authentication details.
                     properties:
                       secretRef:
-                        description: |-
-                          LocalObjectReference contains enough information to let you locate the
-                          referenced object inside the same namespace.
+                        description: SecretRef references a Kubernetes Secret containing
+                          JWT authentication credentials.
                         properties:
                           name:
                             default: ""
@@ -148,26 +163,42 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                       value:
-                        description: ApisixConsumerJwtAuthValue defines the in-place
-                          configuration for jwt auth.
+                        description: Value specifies JWT authentication credentials.
                         properties:
                           algorithm:
+                            description: |-
+                              Algorithm specifies the signing algorithm.
+                              Can be `HS256`, `HS384`, `HS512`, `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, `PS256`, `PS384`, `PS512`, or `EdDSA`.
+                              Currently APISIX only supports `HS256`, `HS512`, `RS256`, and `ES256`. API7 Enterprise supports all algorithms.
                             type: string
                           base64_secret:
+                            description: Base64Secret indicates whether the secret
+                              is base64-encoded.
                             type: boolean
                           exp:
+                            description: Exp is the token expiration period in seconds.
                             format: int64
                             type: integer
                           key:
+                            description: Key is the unique identifier for the JWT
+                              credential.
                             type: string
                           lifetime_grace_period:
+                            description: LifetimeGracePeriod is the allowed clock
+                              skew in seconds for token expiration.
                             format: int64
                             type: integer
                           private_key:
+                            description: PrivateKey is the private key used to sign
+                              the JWT (for asymmetric algorithms).
                             type: string
                           public_key:
+                            description: PublicKey is the public key used to verify
+                              JWT signatures (for asymmetric algorithms).
                             type: string
                           secret:
+                            description: Secret is the shared secret used to sign
+                              the JWT (for symmetric algorithms).
                             type: string
                         required:
                         - key
@@ -175,13 +206,11 @@ spec:
                         type: object
                     type: object
                   keyAuth:
-                    description: ApisixConsumerKeyAuth defines the configuration for
-                      the key auth.
+                    description: KeyAuth configures the key authentication details.
                     properties:
                       secretRef:
-                        description: |-
-                          LocalObjectReference contains enough information to let you locate the
-                          referenced object inside the same namespace.
+                        description: SecretRef references a Kubernetes Secret containing
+                          the key authentication credentials.
                         properties:
                           name:
                             default: ""
@@ -195,23 +224,21 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                       value:
-                        description: ApisixConsumerKeyAuthValue defines the in-place
-                          configuration for basic auth.
+                        description: Value specifies the key authentication credentials.
                         properties:
                           key:
+                            description: Key is the credential used for key authentication.
                             type: string
                         required:
                         - key
                         type: object
                     type: object
                   ldapAuth:
-                    description: ApisixConsumerLDAPAuth defines the configuration
-                      for the ldap auth.
+                    description: LDAPAuth configures the LDAP authentication details.
                     properties:
                       secretRef:
-                        description: |-
-                          LocalObjectReference contains enough information to let you locate the
-                          referenced object inside the same namespace.
+                        description: SecretRef references a Kubernetes Secret containing
+                          the LDAP credentials.
                         properties:
                           name:
                             default: ""
@@ -225,10 +252,11 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                       value:
-                        description: ApisixConsumerLDAPAuthValue defines the in-place
-                          configuration for ldap auth.
+                        description: Value specifies LDAP authentication credentials.
                         properties:
                           user_dn:
+                            description: UserDN is the distinguished name (DN) of
+                              the LDAP user.
                             type: string
                         required:
                         - user_dn
@@ -237,13 +265,12 @@ spec:
                     - secretRef
                     type: object
                   wolfRBAC:
-                    description: ApisixConsumerWolfRBAC defines the configuration
-                      for the wolf-rbac auth.
+                    description: WolfRBAC configures the Wolf RBAC authentication
+                      details.
                     properties:
                       secretRef:
-                        description: |-
-                          LocalObjectReference contains enough information to let you locate the
-                          referenced object inside the same namespace.
+                        description: SecretRef references a Kubernetes Secret containing
+                          the Wolf RBAC token.
                         properties:
                           name:
                             default: ""
@@ -257,15 +284,18 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                       value:
-                        description: ApisixConsumerWolfRBAC defines the in-place server
-                          and appid and header_prefix configuration for wolf-rbac
-                          auth.
+                        description: Value specifies the Wolf RBAC token.
                         properties:
                           appid:
+                            description: Appid is the application identifier used
+                              when communicating with the Wolf RBAC server.
                             type: string
                           header_prefix:
+                            description: HeaderPrefix is the prefix added to request
+                              headers for RBAC enforcement.
                             type: string
                           server:
+                            description: Server is the URL of the Wolf RBAC server.
                             type: string
                         type: object
                     type: object
@@ -273,9 +303,7 @@ spec:
               ingressClassName:
                 description: |-
                   IngressClassName is the name of an IngressClass cluster resource.
-                  controller implementations use this field to know whether they should be
-                  serving this ApisixConsumer resource, by a transitive connection
-                  (controller -> IngressClass -> ApisixConsumer resource).
+                  The controller uses this field to decide whether the resource should be managed.
                 type: string
             required:
             - authParameter
