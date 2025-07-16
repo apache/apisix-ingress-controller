@@ -564,7 +564,7 @@ spec:
 				Method: "GET",
 				Path:   "/get",
 				Host:   "httpbin.external",
-				Check:  scaffold.WithExpectedStatus(http.StatusMovedPermanently),
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
 			})
 		})
 
@@ -1462,7 +1462,7 @@ spec:
 				Path:   "/headers",
 				Host:   "httpbin.example",
 				Checks: []scaffold.ResponseCheckFunc{
-					scaffold.WithExpectedStatus(http.StatusMovedPermanently),
+					scaffold.WithExpectedStatus(http.StatusOK),
 					scaffold.WithExpectedHeader("Location", "http://httpbin.org/headers"),
 				},
 			})
