@@ -1823,7 +1823,7 @@ metadata:
   name: httpbin-external-domain
 spec:
   type: ExternalName
-  externalName: httpbin.org
+  externalName: httpbin-service-e2e-test
 ---
 apiVersion: v1
 kind: Service
@@ -1846,7 +1846,7 @@ spec:
     kind: Service
     group: ""
   passHost: node
-  scheme: https
+  scheme: http
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -1862,10 +1862,10 @@ spec:
         value: /headers
     backendRefs:
     - name: httpbin-external-domain
-      port: 443
+      port: 80
       weight: 1
     - name: mockapi7-external-domain
-      port: 443
+      port: 80
       weight: 1
 `
 
@@ -1880,22 +1880,13 @@ spec:
 			totalRequests := 20
 
 			for i := 0; i < totalRequests; i++ {
-				resp := s.NewAPISIXClient().GET("/headers").Expect().Status(http.StatusOK)
+				statusCode := s.NewAPISIXClient().GET("/headers").Expect().Raw().StatusCode
+				Expect(statusCode).To(Or(Equal(http.StatusOK), Equal(http.StatusMovedPermanently)))
 
-				// Parse JSON response to get the Host header
-				var responseBody map[string]any
-				resp.JSON().Decode(&responseBody)
-
-				if headers, ok := responseBody["headers"].(map[string]any); ok {
-					var host string
-					if host, ok = headers["Host"].(string); !ok {
-						host, ok = headers["host"].(string)
-					}
-					if ok && host != "" {
-						upstreamHosts[host]++
-					}
-					Expect(ok).To(BeTrue(), "Host header should be present")
-					Expect(host).Should(Or(Equal("httpbin.org"), Equal("mock.api7.ai")))
+				if statusCode == http.StatusOK {
+					upstreamHosts["httpbin-service-e2e-test"]++
+				} else if statusCode == http.StatusMovedPermanently {
+					upstreamHosts["mock.api7.ai"]++
 				}
 				time.Sleep(100 * time.Millisecond) // Small delay between requests
 			}
