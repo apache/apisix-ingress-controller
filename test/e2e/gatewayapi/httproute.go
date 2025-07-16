@@ -397,7 +397,7 @@ metadata:
   name: httpbin-external-domain
 spec:
   type: ExternalName
-  externalName: postman-echo.com
+  externalName: httpbin-service-e2e-test
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -1391,7 +1391,7 @@ spec:
 			s.NewAPISIXClient().GET("/headers").
 				WithHeader("Host", "httpbin.example").
 				Expect().
-				Status(http.StatusOK).
+				Status(http.StatusMovedPermanently).
 				Header("Location").IsEqual("http://httpbin.org/headers")
 		})
 
@@ -1722,7 +1722,7 @@ metadata:
   name: httpbin-external-domain
 spec:
   type: ExternalName
-  externalName: httpbin.org
+  externalName: httpbin-service-e2e-test
 ---
 apiVersion: v1
 kind: Service
