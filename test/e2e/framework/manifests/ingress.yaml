@@ -322,7 +322,7 @@ metadata:
   name: ingress-config
 data:
   config.yaml: |
-    log_level: "debug"
+    log_level: "info"
 
     controller_name: {{ .ControllerName | default "apisix.apache.org/apisix-ingress-controller" }}
 
@@ -347,10 +347,10 @@ metadata:
   namespace: {{ .Namespace }}
 spec:
   ports:
-  - name: https
-    port: 8443
+  - name: metrics
+    port: 8080
     protocol: TCP
-    targetPort: 8443
+    targetPort: 8080
   selector:
     control-plane: controller-manager
 ---
@@ -400,19 +400,16 @@ spec:
           initialDelaySeconds: 15
           periodSeconds: 20
         name: manager
+        ports:
+        - name: metrics
+          containerPort: 8080
+          protocol: TCP
         readinessProbe:
           httpGet:
             path: /readyz
             port: 8081
           initialDelaySeconds: 5
           periodSeconds: 10
-        resources:
-          limits:
-            cpu: 500m
-            memory: 128Mi
-          requests:
-            cpu: 10m
-            memory: 64Mi
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

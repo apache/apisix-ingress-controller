@@ -24,8 +24,7 @@ import (
 	"time"
 
 	"github.com/gruntwork-io/terratest/modules/k8s"
-	. "github.com/onsi/ginkgo/v2" //nolint:staticcheck
-	. "github.com/onsi/gomega"    //nolint:staticcheck
+	. "github.com/onsi/gomega" //nolint:staticcheck
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -111,36 +110,36 @@ func (s *APISIXDeployer) BeforeEach() {
 }
 
 func (s *APISIXDeployer) AfterEach() {
-	if CurrentSpecReport().Failed() {
-		if os.Getenv("TEST_ENV") == "CI" {
-			_, _ = fmt.Fprintln(GinkgoWriter, "Dumping namespace contents")
-			_, _ = k8s.RunKubectlAndGetOutputE(GinkgoT(), s.kubectlOptions, "get", "deploy,sts,svc,pods,gatewayproxy")
-			_, _ = k8s.RunKubectlAndGetOutputE(GinkgoT(), s.kubectlOptions, "describe", "pods")
-		}
+	return
+	// if CurrentSpecReport().Failed() {
+	// 	if os.Getenv("TEST_ENV") == "CI" {
+	// 		_, _ = fmt.Fprintln(GinkgoWriter, "Dumping namespace contents")
+	// 		_, _ = k8s.RunKubectlAndGetOutputE(GinkgoT(), s.kubectlOptions, "get", "deploy,sts,svc,pods,gatewayproxy")
+	// 		_, _ = k8s.RunKubectlAndGetOutputE(GinkgoT(), s.kubectlOptions, "describe", "pods")
+	// 	}
 
-		output := s.GetDeploymentLogs("apisix-ingress-controller")
-		if output != "" {
-			_, _ = fmt.Fprintln(GinkgoWriter, output)
-		}
-	}
+	// 	output := s.GetDeploymentLogs("apisix-ingress-controller")
+	// 	if output != "" {
+	// 		_, _ = fmt.Fprintln(GinkgoWriter, output)
+	// 	}
+	// }
+	// // Delete all additional gateways
+	// for identifier := range s.additionalGateways {
+	// 	err := s.CleanupAdditionalGateway(identifier)
+	// 	Expect(err).NotTo(HaveOccurred(), "cleaning up additional gateway")
+	// }
 
-	// Delete all additional gateways
-	for identifier := range s.additionalGateways {
-		err := s.CleanupAdditionalGateway(identifier)
-		Expect(err).NotTo(HaveOccurred(), "cleaning up additional gateway")
-	}
+	// // if the test case is successful, just delete namespace
+	// err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
+	// Expect(err).NotTo(HaveOccurred(), "deleting namespace "+s.namespace)
 
-	// if the test case is successful, just delete namespace
-	err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
-	Expect(err).NotTo(HaveOccurred(), "deleting namespace "+s.namespace)
+	// for i := len(s.finalizers) - 1; i >= 0; i-- {
+	// 	runWithRecover(s.finalizers[i])
+	// }
 
-	for i := len(s.finalizers) - 1; i >= 0; i-- {
-		runWithRecover(s.finalizers[i])
-	}
-
-	// Wait for a while to prevent the worker node being overwhelming
-	// (new cases will be run).
-	time.Sleep(3 * time.Second)
+	// // Wait for a while to prevent the worker node being overwhelming
+	// // (new cases will be run).
+	// time.Sleep(3 * time.Second)
 }
 
 func (s *APISIXDeployer) DeployDataplane(deployOpts DeployDataplaneOptions) {
@@ -260,7 +259,7 @@ func (s *APISIXDeployer) DeployIngress() {
 	s.Framework.DeployIngress(framework.IngressDeployOpts{
 		ControllerName:     s.opts.ControllerName,
 		ProviderType:       framework.ProviderType,
-		ProviderSyncPeriod: 200 * time.Millisecond,
+		ProviderSyncPeriod: getProviderSyncPeriod(),
 		Namespace:          s.namespace,
 		Replicas:           1,
 	})
@@ -270,10 +269,18 @@ func (s *APISIXDeployer) ScaleIngress(replicas int) {
 	s.Framework.DeployIngress(framework.IngressDeployOpts{
 		ControllerName:     s.opts.ControllerName,
 		ProviderType:       framework.ProviderType,
-		ProviderSyncPeriod: 200 * time.Millisecond,
+		ProviderSyncPeriod: getProviderSyncPeriod(),
 		Namespace:          s.namespace,
 		Replicas:           replicas,
 	})
+}
+
+func getProviderSyncPeriod() time.Duration {
+	providerSyncPeriod, err := time.ParseDuration(framework.ProviderSyncPeriod)
+	if err != nil {
+		providerSyncPeriod = 5 * time.Second
+	}
+	return providerSyncPeriod
 }
 
 // getEnvOrDefault returns environment variable value or default

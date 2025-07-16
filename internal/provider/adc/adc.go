@@ -42,6 +42,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/provider/adc/translator"
 	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
+	pkgmetrics "github.com/apache/apisix-ingress-controller/pkg/metrics"
 )
 
 type adcConfig struct {
@@ -311,9 +312,13 @@ func (d *adcClient) Start(ctx context.Context) error {
 	for {
 		select {
 		case <-ticker.C:
+			start := time.Now()
+			log.Infof("adcClient start sync, %v", start)
 			if err := d.Sync(ctx); err != nil {
 				log.Error(err)
 			}
+			duration := time.Since(start)
+			log.Infof("adcClient sync duration: %v, now: %v", duration, time.Now())
 		case <-ctx.Done():
 			return nil
 		}
@@ -390,14 +395,35 @@ func (d *adcClient) sync(ctx context.Context, task Task) error {
 
 	var errs types.ADCExecutionErrors
 	for _, config := range task.configs {
-		if err := d.executor.Execute(ctx, d.BackendMode, config, args); err != nil {
+		// Record sync duration for each config
+		startTime := time.Now()
+		resourceType := strings.Join(task.ResourceTypes, ",")
+		if resourceType == "" {
+			resourceType = "all"
+		}
+
+		err := d.executor.Execute(ctx, d.BackendMode, config, args)
+		duration := time.Since(startTime).Seconds()
+		log.Infof("synced %s in %f seconds, service list length: %d", config.Name, duration, len(task.Resources.Services))
+
+		status := "success"
+		if err != nil {
+			status = "failure"
 			log.Errorw("failed to execute adc command", zap.Error(err), zap.Any("config", config))
+
 			var execErr types.ADCExecutionError
 			if errors.As(err, &execErr) {
 				errs.Errors = append(errs.Errors, execErr)
+				pkgmetrics.RecordExecutionError(config.Name, execErr.Name)
+			} else {
+				pkgmetrics.RecordExecutionError(config.Name, "unknown")
 			}
 		}
+
+		// Record metrics
+		pkgmetrics.RecordSyncDuration(config.Name, resourceType, status, duration)
 	}
+
 	if len(errs.Errors) > 0 {
 		return errs
 	}

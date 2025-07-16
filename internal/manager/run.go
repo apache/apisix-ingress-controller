@@ -42,6 +42,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/provider/adc"
+	_ "github.com/apache/apisix-ingress-controller/pkg/metrics"
 )
 
 var (

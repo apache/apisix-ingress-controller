@@ -28,7 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const UpdateChannelBufferSize = 1000
+const UpdateChannelBufferSize = 5000
 
 type Update struct {
 	NamespacedName types.NamespacedName
@@ -136,5 +136,6 @@ type UpdateWriter struct {
 
 func (u *UpdateWriter) Update(update Update) {
 	u.wg.Wait()
+	// len(u.updateChannel)
 	u.updateChannel <- update
 }
