@@ -26,6 +26,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	pkgmetrics "github.com/apache/apisix-ingress-controller/pkg/metrics"
 )
 
 const UpdateChannelBufferSize = 5000
@@ -136,6 +138,7 @@ type UpdateWriter struct {
 
 func (u *UpdateWriter) Update(update Update) {
 	u.wg.Wait()
-	// len(u.updateChannel)
+	// Record current queue length before adding new item
+	pkgmetrics.UpdateStatusQueueLength(float64(len(u.updateChannel)))
 	u.updateChannel <- update
 }

@@ -51,13 +51,22 @@ var (
 		[]string{"config_name", "error_type"},
 	)
 
-	// Resource sync gauge
-	ResourceSyncGauge = prometheus.NewGaugeVec(
+	// Status update channel queue length gauge
+	StatusUpdateQueueLength = prometheus.NewGauge(
 		prometheus.GaugeOpts{
-			Name: "apisix_ingress_resources_synced",
-			Help: "Number of resources currently synced",
+			Name: "apisix_ingress_status_update_queue_length",
+			Help: "Current length of the status update queue",
 		},
-		[]string{"config_name", "resource_type"},
+	)
+
+	// File I/O operation duration histogram
+	FileIODuration = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "apisix_ingress_file_io_duration_seconds",
+			Help:    "Time spent on file I/O operations",
+			Buckets: prometheus.DefBuckets,
+		},
+		[]string{"operation", "status"},
 	)
 )
 
@@ -68,7 +77,8 @@ func init() {
 		ADCSyncDuration,
 		ADCSyncTotal,
 		ADCExecutionErrors,
-		ResourceSyncGauge,
+		StatusUpdateQueueLength,
+		FileIODuration,
 	)
 }
 
@@ -83,7 +93,12 @@ func RecordExecutionError(configName, errorType string) {
 	ADCExecutionErrors.WithLabelValues(configName, errorType).Inc()
 }
 
-// UpdateResourceGauge updates the resource sync gauge
-func UpdateResourceGauge(configName, resourceType string, count float64) {
-	ResourceSyncGauge.WithLabelValues(configName, resourceType).Set(count)
+// UpdateStatusQueueLength updates the status update queue length gauge
+func UpdateStatusQueueLength(length float64) {
+	StatusUpdateQueueLength.Set(length)
+}
+
+// RecordFileIODuration records the duration of a file I/O operation
+func RecordFileIODuration(operation, status string, duration float64) {
+	FileIODuration.WithLabelValues(operation, status).Observe(duration)
 }

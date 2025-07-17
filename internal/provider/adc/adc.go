@@ -385,10 +385,14 @@ func (d *adcClient) sync(ctx context.Context, task Task) error {
 		return nil
 	}
 
+	// Record file I/O duration
+	fileIOStart := time.Now()
 	syncFilePath, cleanup, err := prepareSyncFile(task.Resources)
 	if err != nil {
+		pkgmetrics.RecordFileIODuration("prepare_sync_file", "failure", time.Since(fileIOStart).Seconds())
 		return err
 	}
+	pkgmetrics.RecordFileIODuration("prepare_sync_file", "success", time.Since(fileIOStart).Seconds())
 	defer cleanup()
 
 	args := BuildADCExecuteArgs(syncFilePath, task.Labels, task.ResourceTypes)
