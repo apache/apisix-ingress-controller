@@ -183,7 +183,7 @@ spec:
 			err := yaml.Unmarshal([]byte(output), &route)
 			Expect(err).NotTo(HaveOccurred(), "unmarshalling ApisixRoute")
 
-			assertion(route.Status.Conditions).Should(HaveLen(1), "should have one condition")
+			Expect(route.Status.Conditions).Should(HaveLen(1), "should have one condition")
 
 			s.Deployer.ScaleIngress(0)
 			s.Deployer.ScaleIngress(1)
@@ -194,7 +194,7 @@ spec:
 			err = yaml.Unmarshal([]byte(output), &route2)
 			Expect(err).NotTo(HaveOccurred(), "unmarshalling ApisixRoute")
 
-			assertion(route2.Status.Conditions).Should(HaveLen(1), "should have one condition")
+			Expect(route2.Status.Conditions).Should(HaveLen(1), "should have one condition")
 			Expect(route2.Status.Conditions[0].LastTransitionTime).To(Equal(route.Status.Conditions[0].LastTransitionTime),
 				"should not update the same status condition again")
 		})
