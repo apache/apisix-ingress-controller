@@ -1883,9 +1883,10 @@ spec:
 				statusCode := s.NewAPISIXClient().GET("/headers").Expect().Raw().StatusCode
 				Expect(statusCode).To(Or(Equal(http.StatusOK), Equal(http.StatusMovedPermanently)))
 
-				if statusCode == http.StatusOK {
+				switch statusCode {
+				case http.StatusOK:
 					upstreamHosts["httpbin-service-e2e-test"]++
-				} else if statusCode == http.StatusMovedPermanently {
+				case http.StatusMovedPermanently:
 					upstreamHosts["mock.api7.ai"]++
 				}
 				time.Sleep(100 * time.Millisecond) // Small delay between requests
