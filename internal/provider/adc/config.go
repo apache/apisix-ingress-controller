@@ -207,9 +207,6 @@ func (d *adcClient) updateConfigForGatewayProxy(tctx *provider.TranslateContext,
 	for _, ref := range referrers {
 		d.configs[ref] = *config
 	}
-
-	d.syncNotify()
-
 	return nil
 }
 
