@@ -52,7 +52,7 @@ func NewDefaultConfig() *Config {
 		ExecADCTimeout:   types.TimeDuration{Duration: 15 * time.Second},
 		ProviderConfig: ProviderConfig{
 			Type:          ProviderTypeAPISIX,
-			SyncPeriod:    types.TimeDuration{Duration: 1 * time.Second},
+			SyncPeriod:    types.TimeDuration{Duration: 10 * time.Second},
 			InitSyncDelay: types.TimeDuration{Duration: 20 * time.Minute},
 		},
 	}
