@@ -24,7 +24,8 @@ import (
 	"time"
 
 	"github.com/gruntwork-io/terratest/modules/k8s"
-	. "github.com/onsi/gomega" //nolint:staticcheck
+	. "github.com/onsi/ginkgo/v2" //nolint:staticcheck
+	. "github.com/onsi/gomega"    //nolint:staticcheck
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -259,7 +260,7 @@ func (s *APISIXDeployer) DeployIngress() {
 	s.Framework.DeployIngress(framework.IngressDeployOpts{
 		ControllerName:     s.opts.ControllerName,
 		ProviderType:       framework.ProviderType,
-		ProviderSyncPeriod: getProviderSyncPeriod(),
+		ProviderSyncPeriod: 200 * time.Millisecond,
 		Namespace:          s.namespace,
 		Replicas:           1,
 	})
@@ -269,18 +270,10 @@ func (s *APISIXDeployer) ScaleIngress(replicas int) {
 	s.Framework.DeployIngress(framework.IngressDeployOpts{
 		ControllerName:     s.opts.ControllerName,
 		ProviderType:       framework.ProviderType,
-		ProviderSyncPeriod: getProviderSyncPeriod(),
+		ProviderSyncPeriod: 200 * time.Millisecond,
 		Namespace:          s.namespace,
 		Replicas:           replicas,
 	})
-}
-
-func getProviderSyncPeriod() time.Duration {
-	providerSyncPeriod, err := time.ParseDuration(framework.ProviderSyncPeriod)
-	if err != nil {
-		providerSyncPeriod = 5 * time.Second
-	}
-	return providerSyncPeriod
 }
 
 // getEnvOrDefault returns environment variable value or default

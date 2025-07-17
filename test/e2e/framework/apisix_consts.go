@@ -27,8 +27,7 @@ import (
 )
 
 var (
-	ProviderType       = cmp.Or(os.Getenv("PROVIDER_TYPE"), "apisix-standalone")
-	ProviderSyncPeriod = cmp.Or(os.Getenv("PROVIDER_SYNC_PERIOD"), "5s")
+	ProviderType = cmp.Or(os.Getenv("PROVIDER_TYPE"), "apisix")
 )
 
 var (

@@ -145,10 +145,6 @@ conformance-test:
 conformance-test-standalone:
 	go test -v ./test/conformance/apisix -tags=conformance -timeout 60m
 
-.PHONY: load-test
-load-test:
-	go test -v ./test/e2e/load-test -test.timeout=$(TEST_TIMEOUT) -v -ginkgo.v
-
 .PHONY: lint
 lint: sort-import golangci-lint ## Run golangci-lint linter
 	$(GOLANGCI_LINT) run
