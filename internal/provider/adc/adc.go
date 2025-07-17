@@ -312,13 +312,9 @@ func (d *adcClient) Start(ctx context.Context) error {
 	for {
 		select {
 		case <-ticker.C:
-			start := time.Now()
-			log.Infof("adcClient start sync, %v", start)
 			if err := d.Sync(ctx); err != nil {
 				log.Error(err)
 			}
-			duration := time.Since(start)
-			log.Infof("adcClient sync duration: %v, now: %v", duration, time.Now())
 		case <-ctx.Done():
 			return nil
 		}
