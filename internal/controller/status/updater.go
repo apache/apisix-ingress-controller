@@ -112,6 +112,8 @@ func (u *UpdateHandler) Start(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case update := <-u.updateChannel:
+			// Decrement queue length after removing item from queue
+			pkgmetrics.DecStatusQueueLength()
 			u.log.Info("received a status update", "namespace", update.NamespacedName.Namespace,
 				"name", update.NamespacedName.Name)
 
@@ -138,7 +140,7 @@ type UpdateWriter struct {
 
 func (u *UpdateWriter) Update(update Update) {
 	u.wg.Wait()
-	// Record current queue length before adding new item
-	pkgmetrics.UpdateStatusQueueLength(float64(len(u.updateChannel)))
 	u.updateChannel <- update
+	// Increment queue length after adding new item
+	pkgmetrics.IncStatusQueueLength()
 }

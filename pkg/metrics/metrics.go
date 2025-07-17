@@ -98,6 +98,16 @@ func UpdateStatusQueueLength(length float64) {
 	StatusUpdateQueueLength.Set(length)
 }
 
+// IncStatusQueueLength increments the status update queue length gauge by 1
+func IncStatusQueueLength() {
+	StatusUpdateQueueLength.Inc()
+}
+
+// DecStatusQueueLength decrements the status update queue length gauge by 1
+func DecStatusQueueLength() {
+	StatusUpdateQueueLength.Dec()
+}
+
 // RecordFileIODuration records the duration of a file I/O operation
 func RecordFileIODuration(operation, status string, duration float64) {
 	FileIODuration.WithLabelValues(operation, status).Observe(duration)
