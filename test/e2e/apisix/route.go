@@ -106,7 +106,9 @@ spec:
 			By("verify metrics content")
 			resp, err := http.Get(metricsURL)
 			Expect(err).ShouldNot(HaveOccurred(), "request metrics endpoint")
-			defer resp.Body.Close()
+			defer func() {
+				_ = resp.Body.Close()
+			}()
 
 			Expect(resp.StatusCode).Should(Equal(http.StatusOK))
 
