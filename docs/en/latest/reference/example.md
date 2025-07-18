@@ -986,7 +986,7 @@ spec:
 
 <TabItem value="ingress">
 
-If you are using Ingress resources, you can configure either `statusAddress` or `publishService`. 
+If you are using Ingress resources, you can configure either `statusAddress` or `publishService`.
 
 To configure the `statusAddress`:
 
