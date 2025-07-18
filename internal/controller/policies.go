@@ -158,13 +158,9 @@ func ProcessBackendTrafficPolicy(
 				NamespacedName: utils.NamespacedName(policy),
 				Resource:       policy.DeepCopy(),
 				Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
-					t, ok := obj.(*v1alpha1.BackendTrafficPolicy)
-					if !ok {
-						err := fmt.Errorf("unsupported object type %T", obj)
-						panic(err)
-					}
-					t.Status = policy.Status
-					return t
+					cp := obj.(*v1alpha1.BackendTrafficPolicy).DeepCopy()
+					cp.Status = policy.Status
+					return cp
 				}),
 			})
 		}
