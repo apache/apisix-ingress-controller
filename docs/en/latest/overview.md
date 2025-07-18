@@ -1,11 +1,12 @@
 ---
-title: Getting started
+title: Overview
 keywords:
   - APISIX ingress
   - Apache APISIX
   - Kubernetes ingress
-description: Guide to get started with Apache APISIX ingress controller.
+description: Overview of the APISIX Ingress Controller, its features, APISIX compatibility, and how to contribute to the project.
 ---
+
 <!--
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
@@ -25,135 +26,11 @@ description: Guide to get started with Apache APISIX ingress controller.
 #
 -->
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-
 APISIX Ingress Controller is a [Kubernetes ingress controller](https://kubernetes.io/docs/concepts/services-networking/ingress-controllers/) using [Apache APISIX](https://apisix.apache.org) as the high performance reverse proxy.
 
 APISIX Ingress Controller can be configured using the native Kubernetes Ingress or Gateway API, as well as with APISIX’s own declarative and easy-to-use custom resources. The controller translates these resources into APISIX configuration.
 
-## Quick Start
-
-Get started with APISIX Ingress Controller in a few simple steps.
-
-### Prerequisites
-
-Before installing APISIX Ingress Controller, ensure you have:
-
-1. A working Kubernetes cluster (version 1.26+)
-2. [Helm](https://helm.sh/) (version 3.8+) installed
-
-### Install APISIX and APISIX Ingress Controller (Standalone API-driven mode)
-
-Install the Gateway API CRDs, [APISIX Standalone API-driven mode](https://apisix.apache.org/docs/apisix/deployment-modes/#api-driven-experimental), and APISIX Ingress Controller using the following commands:
-
-```bash
-helm repo add apisix https://charts.apiseven.com
-helm repo add bitnami https://charts.bitnami.com/bitnami
-helm repo update
-
-helm install apisix \
-  --namespace ingress-apisix \
-  --create-namespace \
-  --set apisix.deployment.role=traditional \
-  --set apisix.deployment.role_traditional.config_provider=yaml \
-  --set etcd.enabled=false \
-  --set ingress-controller.enabled=true \
-  --set ingress-controller.config.provider.type=apisix-standalone \
-  --set ingress-controller.apisix.adminService.namespace=ingress-apisix \
-  --set ingress-controller.gatewayProxy.createDefault=true \
-  apisix/apisix
-```
-
-### Set Up a Sample Upstream
-
-Install the httpbin example application to test the configuration:
-
-```bash
-kubectl apply -f https://raw.githubusercontent.com/apache/apisix-ingress-controller/refs/heads/v2.0.0/examples/httpbin/deployment.yaml
-```
-
-### Configure a Route
-
-Install an ApisixRoute or Ingress resource to route traffic to httpbin:
-
-> The examples below show how these differ. Both the examples configure a Route in APISIX that routes to an httpbin service as the Upstream.
-
-<Tabs
-groupId="resources"
-defaultValue="apisix"
-values={[
-{label: 'APISIX Ingress CRD', value: 'apisix'},
-{label: 'Kubernetes Ingress API', value: 'ingress'},
-]}>
-
-<TabItem value="apisix">
-
-```yaml title="httpbin-route.yaml"
-apiVersion: apisix.apache.org/v2
-kind: ApisixRoute
-metadata:
-  name: httpbin-route
-spec:
-  ingressClassName: apisix
-  http:
-    - name: route-1
-      match:
-        hosts:
-          - local.httpbin.org
-        paths:
-          - /*
-      backends:
-        - serviceName: httpbin
-          servicePort: 80
-```
-
-</TabItem>
-
-<TabItem value="ingress">
-
-```yaml title="httpbin-route.yaml"
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: httpbin-route
-spec:
-  ingressClassName: apisix
-  rules:
-    - host: local.httpbin.org
-      http:
-        paths:
-          - backend:
-              service:
-                name: httpbin
-                port:
-                  number: 80
-            path: /
-            pathType: Prefix
-```
-
-</TabItem>
-</Tabs>
-
-:::note
-
-More details on the installation can be found in the [Installation guide](./install.md).
-
-:::
-
-### Verify Route Configuration
-
-Let's verify the configuration. In order to access APISIX locally, we can use `kubectl port-forward` command to forward traffic from the specified port at your local machine to the specified port on the specified service.
-
-```bash
-kubectl port-forward -n ingress-apisix svc/apisix-gateway 9080:80
-```
-
-Run curl command in a APISIX pod to see if the routing configuration works.
-
-```bash
-curl http://127.0.0.1:9080/headers -H 'Host: local.httpbin.org'
-```
+See the [Getting Started tutorials](./getting-started/get-apisix-ingress-controller.md) to set up and start using the APISIX Ingress Controller.
 
 ## Features
 
