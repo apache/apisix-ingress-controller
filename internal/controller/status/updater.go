@@ -26,6 +26,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	pkgmetrics "github.com/apache/apisix-ingress-controller/pkg/metrics"
 )
 
 const UpdateChannelBufferSize = 1000
@@ -110,6 +112,8 @@ func (u *UpdateHandler) Start(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case update := <-u.updateChannel:
+			// Decrement queue length after removing item from queue
+			pkgmetrics.DecStatusQueueLength()
 			u.log.Info("received a status update", "namespace", update.NamespacedName.Namespace,
 				"name", update.NamespacedName.Name)
 
@@ -137,4 +141,6 @@ type UpdateWriter struct {
 func (u *UpdateWriter) Update(update Update) {
 	u.wg.Wait()
 	u.updateChannel <- update
+	// Increment queue length after adding new item
+	pkgmetrics.IncStatusQueueLength()
 }

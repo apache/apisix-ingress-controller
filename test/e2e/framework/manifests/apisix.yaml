@@ -90,6 +90,9 @@ spec:
             - name: admin
               containerPort: 9180
               protocol: TCP
+            - name: control
+              containerPort: 9090
+              protocol: TCP
           volumeMounts:
             - name: config-writable
               mountPath: /usr/local/apisix/conf
