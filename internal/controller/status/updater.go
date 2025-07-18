@@ -34,6 +34,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	v2 "github.com/apache/apisix-ingress-controller/api/v2"
 	types "github.com/apache/apisix-ingress-controller/internal/types"
+	pkgmetrics "github.com/apache/apisix-ingress-controller/pkg/metrics"
 )
 
 const UpdateChannelBufferSize = 1000
@@ -137,6 +138,8 @@ func (u *UpdateHandler) Start(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case update := <-u.updateChannel:
+			// Decrement queue length after removing item from queue
+			pkgmetrics.DecStatusQueueLength()
 			u.log.V(1).Info("received a status update", "namespace", update.NamespacedName.Namespace,
 				"name", update.NamespacedName.Name,
 				"kind", types.KindOf(update.Resource),
@@ -166,6 +169,8 @@ type UpdateWriter struct {
 func (u *UpdateWriter) Update(update Update) {
 	u.wg.Wait()
 	u.updateChannel <- update
+	// Increment queue length after adding new item
+	pkgmetrics.IncStatusQueueLength()
 }
 
 func statusEqual(a, b any, opts ...cmp.Option) bool {
