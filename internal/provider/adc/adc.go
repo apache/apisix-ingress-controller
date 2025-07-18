@@ -404,7 +404,6 @@ func (d *adcClient) sync(ctx context.Context, task Task) error {
 
 		err := d.executor.Execute(ctx, d.BackendMode, config, args)
 		duration := time.Since(startTime).Seconds()
-		log.Infof("synced %s in %f seconds, service list length: %d", config.Name, duration, len(task.Resources.Services))
 
 		status := "success"
 		if err != nil {
