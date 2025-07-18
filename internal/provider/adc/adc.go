@@ -42,6 +42,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/provider/adc/translator"
 	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
+	pkgmetrics "github.com/apache/apisix-ingress-controller/pkg/metrics"
 )
 
 type adcConfig struct {
@@ -380,24 +381,48 @@ func (d *adcClient) sync(ctx context.Context, task Task) error {
 		return nil
 	}
 
+	// Record file I/O duration
+	fileIOStart := time.Now()
 	syncFilePath, cleanup, err := prepareSyncFile(task.Resources)
 	if err != nil {
+		pkgmetrics.RecordFileIODuration("prepare_sync_file", "failure", time.Since(fileIOStart).Seconds())
 		return err
 	}
+	pkgmetrics.RecordFileIODuration("prepare_sync_file", "success", time.Since(fileIOStart).Seconds())
 	defer cleanup()
 
 	args := BuildADCExecuteArgs(syncFilePath, task.Labels, task.ResourceTypes)
 
 	var errs types.ADCExecutionErrors
 	for _, config := range task.configs {
-		if err := d.executor.Execute(ctx, d.BackendMode, config, args); err != nil {
+		// Record sync duration for each config
+		startTime := time.Now()
+		resourceType := strings.Join(task.ResourceTypes, ",")
+		if resourceType == "" {
+			resourceType = "all"
+		}
+
+		err := d.executor.Execute(ctx, d.BackendMode, config, args)
+		duration := time.Since(startTime).Seconds()
+
+		status := "success"
+		if err != nil {
+			status = "failure"
 			log.Errorw("failed to execute adc command", zap.Error(err), zap.Any("config", config))
+
 			var execErr types.ADCExecutionError
 			if errors.As(err, &execErr) {
 				errs.Errors = append(errs.Errors, execErr)
+				pkgmetrics.RecordExecutionError(config.Name, execErr.Name)
+			} else {
+				pkgmetrics.RecordExecutionError(config.Name, "unknown")
 			}
 		}
+
+		// Record metrics
+		pkgmetrics.RecordSyncDuration(config.Name, resourceType, status, duration)
 	}
+
 	if len(errs.Errors) > 0 {
 		return errs
 	}
