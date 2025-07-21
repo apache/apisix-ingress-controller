@@ -20,6 +20,7 @@ package apisix
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"time"
@@ -96,6 +97,37 @@ spec:
 			err := s.DeleteResource("ApisixRoute", "default")
 			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixRoute")
 			Eventually(request).WithArguments("/headers").WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
+
+			By("request /metrics endpoint from controller")
+
+			// Get the metrics service endpoint
+			metricsURL := s.GetMetricsEndpoint()
+
+			By("verify metrics content")
+			resp, err := http.Get(metricsURL)
+			Expect(err).ShouldNot(HaveOccurred(), "request metrics endpoint")
+			defer func() {
+				_ = resp.Body.Close()
+			}()
+
+			Expect(resp.StatusCode).Should(Equal(http.StatusOK))
+
+			body, err := io.ReadAll(resp.Body)
+			Expect(err).ShouldNot(HaveOccurred(), "read metrics response")
+
+			bodyStr := string(body)
+
+			// Verify prometheus format
+			Expect(resp.Header.Get("Content-Type")).Should(ContainSubstring("text/plain; version=0.0.4; charset=utf-8"))
+
+			// Verify specific metrics from metrics.go exist
+			Expect(bodyStr).Should(ContainSubstring("apisix_ingress_adc_sync_duration_seconds"))
+			Expect(bodyStr).Should(ContainSubstring("apisix_ingress_adc_sync_total"))
+			Expect(bodyStr).Should(ContainSubstring("apisix_ingress_status_update_queue_length"))
+			Expect(bodyStr).Should(ContainSubstring("apisix_ingress_file_io_duration_seconds"))
+
+			// Log metrics for debugging
+			fmt.Printf("Metrics endpoint response:\n%s\n", bodyStr)
 		})
 
 		It("Test plugins in ApisixRoute", func() {

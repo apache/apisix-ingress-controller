@@ -22,16 +22,25 @@ import (
 	"sync"
 
 	"github.com/go-logr/logr"
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+
+	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	v2 "github.com/apache/apisix-ingress-controller/api/v2"
+	types "github.com/apache/apisix-ingress-controller/internal/types"
+	pkgmetrics "github.com/apache/apisix-ingress-controller/pkg/metrics"
 )
 
 const UpdateChannelBufferSize = 1000
 
 type Update struct {
-	NamespacedName types.NamespacedName
+	NamespacedName k8stypes.NamespacedName
 	Resource       client.Object
 	Mutator        Mutator
 }
@@ -48,6 +57,13 @@ func (m MutatorFunc) Mutate(obj client.Object) client.Object {
 	}
 
 	return m(obj)
+}
+
+var cmpIgnoreLastTT = cmp.Options{
+	cmpopts.IgnoreFields(metav1.Condition{}, "LastTransitionTime"),
+	cmpopts.IgnoreMapEntries(func(k string, _ any) bool {
+		return k == "lastTransitionTime"
+	}),
 }
 
 type UpdateHandler struct {
@@ -94,7 +110,19 @@ func (u *UpdateHandler) updateStatus(ctx context.Context, update Update) error {
 		return nil
 	}
 
+	if statusEqual(obj, newObj, cmpIgnoreLastTT) {
+		u.log.V(1).Info("status is equal, skipping update", "name", update.NamespacedName.Name,
+			"namespace", update.NamespacedName.Namespace,
+			"kind", types.KindOf(obj))
+		return nil
+	}
+
 	newObj.SetUID(obj.GetUID())
+
+	u.log.Info("updating status", "name", update.NamespacedName.Name,
+		"namespace", update.NamespacedName.Namespace,
+		"kind", types.KindOf(newObj),
+	)
 
 	return u.client.Status().Update(ctx, newObj)
 }
@@ -110,8 +138,12 @@ func (u *UpdateHandler) Start(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case update := <-u.updateChannel:
-			u.log.Info("received a status update", "namespace", update.NamespacedName.Namespace,
-				"name", update.NamespacedName.Name)
+			// Decrement queue length after removing item from queue
+			pkgmetrics.DecStatusQueueLength()
+			u.log.V(1).Info("received a status update", "namespace", update.NamespacedName.Namespace,
+				"name", update.NamespacedName.Name,
+				"kind", types.KindOf(update.Resource),
+			)
 
 			u.apply(ctx, update)
 		}
@@ -137,4 +169,85 @@ type UpdateWriter struct {
 func (u *UpdateWriter) Update(update Update) {
 	u.wg.Wait()
 	u.updateChannel <- update
+	// Increment queue length after adding new item
+	pkgmetrics.IncStatusQueueLength()
+}
+
+func statusEqual(a, b any, opts ...cmp.Option) bool {
+	var statusA, statusB any
+
+	switch a := a.(type) {
+	case *gatewayv1.GatewayClass:
+		b, ok := b.(*gatewayv1.GatewayClass)
+		if !ok {
+			return false
+		}
+		statusA, statusB = a.Status, b.Status
+
+	case *gatewayv1.Gateway:
+		b, ok := b.(*gatewayv1.Gateway)
+		if !ok {
+			return false
+		}
+		statusA, statusB = a.Status, b.Status
+
+	case *gatewayv1.HTTPRoute:
+		b, ok := b.(*gatewayv1.HTTPRoute)
+		if !ok {
+			return false
+		}
+		statusA, statusB = a.Status, b.Status
+	case *v2.ApisixRoute:
+		b, ok := b.(*v2.ApisixRoute)
+		if !ok {
+			return false
+		}
+		statusA, statusB = a.Status, b.Status
+	case *v2.ApisixGlobalRule:
+		b, ok := b.(*v2.ApisixGlobalRule)
+		if !ok {
+			return false
+		}
+		statusA, statusB = a.Status, b.Status
+	case *v2.ApisixPluginConfig:
+		b, ok := b.(*v2.ApisixPluginConfig)
+		if !ok {
+			return false
+		}
+		statusA, statusB = a.Status, b.Status
+	case *v2.ApisixTls:
+		b, ok := b.(*v2.ApisixTls)
+		if !ok {
+			return false
+		}
+		statusA, statusB = a.Status, b.Status
+	case *v2.ApisixConsumer:
+		b, ok := b.(*v2.ApisixConsumer)
+		if !ok {
+			return false
+		}
+		statusA, statusB = a.Status, b.Status
+	case *v1alpha1.HTTPRoutePolicy:
+		b, ok := b.(*v1alpha1.HTTPRoutePolicy)
+		if !ok {
+			return false
+		}
+		statusA, statusB = a.Status, b.Status
+	case *v1alpha1.BackendTrafficPolicy:
+		b, ok := b.(*v1alpha1.BackendTrafficPolicy)
+		if !ok {
+			return false
+		}
+		statusA, statusB = a.Status, b.Status
+	case *v1alpha1.Consumer:
+		b, ok := b.(*v1alpha1.Consumer)
+		if !ok {
+			return false
+		}
+		statusA, statusB = a.Status, b.Status
+	default:
+		return false
+	}
+
+	return cmp.Equal(statusA, statusB, opts...)
 }

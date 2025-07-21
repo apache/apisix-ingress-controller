@@ -639,13 +639,9 @@ func (r *IngressReconciler) updateStatus(ctx context.Context, tctx *provider.Tra
 			NamespacedName: utils.NamespacedName(ingress),
 			Resource:       ingress.DeepCopy(),
 			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
-				t, ok := obj.(*networkingv1.Ingress)
-				if !ok {
-					err := fmt.Errorf("unsupported object type %T", obj)
-					panic(err)
-				}
-				t.Status = ingress.Status
-				return t
+				cp := obj.(*networkingv1.Ingress).DeepCopy()
+				cp.Status = ingress.Status
+				return cp
 			}),
 		})
 		return nil

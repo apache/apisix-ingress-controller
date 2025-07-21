@@ -21,7 +21,6 @@ import (
 	"context"
 	"crypto/tls"
 	"os"
-	"time"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -43,6 +42,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/provider/adc"
+	_ "github.com/apache/apisix-ingress-controller/pkg/metrics"
 )
 
 var (
@@ -171,36 +171,6 @@ func Run(ctx context.Context, logger logr.Logger) error {
 		setupLog.Error(err, "unable to add provider to manager")
 		return err
 	}
-
-	go func() {
-		setupLog.Info("starting provider sync")
-		initalSyncDelay := config.ControllerConfig.ProviderConfig.InitSyncDelay.Duration
-		time.AfterFunc(initalSyncDelay, func() {
-			setupLog.Info("trying to initialize provider")
-			if err := provider.Sync(ctx); err != nil {
-				setupLog.Error(err, "unable to sync resources to provider")
-				return
-			}
-		})
-
-		syncPeriod := config.ControllerConfig.ProviderConfig.SyncPeriod.Duration
-		if syncPeriod < 1 {
-			return
-		}
-		ticker := time.NewTicker(syncPeriod)
-		defer ticker.Stop()
-		for {
-			select {
-			case <-ticker.C:
-				if err := provider.Sync(ctx); err != nil {
-					setupLog.Error(err, "unable to sync resources to provider")
-					return
-				}
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
 
 	setupLog.Info("check ReferenceGrants is enabled")
 	_, err = mgr.GetRESTMapper().KindsFor(schema.GroupVersionResource{

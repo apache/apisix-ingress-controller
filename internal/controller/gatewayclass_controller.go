@@ -121,13 +121,9 @@ func (r *GatewayClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 			NamespacedName: utils.NamespacedName(gc),
 			Resource:       gc.DeepCopy(),
 			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
-				t, ok := obj.(*gatewayv1.GatewayClass)
-				if !ok {
-					err := fmt.Errorf("unsupported object type %T", obj)
-					panic(err)
-				}
-				t.Status = gc.Status
-				return t
+				cp := obj.(*gatewayv1.GatewayClass).DeepCopy()
+				cp.Status = gc.Status
+				return cp
 			}),
 		})
 	}
