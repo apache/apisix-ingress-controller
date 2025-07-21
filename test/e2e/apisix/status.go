@@ -25,6 +25,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/yaml"
 
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
@@ -170,6 +171,32 @@ spec:
 				Host:   "httpbin",
 				Check:  scaffold.WithExpectedStatus(200),
 			})
+		})
+
+		It("update the same status only once", func() {
+			By("apply ApisixRoute")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, ar)
+
+			output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
+
+			var route apiv2.ApisixRoute
+			err := yaml.Unmarshal([]byte(output), &route)
+			Expect(err).NotTo(HaveOccurred(), "unmarshalling ApisixRoute")
+
+			Expect(route.Status.Conditions).Should(HaveLen(1), "should have one condition")
+
+			s.Deployer.ScaleIngress(0)
+			s.Deployer.ScaleIngress(1)
+
+			output, _ = s.GetOutputFromString("ar", "default", "-o", "yaml")
+
+			var route2 apiv2.ApisixRoute
+			err = yaml.Unmarshal([]byte(output), &route2)
+			Expect(err).NotTo(HaveOccurred(), "unmarshalling ApisixRoute")
+
+			Expect(route2.Status.Conditions).Should(HaveLen(1), "should have one condition")
+			Expect(route2.Status.Conditions[0].LastTransitionTime).To(Equal(route.Status.Conditions[0].LastTransitionTime),
+				"should not update the same status condition again")
 		})
 	})
 
