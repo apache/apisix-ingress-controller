@@ -182,7 +182,7 @@ type LoadBalancer struct {
 	// When HashOn is `header` or `cookie`, specifies the name of the header or cookie.
 	// When HashOn is `consumer`, key is not required, as the consumer name is used automatically.
 	// When HashOn is `vars` or `vars_combinations`, key refers to one or a combination of
-	// [built-in variables](/enterprise/reference/built-in-variables).
+	// [APISIX variables](https://apisix.apache.org/docs/apisix/apisix-variable).
 	Key string `json:"key,omitempty" yaml:"key,omitempty"`
 }
 

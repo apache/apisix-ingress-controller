@@ -203,7 +203,7 @@ spec:
                               subject:
                                 description: |-
                                   Subject defines the left-hand side of the expression.
-                                  It can be any [built-in variable](/apisix/reference/built-in-variables) or string literal.
+                                  It can be any [APISIX variable](https://apisix.apache.org/docs/apisix/apisix-variable) or string literal.
                                 properties:
                                   name:
                                     description: Name is the name of the header or
@@ -233,7 +233,6 @@ spec:
                           description: |-
                             FilterFunc is a user-defined function for advanced request filtering.
                             The function can use Nginx variables through the `vars` parameter.
-                            This field is supported in APISIX but not in API7 Enterprise.
                           type: string
                         hosts:
                           description: |-

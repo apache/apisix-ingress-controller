@@ -168,8 +168,7 @@ spec:
                           algorithm:
                             description: |-
                               Algorithm specifies the signing algorithm.
-                              Can be `HS256`, `HS384`, `HS512`, `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, `PS256`, `PS384`, `PS512`, or `EdDSA`.
-                              Currently APISIX only supports `HS256`, `HS512`, `RS256`, and `ES256`. API7 Enterprise supports all algorithms.
+                              Can be `HS256`, `HS512`, `RS256`, or `ES256`.
                             type: string
                           base64_secret:
                             description: Base64Secret indicates whether the secret
