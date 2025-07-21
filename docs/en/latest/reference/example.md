@@ -7,7 +7,7 @@ description: Explore a variety of APISIX Ingress Controller configuration exampl
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-APISIX Ingress Controller supports both Ingress resources and Gateway API for traffic management in Kubernetes. In addition to these standard Kubernetes APIs, the APISIX Ingress Controller also supports a set of [CRDs (Custom Resource Definitions)](./crd.md) designed specifically for APISIX-native functionality.
+APISIX Ingress Controller supports both Ingress resources and Gateway API for traffic management in Kubernetes. In addition to these standard Kubernetes APIs, the APISIX Ingress Controller also supports a set of [CRDs (Custom Resource Definitions)](./api-reference.md) designed specifically for APISIX-native functionality.
 
 This document provides examples of common configurations covering how and when to use these resources. You should adjust custom values such as namespaces, route URIs, and credentials to match your environment.
 
