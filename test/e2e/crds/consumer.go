@@ -19,8 +19,6 @@ package gatewayapi
 
 import (
 	"fmt"
-	"net/http"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -161,35 +159,47 @@ spec:
 			s.ResourceApplied("Consumer", "consumer-sample", limitCountConsumer, 1)
 			s.ResourceApplied("Consumer", "consumer-sample2", unlimitConsumer, 1)
 
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHeader("apikey", "sample-key").
-				WithHost("httpbin.org").
-				Expect().
-				Status(200)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				Headers: map[string]string{
+					"apikey": "sample-key",
+				},
+				Check: scaffold.WithExpectedStatus(200),
+			})
 
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHeader("apikey", "sample-key").
-				WithHost("httpbin.org").
-				Expect().
-				Status(200)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				Headers: map[string]string{
+					"apikey": "sample-key",
+				},
+				Check: scaffold.WithExpectedStatus(200),
+			})
 
 			By("trigger limit-count")
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHeader("apikey", "sample-key").
-				WithHost("httpbin.org").
-				Expect().
-				Status(503)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				Headers: map[string]string{
+					"apikey": "sample-key",
+				},
+				Check: scaffold.WithExpectedStatus(503),
+			})
 
 			for i := 0; i < 10; i++ {
-				s.NewAPISIXClient().
-					GET("/get").
-					WithHeader("apikey", "sample-key2").
-					WithHost("httpbin.org").
-					Expect().
-					Status(200)
+				s.RequestAssert(&scaffold.RequestAssert{
+					Method: "GET",
+					Path:   "/get",
+					Host:   "httpbin.org",
+					Headers: map[string]string{
+						"apikey": "sample-key2",
+					},
+					Check: scaffold.WithExpectedStatus(200),
+				})
 			}
 		})
 	})
@@ -244,72 +254,98 @@ spec:
 		It("Create/Update/Delete", func() {
 			s.ResourceApplied("Consumer", "consumer-sample", defaultCredential, 1)
 
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHeader("apikey", "sample-key").
-				WithHost("httpbin.org").
-				Expect().
-				Status(200)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				Headers: map[string]string{
+					"apikey": "sample-key",
+				},
+				Check: scaffold.WithExpectedStatus(200),
+			})
 
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHeader("apikey", "sample-key2").
-				WithHost("httpbin.org").
-				Expect().
-				Status(200)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				Headers: map[string]string{
+					"apikey": "sample-key2",
+				},
+				Check: scaffold.WithExpectedStatus(200),
+			})
 
-			s.NewAPISIXClient().
-				GET("/get").
-				WithBasicAuth("sample-user", "sample-password").
-				WithHost("httpbin.org").
-				Expect().
-				Status(200)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				BasicAuth: &scaffold.BasicAuth{
+					Username: "sample-user",
+					Password: "sample-password",
+				},
+				Check: scaffold.WithExpectedStatus(200),
+			})
 
 			By("update Consumer")
 			s.ResourceApplied("Consumer", "consumer-sample", updateCredential, 2)
 
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHeader("apikey", "sample-key").
-				WithHost("httpbin.org").
-				Expect().
-				Status(401)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				Headers: map[string]string{
+					"apikey": "sample-key",
+				},
+				Check: scaffold.WithExpectedStatus(401),
+			})
 
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHeader("apikey", "sample-key2").
-				WithHost("httpbin.org").
-				Expect().
-				Status(401)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				Headers: map[string]string{
+					"apikey": "sample-key2",
+				},
+				Check: scaffold.WithExpectedStatus(401),
+			})
 
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHeader("apikey", "consumer-key").
-				WithHost("httpbin.org").
-				Expect().
-				Status(200)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				Headers: map[string]string{
+					"apikey": "consumer-key",
+				},
+				Check: scaffold.WithExpectedStatus(200),
+			})
 
-			s.NewAPISIXClient().
-				GET("/get").
-				WithBasicAuth("sample-user", "sample-password").
-				WithHost("httpbin.org").
-				Expect().
-				Status(200)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				BasicAuth: &scaffold.BasicAuth{
+					Username: "sample-user",
+					Password: "sample-password",
+				},
+				Check: scaffold.WithExpectedStatus(200),
+			})
 
 			By("delete Consumer")
 			err := s.DeleteResourceFromString(updateCredential)
 			Expect(err).NotTo(HaveOccurred(), "deleting Consumer")
-			time.Sleep(5 * time.Second)
 
-			s.NewAPISIXClient().
-				GET("/get").
-				WithBasicAuth("sample-user", "sample-password").
-				WithHost("httpbin.org").
-				Expect().
-				Status(401)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				BasicAuth: &scaffold.BasicAuth{
+					Username: "sample-user",
+					Password: "sample-password",
+				},
+				Check: scaffold.WithExpectedStatus(401),
+			})
 		})
-	})
 
+	})
 	Context("SecretRef", func() {
 		var keyAuthSecret = `
 apiVersion: v1
@@ -370,61 +406,79 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "creating basic-auth secret")
 			s.ResourceApplied("Consumer", "consumer-sample", defaultConsumer, 1)
 
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHeader("apikey", "sample-key").
-				WithHost("httpbin.org").
-				Expect().
-				Status(200)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				Headers: map[string]string{
+					"apikey": "sample-key",
+				},
+				Check: scaffold.WithExpectedStatus(200),
+			})
 
-			s.NewAPISIXClient().
-				GET("/get").
-				WithBasicAuth("sample-user", "sample-password").
-				WithHost("httpbin.org").
-				Expect().
-				Status(200)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				BasicAuth: &scaffold.BasicAuth{
+					Username: "sample-user",
+					Password: "sample-password",
+				},
+				Check: scaffold.WithExpectedStatus(200),
+			})
 
 			// update basic-auth password
 			err = s.CreateResourceFromString(basicAuthSecret2)
 			Expect(err).NotTo(HaveOccurred(), "creating basic-auth secret")
 
 			// use the old password will get 401
-			Eventually(func() int {
-				return s.NewAPISIXClient().
-					GET("/get").
-					WithBasicAuth("sample-user", "sample-password").
-					WithHost("httpbin.org").
-					Expect().
-					Raw().StatusCode
-			}).WithTimeout(8 * time.Second).ProbeEvery(time.Second).
-				Should(Equal(http.StatusUnauthorized))
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				BasicAuth: &scaffold.BasicAuth{
+					Username: "sample-user",
+					Password: "sample-password",
+				},
+				Check: scaffold.WithExpectedStatus(401),
+			})
 
 			// use the new password will get 200
-			s.NewAPISIXClient().
-				GET("/get").
-				WithBasicAuth("sample-user", "sample-password-new").
-				WithHost("httpbin.org").
-				Expect().
-				Status(http.StatusOK)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				BasicAuth: &scaffold.BasicAuth{
+					Username: "sample-user",
+					Password: "sample-password-new",
+				},
+				Check: scaffold.WithExpectedStatus(200),
+			})
 
 			By("delete consumer")
 			err = s.DeleteResourceFromString(defaultConsumer)
 			Expect(err).NotTo(HaveOccurred(), "deleting consumer")
-			time.Sleep(5 * time.Second)
 
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHeader("apikey", "sample-key").
-				WithHost("httpbin.org").
-				Expect().
-				Status(401)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				Headers: map[string]string{
+					"apikey": "sample-key",
+				},
+				Check: scaffold.WithExpectedStatus(401),
+			})
 
-			s.NewAPISIXClient().
-				GET("/get").
-				WithBasicAuth("sample-user", "sample-password").
-				WithHost("httpbin.org").
-				Expect().
-				Status(401)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				BasicAuth: &scaffold.BasicAuth{
+					Username: "sample-user",
+					Password: "sample-password",
+				},
+				Check: scaffold.WithExpectedStatus(401),
+			})
 		})
 	})
 
@@ -471,12 +525,16 @@ spec:
 			s.ResourceApplied("Consumer", "consumer-sample", defaultCredential, 1)
 
 			// verify basic-auth works
-			s.NewAPISIXClient().
-				GET("/get").
-				WithBasicAuth("sample-user", "sample-password").
-				WithHost("httpbin.org").
-				Expect().
-				Status(200)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				BasicAuth: &scaffold.BasicAuth{
+					Username: "sample-user",
+					Password: "sample-password",
+				},
+				Check: scaffold.WithExpectedStatus(200),
+			})
 
 			By("create additional gateway group to get new admin key")
 			var err error
@@ -490,26 +548,35 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "creating APISIX client for additional gateway group")
 
 			By("Consumer not found for additional gateway group")
-			client.
-				GET("/get").
-				WithBasicAuth("sample-user", "sample-password").
-				WithHost("httpbin.org").
-				Expect().
-				Status(404)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Client: client,
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				BasicAuth: &scaffold.BasicAuth{
+					Username: "sample-user",
+					Password: "sample-password",
+				},
+				Check: scaffold.WithExpectedStatus(404),
+			})
 
 			By("update GatewayProxy with new admin key")
 			updatedProxy := fmt.Sprintf(updatedGatewayProxy, s.Deployer.GetAdminEndpoint(resources.DataplaneService), resources.AdminAPIKey)
 			err = s.CreateResourceFromString(updatedProxy)
 			Expect(err).NotTo(HaveOccurred(), "updating GatewayProxy")
-			time.Sleep(5 * time.Second)
 
 			By("verify Consumer works for additional gateway group")
-			client.
-				GET("/get").
-				WithBasicAuth("sample-user", "sample-password").
-				WithHost("httpbin.org").
-				Expect().
-				Status(200)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Client: client,
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				BasicAuth: &scaffold.BasicAuth{
+					Username: "sample-user",
+					Password: "sample-password",
+				},
+				Check: scaffold.WithExpectedStatus(200),
+			})
 		})
 	})
 })

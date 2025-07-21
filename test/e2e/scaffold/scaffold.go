@@ -443,3 +443,12 @@ func NewClient(scheme, host string) *httpexpect.Expect {
 		),
 	})
 }
+
+func (s *Scaffold) GetMetricsEndpoint() string {
+	tunnel := k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-ingress-controller-manager-metrics-service", 8080, 8080)
+	if err := tunnel.ForwardPortE(s.t); err != nil {
+		return ""
+	}
+	s.addFinalizers(tunnel.Close)
+	return fmt.Sprintf("http://%s/metrics", tunnel.Endpoint())
+}

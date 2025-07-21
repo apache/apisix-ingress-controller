@@ -186,7 +186,7 @@ metadata:
   name: httpbin-external-domain
 spec:
   type: ExternalName
-  externalName: httpbin.org
+  externalName: httpbin-service-e2e-test
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress

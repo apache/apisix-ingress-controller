@@ -64,7 +64,7 @@ etcdserver:
 
 ##### Controller-Only Configuration Source
 
-In 2.0.0, all data plane configurations must originate from the Ingress Controller. Configurations via Admin API or any external methods are no longer supported and will be ignored or may cause errors.
+Starting with APISIX Ingress Controller 2.0.0, the controller is the single source of truth. Manual Admin API changes will be overwritten on the next full sync. The prior approach, which allowed controller-managed and manually added configurations to coexist, was incorrect and is now deprecated.
 
 #### APISIX With Etcd (Admin API) synchronization performance
 
@@ -139,7 +139,7 @@ spec:
 
 #### `ApisixUpstream`
 
-Due to current limitations in the ADC (API Definition Controller) component, the following fields are not yet supported:
+Due to current limitations in the [ADC](https://github.com/api7/adc) component, the following fields are not yet supported:
 
 * `spec.discovery`: Service Discovery
 * `spec.healthCheck`: Health Checking
@@ -203,10 +203,10 @@ Ingress annotations used in version 1.x.x are not fully supported in 2.0.0. If y
 
 ### Summary
 
-| Category         | Description                                                                                          |
-| ---------------- | ---------------------------------------------------------------------------------------------------- |
-| Architecture     | The `mock-etcd` component has been removed. Configuration is now centralized through the Controller. |
-| Configuration    | Static configuration fields have been removed. Use `GatewayProxy` CRD to configure the data plane.   |
-| Data Plane       | Requires APISIX version 3.13.0 running in `standalone` mode.                                         |
-| API              | Some fields in `Ingress Annotations` and `ApisixUpstream` are not yet supported.                     |
-| Upgrade Strategy | Blue-green deployment or canary release is recommended before full switchover.                       |
+| Category         | Description                                                                                                                       |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Architecture     | The `mock-etcd` component has been removed. Configuration is now centralized through the Controller.                              |
+| Configuration    | Static configuration fields have been removed. Use `GatewayProxy` CRD to configure the data plane.                                |
+| Data Plane       | The Admin API configuration method is still supported. Support for the Standalone API-driven mode was introduced in APISIX 3.13.0 and later. |
+| API              | Some fields in `Ingress Annotations` and `ApisixUpstream` are not yet supported.                                                  |
+| Upgrade Strategy | Blue-green deployment or canary release is recommended before full switchover.                                                    |

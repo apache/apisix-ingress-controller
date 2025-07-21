@@ -366,7 +366,7 @@ LoadBalancer describes the load balancing parameters.
 | --- | --- |
 | `type` _string_ | Type specifies the load balancing algorithms to route traffic to the backend. Default is `roundrobin`. Can be `roundrobin`, `chash`, `ewma`, or `least_conn`. |
 | `hashOn` _string_ | HashOn specified the type of field used for hashing, required when type is `chash`. Default is `vars`. Can be `vars`, `header`, `cookie`, `consumer`, or `vars_combinations`. |
-| `key` _string_ | Key is used with HashOn, generally required when type is `chash`. When HashOn is `header` or `cookie`, specifies the name of the header or cookie. When HashOn is `consumer`, key is not required, as the consumer name is used automatically. When HashOn is `vars` or `vars_combinations`, key refers to one or a combination of [APISIX variables](https://apisix.apache.org/docs/apisix/apisix-variable/). |
+| `key` _string_ | Key is used with HashOn, generally required when type is `chash`. When HashOn is `header` or `cookie`, specifies the name of the header or cookie. When HashOn is `consumer`, key is not required, as the consumer name is used automatically. When HashOn is `vars` or `vars_combinations`, key refers to one or a combination of [APISIX variable](https://apisix.apache.org/docs/apisix/apisix-variable/). |
 
 
 _Appears in:_
@@ -788,7 +788,7 @@ ApisixConsumerJwtAuthValue defines configuration for JWT authentication.
 | `secret` _string_ | Secret is the shared secret used to sign the JWT (for symmetric algorithms). |
 | `public_key` _string_ | PublicKey is the public key used to verify JWT signatures (for asymmetric algorithms). |
 | `private_key` _string_ | PrivateKey is the private key used to sign the JWT (for asymmetric algorithms). |
-| `algorithm` _string_ | Algorithm specifies the signing algorithm. Can be `HS256`, `HS512`, `RS256`, or `ES256`. |
+| `algorithm` _string_ | Algorithm specifies the signing algorithm. Can be `HS256`, `HS384`, `HS512`, `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, `PS256`, `PS384`, `PS512`, or `EdDSA`. Currently APISIX only supports `HS256`, `HS512`, `RS256`, and `ES256`. API7 Enterprise supports all algorithms. |
 | `exp` _integer_ | Exp is the token expiration period in seconds. |
 | `base64_secret` _boolean_ | Base64Secret indicates whether the secret is base64-encoded. |
 | `lifetime_grace_period` _integer_ | LifetimeGracePeriod is the allowed clock skew in seconds for token expiration. |
@@ -1084,7 +1084,7 @@ ApisixRouteHTTPMatch defines the conditions used to match incoming HTTP requests
 | `hosts` _string array_ | Hosts specifies Host header values to match. Supports exact and wildcard domains. Only one level of wildcard is allowed (e.g., `*.example.com` is valid, but `*.*.example.com` is not). |
 | `remoteAddrs` _string array_ | RemoteAddrs is a list of source IP addresses or CIDR ranges to match. Supports both IPv4 and IPv6 formats. |
 | `exprs` _[ApisixRouteHTTPMatchExprs](#apisixroutehttpmatchexprs)_ | NginxVars defines match conditions based on Nginx variables. |
-| `filter_func` _string_ | FilterFunc is a user-defined function for advanced request filtering. The function can use Nginx variables through the `vars` parameter. |
+| `filter_func` _string_ | FilterFunc is a user-defined function for advanced request filtering. The function can use Nginx variables through the `vars` parameter. This field is supported in APISIX but not in API7 Enterprise. |
 
 
 _Appears in:_
@@ -1099,7 +1099,7 @@ ApisixRouteHTTPMatchExpr represents a binary expression used to match requests b
 
 | Field | Description |
 | --- | --- |
-| `subject` _[ApisixRouteHTTPMatchExprSubject](#apisixroutehttpmatchexprsubject)_ | Subject defines the left-hand side of the expression. It can be any [APISIX variable](https://apisix.apache.org/docs/apisix/apisix-variable/) or string literal. |
+| `subject` _[ApisixRouteHTTPMatchExprSubject](#apisixroutehttpmatchexprsubject)_ | Subject defines the left-hand side of the expression. It can be any [built-in variable](/apisix/reference/built-in-variables) or string literal. |
 | `op` _string_ | Op specifies the operator used in the expression. Can be `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanEqual`, `LessThan`, `LessThanEqual`, `RegexMatch`, `RegexNotMatch`, `RegexMatchCaseInsensitive`, `RegexNotMatchCaseInsensitive`, `In`, or `NotIn`. |
 | `set` _string array_ | Set provides a list of acceptable values for the expression. This should be used when Op is `In` or `NotIn`. |
 | `value` _string_ | Value defines a single value to compare against the subject. This should be used when Op is not `In` or `NotIn`. Set and Value are mutually exclusive—only one should be set at a time. |
@@ -1125,7 +1125,7 @@ _Appears in:_
 - [ApisixRouteHTTPMatchExpr](#apisixroutehttpmatchexpr)
 
 #### ApisixRouteHTTPMatchExprs
-_Base type:_ [ApisixRouteHTTPMatchExpr](#apisixroutehttpmatchexpr)
+_Base type:_ `[ApisixRouteHTTPMatchExpr](#apisixroutehttpmatchexpr)`
 
 
 
@@ -1133,7 +1133,7 @@ _Base type:_ [ApisixRouteHTTPMatchExpr](#apisixroutehttpmatchexpr)
 
 | Field | Description |
 | --- | --- |
-| `subject` _[ApisixRouteHTTPMatchExprSubject](#apisixroutehttpmatchexprsubject)_ | Subject defines the left-hand side of the expression. It can be any [APISIX variable](https://apisix.apache.org/docs/apisix/apisix-variable/) or string literal. |
+| `subject` _[ApisixRouteHTTPMatchExprSubject](#apisixroutehttpmatchexprsubject)_ | Subject defines the left-hand side of the expression. It can be any [built-in variable](/apisix/reference/built-in-variables) or string literal. |
 | `op` _string_ | Op specifies the operator used in the expression. Can be `Equal`, `NotEqual`, `GreaterThan`, `GreaterThanEqual`, `LessThan`, `LessThanEqual`, `RegexMatch`, `RegexNotMatch`, `RegexMatchCaseInsensitive`, `RegexNotMatchCaseInsensitive`, `In`, or `NotIn`. |
 | `set` _string array_ | Set provides a list of acceptable values for the expression. This should be used when Op is `In` or `NotIn`. |
 | `value` _string_ | Value defines a single value to compare against the subject. This should be used when Op is not `In` or `NotIn`. Set and Value are mutually exclusive—only one should be set at a time. |
@@ -1315,7 +1315,7 @@ ApisixUpstreamConfig defines configuration for upstream services.
 
 | Field | Description |
 | --- | --- |
-| `loadbalancer` _[LoadBalancer](#loadbalancer)_ | LoadBalancer specifies the load balancing algorithms to route traffic to the backend. Default is `roundrobin`. Can be `roundrobin`, `chash`, `ewma`, or `least_conn`. |
+| `loadbalancer` _[LoadBalancer](#loadbalancer)_ | LoadBalancer specifies the load balancer configuration for Kubernetes Service. |
 | `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. Can be `http`, `https`, `grpc`, or `grpcs`. |
 | `retries` _integer_ | Retries defines the number of retry attempts APISIX should make when a failure occurs. Failures include timeouts, network errors, or 5xx status codes. |
 | `timeout` _[UpstreamTimeout](#upstreamtimeout)_ | Timeout specifies the connection, send, and read timeouts for upstream requests. |
@@ -1375,7 +1375,7 @@ definitions and custom configuration.
 | --- | --- |
 | `ingressClassName` _string_ | IngressClassName is the name of an IngressClass cluster resource. Controller implementations use this field to determine whether they should process this ApisixUpstream resource. |
 | `externalNodes` _[ApisixUpstreamExternalNode](#apisixupstreamexternalnode) array_ | ExternalNodes defines a static list of backend nodes located outside the cluster. When this field is set, the upstream will route traffic directly to these nodes without DNS resolution or service discovery. |
-| `loadbalancer` _[LoadBalancer](#loadbalancer)_ | LoadBalancer specifies the load balancing algorithms to route traffic to the backend. Default is `roundrobin`. Can be `roundrobin`, `chash`, `ewma`, or `least_conn`. |
+| `loadbalancer` _[LoadBalancer](#loadbalancer)_ | LoadBalancer specifies the load balancer configuration for Kubernetes Service. |
 | `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. Can be `http`, `https`, `grpc`, or `grpcs`. |
 | `retries` _integer_ | Retries defines the number of retry attempts APISIX should make when a failure occurs. Failures include timeouts, network errors, or 5xx status codes. |
 | `timeout` _[UpstreamTimeout](#upstreamtimeout)_ | Timeout specifies the connection, send, and read timeouts for upstream requests. |
@@ -1471,7 +1471,7 @@ LoadBalancer defines the load balancing strategy for distributing traffic across
 | --- | --- |
 | `type` _string_ | Type specifies the load balancing algorithms to route traffic to the backend. Default is `roundrobin`. Can be `roundrobin`, `chash`, `ewma`, or `least_conn`. |
 | `hashOn` _string_ | HashOn specified the type of field used for hashing, required when type is `chash`. Default is `vars`. Can be `vars`, `header`, `cookie`, `consumer`, or `vars_combinations`. |
-| `key` _string_ | Key is used with HashOn, generally required when type is `chash`. When HashOn is `header` or `cookie`, specifies the name of the header or cookie. When HashOn is `consumer`, key is not required, as the consumer name is used automatically. When HashOn is `vars` or `vars_combinations`, key refers to one or a combination of [APISIX variables](https://apisix.apache.org/docs/apisix/apisix-variable/). |
+| `key` _string_ | Key is used with HashOn, generally required when type is `chash`. When HashOn is `header` or `cookie`, specifies the name of the header or cookie. When HashOn is `consumer`, key is not required, as the consumer name is used automatically. When HashOn is `vars` or `vars_combinations`, key refers to one or a combination of [built-in variables](/enterprise/reference/built-in-variables). |
 
 
 _Appears in:_
@@ -1545,7 +1545,7 @@ them if they are set on the port level.
 
 | Field | Description |
 | --- | --- |
-| `loadbalancer` _[LoadBalancer](#loadbalancer)_ | LoadBalancer specifies the load balancing algorithms to route traffic to the backend. Default is `roundrobin`. Can be `roundrobin`, `chash`, `ewma`, or `least_conn`. |
+| `loadbalancer` _[LoadBalancer](#loadbalancer)_ | LoadBalancer specifies the load balancer configuration for Kubernetes Service. |
 | `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. Can be `http`, `https`, `grpc`, or `grpcs`. |
 | `retries` _integer_ | Retries defines the number of retry attempts APISIX should make when a failure occurs. Failures include timeouts, network errors, or 5xx status codes. |
 | `timeout` _[UpstreamTimeout](#upstreamtimeout)_ | Timeout specifies the connection, send, and read timeouts for upstream requests. |
@@ -1560,6 +1560,8 @@ them if they are set on the port level.
 
 _Appears in:_
 - [ApisixUpstreamSpec](#apisixupstreamspec)
+
+
 
 
 
@@ -1584,3 +1586,4 @@ _Appears in:_
 - [ApisixUpstreamConfig](#apisixupstreamconfig)
 - [ApisixUpstreamSpec](#apisixupstreamspec)
 - [PortLevelSettings](#portlevelsettings)
+
