@@ -37,7 +37,7 @@
             "type": "category",
             "label": "Reference",
             "items": [
-                "reference/crd",
+                "reference/api-reference",
                 "reference/example"
             ]
         },

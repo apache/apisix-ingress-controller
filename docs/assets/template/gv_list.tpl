@@ -22,7 +22,7 @@
 
 ---
 title: Custom Resource Definitions API Reference
-slug: /reference/apisix-ingress-controller/crd-reference
+slug: /reference/apisix-ingress-controller/api-reference
 description: Explore detailed reference documentation for the custom resource definitions (CRDs) supported by the APISIX Ingress Controller.
 ---
 

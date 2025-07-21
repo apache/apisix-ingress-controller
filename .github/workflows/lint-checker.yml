@@ -96,7 +96,7 @@ jobs:
           markdownlint '**/*.md' \
             --ignore node_modules \
             --ignore CHANGELOG.md \
-            --ignore docs/en/latest/reference/crd.md
+            --ignore docs/en/latest/reference/api-reference.md
   markdown-link-check:
     needs: changes
     if: |
