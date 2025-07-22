@@ -17,7 +17,8 @@ spec:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: GatewayProxy is the Schema for the gatewayproxies API.
+        description: GatewayProxy defines configuration for the gateway proxy instances
+          used to route traffic to services.
         properties:
           apiVersion:
             description: |-
@@ -38,19 +39,19 @@ spec:
             type: object
           spec:
             description: |-
-              GatewayProxySpec defines the desired state and configuration of a GatewayProxy,
+              GatewayProxySpec defines configuration of gateway proxy instances,
               including networking settings, global plugins, and plugin metadata.
             properties:
               pluginMetadata:
                 additionalProperties:
                   x-kubernetes-preserve-unknown-fields: true
-                description: PluginMetadata configures common configurations shared
+                description: PluginMetadata configures common configuration shared
                   by all plugin instances of the same name.
                 type: object
               plugins:
                 description: Plugins configure global plugins.
                 items:
-                  description: GatewayProxyPlugin contains plugin configurations.
+                  description: GatewayProxyPlugin contains plugin configuration.
                   properties:
                     config:
                       description: Config defines the plugin's configuration details.
@@ -71,7 +72,7 @@ spec:
                       plane provider.
                     properties:
                       auth:
-                        description: Auth specifies the authentication configurations.
+                        description: Auth specifies the authentication configuration.
                         properties:
                           adminKey:
                             description: AdminKey specifies the admin key authentication
@@ -122,8 +123,10 @@ spec:
                       service:
                         properties:
                           name:
+                            description: Name is the name of the provider.
                             type: string
                           port:
+                            description: Port is the port of the provider.
                             format: int32
                             maximum: 65535
                             minimum: 1

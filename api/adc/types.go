@@ -244,7 +244,7 @@ type ClientTLS struct {
 	Key  string `json:"client_key,omitempty" yaml:"client_key,omitempty"`
 }
 
-// UpstreamActiveHealthCheck defines the active kind of upstream health check.
+// UpstreamActiveHealthCheck defines the active upstream health check configuration.
 // +k8s:deepcopy-gen=true
 type UpstreamActiveHealthCheck struct {
 	Type               string                             `json:"type,omitempty" yaml:"type,omitempty"`
@@ -259,33 +259,35 @@ type UpstreamActiveHealthCheck struct {
 	Unhealthy          UpstreamActiveHealthCheckUnhealthy `json:"unhealthy,omitempty" yaml:"unhealthy,omitempty"`
 }
 
-// UpstreamPassiveHealthCheck defines the passive kind of upstream health check.
+// UpstreamPassiveHealthCheck defines the passive health check configuration for an upstream.
+// Passive health checks rely on analyzing live traffic to determine the health status of upstream nodes.
 // +k8s:deepcopy-gen=true
 type UpstreamPassiveHealthCheck struct {
-	Type      string                              `json:"type,omitempty" yaml:"type,omitempty"`
-	Healthy   UpstreamPassiveHealthCheckHealthy   `json:"healthy,omitempty" yaml:"healthy,omitempty"`
+	// Type is the passive health check type. For example: `http`.
+	Type string `json:"type,omitempty" yaml:"type,omitempty"`
+	// Healthy defines the conditions under which an upstream node is considered healthy.
+	Healthy UpstreamPassiveHealthCheckHealthy `json:"healthy,omitempty" yaml:"healthy,omitempty"`
+	// Unhealthy defines the conditions under which an upstream node is considered unhealthy.
 	Unhealthy UpstreamPassiveHealthCheckUnhealthy `json:"unhealthy,omitempty" yaml:"unhealthy,omitempty"`
 }
 
-// UpstreamActiveHealthCheckHealthy defines the conditions to judge whether
-// an upstream node is healthy with the active manner.
+// UpstreamActiveHealthCheckHealthy defines the conditions used to actively determine whether an upstream node is healthy.
 // +k8s:deepcopy-gen=true
 type UpstreamActiveHealthCheckHealthy struct {
 	UpstreamPassiveHealthCheckHealthy `json:",inline" yaml:",inline"`
 
+	// Interval defines the time interval for checking targets, in seconds.
 	Interval int `json:"interval,omitempty" yaml:"interval,omitempty"`
 }
 
-// UpstreamPassiveHealthCheckHealthy defines the conditions to judge whether
-// an upstream node is healthy with the passive manner.
+// UpstreamPassiveHealthCheckHealthy defines the conditions used to passively determine whether an upstream node is healthy.
 // +k8s:deepcopy-gen=true
 type UpstreamPassiveHealthCheckHealthy struct {
 	HTTPStatuses []int `json:"http_statuses,omitempty" yaml:"http_statuses,omitempty"`
 	Successes    int   `json:"successes,omitempty" yaml:"successes,omitempty"`
 }
 
-// UpstreamPassiveHealthCheckUnhealthy defines the conditions to judge whether
-// an upstream node is unhealthy with the passive manager.
+// UpstreamPassiveHealthCheckUnhealthy defines the conditions used to passively determine whether an upstream node is unhealthy.
 // +k8s:deepcopy-gen=true
 type UpstreamPassiveHealthCheckUnhealthy struct {
 	HTTPStatuses []int `json:"http_statuses,omitempty" yaml:"http_statuses,omitempty"`
@@ -294,12 +296,12 @@ type UpstreamPassiveHealthCheckUnhealthy struct {
 	Timeouts     int   `json:"timeouts,omitempty" yaml:"timeouts,omitempty"`
 }
 
-// UpstreamActiveHealthCheckUnhealthy defines the conditions to judge whether
-// an upstream node is unhealthy with the active manager.
+// UpstreamActiveHealthCheckHealthy defines the conditions used to actively determine whether an upstream node is unhealthy.
 // +k8s:deepcopy-gen=true
 type UpstreamActiveHealthCheckUnhealthy struct {
 	UpstreamPassiveHealthCheckUnhealthy `json:",inline" yaml:",inline"`
 
+	// Interval defines the time interval for checking targets, in seconds.
 	Interval int `json:"interval,omitempty" yaml:"interval,omitempty"`
 }
 
@@ -315,21 +317,38 @@ type TrafficSplitConfigRule struct {
 	WeightedUpstreams []TrafficSplitConfigRuleWeightedUpstream `json:"weighted_upstreams"`
 }
 
-// TrafficSplitConfigRuleWeightedUpstream is the weighted upstream config in
-// the traffic split plugin rule.
+// TrafficSplitConfigRuleWeightedUpstream defines a weighted backend in a traffic split rule.
+// This is used by the APISIX traffic-split plugin to distribute traffic
+// across multiple upstreams based on weight.
 // +k8s:deepcopy-gen=true
 type TrafficSplitConfigRuleWeightedUpstream struct {
-	UpstreamID string    `json:"upstream_id,omitempty"`
-	Upstream   *Upstream `json:"upstream,omitempty"`
-	Weight     int       `json:"weight"`
+	// UpstreamID is the identifier of a pre-defined upstream.
+	UpstreamID string `json:"upstream_id,omitempty"`
+
+	// Upstream specifies upstream configuration.
+	// If provided, it overrides UpstreamID.
+	Upstream *Upstream `json:"upstream,omitempty"`
+
+	// Weight defines the percentage of traffic routed to this upstream.
+	// The final routing decision is based on relative weights.
+	Weight int `json:"weight"`
 }
 
+// TLSClass defines the client TLS configuration for mutual TLS (mTLS) authentication.
 // +k8s:deepcopy-gen=true
 type TLSClass struct {
-	ClientCERT   string `json:"client_cert,omitempty"`
+	// ClientCERT is the PEM-encoded client certificate.
+	ClientCERT string `json:"client_cert,omitempty"`
+
+	// ClientCERTID is the reference ID to a stored client certificate.
 	ClientCERTID string `json:"client_cert_id,omitempty"`
-	ClientKey    string `json:"client_key,omitempty"`
-	Verify       *bool  `json:"verify,omitempty"`
+
+	// ClientKey is the PEM-encoded private key for the client certificate.
+	ClientKey string `json:"client_key,omitempty"`
+
+	// Verify indicates whether the server's certificate should be verified.
+	// If false, TLS verification is skipped.
+	Verify *bool `json:"verify,omitempty"`
 }
 
 // +k8s:deepcopy-gen=true

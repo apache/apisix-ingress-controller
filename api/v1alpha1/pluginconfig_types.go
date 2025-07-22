@@ -27,19 +27,19 @@ import (
 
 // +kubebuilder:object:root=true
 
-// PluginConfig is the Schema for the PluginConfigs API.
+// PluginConfig defines plugin configuration.
 type PluginConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// PluginConfigSpec defines the desired state of a PluginConfig,
-	// in which plugins and their configurations are specified.
+	// in which plugins and their configuration are specified.
 	Spec PluginConfigSpec `json:"spec,omitempty"`
 }
 
 // PluginConfigSpec defines the desired state of PluginConfig.
 type PluginConfigSpec struct {
-	// Plugins are an array of plugins and their configurations to be applied.
+	// Plugins are an array of plugins and their configuration to be applied.
 	Plugins []Plugin `json:"plugins"`
 }
 

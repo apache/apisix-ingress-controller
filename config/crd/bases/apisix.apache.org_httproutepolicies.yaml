@@ -17,7 +17,7 @@ spec:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: HTTPRoutePolicy is the Schema for the httproutepolicies API.
+        description: HTTPRoutePolicy defines configuration of traffic policies.
         properties:
           apiVersion:
             description: |-
@@ -38,12 +38,13 @@ spec:
             type: object
           spec:
             description: |-
-              HTTPRoutePolicySpec defines the desired state and configuration of a HTTPRoutePolicy,
+              HTTPRoutePolicySpec defines configuration of a HTTPRoutePolicy,
               including route priority and request matching conditions.
             properties:
               priority:
-                description: Priority sets the priority for route. A higher value
-                  sets a higher priority in route matching.
+                description: |-
+                  Priority sets the priority for route. when multiple routes have the same URI path,
+                  a higher value sets a higher priority in route matching.
                 format: int64
                 type: integer
               targetRefs:

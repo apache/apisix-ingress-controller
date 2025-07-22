@@ -24,11 +24,12 @@ import (
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// Consumer defines configuration for a consumer.
 type Consumer struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// ConsumerSpec defines the configuration for a consumer, including consumer name,
+	// ConsumerSpec defines configuration for a consumer, including consumer name,
 	// authentication credentials, and plugin settings.
 	Spec   ConsumerSpec   `json:"spec,omitempty"`
 	Status ConsumerStatus `json:"status,omitempty"`
@@ -65,7 +66,7 @@ type Credential struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:Enum=jwt-auth;basic-auth;key-auth;hmac-auth;
 	// Type specifies the type of authentication to configure credentials for.
-	// Can be one of `jwt-auth`, `basic-auth`, `key-auth`, or `hmac-auth`.
+	// Can be `jwt-auth`, `basic-auth`, `key-auth`, or `hmac-auth`.
 	Type string `json:"type"`
 	// Config specifies the credential details for authentication.
 	Config apiextensionsv1.JSON `json:"config,omitempty"`
