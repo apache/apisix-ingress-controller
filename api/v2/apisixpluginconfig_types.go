@@ -21,6 +21,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// +genclient
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=apc
+// ApisixPluginConfig is the Schema for the apisixpluginconfigs API.
+type ApisixPluginConfig struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   ApisixPluginConfigSpec `json:"spec,omitempty"`
+	Status ApisixStatus           `json:"status,omitempty"`
+}
+
 // ApisixPluginConfigSpec defines the desired state of ApisixPluginConfigSpec.
 type ApisixPluginConfigSpec struct {
 	// IngressClassName is the name of an IngressClass cluster resource.
@@ -32,22 +45,6 @@ type ApisixPluginConfigSpec struct {
 	Plugins []ApisixRoutePlugin `json:"plugins" yaml:"plugins"`
 }
 
-// ApisixPluginConfigStatus defines the observed state of ApisixPluginConfig.
-type ApisixPluginConfigStatus = ApisixStatus
-
-// +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=apc
-
-// ApisixPluginConfig is the Schema for the apisixpluginconfigs API.
-type ApisixPluginConfig struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   ApisixPluginConfigSpec   `json:"spec,omitempty"`
-	Status ApisixPluginConfigStatus `json:"status,omitempty"`
-}
-
 // +kubebuilder:object:root=true
 
 // ApisixPluginConfigList contains a list of ApisixPluginConfig.
@@ -55,8 +52,4 @@ type ApisixPluginConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ApisixPluginConfig `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&ApisixPluginConfig{}, &ApisixPluginConfigList{})
 }

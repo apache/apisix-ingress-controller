@@ -23,6 +23,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// +genclient
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=au
+// ApisixUpstream is the Schema for the apisixupstreams API.
+type ApisixUpstream struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   ApisixUpstreamSpec `json:"spec,omitempty"`
+	Status ApisixStatus       `json:"status,omitempty"`
+}
+
 // ApisixUpstreamSpec describes the specification of ApisixUpstream.
 type ApisixUpstreamSpec struct {
 	// IngressClassName is the name of an IngressClass cluster resource.
@@ -40,31 +53,6 @@ type ApisixUpstreamSpec struct {
 	ApisixUpstreamConfig `json:",inline" yaml:",inline"`
 
 	PortLevelSettings []PortLevelSettings `json:"portLevelSettings,omitempty" yaml:"portLevelSettings,omitempty"`
-}
-
-// ApisixUpstreamStatus defines the observed state of ApisixUpstream.
-type ApisixUpstreamStatus = ApisixStatus
-
-// +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=au
-
-// ApisixUpstream is the Schema for the apisixupstreams API.
-type ApisixUpstream struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   ApisixUpstreamSpec   `json:"spec,omitempty"`
-	Status ApisixUpstreamStatus `json:"status,omitempty"`
-}
-
-// +kubebuilder:object:root=true
-
-// ApisixUpstreamList contains a list of ApisixUpstream.
-type ApisixUpstreamList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ApisixUpstream `json:"items"`
 }
 
 // ApisixUpstreamExternalNode is the external node conf
@@ -247,6 +235,11 @@ type PassiveHealthCheckUnhealthy struct {
 	Timeouts    int `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 }
 
-func init() {
-	SchemeBuilder.Register(&ApisixUpstream{}, &ApisixUpstreamList{})
+// +kubebuilder:object:root=true
+
+// ApisixUpstreamList contains a list of ApisixUpstream.
+type ApisixUpstreamList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []ApisixUpstream `json:"items"`
 }

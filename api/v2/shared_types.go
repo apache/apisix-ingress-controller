@@ -25,16 +25,16 @@ import (
 
 type (
 	// ApisixRouteConditionType is a type of condition for a route.
-	ApisixRouteConditionType = gatewayv1.RouteConditionType
+	ApisixRouteConditionType = string
 	// ApisixRouteConditionReason is a reason for a route condition.
-	ApisixRouteConditionReason = gatewayv1.RouteConditionReason
+	ApisixRouteConditionReason = string
 )
 
 const (
-	ConditionTypeAccepted      ApisixRouteConditionType   = gatewayv1.RouteConditionAccepted
-	ConditionReasonAccepted    ApisixRouteConditionReason = gatewayv1.RouteReasonAccepted
-	ConditionReasonInvalidSpec ApisixRouteConditionReason = "InvalidSpec"
-	ConditionReasonSyncFailed  ApisixRouteConditionReason = "SyncFailed"
+	ConditionTypeAccepted      string = string(gatewayv1.RouteConditionAccepted)
+	ConditionReasonAccepted    string = string(gatewayv1.RouteReasonAccepted)
+	ConditionReasonInvalidSpec string = "InvalidSpec"
+	ConditionReasonSyncFailed  string = "SyncFailed"
 )
 
 const (

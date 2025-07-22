@@ -22,6 +22,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// +genclient
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=ac
+// ApisixConsumer is the Schema for the apisixconsumers API.
+type ApisixConsumer struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   ApisixConsumerSpec `json:"spec,omitempty"`
+	Status ApisixStatus       `json:"status,omitempty"`
+}
+
 // ApisixConsumerSpec defines the desired state of ApisixConsumer.
 type ApisixConsumerSpec struct {
 	// IngressClassName is the name of an IngressClass cluster resource.
@@ -31,31 +44,6 @@ type ApisixConsumerSpec struct {
 	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
 
 	AuthParameter ApisixConsumerAuthParameter `json:"authParameter" yaml:"authParameter"`
-}
-
-// ApisixConsumerStatus defines the observed state of ApisixConsumer.
-type ApisixConsumerStatus = ApisixStatus
-
-// +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=ac
-
-// ApisixConsumer is the Schema for the apisixconsumers API.
-type ApisixConsumer struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	Spec   ApisixConsumerSpec   `json:"spec,omitempty"`
-	Status ApisixConsumerStatus `json:"status,omitempty"`
-}
-
-// +kubebuilder:object:root=true
-
-// ApisixConsumerList contains a list of ApisixConsumer.
-type ApisixConsumerList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ApisixConsumer `json:"items"`
 }
 
 type ApisixConsumerAuthParameter struct {
@@ -151,6 +139,11 @@ type ApisixConsumerLDAPAuthValue struct {
 	UserDN string `json:"user_dn" yaml:"user_dn"`
 }
 
-func init() {
-	SchemeBuilder.Register(&ApisixConsumer{}, &ApisixConsumerList{})
+// +kubebuilder:object:root=true
+
+// ApisixConsumerList contains a list of ApisixConsumer.
+type ApisixConsumerList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []ApisixConsumer `json:"items"`
 }

@@ -57,7 +57,3 @@ type HTTPRoutePolicyList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []HTTPRoutePolicy `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&HTTPRoutePolicy{}, &HTTPRoutePolicyList{})
-}

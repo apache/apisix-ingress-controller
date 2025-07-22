@@ -28,16 +28,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/api/adc"
 )
 
-// ApisixRouteSpec is the spec definition for ApisixRouteSpec.
-type ApisixRouteSpec struct {
-	IngressClassName string              `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
-	HTTP             []ApisixRouteHTTP   `json:"http,omitempty" yaml:"http,omitempty"`
-	Stream           []ApisixRouteStream `json:"stream,omitempty" yaml:"stream,omitempty"`
-}
-
-// ApisixRouteStatus defines the observed state of ApisixRoute.
-type ApisixRouteStatus = ApisixStatus
-
+// +genclient
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=ar
@@ -47,14 +38,20 @@ type ApisixRouteStatus = ApisixStatus
 // +kubebuilder:printcolumn:name="Ingress Port (TCP)",type="integer",JSONPath=".spec.tcp[].match.ingressPort",description="TCP Ingress Port",priority=1
 // +kubebuilder:printcolumn:name="Target Service (TCP)",type="string",JSONPath=".spec.tcp[].match.backend.serviceName",description="Backend Service for TCP",priority=1
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="Creation time",priority=0
-
 // ApisixRoute is the Schema for the apisixroutes API.
 type ApisixRoute struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ApisixRouteSpec   `json:"spec,omitempty"`
-	Status ApisixRouteStatus `json:"status,omitempty"`
+	Spec   ApisixRouteSpec `json:"spec,omitempty"`
+	Status ApisixStatus    `json:"status,omitempty"`
+}
+
+// ApisixRouteSpec is the spec definition for ApisixRouteSpec.
+type ApisixRouteSpec struct {
+	IngressClassName string              `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
+	HTTP             []ApisixRouteHTTP   `json:"http,omitempty" yaml:"http,omitempty"`
+	Stream           []ApisixRouteStream `json:"stream,omitempty" yaml:"stream,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -367,8 +364,4 @@ type ApisixRouteHTTPMatchExprSubject struct {
 	Scope string `json:"scope" yaml:"scope"`
 	// The name of subject.
 	Name string `json:"name" yaml:"name"`
-}
-
-func init() {
-	SchemeBuilder.Register(&ApisixRoute{}, &ApisixRouteList{})
 }

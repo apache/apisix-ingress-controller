@@ -22,6 +22,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// +genclient
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 type Consumer struct {
@@ -87,8 +88,4 @@ type ConsumerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Consumer `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&Consumer{}, &ConsumerList{})
 }
