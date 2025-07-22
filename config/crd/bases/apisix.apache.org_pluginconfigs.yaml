@@ -17,7 +17,7 @@ spec:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: PluginConfig is the Schema for the PluginConfigs API.
+        description: PluginConfig defines plugin configuration.
         properties:
           apiVersion:
             description: |-
@@ -39,10 +39,10 @@ spec:
           spec:
             description: |-
               PluginConfigSpec defines the desired state of a PluginConfig,
-              in which plugins and their configurations are specified.
+              in which plugins and their configuration are specified.
             properties:
               plugins:
-                description: Plugins are an array of plugins and their configurations
+                description: Plugins are an array of plugins and their configuration
                   to be applied.
                 items:
                   properties:

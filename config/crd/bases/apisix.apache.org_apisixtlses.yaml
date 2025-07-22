@@ -38,7 +38,7 @@ spec:
     name: v2
     schema:
       openAPIV3Schema:
-        description: ApisixTls is the Schema for the apisixtls API.
+        description: ApisixTls defines configuration for TLS and mutual TLS (mTLS).
         properties:
           apiVersion:
             description: |-
@@ -58,20 +58,23 @@ spec:
           metadata:
             type: object
           spec:
-            description: ApisixTlsSpec defines the desired state of ApisixTls.
+            description: ApisixTlsSpec defines the TLS configuration.
             properties:
               client:
-                description: ApisixMutualTlsClientConfig describes the mutual TLS
-                  CA and verify depth
+                description: Client defines mutual TLS (mTLS) settings, such as the
+                  CA certificate and verification depth.
                 properties:
                   caSecret:
-                    description: ApisixSecret describes the Kubernetes Secret name
-                      and namespace.
+                    description: CASecret references the secret containing the CA
+                      certificate for client certificate validation.
                     properties:
                       name:
+                        description: Name is the name of the Kubernetes Secret.
                         minLength: 1
                         type: string
                       namespace:
+                        description: Namespace is the namespace where the Kubernetes
+                          Secret is located.
                         minLength: 1
                         type: string
                     required:
@@ -79,13 +82,20 @@ spec:
                     - namespace
                     type: object
                   depth:
+                    description: Depth specifies the maximum verification depth for
+                      the client certificate chain.
                     type: integer
                   skip_mtls_uri_regex:
+                    description: SkipMTLSUriRegex contains RegEx patterns for URIs
+                      to skip mutual TLS verification.
                     items:
                       type: string
                     type: array
                 type: object
               hosts:
+                description: |-
+                  Hosts lists the SNI (Server Name Indication) hostnames that this TLS configuration applies to.
+                  Must contain at least one host.
                 items:
                   pattern: ^\*?[0-9a-zA-Z-.]+$
                   type: string
@@ -93,19 +103,21 @@ spec:
                 type: array
               ingressClassName:
                 description: |-
-                  IngressClassName is the name of an IngressClass cluster resource.
-                  controller implementations use this field to know whether they should be
-                  serving this ApisixTls resource, by a transitive connection
-                  (controller -> IngressClass -> ApisixTls resource).
+                  IngressClassName specifies which IngressClass this resource is associated with.
+                  The APISIX controller only processes this resource if the class matches its own.
                 type: string
               secret:
-                description: ApisixSecret describes the Kubernetes Secret name and
-                  namespace.
+                description: |-
+                  Secret refers to the Kubernetes TLS secret containing the certificate and private key.
+                  This secret must exist in the specified namespace and contain valid TLS data.
                 properties:
                   name:
+                    description: Name is the name of the Kubernetes Secret.
                     minLength: 1
                     type: string
                   namespace:
+                    description: Namespace is the namespace where the Kubernetes Secret
+                      is located.
                     minLength: 1
                     type: string
                 required:

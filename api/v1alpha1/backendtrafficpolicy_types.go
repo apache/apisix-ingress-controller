@@ -23,6 +23,7 @@ import (
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// BackendTrafficPolicy defines configuration for traffic handling policies applied to backend services.
 type BackendTrafficPolicy struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -46,7 +47,7 @@ type BackendTrafficPolicySpec struct {
 	LoadBalancer *LoadBalancer `json:"loadbalancer,omitempty" yaml:"loadbalancer,omitempty"`
 	// Scheme is the protocol used to communicate with the upstream.
 	// Default is `http`.
-	// Can be one of `http`, `https`, `grpc`, or `grpcs`.
+	// Can be `http`, `https`, `grpc`, or `grpcs`.
 	// +kubebuilder:validation:Enum=http;https;grpc;grpcs;
 	// +kubebuilder:default=http
 	Scheme string `json:"scheme,omitempty" yaml:"scheme,omitempty"`
@@ -61,8 +62,10 @@ type BackendTrafficPolicySpec struct {
 
 	// PassHost configures how the host header should be determined when a
 	// request is forwarded to the upstream.
-	// Default is `pass`.
-	// Can be one of `pass`, `node` or `rewrite`.
+	// Default is `pass`. Can be `pass`, `node` or `rewrite`:
+	// * `pass`: preserve the original Host header
+	// * `node`: use the upstream node’s host
+	// * `rewrite`: set to a custom host via `upstreamHost`
 	//
 	// +kubebuilder:validation:Enum=pass;node;rewrite;
 	// +kubebuilder:default=pass
@@ -76,20 +79,20 @@ type BackendTrafficPolicySpec struct {
 // LoadBalancer describes the load balancing parameters.
 // +kubebuilder:validation:XValidation:rule="!(has(self.key) && self.type != 'chash')"
 type LoadBalancer struct {
-	// Type specifies the load balancing algorithms.
+	// Type specifies the load balancing algorithms to route traffic to the backend.
 	// Default is `roundrobin`.
-	// Can be one of `roundrobin`, `chash`, `ewma`, or `least_conn`.
+	// Can be `roundrobin`, `chash`, `ewma`, or `least_conn`.
 	// +kubebuilder:validation:Enum=roundrobin;chash;ewma;least_conn;
 	// +kubebuilder:default=roundrobin
 	// +kubebuilder:validation:Required
 	Type string `json:"type" yaml:"type"`
-	// HashOn specified the type of field used for hashing, required when Type is `chash`.
+	// HashOn specified the type of field used for hashing, required when type is `chash`.
 	// Default is `vars`.
-	// Can be one of `vars`, `header`, `cookie`, `consumer`, or `vars_combinations`.
+	// Can be `vars`, `header`, `cookie`, `consumer`, or `vars_combinations`.
 	// +kubebuilder:validation:Enum=vars;header;cookie;consumer;vars_combinations;
 	// +kubebuilder:default=vars
 	HashOn string `json:"hashOn,omitempty" yaml:"hashOn,omitempty"`
-	// Key is used with HashOn, generally required when Type is `chash`.
+	// Key is used with HashOn, generally required when type is `chash`.
 	// When HashOn is `header` or `cookie`, specifies the name of the header or cookie.
 	// When HashOn is `consumer`, key is not required, as the consumer name is used automatically.
 	// When HashOn is `vars` or `vars_combinations`, key refers to one or a combination of
