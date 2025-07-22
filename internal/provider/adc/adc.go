@@ -112,8 +112,10 @@ func New(updater status.Updater, opts ...Option) (provider.Provider, error) {
 		configs:    make(map[types.NamespacedNameKind]adcConfig),
 		parentRefs: make(map[types.NamespacedNameKind][]types.NamespacedNameKind),
 		store:      NewStore(),
-		executor:   &DefaultADCExecutor{},
-		updater:    updater,
+		executor: &DefaultADCExecutor{
+			Concurrency: 4,
+		},
+		updater: updater,
 	}, nil
 }
 

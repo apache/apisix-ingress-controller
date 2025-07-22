@@ -42,6 +42,8 @@ type ADCExecutor interface {
 
 type DefaultADCExecutor struct {
 	sync.Mutex
+
+	Concurrency int
 }
 
 func (e *DefaultADCExecutor) Execute(ctx context.Context, mode string, config adcConfig, args []string) error {
@@ -52,24 +54,46 @@ func (e *DefaultADCExecutor) Execute(ctx context.Context, mode string, config ad
 }
 
 func (e *DefaultADCExecutor) runADC(ctx context.Context, mode string, config adcConfig, args []string) error {
-	var execErrs = types.ADCExecutionError{
-		Name: config.Name,
+	if e.Concurrency <= 0 {
+		e.Concurrency = 1
 	}
 
-	for _, addr := range config.ServerAddrs {
-		if err := e.runForSingleServerWithTimeout(ctx, addr, mode, config, args); err != nil {
-			log.Errorw("failed to run adc for server", zap.String("server", addr), zap.Error(err))
-			var execErr types.ADCExecutionServerAddrError
-			if errors.As(err, &execErr) {
-				execErrs.FailedErrors = append(execErrs.FailedErrors, execErr)
-			} else {
-				execErrs.FailedErrors = append(execErrs.FailedErrors, types.ADCExecutionServerAddrError{
-					ServerAddr: addr,
-					Err:        err.Error(),
-				})
+	errCh := make(chan types.ADCExecutionServerAddrError, len(config.ServerAddrs))
+	sem := make(chan struct{}, e.Concurrency)
+	var wg sync.WaitGroup
+
+	for _, serverAddr := range config.ServerAddrs {
+		sem <- struct{}{}
+		wg.Add(1)
+
+		go func(addr string) {
+			defer wg.Done()
+			defer func() { <-sem }()
+
+			if err := e.runForSingleServerWithTimeout(ctx, addr, mode, config, args); err != nil {
+				log.Errorw("failed to run adc for server", zap.String("server", addr), zap.Error(err))
+				var execErr types.ADCExecutionServerAddrError
+				if errors.As(err, &execErr) {
+					errCh <- execErr
+				} else {
+					errCh <- types.ADCExecutionServerAddrError{
+						ServerAddr: addr,
+						Err:        err.Error(),
+					}
+				}
 			}
-		}
+		}(serverAddr)
 	}
+
+	wg.Wait()
+	close(errCh)
+
+	var execErrs types.ADCExecutionError
+	execErrs.Name = config.Name
+	for err := range errCh {
+		execErrs.FailedErrors = append(execErrs.FailedErrors, err)
+	}
+
 	if len(execErrs.FailedErrors) > 0 {
 		return execErrs
 	}
