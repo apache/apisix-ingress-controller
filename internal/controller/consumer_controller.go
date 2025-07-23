@@ -306,31 +306,5 @@ func (r *ConsumerReconciler) checkGatewayRef(object client.Object) bool {
 	if !ok {
 		return false
 	}
-	if consumer.Spec.GatewayRef.Name == "" {
-		return false
-	}
-	if consumer.Spec.GatewayRef.Kind != nil && *consumer.Spec.GatewayRef.Kind != KindGateway {
-		return false
-	}
-	if consumer.Spec.GatewayRef.Group != nil && *consumer.Spec.GatewayRef.Group != gatewayv1.GroupName {
-		return false
-	}
-	ns := consumer.GetNamespace()
-	if consumer.Spec.GatewayRef.Namespace != nil {
-		ns = *consumer.Spec.GatewayRef.Namespace
-	}
-	gateway := &gatewayv1.Gateway{}
-	if err := r.Get(context.Background(), client.ObjectKey{
-		Name:      consumer.Spec.GatewayRef.Name,
-		Namespace: ns,
-	}, gateway); err != nil {
-		r.Log.Error(err, "failed to get gateway", "gateway", consumer.Spec.GatewayRef.Name)
-		return false
-	}
-	gatewayClass := &gatewayv1.GatewayClass{}
-	if err := r.Get(context.Background(), client.ObjectKey{Name: string(gateway.Spec.GatewayClassName)}, gatewayClass); err != nil {
-		r.Log.Error(err, "failed to get gateway class", "gateway", gateway.GetName(), "gatewayclass", gateway.Spec.GatewayClassName)
-		return false
-	}
-	return matchesController(string(gatewayClass.Spec.ControllerName))
+	return MatchConsumerGatewayRef(context.Background(), r.Client, r.Log, consumer)
 }

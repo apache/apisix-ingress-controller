@@ -23,6 +23,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/api7/gopkg/pkg/log"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -30,7 +31,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	types "github.com/apache/apisix-ingress-controller/internal/types"
-	"github.com/api7/gopkg/pkg/log"
 )
 
 // Filter defines an interface to match unstructured Kubernetes objects.
@@ -121,7 +121,7 @@ func (r *readinessManager) Start(ctx context.Context) error {
 					})
 				}
 				if len(expected) > 0 {
-					log.Warnw("registering readiness state", zap.Any("gvk", gvk), zap.Any("expected", expected))
+					log.Debugw("registering readiness state", zap.Any("gvk", gvk), zap.Any("expected", expected))
 					r.registerState(gvk, expected)
 				}
 			}

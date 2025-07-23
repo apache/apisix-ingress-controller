@@ -32,7 +32,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller"
-	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
@@ -196,6 +195,7 @@ func setupControllers(ctx context.Context, mgr manager.Manager, pro provider.Pro
 }
 
 func registerReadinessGVK(c client.Client, readier readiness.ReadinessManager) {
+	log := ctrl.LoggerFrom(context.Background()).WithName("readiness")
 	readier.RegisterGVK([]readiness.GVKConfig{
 		{
 			GVKs: []schema.GroupVersionKind{
@@ -213,28 +213,8 @@ func registerReadinessGVK(c client.Client, readier readiness.ReadinessManager) {
 			},
 			Filter: readiness.GVKFilter(func(obj *unstructured.Unstructured) bool {
 				icName, _, _ := unstructured.NestedString(obj.Object, "spec", "ingressClassName")
-				if icName == "" {
-					insList := &netv1.IngressClassList{}
-					if err := c.List(context.Background(), insList, client.MatchingFields{
-						indexer.IngressClass: config.GetControllerName(),
-					}); err != nil {
-						return false
-					}
-					for _, ic := range insList.Items {
-						if ic.Annotations[types.DefaultIngressClassAnnotation] == "true" {
-							return true
-						}
-					}
-					return false
-				} else {
-					var ingressClass netv1.IngressClass
-					if err := c.Get(context.Background(), client.ObjectKey{
-						Name: icName,
-					}, &ingressClass); err != nil {
-						return false
-					}
-					return true
-				}
+				ingressClass, _ := controller.GetIngressClass(context.Background(), c, log, icName)
+				return ingressClass != nil
 			}),
 		},
 		{
@@ -246,34 +226,7 @@ func registerReadinessGVK(c client.Client, readier readiness.ReadinessManager) {
 				if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, consumer); err != nil {
 					return false
 				}
-
-				if consumer.Spec.GatewayRef.Name == "" {
-					return false
-				}
-				if consumer.Spec.GatewayRef.Kind != nil && *consumer.Spec.GatewayRef.Kind != types.KindGateway {
-					return false
-				}
-				if consumer.Spec.GatewayRef.Group != nil && *consumer.Spec.GatewayRef.Group != gatewayv1.GroupName {
-					return false
-				}
-
-				ns := consumer.GetNamespace()
-				if consumer.Spec.GatewayRef.Namespace != nil {
-					ns = *consumer.Spec.GatewayRef.Namespace
-				}
-
-				ctx := context.Background()
-
-				gateway := &gatewayv1.Gateway{}
-				if err := c.Get(ctx, client.ObjectKey{Name: consumer.Spec.GatewayRef.Name, Namespace: ns}, gateway); err != nil {
-					return false
-				}
-
-				gatewayClass := &gatewayv1.GatewayClass{}
-				if err := c.Get(ctx, client.ObjectKey{Name: string(gateway.Spec.GatewayClassName)}, gatewayClass); err != nil {
-					return false
-				}
-				return string(gatewayClass.Spec.ControllerName) == config.GetControllerName()
+				return controller.MatchConsumerGatewayRef(context.Background(), c, log, consumer)
 			}),
 		},
 	}...)
