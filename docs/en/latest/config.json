@@ -9,11 +9,11 @@
             "type": "category",
             "label": "Getting Started",
             "items": [
-                "get-apisix-ingress-controller",
-                "configure-routes",
-                "load-balancing",
-                "key-authentication",
-                "rate-limiting"
+                "getting-started/get-apisix-ingress-controller",
+                "getting-started/configure-routes",
+                "getting-started/load-balancing",
+                "getting-started/key-authentication",
+                "getting-started/rate-limiting"
             ]
         },
         {
