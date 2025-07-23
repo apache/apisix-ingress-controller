@@ -33,21 +33,33 @@ import (
 	"github.com/api7/gopkg/pkg/log"
 )
 
+// Filter defines an interface to match unstructured Kubernetes objects.
 type Filter interface {
 	Match(obj *unstructured.Unstructured) bool
 }
 
+// GVKFilter is a functional implementation of Filter using a function type.
 type GVKFilter func(obj *unstructured.Unstructured) bool
 
 func (f GVKFilter) Match(obj *unstructured.Unstructured) bool {
 	return f(obj)
 }
 
+// GVKConfig defines a set of GVKs and an optional filter to match the objects.
 type GVKConfig struct {
 	GVKs   []schema.GroupVersionKind
 	Filter Filter
 }
 
+// readinessManager prevents premature full sync to the data plane on controller startup.
+//
+// Background:
+// On startup, the controller watches CRDs and periodically performs full sync to the data plane.
+// If a sync occurs before all resources have been reconciled, it may push incomplete data,
+// causing traffic disruption.
+//
+// This manager tracks whether all relevant resources have been processed at least once.
+// It is used to delay full sync until initial reconciliation is complete.
 type ReadinessManager interface {
 	RegisterGVK(configs ...GVKConfig)
 	Start(ctx context.Context) error
@@ -68,6 +80,7 @@ type readinessManager struct {
 	isReady bool
 }
 
+// ReadinessManager tracks readiness of specific resources across the cluster.
 func NewReadinessManager(client client.Client) ReadinessManager {
 	return &readinessManager{
 		client:  client,
@@ -77,13 +90,15 @@ func NewReadinessManager(client client.Client) ReadinessManager {
 	}
 }
 
+// RegisterGVK registers one or more GVKConfig objects for readiness tracking.
 func (r *readinessManager) RegisterGVK(configs ...GVKConfig) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.configs = append(r.configs, configs...)
 }
 
-// Start should be called **after** cache is started and synced.
+// Start initializes the readiness state from the Kubernetes API.
+// Should be called only after informer cache has synced.
 func (r *readinessManager) Start(ctx context.Context) error {
 	var err error
 	r.startOnce.Do(func() {
@@ -131,6 +146,7 @@ func (r *readinessManager) registerState(gvk schema.GroupVersionKind, list []k8s
 	}
 }
 
+// Done marks the resource as ready by removing it from the pending state.
 func (r *readinessManager) Done(obj client.Object, nn k8stypes.NamespacedName) {
 	if r.IsReady() {
 		return
@@ -155,6 +171,7 @@ func (r *readinessManager) IsReady() bool {
 	return r.isReady
 }
 
+// WaitReady blocks until readiness is achieved, a timeout occurs, or context is cancelled.
 func (r *readinessManager) WaitReady(ctx context.Context, timeout time.Duration) bool {
 	if r.IsReady() {
 		return true

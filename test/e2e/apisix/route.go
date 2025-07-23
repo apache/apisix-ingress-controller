@@ -635,4 +635,111 @@ spec:
 			Expect(err).ShouldNot(HaveOccurred(), "check apisixupstream is referenced")
 		})
 	})
+
+	Context("Test ApisixRoute sync during startup", func() {
+		const route = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: default
+spec:
+  ingressClassName: apisix
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - httpbin
+      paths:
+      - /get
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+`
+
+		const route2 = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: route2
+spec:
+  ingressClassName: apisix-nonexistent
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - httpbin2
+      paths:
+      - /get
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+`
+		const route3 = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: route3
+spec:
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - httpbin3
+      paths:
+      - /get
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+`
+		It("Should sync ApisixRoute during startup", func() {
+			By("apply ApisixRoute")
+			Expect(s.CreateResourceFromString(route2)).ShouldNot(HaveOccurred(), "apply ApisixRoute with nonexistent ingressClassName")
+			Expect(s.CreateResourceFromString(route3)).ShouldNot(HaveOccurred(), "apply ApisixRoute without ingressClassName")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, route)
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin2",
+				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+			})
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin3",
+				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+			})
+
+			By("restart controller and dataplane")
+			s.Deployer.ScaleIngress(0)
+			s.Deployer.ScaleDataplane(0)
+			s.Deployer.ScaleDataplane(1)
+			s.Deployer.ScaleIngress(1)
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin2",
+				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+			})
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin3",
+				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+			})
+		})
+	})
 })

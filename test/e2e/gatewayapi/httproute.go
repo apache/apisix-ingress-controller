@@ -1900,4 +1900,85 @@ spec:
 			}
 		})
 	})
+
+	Context("Test HTTPRoute sync during startup", func() {
+		BeforeEach(beforeEachHTTP)
+		var route = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: httpbin
+spec:
+  parentRefs:
+  - name: apisix
+  hostnames:
+  - httpbin
+  rules:
+  - matches: 
+    - path:
+        type: Exact
+        value: /get
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
+
+		var route2 = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: httpbin2
+spec:
+  parentRefs:
+  - name: apisix-nonexistent
+  hostnames:
+  - httpbin2
+  rules:
+  - matches: 
+    - path:
+        type: Exact
+        value: /get
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
+		It("Should sync ApisixRoute during startup", func() {
+			By("apply ApisixRoute")
+			Expect(s.CreateResourceFromString(route2)).ShouldNot(HaveOccurred(), "applying HTTPRoute with non-existent parent")
+			s.ResourceApplied("HTTPRoute", "httpbin", route, 1)
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin2",
+				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+			})
+
+			By("restart controller and dataplane")
+			s.Deployer.ScaleIngress(0)
+			s.Deployer.ScaleDataplane(0)
+			s.Deployer.ScaleDataplane(1)
+			s.Deployer.ScaleIngress(1)
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin2",
+				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+			})
+		})
+
+	})
 })
