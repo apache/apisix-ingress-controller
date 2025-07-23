@@ -37,7 +37,7 @@ type GatewayProxySpec struct {
 	Provider *GatewayProxyProvider `json:"provider,omitempty"`
 	// Plugins configure global plugins.
 	Plugins []GatewayProxyPlugin `json:"plugins,omitempty"`
-	// PluginMetadata configures common configurations shared by all plugin instances of the same name.
+	// PluginMetadata configures common configuration shared by all plugin instances of the same name.
 	PluginMetadata map[string]apiextensionsv1.JSON `json:"pluginMetadata,omitempty"`
 }
 
@@ -112,7 +112,7 @@ type ControlPlaneAuth struct {
 	AdminKey *AdminKeyAuth `json:"adminKey,omitempty"`
 }
 
-// ControlPlaneProvider defines the configuration for control plane provider.
+// ControlPlaneProvider defines configuration for control plane provider.
 // +kubebuilder:validation:XValidation:rule="has(self.endpoints) != has(self.service)"
 type ControlPlaneProvider struct {
 	// Endpoints specifies the list of control plane endpoints.
@@ -125,26 +125,28 @@ type ControlPlaneProvider struct {
 	// +optional
 	TlsVerify *bool `json:"tlsVerify,omitempty"`
 
-	// Auth specifies the authentication configurations.
+	// Auth specifies the authentication configuration.
 	// +kubebuilder:validation:Required
 	Auth ControlPlaneAuth `json:"auth"`
 }
 
 type ProviderService struct {
+	// Name is the name of the provider.
 	Name string `json:"name"`
 
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=65535
+	// Port is the port of the provider.
 	Port int32 `json:"port,omitempty"`
 }
 
 // +kubebuilder:object:root=true
-// GatewayProxy is the Schema for the gatewayproxies API.
+// GatewayProxy defines configuration for the gateway proxy instances used to route traffic to services.
 type GatewayProxy struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// GatewayProxySpec defines the desired state and configuration of a GatewayProxy,
+	// GatewayProxySpec defines configuration of gateway proxy instances,
 	// including networking settings, global plugins, and plugin metadata.
 	Spec GatewayProxySpec `json:"spec,omitempty"`
 }
@@ -157,7 +159,7 @@ type GatewayProxyList struct {
 	Items           []GatewayProxy `json:"items"`
 }
 
-// GatewayProxyPlugin contains plugin configurations.
+// GatewayProxyPlugin contains plugin configuration.
 type GatewayProxyPlugin struct {
 	// Name is the name of the plugin.
 	Name string `json:"name,omitempty"`

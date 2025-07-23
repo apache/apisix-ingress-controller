@@ -39,7 +39,7 @@ E2E_NODES ?= 2
 CRD_REF_DOCS_VERSION ?= v0.1.0
 CRD_REF_DOCS ?= $(LOCALBIN)/crd-ref-docs
 CRD_DOCS_CONFIG ?= docs/assets/crd/config.yaml
-CRD_DOCS_OUTPUT ?= docs/en/latest/api-reference.md
+CRD_DOCS_OUTPUT ?= docs/en/latest/reference/api-reference.md
 CRD_DOCS_TEMPLATE ?= docs/assets/template
 
 # go 

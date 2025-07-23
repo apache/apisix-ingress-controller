@@ -37,9 +37,9 @@ type ApisixGlobalRule struct {
 // ApisixGlobalRuleSpec defines the desired state of ApisixGlobalRule.
 type ApisixGlobalRuleSpec struct {
 	// IngressClassName is the name of an IngressClass cluster resource.
-	// The controller uses this field to decide whether the resource should be managed or not.
+	// The controller uses this field to decide whether the resource should be managed.
 	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
-	// Plugins contains a list of ApisixRoutePlugin
+	// Plugins contain a list of global plugins.
 	// +kubebuilder:validation:Required
 	Plugins []ApisixRoutePlugin `json:"plugins" yaml:"plugins"`
 }

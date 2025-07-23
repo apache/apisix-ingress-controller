@@ -68,7 +68,7 @@ const (
 	OpRegexNotMatchCaseInsensitive = "RegexNotMatchCaseInsensitive"
 	// OpIn means the in operator ("in") in nginxVars.
 	OpIn = "In"
-	// OpNotIn means the not in operator ("not_in") in nginxVars.
+	// OpNotIn means the not in operator ("NotIn") in nginxVars.
 	OpNotIn = "NotIn"
 
 	// ScopeQuery means the route match expression subject is in the querystring.

@@ -3,7 +3,18 @@
     "sidebar": [
         {
             "type": "doc",
-            "id": "getting-started"
+            "id": "overview"
+        },
+        {
+            "type": "category",
+            "label": "Getting Started",
+            "items": [
+                "getting-started/get-apisix-ingress-controller",
+                "getting-started/configure-routes",
+                "getting-started/load-balancing",
+                "getting-started/key-authentication",
+                "getting-started/rate-limiting"
+            ]
         },
         {
             "type": "category",
@@ -23,8 +34,12 @@
             "id": "developer-guide"
         },
         {
-            "type": "doc",
-            "id": "api-reference"
+            "type": "category",
+            "label": "Reference",
+            "items": [
+                "reference/api-reference",
+                "reference/example"
+            ]
         },
         {
             "type": "doc",

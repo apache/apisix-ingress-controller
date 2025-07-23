@@ -42,37 +42,49 @@ type ApisixTls struct {
 
 // ApisixTlsSpec defines the desired state of ApisixTls.
 type ApisixTlsSpec struct {
-	// IngressClassName is the name of an IngressClass cluster resource.
-	// controller implementations use this field to know whether they should be
-	// serving this ApisixTls resource, by a transitive connection
-	// (controller -> IngressClass -> ApisixTls resource).
+	// IngressClassName specifies which IngressClass this resource is associated with.
+	// The APISIX controller only processes this resource if the class matches its own.
 	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
+
+	// Hosts lists the SNI (Server Name Indication) hostnames that this TLS configuration applies to.
+	// Must contain at least one host.
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinItems=1
 	Hosts []HostType `json:"hosts" yaml:"hosts,omitempty"`
+
+	// Secret refers to the Kubernetes TLS secret containing the certificate and private key.
+	// This secret must exist in the specified namespace and contain valid TLS data.
 	// +kubebuilder:validation:Required
-	Secret ApisixSecret                 `json:"secret" yaml:"secret"`
+	Secret ApisixSecret `json:"secret" yaml:"secret"`
+
+	// Client defines mutual TLS (mTLS) settings, such as the CA certificate and verification depth.
 	Client *ApisixMutualTlsClientConfig `json:"client,omitempty" yaml:"client,omitempty"`
 }
 
 // +kubebuilder:validation:Pattern="^\\*?[0-9a-zA-Z-.]+$"
 type HostType string
 
-// ApisixSecret describes the Kubernetes Secret name and namespace.
+// ApisixSecret describes a reference to a Kubernetes Secret, including its name and namespace.
+// This is used to locate secrets such as certificates or credentials for plugins or TLS configuration.
 type ApisixSecret struct {
+	// Name is the name of the Kubernetes Secret.
 	// +kubebuilder:validation:MinLength=1
 	// +kubebuilder:validation:Required
 	Name string `json:"name" yaml:"name"`
+	// Namespace is the namespace where the Kubernetes Secret is located.
 	// +kubebuilder:validation:MinLength=1
 	// +kubebuilder:validation:Required
 	Namespace string `json:"namespace" yaml:"namespace"`
 }
 
-// ApisixMutualTlsClientConfig describes the mutual TLS CA and verify depth
+// ApisixMutualTlsClientConfig describes the mutual TLS CA and verification settings.
 type ApisixMutualTlsClientConfig struct {
-	CASecret         ApisixSecret `json:"caSecret,omitempty" yaml:"caSecret,omitempty"`
-	Depth            int          `json:"depth,omitempty" yaml:"depth,omitempty"`
-	SkipMTLSUriRegex []string     `json:"skip_mtls_uri_regex,omitempty" yaml:"skip_mtls_uri_regex,omitempty"`
+	// CASecret references the secret containing the CA certificate for client certificate validation.
+	CASecret ApisixSecret `json:"caSecret,omitempty" yaml:"caSecret,omitempty"`
+	// Depth specifies the maximum verification depth for the client certificate chain.
+	Depth int `json:"depth,omitempty" yaml:"depth,omitempty"`
+	// SkipMTLSUriRegex contains RegEx patterns for URIs to skip mutual TLS verification.
+	SkipMTLSUriRegex []string `json:"skip_mtls_uri_regex,omitempty" yaml:"skip_mtls_uri_regex,omitempty"`
 }
 
 // +kubebuilder:object:root=true
