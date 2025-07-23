@@ -38,6 +38,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
+	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
@@ -51,6 +52,7 @@ type ConsumerReconciler struct { //nolint:revive
 	Provider provider.Provider
 
 	Updater status.Updater
+	Readier readiness.ReadinessManager
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -181,6 +183,7 @@ func (r *ConsumerReconciler) listConsumersForGatewayProxy(ctx context.Context, o
 }
 
 func (r *ConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	r.Readier.Done(&v1alpha1.Consumer{}, req.NamespacedName)
 	consumer := new(v1alpha1.Consumer)
 	if err := r.Get(ctx, req.NamespacedName, consumer); err != nil {
 		if client.IgnoreNotFound(err) == nil {
