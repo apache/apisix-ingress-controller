@@ -22,7 +22,6 @@ import (
 	v2 "github.com/apache/apisix-ingress-controller/api/v2"
 	corev1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
-	v1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -58,9 +57,9 @@ func KindOf(obj any) string {
 		return KindHTTPRoute
 	case *gatewayv1.GatewayClass:
 		return KindGatewayClass
-	case *v1.Ingress:
+	case *netv1.Ingress:
 		return KindIngress
-	case *v1.IngressClass:
+	case *netv1.IngressClass:
 		return KindIngressClass
 	case *corev1.Secret:
 		return KindSecret

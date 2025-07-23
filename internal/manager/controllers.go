@@ -126,6 +126,7 @@ func setupControllers(ctx context.Context, mgr manager.Manager, pro provider.Pro
 			Log:      ctrl.LoggerFrom(ctx).WithName("controllers").WithName("Ingress"),
 			Provider: pro,
 			Updater:  updater,
+			Readier:  readier,
 		},
 		&controller.ConsumerReconciler{
 			Client:   mgr.GetClient(),
