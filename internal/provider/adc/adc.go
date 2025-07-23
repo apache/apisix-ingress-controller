@@ -217,7 +217,7 @@ func (d *adcClient) Update(ctx context.Context, tctx *provider.TranslateContext,
 	// This mode is full synchronization,
 	// which only needs to be saved in cache
 	// and triggered by a timer for synchronization
-	if d.BackendMode == BackendModeAPISIXStandalone || d.BackendMode == BackendModeAPISIX || apiv2.Is(obj) {
+	if d.BackendMode == BackendModeAPISIXStandalone || d.BackendMode == BackendModeAPISIX {
 		return nil
 	}
 

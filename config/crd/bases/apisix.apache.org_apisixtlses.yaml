@@ -38,7 +38,7 @@ spec:
     name: v2
     schema:
       openAPIV3Schema:
-        description: ApisixTls defines configuration for TLS and mutual TLS (mTLS).
+        description: ApisixTls is the Schema for the apisixtls API.
         properties:
           apiVersion:
             description: |-
@@ -58,7 +58,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: ApisixTlsSpec defines the TLS configuration.
+            description: ApisixTlsSpec defines the desired state of ApisixTls.
             properties:
               client:
                 description: Client defines mutual TLS (mTLS) settings, such as the

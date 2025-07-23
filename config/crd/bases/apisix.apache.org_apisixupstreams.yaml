@@ -19,7 +19,7 @@ spec:
   - name: v2
     schema:
       openAPIV3Schema:
-        description: ApisixUpstream defines configuration for upstream services.
+        description: ApisixUpstream is the Schema for the apisixupstreams API.
         properties:
           apiVersion:
             description: |-
@@ -39,7 +39,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: ApisixUpstreamSpec defines the upstream configuration.
+            description: ApisixUpstreamSpec describes the specification of ApisixUpstream.
             properties:
               discovery:
                 description: |-
@@ -69,9 +69,7 @@ spec:
                   When this field is set, the upstream will route traffic directly to these nodes
                   without DNS resolution or service discovery.
                 items:
-                  description: |-
-                    ApisixUpstreamExternalNode defines configuration for an external upstream node.
-                    This allows referencing services outside the cluster.
+                  description: ApisixUpstreamExternalNode is the external node conf
                   properties:
                     name:
                       description: Name is the hostname or IP address of the external

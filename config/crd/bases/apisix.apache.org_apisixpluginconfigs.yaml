@@ -19,8 +19,8 @@ spec:
   - name: v2
     schema:
       openAPIV3Schema:
-        description: ApisixPluginConfig defines a reusable set of plugin configuration
-          that can be referenced by routes.
+        description: ApisixPluginConfig is the Schema for the apisixpluginconfigs
+          API.
         properties:
           apiVersion:
             description: |-
@@ -40,7 +40,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: ApisixPluginConfigSpec defines the plugin config configuration.
+            description: ApisixPluginConfigSpec defines the desired state of ApisixPluginConfigSpec.
             properties:
               ingressClassName:
                 description: |-

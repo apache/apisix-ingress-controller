@@ -19,7 +19,7 @@ spec:
   - name: v2
     schema:
       openAPIV3Schema:
-        description: ApisixGlobalRule defines configuration for global plugins.
+        description: ApisixGlobalRule is the Schema for the apisixglobalrules API.
         properties:
           apiVersion:
             description: |-
@@ -39,7 +39,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: ApisixGlobalRuleSpec defines the global plugin configuration.
+            description: ApisixGlobalRuleSpec defines the desired state of ApisixGlobalRule.
             properties:
               ingressClassName:
                 description: |-

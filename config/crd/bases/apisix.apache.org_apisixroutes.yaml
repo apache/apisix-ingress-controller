@@ -47,7 +47,7 @@ spec:
     name: v2
     schema:
       openAPIV3Schema:
-        description: ApisixRoute is defines configuration for HTTP and stream routes.
+        description: ApisixRoute is the Schema for the apisixroutes API.
         properties:
           apiVersion:
             description: |-
@@ -67,12 +67,9 @@ spec:
           metadata:
             type: object
           spec:
-            description: ApisixRouteSpec defines HTTP and stream route configuration.
+            description: ApisixRouteSpec is the spec definition for ApisixRouteSpec.
             properties:
               http:
-                description: |-
-                  HTTP defines a list of HTTP route rules.
-                  Each rule specifies conditions to match HTTP requests and how to forward them.
                 items:
                   description: ApisixRouteHTTP represents a single HTTP route configuration.
                   properties:
@@ -347,14 +344,8 @@ spec:
                   type: object
                 type: array
               ingressClassName:
-                description: |-
-                  IngressClassName is the name of the IngressClass this route belongs to.
-                  It allows multiple controllers to watch and reconcile different routes.
                 type: string
               stream:
-                description: |-
-                  Stream defines a list of stream route rules.
-                  Each rule specifies conditions to match TCP/UDP traffic and how to forward them.
                 items:
                   description: ApisixRouteStream defines the configuration for a Layer
                     4 (TCP/UDP) route.

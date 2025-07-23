@@ -19,8 +19,7 @@ spec:
   - name: v2
     schema:
       openAPIV3Schema:
-        description: ApisixConsumer defines configuration of a consumer and their
-          authentication details.
+        description: ApisixConsumer is the Schema for the apisixconsumers API.
         properties:
           apiVersion:
             description: |-
@@ -40,7 +39,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: ApisixConsumerSpec defines the consumer authentication configuration.
+            description: ApisixConsumerSpec defines the desired state of ApisixConsumer.
             properties:
               authParameter:
                 description: AuthParameter defines the authentication credentials
