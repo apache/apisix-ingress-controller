@@ -23,9 +23,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ApisixUpstreamSpec describes the desired configuration of an ApisixUpstream resource.
-// It defines how traffic should be routed to backend services, including upstream node
-// definitions and custom configuration.
+// +genclient
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=au
+// ApisixUpstream is the Schema for the apisixupstreams API.
+type ApisixUpstream struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   ApisixUpstreamSpec `json:"spec,omitempty"`
+	Status ApisixStatus       `json:"status,omitempty"`
+}
+
+// ApisixUpstreamSpec describes the specification of ApisixUpstream.
 type ApisixUpstreamSpec struct {
 	// IngressClassName is the name of an IngressClass cluster resource.
 	// Controller implementations use this field to determine whether they
@@ -49,34 +60,7 @@ type ApisixUpstreamSpec struct {
 	PortLevelSettings []PortLevelSettings `json:"portLevelSettings,omitempty" yaml:"portLevelSettings,omitempty"`
 }
 
-// ApisixUpstreamStatus defines the observed state of ApisixUpstream.
-type ApisixUpstreamStatus = ApisixStatus
-
-// +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=au
-
-// ApisixUpstream defines configuration for upstream services.
-type ApisixUpstream struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	// ApisixUpstreamSpec defines the upstream configuration.
-	Spec   ApisixUpstreamSpec   `json:"spec,omitempty"`
-	Status ApisixUpstreamStatus `json:"status,omitempty"`
-}
-
-// +kubebuilder:object:root=true
-
-// ApisixUpstreamList contains a list of ApisixUpstream.
-type ApisixUpstreamList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []ApisixUpstream `json:"items"`
-}
-
-// ApisixUpstreamExternalNode defines configuration for an external upstream node.
-// This allows referencing services outside the cluster.
+// ApisixUpstreamExternalNode is the external node conf
 type ApisixUpstreamExternalNode struct {
 	// Name is the hostname or IP address of the external node.
 	Name string `json:"name,omitempty" yaml:"name"`
@@ -306,6 +290,11 @@ type PassiveHealthCheckUnhealthy struct {
 	Timeouts int `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 }
 
-func init() {
-	SchemeBuilder.Register(&ApisixUpstream{}, &ApisixUpstreamList{})
+// +kubebuilder:object:root=true
+
+// ApisixUpstreamList contains a list of ApisixUpstream.
+type ApisixUpstreamList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []ApisixUpstream `json:"items"`
 }

@@ -21,7 +21,20 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ApisixGlobalRuleSpec defines configuration for global plugins.
+// +genclient
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=agr
+// ApisixGlobalRule is the Schema for the apisixglobalrules API.
+type ApisixGlobalRule struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   ApisixGlobalRuleSpec `json:"spec,omitempty"`
+	Status ApisixStatus         `json:"status,omitempty"`
+}
+
+// ApisixGlobalRuleSpec defines the desired state of ApisixGlobalRule.
 type ApisixGlobalRuleSpec struct {
 	// IngressClassName is the name of an IngressClass cluster resource.
 	// The controller uses this field to decide whether the resource should be managed.
@@ -31,23 +44,6 @@ type ApisixGlobalRuleSpec struct {
 	Plugins []ApisixRoutePlugin `json:"plugins" yaml:"plugins"`
 }
 
-// ApisixGlobalRuleStatus defines the observed state of ApisixGlobalRule.
-type ApisixGlobalRuleStatus = ApisixStatus
-
-// +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
-// +kubebuilder:resource:shortName=agr
-
-// ApisixGlobalRule defines configuration for global plugins.
-type ApisixGlobalRule struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata,omitempty"`
-
-	// ApisixGlobalRuleSpec defines the global plugin configuration.
-	Spec   ApisixGlobalRuleSpec   `json:"spec,omitempty"`
-	Status ApisixGlobalRuleStatus `json:"status,omitempty"`
-}
-
 // +kubebuilder:object:root=true
 
 // ApisixGlobalRuleList contains a list of ApisixGlobalRule.
@@ -55,8 +51,4 @@ type ApisixGlobalRuleList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ApisixGlobalRule `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&ApisixGlobalRule{}, &ApisixGlobalRuleList{})
 }

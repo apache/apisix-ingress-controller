@@ -21,6 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// +genclient
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // BackendTrafficPolicy defines configuration for traffic handling policies applied to backend services.
@@ -123,8 +124,4 @@ type BackendTrafficPolicyList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []BackendTrafficPolicy `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&BackendTrafficPolicy{}, &BackendTrafficPolicyList{})
 }

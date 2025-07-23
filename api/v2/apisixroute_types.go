@@ -28,23 +28,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/api/adc"
 )
 
-// ApisixRouteSpec is the spec definition for ApisixRoute.
-// It defines routing rules for both HTTP and stream traffic.
-type ApisixRouteSpec struct {
-	// IngressClassName is the name of the IngressClass this route belongs to.
-	// It allows multiple controllers to watch and reconcile different routes.
-	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
-	// HTTP defines a list of HTTP route rules.
-	// Each rule specifies conditions to match HTTP requests and how to forward them.
-	HTTP []ApisixRouteHTTP `json:"http,omitempty" yaml:"http,omitempty"`
-	// Stream defines a list of stream route rules.
-	// Each rule specifies conditions to match TCP/UDP traffic and how to forward them.
-	Stream []ApisixRouteStream `json:"stream,omitempty" yaml:"stream,omitempty"`
-}
-
-// ApisixRouteStatus defines the observed state of ApisixRoute.
-type ApisixRouteStatus = ApisixStatus
-
+// +genclient
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=ar
@@ -54,15 +38,20 @@ type ApisixRouteStatus = ApisixStatus
 // +kubebuilder:printcolumn:name="Ingress Port (TCP)",type="integer",JSONPath=".spec.tcp[].match.ingressPort",description="TCP Ingress Port",priority=1
 // +kubebuilder:printcolumn:name="Target Service (TCP)",type="string",JSONPath=".spec.tcp[].match.backend.serviceName",description="Backend Service for TCP",priority=1
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="Creation time",priority=0
-
-// ApisixRoute is defines configuration for HTTP and stream routes.
+// ApisixRoute is the Schema for the apisixroutes API.
 type ApisixRoute struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	// ApisixRouteSpec defines HTTP and stream route configuration.
-	Spec   ApisixRouteSpec   `json:"spec,omitempty"`
-	Status ApisixRouteStatus `json:"status,omitempty"`
+	Spec   ApisixRouteSpec `json:"spec,omitempty"`
+	Status ApisixStatus    `json:"status,omitempty"`
+}
+
+// ApisixRouteSpec is the spec definition for ApisixRouteSpec.
+type ApisixRouteSpec struct {
+	IngressClassName string              `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
+	HTTP             []ApisixRouteHTTP   `json:"http,omitempty" yaml:"http,omitempty"`
+	Stream           []ApisixRouteStream `json:"stream,omitempty" yaml:"stream,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -401,8 +390,4 @@ type ApisixRouteHTTPMatchExprSubject struct {
 	Scope string `json:"scope" yaml:"scope"`
 	// Name is the name of the header or query parameter.
 	Name string `json:"name" yaml:"name"`
-}
-
-func init() {
-	SchemeBuilder.Register(&ApisixRoute{}, &ApisixRouteList{})
 }

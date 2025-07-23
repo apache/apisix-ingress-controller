@@ -58,7 +58,3 @@ type Plugin struct {
 	// Config is plugin configuration details.
 	Config apiextensionsv1.JSON `json:"config,omitempty" yaml:"config,omitempty"`
 }
-
-func init() {
-	SchemeBuilder.Register(&PluginConfig{}, &PluginConfigList{})
-}

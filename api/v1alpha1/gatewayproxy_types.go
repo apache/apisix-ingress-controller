@@ -168,7 +168,3 @@ type GatewayProxyPlugin struct {
 	// Config defines the plugin's configuration details.
 	Config apiextensionsv1.JSON `json:"config,omitempty"`
 }
-
-func init() {
-	SchemeBuilder.Register(&GatewayProxy{}, &GatewayProxyList{})
-}
