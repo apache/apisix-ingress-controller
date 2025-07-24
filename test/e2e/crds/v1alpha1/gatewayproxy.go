@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package gatewayapi
+package v1alpha1
 
 import (
 	"context"
