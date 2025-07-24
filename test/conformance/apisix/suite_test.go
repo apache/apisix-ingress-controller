@@ -165,9 +165,9 @@ func TestMain(m *testing.M) {
 		ControllerName:     s.GetControllerName(),
 		Namespace:          namespace,
 		StatusAddress:      address,
-		InitSyncDelay:      1 * time.Minute,
+		InitSyncDelay:      20 * time.Minute,
 		ProviderType:       framework.ProviderType,
-		ProviderSyncPeriod: 10 * time.Millisecond,
+		ProviderSyncPeriod: 1 * time.Hour,
 	})
 
 	adminEndpoint := fmt.Sprintf("http://%s.%s:9180", svc.Name, namespace)
