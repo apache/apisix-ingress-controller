@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package apisix
+package v2
 
 import (
 	"fmt"

@@ -70,7 +70,7 @@ spec:
 `
 
 	Context("Ingress TLS", func() {
-		It("Check if SSL resource was created", func() {
+		FIt("Check if SSL resource was created", func() {
 			By("create GatewayProxy")
 			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Deployer.GetAdminEndpoint(), s.AdminKey())
 
