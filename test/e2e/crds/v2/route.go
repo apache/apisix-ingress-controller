@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package apisix
+package v2
 
 import (
 	"context"
@@ -235,7 +235,22 @@ spec:
     match:
       paths:
       - /*
-      filter_func: "function(vars)\n  local core = require ('apisix.core')\n  local body, err = core.request.get_body()\n  if not body then\n      return false\n  end\n\n  local data, err = core.json.decode(body)\n  if not data then\n      return false\n  end\n\n  if data['foo'] == 'bar' then\n      return true\n  end\n\n  return false\nend"
+      filter_func: |
+        function(vars)
+          local core = require ('apisix.core')
+          local body, err = core.request.get_body()
+          if not body then
+              return false
+          end
+          local data, err = core.json.decode(body)
+          if not data then
+              return false
+          end
+          if data['foo'] == 'bar' then
+              return true
+          end
+          return false
+        end
     backends:
     - serviceName: httpbin-service-e2e-test
       servicePort: 80

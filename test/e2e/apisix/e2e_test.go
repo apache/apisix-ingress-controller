@@ -24,7 +24,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	_ "github.com/apache/apisix-ingress-controller/test/e2e/crds"
+	_ "github.com/apache/apisix-ingress-controller/test/e2e/crds/v1alpha1"
+	_ "github.com/apache/apisix-ingress-controller/test/e2e/crds/v2"
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/gatewayapi"
 	_ "github.com/apache/apisix-ingress-controller/test/e2e/ingress"
