@@ -275,9 +275,6 @@ spec:
 `
 		)
 
-		request := func(path string, username, password string) int {
-			return s.NewAPISIXClient().GET(path).WithBasicAuth(username, password).WithHost("httpbin").Expect().Raw().StatusCode
-		}
 		It("Basic tests", func() {
 			By("apply ApisixRoute")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, defaultApisixRoute)
@@ -296,7 +293,6 @@ spec:
 				},
 				Check: scaffold.WithExpectedStatus(http.StatusUnauthorized),
 			})
-
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
 				Path:   "/get",
@@ -311,7 +307,6 @@ spec:
 			By("Delete ApisixConsumer")
 			err := s.DeleteResource("ApisixConsumer", "test-consumer")
 			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixConsumer")
-
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
 				Path:   "/get",
@@ -326,7 +321,6 @@ spec:
 			By("delete ApisixRoute")
 			err = s.DeleteResource("ApisixRoute", "default")
 			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixRoute")
-
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
 				Path:   "/get",
@@ -347,25 +341,70 @@ spec:
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-consumer"}, &apiv2.ApisixConsumer{}, basicAuthWithSecret)
 
 			By("verify ApisixRoute with ApisixConsumer")
-			Eventually(request).WithArguments("/get", "", "").WithTimeout(5 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusUnauthorized))
-			Eventually(request).WithArguments("/get", "foo", "bar").WithTimeout(5 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				Check:  scaffold.WithExpectedStatus(http.StatusUnauthorized),
+			})
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				BasicAuth: &scaffold.BasicAuth{
+					Username: "foo",
+					Password: "bar",
+				},
+				Check: scaffold.WithExpectedStatus(http.StatusOK),
+			})
 
 			By("update Secret")
 			err = s.CreateResourceFromString(secretUpdated)
 			Expect(err).ShouldNot(HaveOccurred(), "updating Secret for ApisixConsumer")
-
-			Eventually(request).WithArguments("/get", "foo", "bar").WithTimeout(5 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusUnauthorized))
-			Eventually(request).WithArguments("/get", "foo-new-user", "bar-new-password").WithTimeout(5 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				BasicAuth: &scaffold.BasicAuth{
+					Username: "foo",
+					Password: "bar",
+				},
+				Check: scaffold.WithExpectedStatus(http.StatusUnauthorized),
+			})
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				BasicAuth: &scaffold.BasicAuth{
+					Username: "foo-new-user",
+					Password: "bar-new-password",
+				},
+				Check: scaffold.WithExpectedStatus(http.StatusOK),
+			})
 
 			By("Delete ApisixConsumer")
 			err = s.DeleteResource("ApisixConsumer", "test-consumer")
 			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixConsumer")
-			Eventually(request).WithArguments("/get", "foo-new-user", "bar-new-password").WithTimeout(5 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusUnauthorized))
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				BasicAuth: &scaffold.BasicAuth{
+					Username: "foo-new-user",
+					Password: "bar-new-password",
+				},
+				Check: scaffold.WithExpectedStatus(http.StatusUnauthorized),
+			})
 
 			By("delete ApisixRoute")
 			err = s.DeleteResource("ApisixRoute", "default")
 			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixRoute")
-			Eventually(request).WithArguments("/get", "", "").WithTimeout(5 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+			})
 		})
 	})
 })
