@@ -119,7 +119,7 @@ func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // Reconcile handles the reconciliation of Ingress resources
 func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	r.Readier.Done(&networkingv1.Ingress{}, req.NamespacedName)
+	defer r.Readier.Done(&networkingv1.Ingress{}, req.NamespacedName)
 	ingress := new(networkingv1.Ingress)
 	if err := r.Get(ctx, req.NamespacedName, ingress); err != nil {
 		if client.IgnoreNotFound(err) == nil {

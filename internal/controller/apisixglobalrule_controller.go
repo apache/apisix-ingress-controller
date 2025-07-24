@@ -56,7 +56,7 @@ type ApisixGlobalRuleReconciler struct {
 
 // Reconcile implements the reconciliation logic for ApisixGlobalRule
 func (r *ApisixGlobalRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	r.Readier.Done(&apiv2.ApisixGlobalRule{}, req.NamespacedName)
+	defer r.Readier.Done(&apiv2.ApisixGlobalRule{}, req.NamespacedName)
 	var globalRule apiv2.ApisixGlobalRule
 	if err := r.Get(ctx, req.NamespacedName, &globalRule); err != nil {
 		if client.IgnoreNotFound(err) == nil {

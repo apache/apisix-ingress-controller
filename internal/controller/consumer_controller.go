@@ -183,7 +183,7 @@ func (r *ConsumerReconciler) listConsumersForGatewayProxy(ctx context.Context, o
 }
 
 func (r *ConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	r.Readier.Done(&v1alpha1.Consumer{}, req.NamespacedName)
+	defer r.Readier.Done(&v1alpha1.Consumer{}, req.NamespacedName)
 	consumer := new(v1alpha1.Consumer)
 	if err := r.Get(ctx, req.NamespacedName, consumer); err != nil {
 		if client.IgnoreNotFound(err) == nil {

@@ -132,7 +132,7 @@ func (r *HTTPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	r.Readier.Done(&gatewayv1.HTTPRoute{}, req.NamespacedName)
+	defer r.Readier.Done(&gatewayv1.HTTPRoute{}, req.NamespacedName)
 	hr := new(gatewayv1.HTTPRoute)
 	if err := r.Get(ctx, req.NamespacedName, hr); err != nil {
 		if client.IgnoreNotFound(err) == nil {

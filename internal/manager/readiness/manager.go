@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/api7/gopkg/pkg/log"
@@ -77,7 +78,7 @@ type readinessManager struct {
 	started   chan struct{}
 	done      chan struct{}
 
-	isReady bool
+	isReady atomic.Bool
 }
 
 // ReadinessManager tracks readiness of specific resources across the cluster.
@@ -87,6 +88,7 @@ func NewReadinessManager(client client.Client) ReadinessManager {
 		state:   make(map[schema.GroupVersionKind]map[k8stypes.NamespacedName]struct{}),
 		started: make(chan struct{}),
 		done:    make(chan struct{}),
+		isReady: atomic.Bool{},
 	}
 }
 
@@ -127,8 +129,8 @@ func (r *readinessManager) Start(ctx context.Context) error {
 			}
 		}
 		close(r.started)
-		if len(r.state) == 0 && !r.isReady {
-			r.isReady = true
+		if len(r.state) == 0 && !r.isReady.Load() {
+			r.isReady.Store(true)
 			close(r.done)
 		}
 	})
@@ -161,14 +163,14 @@ func (r *readinessManager) Done(obj client.Object, nn k8stypes.NamespacedName) {
 	if len(r.state[gvk]) == 0 {
 		delete(r.state, gvk)
 	}
-	if len(r.state) == 0 && !r.isReady {
-		r.isReady = true
+	if len(r.state) == 0 && !r.isReady.Load() {
+		r.isReady.Store(true)
 		close(r.done)
 	}
 }
 
 func (r *readinessManager) IsReady() bool {
-	return r.isReady
+	return r.isReady.Load()
 }
 
 // WaitReady blocks until readiness is achieved, a timeout occurs, or context is cancelled.

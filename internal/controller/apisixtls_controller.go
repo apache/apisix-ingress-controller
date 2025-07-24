@@ -87,7 +87,7 @@ func (r *ApisixTlsReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // Reconcile implements the reconciliation logic for ApisixTls
 func (r *ApisixTlsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	r.Readier.Done(&apiv2.ApisixTls{}, req.NamespacedName)
+	defer r.Readier.Done(&apiv2.ApisixTls{}, req.NamespacedName)
 	var tls apiv2.ApisixTls
 	if err := r.Get(ctx, req.NamespacedName, &tls); err != nil {
 		if client.IgnoreNotFound(err) == nil {

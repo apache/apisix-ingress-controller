@@ -99,7 +99,7 @@ func (r *ApisixRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *ApisixRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	r.Readier.Done(&apiv2.ApisixRoute{}, req.NamespacedName)
+	defer r.Readier.Done(&apiv2.ApisixRoute{}, req.NamespacedName)
 	var ar apiv2.ApisixRoute
 	if err := r.Get(ctx, req.NamespacedName, &ar); err != nil {
 		if client.IgnoreNotFound(err) == nil {

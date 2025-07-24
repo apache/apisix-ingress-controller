@@ -57,8 +57,8 @@ type ApisixConsumerReconciler struct {
 
 // Reconcile FIXME: implement the reconcile logic (For now, it dose nothing other than directly accepting)
 func (r *ApisixConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	defer r.Readier.Done(&apiv2.ApisixConsumer{}, req.NamespacedName)
 	r.Log.Info("reconcile", "request", req.NamespacedName)
-	r.Readier.Done(&apiv2.ApisixConsumer{}, req.NamespacedName)
 
 	ac := &apiv2.ApisixConsumer{}
 	if err := r.Get(ctx, req.NamespacedName, ac); err != nil {
