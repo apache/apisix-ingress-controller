@@ -39,6 +39,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
+	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
@@ -50,6 +51,7 @@ type ApisixTlsReconciler struct {
 	Log      logr.Logger
 	Provider provider.Provider
 	Updater  status.Updater
+	Readier  readiness.ReadinessManager
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -85,6 +87,7 @@ func (r *ApisixTlsReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // Reconcile implements the reconciliation logic for ApisixTls
 func (r *ApisixTlsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	defer r.Readier.Done(&apiv2.ApisixTls{}, req.NamespacedName)
 	var tls apiv2.ApisixTls
 	if err := r.Get(ctx, req.NamespacedName, &tls); err != nil {
 		if client.IgnoreNotFound(err) == nil {

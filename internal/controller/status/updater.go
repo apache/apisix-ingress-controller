@@ -150,6 +150,10 @@ func (u *UpdateHandler) Start(ctx context.Context) error {
 	}
 }
 
+func (u *UpdateHandler) NeedsLeaderElection() bool {
+	return true
+}
+
 func (u *UpdateHandler) Writer() Updater {
 	return &UpdateWriter{
 		updateChannel: u.updateChannel,

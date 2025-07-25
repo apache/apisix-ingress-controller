@@ -38,6 +38,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
+	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
@@ -49,10 +50,13 @@ type ApisixGlobalRuleReconciler struct {
 	Log      logr.Logger
 	Provider provider.Provider
 	Updater  status.Updater
+
+	Readier readiness.ReadinessManager
 }
 
 // Reconcile implements the reconciliation logic for ApisixGlobalRule
 func (r *ApisixGlobalRuleReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	defer r.Readier.Done(&apiv2.ApisixGlobalRule{}, req.NamespacedName)
 	var globalRule apiv2.ApisixGlobalRule
 	if err := r.Get(ctx, req.NamespacedName, &globalRule); err != nil {
 		if client.IgnoreNotFound(err) == nil {
