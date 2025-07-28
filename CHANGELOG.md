@@ -19,6 +19,7 @@
 
 # Table of Contents
 
+- [2.0.0-rc3](#200-rc3)
 - [2.0.0-rc2](#200-rc2)
 - [2.0.0-rc1](#200-rc1)
 - [1.8.0](#180)
@@ -40,6 +41,121 @@
 - [0.3.0](#030)
 - [0.2.0](#020)
 - [0.1.0](#010)
+
+# 2.0.0-rc3
+
+apisix-ingress-controller 2.0.0-rc3
+
+Welcome to the 2.0.0-rc3 release of apisix-ingress-controller!
+
+This is a release candidate (RC) version.
+
+## Highlights
+
+### Features
+
+* feat: support custom metrics [#2480](https://github.com/apache/apisix-ingress-controller/pull/2480)  
+* feat: support event triggered synchronization [#2478](https://github.com/apache/apisix-ingress-controller/pull/2478)
+
+### Bugfixes
+
+* fix: route names with the same prefix were mistakenly deleted [#2472](https://github.com/apache/apisix-ingress-controller/pull/2472)  
+* fix: should not return when service type is ExternalName [#2468](https://github.com/apache/apisix-ingress-controller/pull/2468)  
+* fix: remove duplicate sync func [#2476](https://github.com/apache/apisix-ingress-controller/pull/2476)  
+* fix: full sync during restart results in loss of dataplane traffic [#2489](https://github.com/apache/apisix-ingress-controller/pull/2489)
+
+Please try out the release binaries and report any issues at
+https://github.com/apache/apisix-ingress-controller/issues.
+
+### Contributors
+
+* AlinsRan
+* Ashing Zheng
+* Traky Deng
+
+### Changes
+<details><summary>14 commits</summary>
+<p>
+
+  * [`66c2b0a`](https://github.com/apache/apisix-ingress-controller/commit/66c2b0acf14fc13f461e5f262753bdc0598f5d1a) fix: full sync during restart results in loss of dataplane traffic (#2489)
+  * [`f6196ff`](https://github.com/apache/apisix-ingress-controller/commit/f6196ff50c20d0564b79179f668673e9b5582c7d) chore: differentiate the API versions for CRD testing (#2492)
+  * [`7a6151c`](https://github.com/apache/apisix-ingress-controller/commit/7a6151ce2f175717637ac95418a050191a58ad61) feat: support event triggered synchronization (#2478)
+  * [`38023b2`](https://github.com/apache/apisix-ingress-controller/commit/38023b272c45a142cb46c95733f3585ce4495636) fix: doc broken links (#2490)
+  * [`7ede0e3`](https://github.com/apache/apisix-ingress-controller/commit/7ede0e3aa3c10e8541b5df5b0e2a95d3fe93e16d) docs: update getting started docs (RC2) (#2481)
+  * [`eb7a65b`](https://github.com/apache/apisix-ingress-controller/commit/eb7a65b31036629eb97ebc73001982296ad10f6b) chore: update status only when changes occur (#2473)
+  * [`f02e350`](https://github.com/apache/apisix-ingress-controller/commit/f02e35086f1cf647dff04b5492b2511c0aab1af0) docs: fix description error in upgrade doc (#2440)
+  * [`94fcceb`](https://github.com/apache/apisix-ingress-controller/commit/94fcceb78ad816b0e07a5d8a0f18097318262b8e) feat: support custom metrics (#2480)
+  * [`1156414`](https://github.com/apache/apisix-ingress-controller/commit/1156414fc1b8de6b29009059ecd58749454548ee) fix: remove duplicate sync func (#2476)
+  * [`f536c26`](https://github.com/apache/apisix-ingress-controller/commit/f536c26c918e42b4de416eda1c4ffa95e9937a55) chore: refactor e2e-test (#2467)
+  * [`4745958`](https://github.com/apache/apisix-ingress-controller/commit/4745958edf3d7a62155d51acabbb80f288f3982b) fix: route names with the same prefix were mistakenly deleted (#2472)
+  * [`2b9b787`](https://github.com/apache/apisix-ingress-controller/commit/2b9b787a9397ed9348ccfa9eb8d568acc671f6fd) fix: should not return when service type is ExternalName (#2468)
+  * [`d91a3ba`](https://github.com/apache/apisix-ingress-controller/commit/d91a3ba9946bd3206d78588d3e29e1a22d5a66fd) doc: recommended to use apisix-standalone mode for installation. (#2470)
+  * [`0a4e05c`](https://github.com/apache/apisix-ingress-controller/commit/0a4e05c009e4786e36c896666c3a5ffb40112aca) chore(ci): remove add-pr-comment step (#2463)
+</p>
+</details>
+
+### Dependency Changes
+
+* **filippo.io/edwards25519**                                           v1.1.0 **_new_**
+* **github.com/aws/aws-sdk-go-v2**                                      v1.32.5 **_new_**
+* **github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream**             v1.6.7 **_new_**
+* **github.com/aws/aws-sdk-go-v2/config**                               v1.28.5 **_new_**
+* **github.com/aws/aws-sdk-go-v2/credentials**                          v1.17.46 **_new_**
+* **github.com/aws/aws-sdk-go-v2/feature/ec2/imds**                     v1.16.20 **_new_**
+* **github.com/aws/aws-sdk-go-v2/feature/s3/manager**                   v1.17.41 **_new_**
+* **github.com/aws/aws-sdk-go-v2/internal/configsources**               v1.3.24 **_new_**
+* **github.com/aws/aws-sdk-go-v2/internal/endpoints/v2**                v2.6.24 **_new_**
+* **github.com/aws/aws-sdk-go-v2/internal/ini**                         v1.8.1 **_new_**
+* **github.com/aws/aws-sdk-go-v2/internal/v4a**                         v1.3.24 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/acm**                          v1.30.6 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/autoscaling**                  v1.51.0 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs**               v1.44.0 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/dynamodb**                     v1.37.1 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/ec2**                          v1.193.0 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/ecr**                          v1.36.6 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/ecs**                          v1.52.0 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/iam**                          v1.38.1 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding**     v1.12.1 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/internal/checksum**            v1.4.5 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery**  v1.10.5 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/internal/presigned-url**       v1.12.5 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/internal/s3shared**            v1.18.5 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/kms**                          v1.37.6 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/lambda**                       v1.69.0 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/rds**                          v1.91.0 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/route53**                      v1.46.2 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/s3**                           v1.69.0 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/secretsmanager**               v1.34.6 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/sns**                          v1.33.6 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/sqs**                          v1.37.1 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/ssm**                          v1.56.0 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/sso**                          v1.24.6 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/ssooidc**                      v1.28.5 **_new_**
+* **github.com/aws/aws-sdk-go-v2/service/sts**                          v1.33.1 **_new_**
+* **github.com/aws/smithy-go**                                          v1.22.1 **_new_**
+* **github.com/cpuguy83/go-md2man/v2**                                  v2.0.4 -> v2.0.5
+* **github.com/go-sql-driver/mysql**                                    v1.7.1 -> v1.8.1
+* **github.com/gruntwork-io/terratest**                                 v0.47.0 -> v0.50.0
+* **github.com/jackc/pgpassfile**                                       v1.0.0 **_new_**
+* **github.com/jackc/pgservicefile**                                    5a60cdf6a761 **_new_**
+* **github.com/jackc/pgx/v5**                                           v5.7.1 **_new_**
+* **github.com/jackc/puddle/v2**                                        v2.2.2 **_new_**
+* **github.com/pquerna/otp**                                            v1.2.0 -> v1.4.0
+* **github.com/stretchr/testify**                                       v1.9.0 -> v1.10.0
+* **github.com/urfave/cli**                                             v1.22.14 -> v1.22.16
+* **go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp**     v0.53.0 -> v0.54.0
+* **go.opentelemetry.io/otel**                                          v1.28.0 -> v1.29.0
+* **go.opentelemetry.io/otel/metric**                                   v1.28.0 -> v1.29.0
+* **go.opentelemetry.io/otel/sdk**                                      v1.28.0 -> v1.29.0
+* **go.opentelemetry.io/otel/trace**                                    v1.28.0 -> v1.29.0
+* **golang.org/x/oauth2**                                               v0.21.0 -> v0.24.0
+* **golang.org/x/time**                                                 v0.5.0 -> v0.8.0
+* **google.golang.org/genproto/googleapis/api**                         ef581f913117 -> dd2ea8efbc28
+* **google.golang.org/genproto/googleapis/rpc**                         f6361c86f094 -> dd2ea8efbc28
+* **google.golang.org/grpc**                                            v1.66.2 -> v1.67.1
+* **google.golang.org/protobuf**                                        v1.34.2 -> v1.35.1
+
+Previous release can be found at [2.0.0-rc2](https://github.com/apache/apisix-ingress-controller/releases/tag/2.0.0-rc2)
 
 # 2.0.0-rc2
 
