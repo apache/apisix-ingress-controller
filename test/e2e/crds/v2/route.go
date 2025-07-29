@@ -833,7 +833,9 @@ spec:
 			Expect(err).ShouldNot(HaveOccurred(), "WebSocket handshake")
 			Expect(resp.StatusCode).Should(Equal(http.StatusSwitchingProtocols))
 
-			defer conn.Close()
+			defer func() {
+				_ = conn.Close()
+			}()
 
 			By("send and receive message through WebSocket")
 			testMessage := "hello, this is APISIX"
