@@ -45,6 +45,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
+	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
@@ -59,6 +60,7 @@ type IngressReconciler struct { //nolint:revive
 	genericEvent chan event.GenericEvent
 
 	Updater status.Updater
+	Readier readiness.ReadinessManager
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -117,6 +119,7 @@ func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // Reconcile handles the reconciliation of Ingress resources
 func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	defer r.Readier.Done(&networkingv1.Ingress{}, req.NamespacedName)
 	ingress := new(networkingv1.Ingress)
 	if err := r.Get(ctx, req.NamespacedName, ingress); err != nil {
 		if client.IgnoreNotFound(err) == nil {

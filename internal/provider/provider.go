@@ -37,6 +37,7 @@ type Provider interface {
 	Delete(context.Context, client.Object) error
 	Sync(context.Context) error
 	Start(context.Context) error
+	NeedLeaderElection() bool
 }
 
 type TranslateContext struct {

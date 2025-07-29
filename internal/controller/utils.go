@@ -35,6 +35,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -1447,4 +1448,38 @@ func TypePredicate[T client.Object]() func(obj client.Object) bool {
 		_, ok := obj.(T)
 		return ok
 	}
+}
+
+func MatchConsumerGatewayRef(ctx context.Context, c client.Client, log logr.Logger, consumer *v1alpha1.Consumer) bool {
+	if consumer.Spec.GatewayRef.Name == "" {
+		return false
+	}
+	if consumer.Spec.GatewayRef.Kind != nil && *consumer.Spec.GatewayRef.Kind != KindGateway {
+		return false
+	}
+	if consumer.Spec.GatewayRef.Group != nil && *consumer.Spec.GatewayRef.Group != gatewayv1.GroupName {
+		return false
+	}
+	ns := consumer.GetNamespace()
+	if consumer.Spec.GatewayRef.Namespace != nil {
+		ns = *consumer.Spec.GatewayRef.Namespace
+	}
+	gateway := &gatewayv1.Gateway{}
+	if err := c.Get(context.Background(), client.ObjectKey{
+		Name:      consumer.Spec.GatewayRef.Name,
+		Namespace: ns,
+	}, gateway); err != nil {
+		if !k8serrors.IsNotFound(err) {
+			log.Error(err, "failed to get gateway", "gateway", consumer.Spec.GatewayRef.Name)
+		}
+		return false
+	}
+	gatewayClass := &gatewayv1.GatewayClass{}
+	if err := c.Get(context.Background(), client.ObjectKey{Name: string(gateway.Spec.GatewayClassName)}, gatewayClass); err != nil {
+		if !k8serrors.IsNotFound(err) {
+			log.Error(err, "failed to get gateway class", "gateway", gateway.GetName(), "gatewayclass", gateway.Spec.GatewayClassName)
+		}
+		return false
+	}
+	return matchesController(string(gatewayClass.Spec.ControllerName))
 }

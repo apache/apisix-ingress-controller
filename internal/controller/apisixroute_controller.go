@@ -44,6 +44,7 @@ import (
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
+	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
@@ -57,6 +58,7 @@ type ApisixRouteReconciler struct {
 	Log      logr.Logger
 	Provider provider.Provider
 	Updater  status.Updater
+	Readier  readiness.ReadinessManager
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -97,6 +99,7 @@ func (r *ApisixRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *ApisixRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	defer r.Readier.Done(&apiv2.ApisixRoute{}, req.NamespacedName)
 	var ar apiv2.ApisixRoute
 	if err := r.Get(ctx, req.NamespacedName, &ar); err != nil {
 		if client.IgnoreNotFound(err) == nil {

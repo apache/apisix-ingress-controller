@@ -38,6 +38,7 @@ import (
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
+	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/provider/adc/translator"
 	"github.com/apache/apisix-ingress-controller/internal/types"
@@ -93,6 +94,8 @@ type adcClient struct {
 	updater         status.Updater
 	statusUpdateMap map[types.NamespacedNameKind][]string
 
+	readier readiness.ReadinessManager
+
 	syncCh chan struct{}
 }
 
@@ -104,7 +107,7 @@ type Task struct {
 	configs       []adcConfig
 }
 
-func New(updater status.Updater, opts ...Option) (provider.Provider, error) {
+func New(updater status.Updater, readier readiness.ReadinessManager, opts ...Option) (provider.Provider, error) {
 	o := Options{}
 	o.ApplyOptions(opts)
 
@@ -116,6 +119,7 @@ func New(updater status.Updater, opts ...Option) (provider.Provider, error) {
 		store:      NewStore(),
 		executor:   &DefaultADCExecutor{},
 		updater:    updater,
+		readier:    readier,
 		syncCh:     make(chan struct{}, 1),
 	}, nil
 }
@@ -302,6 +306,8 @@ func (d *adcClient) Delete(ctx context.Context, obj client.Object) error {
 }
 
 func (d *adcClient) Start(ctx context.Context) error {
+	d.readier.WaitReady(ctx, 5*time.Minute)
+
 	initalSyncDelay := d.InitSyncDelay
 	if initalSyncDelay > 0 {
 		time.AfterFunc(initalSyncDelay, func() {
@@ -477,4 +483,8 @@ func prepareSyncFile(resources any) (string, func(), error) {
 func (d *adcClient) handleADCExecutionErrors(statusesMap map[string]types.ADCExecutionErrors) {
 	statusUpdateMap := d.resolveADCExecutionErrors(statusesMap)
 	d.handleStatusUpdate(statusUpdateMap)
+}
+
+func (d *adcClient) NeedLeaderElection() bool {
+	return true
 }
