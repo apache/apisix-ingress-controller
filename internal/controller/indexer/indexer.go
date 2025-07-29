@@ -47,6 +47,7 @@ const (
 	GatewayClassIndexRef      = "gatewayClassRef"
 	ApisixUpstreamRef         = "apisixUpstreamRef"
 	PluginConfigIndexRef      = "pluginConfigRefs"
+	ControllerName            = "controllerName"
 )
 
 func SetupIndexer(mgr ctrl.Manager) error {
@@ -59,11 +60,11 @@ func SetupIndexer(mgr ctrl.Manager) error {
 		setupIngressClassIndexer,
 		setupGatewayProxyIndexer,
 		setupGatewaySecretIndex,
-		setupGatewayClassIndexer,
 		setupApisixRouteIndexer,
 		setupApisixPluginConfigIndexer,
 		setupApisixTlsIndexer,
 		setupApisixConsumerIndexer,
+		setupGatewayClassIndexer,
 	} {
 		if err := setup(mgr); err != nil {
 			return err
@@ -78,6 +79,17 @@ func setupGatewayIndexer(mgr ctrl.Manager) error {
 		&gatewayv1.Gateway{},
 		ParametersRef,
 		GatewayParametersRefIndexFunc,
+	); err != nil {
+		return err
+	}
+
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&gatewayv1.Gateway{},
+		GatewayClassIndexRef,
+		func(obj client.Object) (requests []string) {
+			return []string{string(obj.(*gatewayv1.Gateway).Spec.GatewayClassName)}
+		},
 	); err != nil {
 		return err
 	}
@@ -273,10 +285,10 @@ func setupGatewaySecretIndex(mgr ctrl.Manager) error {
 func setupGatewayClassIndexer(mgr ctrl.Manager) error {
 	return mgr.GetFieldIndexer().IndexField(
 		context.Background(),
-		&gatewayv1.Gateway{},
-		GatewayClassIndexRef,
-		func(obj client.Object) (requests []string) {
-			return []string{string(obj.(*gatewayv1.Gateway).Spec.GatewayClassName)}
+		&gatewayv1.GatewayClass{},
+		ControllerName,
+		func(obj client.Object) []string {
+			return []string{string(obj.(*gatewayv1.GatewayClass).Spec.ControllerName)}
 		},
 	)
 }

@@ -38,6 +38,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
+	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
@@ -51,6 +52,7 @@ type ConsumerReconciler struct { //nolint:revive
 	Provider provider.Provider
 
 	Updater status.Updater
+	Readier readiness.ReadinessManager
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -181,6 +183,7 @@ func (r *ConsumerReconciler) listConsumersForGatewayProxy(ctx context.Context, o
 }
 
 func (r *ConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	defer r.Readier.Done(&v1alpha1.Consumer{}, req.NamespacedName)
 	consumer := new(v1alpha1.Consumer)
 	if err := r.Get(ctx, req.NamespacedName, consumer); err != nil {
 		if client.IgnoreNotFound(err) == nil {
@@ -303,31 +306,5 @@ func (r *ConsumerReconciler) checkGatewayRef(object client.Object) bool {
 	if !ok {
 		return false
 	}
-	if consumer.Spec.GatewayRef.Name == "" {
-		return false
-	}
-	if consumer.Spec.GatewayRef.Kind != nil && *consumer.Spec.GatewayRef.Kind != KindGateway {
-		return false
-	}
-	if consumer.Spec.GatewayRef.Group != nil && *consumer.Spec.GatewayRef.Group != gatewayv1.GroupName {
-		return false
-	}
-	ns := consumer.GetNamespace()
-	if consumer.Spec.GatewayRef.Namespace != nil {
-		ns = *consumer.Spec.GatewayRef.Namespace
-	}
-	gateway := &gatewayv1.Gateway{}
-	if err := r.Get(context.Background(), client.ObjectKey{
-		Name:      consumer.Spec.GatewayRef.Name,
-		Namespace: ns,
-	}, gateway); err != nil {
-		r.Log.Error(err, "failed to get gateway", "gateway", consumer.Spec.GatewayRef.Name)
-		return false
-	}
-	gatewayClass := &gatewayv1.GatewayClass{}
-	if err := r.Get(context.Background(), client.ObjectKey{Name: string(gateway.Spec.GatewayClassName)}, gatewayClass); err != nil {
-		r.Log.Error(err, "failed to get gateway class", "gateway", gateway.GetName(), "gatewayclass", gateway.Spec.GatewayClassName)
-		return false
-	}
-	return matchesController(string(gatewayClass.Spec.ControllerName))
+	return MatchConsumerGatewayRef(context.Background(), r.Client, r.Log, consumer)
 }

@@ -48,6 +48,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
+	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
@@ -65,6 +66,7 @@ type HTTPRouteReconciler struct { //nolint:revive
 	genericEvent chan event.GenericEvent
 
 	Updater status.Updater
+	Readier readiness.ReadinessManager
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -130,6 +132,7 @@ func (r *HTTPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	defer r.Readier.Done(&gatewayv1.HTTPRoute{}, req.NamespacedName)
 	hr := new(gatewayv1.HTTPRoute)
 	if err := r.Get(ctx, req.NamespacedName, hr); err != nil {
 		if client.IgnoreNotFound(err) == nil {

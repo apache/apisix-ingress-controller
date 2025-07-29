@@ -39,6 +39,7 @@ import (
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
+	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
@@ -51,10 +52,12 @@ type ApisixConsumerReconciler struct {
 
 	Provider provider.Provider
 	Updater  status.Updater
+	Readier  readiness.ReadinessManager
 }
 
 // Reconcile FIXME: implement the reconcile logic (For now, it dose nothing other than directly accepting)
 func (r *ApisixConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	defer r.Readier.Done(&apiv2.ApisixConsumer{}, req.NamespacedName)
 	r.Log.Info("reconcile", "request", req.NamespacedName)
 
 	ac := &apiv2.ApisixConsumer{}

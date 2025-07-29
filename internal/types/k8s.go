@@ -18,11 +18,13 @@
 package types
 
 import (
+	corev1 "k8s.io/api/core/v1"
+	netv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	v2 "github.com/apache/apisix-ingress-controller/api/v2"
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/networking/v1"
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 const DefaultIngressClassAnnotation = "ingressclass.kubernetes.io/is-default-class"
@@ -56,9 +58,9 @@ func KindOf(obj any) string {
 		return KindHTTPRoute
 	case *gatewayv1.GatewayClass:
 		return KindGatewayClass
-	case *v1.Ingress:
+	case *netv1.Ingress:
 		return KindIngress
-	case *v1.IngressClass:
+	case *netv1.IngressClass:
 		return KindIngressClass
 	case *corev1.Secret:
 		return KindSecret
@@ -88,5 +90,79 @@ func KindOf(obj any) string {
 		return KindPluginConfig
 	default:
 		return "Unknown"
+	}
+}
+
+func GvkOf(obj any) schema.GroupVersionKind {
+	kind := KindOf(obj)
+	switch obj.(type) {
+	case *gatewayv1.Gateway, *gatewayv1.HTTPRoute, *gatewayv1.GatewayClass:
+		return gatewayv1.SchemeGroupVersion.WithKind(kind)
+	case *netv1.Ingress, *netv1.IngressClass:
+		return netv1.SchemeGroupVersion.WithKind(kind)
+	case *corev1.Secret, *corev1.Service:
+		return corev1.SchemeGroupVersion.WithKind(kind)
+	case *v2.ApisixRoute:
+		return schema.GroupVersionKind{
+			Group:   "apisix.apache.org",
+			Version: "v2",
+			Kind:    KindApisixRoute,
+		}
+	case *v2.ApisixGlobalRule:
+		return schema.GroupVersionKind{
+			Group:   "apisix.apache.org",
+			Version: "v2",
+			Kind:    KindApisixGlobalRule,
+		}
+	case *v2.ApisixPluginConfig:
+		return schema.GroupVersionKind{
+			Group:   "apisix.apache.org",
+			Version: "v2",
+			Kind:    KindApisixPluginConfig,
+		}
+	case *v2.ApisixTls:
+		return schema.GroupVersionKind{
+			Group:   "apisix.apache.org",
+			Version: "v2",
+			Kind:    KindApisixTls,
+		}
+	case *v2.ApisixConsumer:
+		return schema.GroupVersionKind{
+			Group:   "apisix.apache.org",
+			Version: "v2",
+			Kind:    KindApisixConsumer,
+		}
+	case *v1alpha1.HTTPRoutePolicy:
+		return schema.GroupVersionKind{
+			Group:   "apisix.apache.org",
+			Version: "v1alpha1",
+			Kind:    KindHTTPRoutePolicy,
+		}
+	case *v1alpha1.BackendTrafficPolicy:
+		return schema.GroupVersionKind{
+			Group:   "apisix.apache.org",
+			Version: "v1alpha1",
+			Kind:    KindBackendTrafficPolicy,
+		}
+	case *v1alpha1.GatewayProxy:
+		return schema.GroupVersionKind{
+			Group:   "apisix.apache.org",
+			Version: "v1alpha1",
+			Kind:    KindGatewayProxy,
+		}
+	case *v1alpha1.Consumer:
+		return schema.GroupVersionKind{
+			Group:   "apisix.apache.org",
+			Version: "v1alpha1",
+			Kind:    KindConsumer,
+		}
+	case *v1alpha1.PluginConfig:
+		return schema.GroupVersionKind{
+			Group:   "apisix.apache.org",
+			Version: "v1alpha1",
+			Kind:    KindPluginConfig,
+		}
+	default:
+		return schema.GroupVersionKind{}
 	}
 }

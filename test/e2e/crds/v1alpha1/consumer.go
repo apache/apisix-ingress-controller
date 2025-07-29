@@ -579,4 +579,90 @@ spec:
 			})
 		})
 	})
+
+	Context("Test Consumer sync during startup", func() {
+		var consumer1 = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: Consumer
+metadata:
+  name: consumer-sample
+spec:
+  gatewayRef:
+    name: apisix
+  credentials:
+    - type: key-auth
+      name: key-auth-sample
+      config:
+        key: sample-key
+`
+		var consumer2 = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: Consumer
+metadata:
+  name: consumer-unused
+spec:
+  gatewayRef:
+    name: apisix-non-existent
+  credentials:
+    - type: key-auth
+      name: key-auth-sample
+      config:
+        key: sample-key2
+`
+
+		BeforeEach(func() {
+			s.ApplyDefaultGatewayResource(defaultGatewayProxy, defaultGatewayClass, defaultGateway, defaultHTTPRoute)
+		})
+
+		It("Should sync Consumer during startup", func() {
+			Expect(s.CreateResourceFromString(consumer2)).NotTo(HaveOccurred(), "creating unused consumer")
+			s.ResourceApplied("Consumer", "consumer-sample", consumer1, 1)
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				Headers: map[string]string{
+					"apikey": "sample-key",
+				},
+				Check: scaffold.WithExpectedStatus(200),
+			})
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				Headers: map[string]string{
+					"apikey": "sample-key2",
+				},
+				Check: scaffold.WithExpectedStatus(401),
+			})
+
+			By("restarting the controller and dataplane")
+			s.Deployer.ScaleIngress(0)
+			s.Deployer.ScaleDataplane(0)
+			s.Deployer.ScaleDataplane(1)
+			s.Deployer.ScaleIngress(1)
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				Headers: map[string]string{
+					"apikey": "sample-key",
+				},
+				Check: scaffold.WithExpectedStatus(200),
+			})
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				Headers: map[string]string{
+					"apikey": "sample-key2",
+				},
+				Check: scaffold.WithExpectedStatus(401),
+			})
+		})
+	})
 })
