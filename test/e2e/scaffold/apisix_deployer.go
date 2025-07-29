@@ -409,6 +409,9 @@ func (s *APISIXDeployer) GetAdminEndpoint(svc ...*corev1.Service) string {
 	return fmt.Sprintf("http://%s.%s:9180", svc[0].Name, svc[0].Namespace)
 }
 
+func (s *APISIXDeployer) GetAdminServiceName() string {
+	return s.dataplaneService.Name
+}
 func (s *APISIXDeployer) DefaultDataplaneResource() DataplaneResource {
 	return newADCDataplaneResource(
 		framework.ProviderType,

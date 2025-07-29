@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
 	"time"
@@ -648,6 +649,100 @@ spec:
 			// expect upstream host is "hello.httpbin.org" which is rewritten by the apisixupstream
 			err = wait.PollUntilContextTimeout(context.Background(), time.Second, 10*time.Second, true, expectUpstreamHostIs("hello.httpbin.org"))
 			Expect(err).ShouldNot(HaveOccurred(), "check apisixupstream is referenced")
+		})
+	})
+
+	Context("Test ApisixRoute Traffic Split", func() {
+		It("2:1 traffic split test", func() {
+			const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: default
+spec:
+ ingressClassName: apisix
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /get
+   backends:
+   - serviceName: httpbin-service-e2e-test
+     servicePort: 80
+     weight: 10
+   - serviceName: %s
+     servicePort: 9180
+     weight: 5
+`
+			By("apply ApisixRoute with traffic split")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, new(apiv2.ApisixRoute),
+				fmt.Sprintf(apisixRouteSpec, s.Deployer.GetAdminServiceName()))
+			verifyRequest := func() int {
+				return s.NewAPISIXClient().GET("/get").WithHost("httpbin.org").Expect().Raw().StatusCode
+			}
+			By("send requests to verify traffic split")
+			var (
+				successCount int
+				failCount    int
+			)
+
+			time.Sleep(10 * time.Second)
+			for range 90 {
+				code := verifyRequest()
+				if code == http.StatusOK {
+					successCount++
+				} else {
+					failCount++
+				}
+			}
+
+			By("verify traffic distribution ratio")
+			ratio := float64(successCount) / float64(failCount)
+			expectedRatio := 10.0 / 5.0 // 2:1 ratio
+			deviation := math.Abs(ratio - expectedRatio)
+			Expect(deviation).Should(BeNumerically("<", 0.5),
+				"traffic distribution deviation too large (got %.2f, expected %.2f)", ratio, expectedRatio)
+		})
+
+		It("zero-weight test", func() {
+			const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: default
+spec:
+ ingressClassName: apisix
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /get
+   backends:
+   - serviceName: httpbin-service-e2e-test
+     servicePort: 80
+     weight: 10
+   - serviceName: %s
+     servicePort: 9180
+     weight: 0
+`
+			By("apply ApisixRoute with zero-weight backend")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, new(apiv2.ApisixRoute),
+				fmt.Sprintf(apisixRouteSpec, s.Deployer.GetAdminServiceName()))
+			verifyRequest := func() int {
+				return s.NewAPISIXClient().GET("/get").WithHost("httpbin.org").Expect().Raw().StatusCode
+			}
+
+			By("wait for route to be ready")
+			time.Sleep(8 * time.Second)
+			By("send requests to verify zero-weight behavior")
+			for range 30 {
+				code := verifyRequest()
+				fmt.Println(code)
+			}
 		})
 	})
 })

@@ -198,10 +198,10 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 	var (
 		upstreams         = make([]*adc.Upstream, 0)
 		weightedUpstreams = make([]adc.TrafficSplitConfigRuleWeightedUpstream, 0)
-		backendErr        error
 	)
 
 	for _, backend := range rule.Backends {
+		var backendErr error
 		upstream := adc.NewDefaultUpstream()
 		// try to get the apisixupstream with the same name as the backend service to be upstream config.
 		// err is ignored because it does not care about the externalNodes of the apisixupstream.
@@ -223,7 +223,9 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 				continue
 			}
 		}
-
+		if backend.Weight != nil {
+			upstream.Labels["meta_weight"] = strconv.FormatInt(int64(*backend.Weight), 10)
+		}
 		upstreams = append(upstreams, upstream)
 	}
 
@@ -250,7 +252,7 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 	}
 
 	// no valid upstream
-	if backendErr != nil || len(upstreams) == 0 || len(upstreams[0].Nodes) == 0 {
+	if len(upstreams) == 0 || len(upstreams[0].Nodes) == 0 {
 		return
 	}
 
