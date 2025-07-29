@@ -23,8 +23,10 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 
+	"github.com/gorilla/websocket"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/types"
@@ -648,6 +650,204 @@ spec:
 			// expect upstream host is "hello.httpbin.org" which is rewritten by the apisixupstream
 			err = wait.PollUntilContextTimeout(context.Background(), time.Second, 10*time.Second, true, expectUpstreamHostIs("hello.httpbin.org"))
 			Expect(err).ShouldNot(HaveOccurred(), "check apisixupstream is referenced")
+		})
+	})
+
+	Context("Test ApisixRoute sync during startup", func() {
+		const route = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: default
+spec:
+  ingressClassName: apisix
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - httpbin
+      paths:
+      - /get
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+`
+
+		const route2 = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: route2
+spec:
+  ingressClassName: apisix-nonexistent
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - httpbin2
+      paths:
+      - /get
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+`
+		const route3 = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: route3
+spec:
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - httpbin3
+      paths:
+      - /get
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+`
+		It("Should sync ApisixRoute during startup", func() {
+			By("apply ApisixRoute")
+			Expect(s.CreateResourceFromString(route2)).ShouldNot(HaveOccurred(), "apply ApisixRoute with nonexistent ingressClassName")
+			Expect(s.CreateResourceFromString(route3)).ShouldNot(HaveOccurred(), "apply ApisixRoute without ingressClassName")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, route)
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin2",
+				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+			})
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin3",
+				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+			})
+
+			By("restart controller and dataplane")
+			s.Deployer.ScaleIngress(0)
+			s.Deployer.ScaleDataplane(0)
+			s.Deployer.ScaleDataplane(1)
+			s.Deployer.ScaleIngress(1)
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin2",
+				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+			})
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin3",
+				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+			})
+		})
+	})
+
+	Context("Test ApisixRoute WebSocket Support", func() {
+		It("basic websocket functionality", func() {
+			const websocketServerResources = `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: websocket-server
+  labels:
+    app: websocket-server
+spec:
+  containers:
+  - name: websocket-server
+    image: jmalloc/echo-server:latest
+    ports:
+    - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: websocket-server-service
+spec:
+  selector:
+    app: websocket-server
+  ports:
+    - name: ws
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+`
+			const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: websocket-route
+spec:
+  ingressClassName: apisix
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+      - /echo
+    websocket: true
+    backends:
+    - serviceName: websocket-server-service
+      servicePort: 8080
+`
+			By("create WebSocket server resources")
+			err := s.CreateResourceFromString(websocketServerResources)
+			Expect(err).ShouldNot(HaveOccurred(), "creating WebSocket server resources")
+
+			By("apply ApisixRoute for WebSocket")
+			var apisixRoute apiv2.ApisixRoute
+			applier.MustApplyAPIv2(
+				types.NamespacedName{Namespace: s.Namespace(), Name: "websocket-route"},
+				&apisixRoute,
+				apisixRouteSpec,
+			)
+			By("wait for WebSocket server to be ready")
+			time.Sleep(10 * time.Second)
+			By("verify WebSocket connection")
+			u := url.URL{
+				Scheme: "ws",
+				Host:   s.ApisixHTTPEndpoint(),
+				Path:   "/echo",
+			}
+			headers := http.Header{"Host": []string{"httpbin.org"}}
+
+			conn, resp, err := websocket.DefaultDialer.Dial(u.String(), headers)
+			Expect(err).ShouldNot(HaveOccurred(), "WebSocket handshake")
+			Expect(resp.StatusCode).Should(Equal(http.StatusSwitchingProtocols))
+
+			defer conn.Close()
+
+			By("send and receive message through WebSocket")
+			testMessage := "hello, this is APISIX"
+			err = conn.WriteMessage(websocket.TextMessage, []byte(testMessage))
+			Expect(err).ShouldNot(HaveOccurred(), "writing WebSocket message")
+
+			// The echo server sends an identification message first
+			_, _, err = conn.ReadMessage()
+			Expect(err).ShouldNot(HaveOccurred(), "reading identification message")
+
+			// Then our echo
+			_, msg, err := conn.ReadMessage()
+			Expect(err).ShouldNot(HaveOccurred(), "reading echo message")
+			Expect(string(msg)).To(Equal(testMessage), "message content verification")
 		})
 	})
 })
