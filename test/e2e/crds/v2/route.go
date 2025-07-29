@@ -744,7 +744,6 @@ spec:
 				Expect(code).Should(Equal(200))
 			}
 		})
-
 		It("valid backend is set even if other backend is invalid", func() {
 			const apisixRouteSpec = `
 apiVersion: apisix.apache.org/v2
@@ -781,6 +780,8 @@ spec:
 				code := verifyRequest()
 				Expect(code).Should(Equal(200))
 			}
+		})
+	})
 	Context("Test ApisixRoute sync during startup", func() {
 		const route = `
 apiVersion: apisix.apache.org/v2
