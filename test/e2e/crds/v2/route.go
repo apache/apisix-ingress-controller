@@ -25,8 +25,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -35,7 +37,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = FDescribe("Test ApisixRoute", Label("apisix.apache.org", "v2", "apisixroute"), func() {
+var _ = Describe("Test ApisixRoute", Label("apisix.apache.org", "v2", "apisixroute"), func() {
 	var (
 		s = scaffold.NewScaffold(&scaffold.Options{
 			ControllerName: "apisix.apache.org/apisix-ingress-controller",
@@ -56,7 +58,7 @@ var _ = FDescribe("Test ApisixRoute", Label("apisix.apache.org", "v2", "apisixro
 		time.Sleep(5 * time.Second)
 	})
 
-	PContext("Test ApisixRoute", func() {
+	Context("Test ApisixRoute", func() {
 
 		It("Basic tests", func() {
 			const apisixRouteSpec = `
@@ -441,7 +443,7 @@ spec:
 		})
 	})
 
-	PContext("Test ApisixRoute reference ApisixUpstream", func() {
+	Context("Test ApisixRoute reference ApisixUpstream", func() {
 		It("Test reference ApisixUpstream", func() {
 			const apisixRouteSpec = `
 apiVersion: apisix.apache.org/v2
@@ -651,7 +653,7 @@ spec:
 		})
 	})
 
-	PContext("Test ApisixRoute sync during startup", func() {
+	Context("Test ApisixRoute sync during startup", func() {
 		const route = `
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
@@ -924,23 +926,47 @@ spec:
 					upstreamSpec,
 				)
 
-				createApisixRouteWithHostRewrite("postman-echo.com")
+				createApisixRoute()
 
 				By("verify access to multiple services")
-				request := func() int {
-					return s.NewAPISIXClient().GET("/get").
-						WithHost("httpbin.org").
-						Expect().Raw().StatusCode
+				time.Sleep(7 * time.Second)
+				hasEtag := false   // postman-echo.com
+				hasNoEtag := false // httpbin.org
+				for range 20 {
+					headers := s.NewAPISIXClient().GET("/ip").
+						WithHeader("Host", "httpbin.org").
+						WithHeader("X-Foo", "bar").
+						Expect().
+						Headers().Raw()
+					if _, ok := headers["Etag"]; ok {
+						hasEtag = true
+					} else {
+						hasNoEtag = true
+					}
+					if hasEtag && hasNoEtag {
+						break
+					}
 				}
-				Eventually(request).WithTimeout(30 * time.Second).ProbeEvery(2 * time.Second).
-					Should(Equal(http.StatusOK))
+				assert.True(ginkgo.GinkgoT(), hasEtag && hasNoEtag, "both httpbin and postman should be accessed at least once")
 			})
 
-			It("mix of backends and upstreams", func() {
-				By("create in-cluster httpbin service")
-				By("create ApisixUpstream for external service")
-				createApisixUpstream(apiv2.ExternalTypeDomain, "postman-echo.com")
-
+			It("should be able to use backends and upstreams together", func() {
+				upstreamSpec := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: httpbin-upstream
+spec:
+  externalNodes:
+  - type: Domain
+    name: postman-echo.com
+`
+				var upstream apiv2.ApisixUpstream
+				applier.MustApplyAPIv2(
+					types.NamespacedName{Namespace: s.Namespace(), Name: upstreamName},
+					&upstream,
+					upstreamSpec,
+				)
 				By("create ApisixRoute with both backends and upstreams")
 				routeSpec := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -955,33 +981,29 @@ spec:
       hosts:
       - httpbin.org
       paths:
-      - /get
+      - /ip
     backends:
-    - serviceName: %s
+    - serviceName: httpbin-service-e2e-test
       servicePort: 80
       resolveGranularity: service
     upstreams:
     - name: %s
-    plugins:
-    - name: proxy-rewrite
-      enable: true
-      config:
-        host: postman-echo.com
-`, routeName, "httpbin-service-e2e-test", upstreamName)
+`, routeName, upstreamName)
 				var route apiv2.ApisixRoute
 				applier.MustApplyAPIv2(
 					types.NamespacedName{Namespace: s.Namespace(), Name: routeName},
 					&route,
 					routeSpec,
 				)
-
-				By("verify traffic split between backends and upstreams")
+				By("verify access to multiple services")
+				time.Sleep(7 * time.Second)
 				hasEtag := false   // postman-echo.com
 				hasNoEtag := false // httpbin.org
-				for i := 0; i < 20; i++ {
-					headers := s.NewAPISIXClient().GET("/get").
-						WithHost("httpbin.org").
-						Expect().Status(http.StatusOK).
+				for range 20 {
+					headers := s.NewAPISIXClient().GET("/ip").
+						WithHeader("Host", "httpbin.org").
+						WithHeader("X-Foo", "bar").
+						Expect().
 						Headers().Raw()
 					if _, ok := headers["Etag"]; ok {
 						hasEtag = true
@@ -992,59 +1014,8 @@ spec:
 						break
 					}
 				}
-				Expect(hasEtag).To(BeTrue(), "should get responses from postman-echo.com")
-				Expect(hasNoEtag).To(BeTrue(), "should get responses from in-cluster httpbin")
+				assert.True(ginkgo.GinkgoT(), hasEtag && hasNoEtag, "both httpbin and postman should be accessed at least once")
 			})
 		})
-
-		// Context("update scenarios", func() {
-		// 	It("create ApisixUpstream after route", func() {
-		// 		createApisixRoute()
-
-		// 		By("verify no upstream initially")
-		// 		time.Sleep(5 * time.Second)
-		// 		ups, err := s.ListApisixUpstreams()
-		// 		Expect(err).ShouldNot(HaveOccurred())
-		// 		Expect(ups).Should(BeEmpty(), "upstream count before creation")
-
-		// 		createApisixUpstream(apiv2.ExternalTypeDomain, "httpbin.org")
-		// 		verifyAccess()
-		// 	})
-
-		// 	It("create ExternalName service after upstream", func() {
-		// 		createApisixUpstream(apiv2.ExternalTypeService, externalServiceName)
-		// 		createApisixRoute()
-
-		// 		By("verify no upstream initially")
-		// 		time.Sleep(5 * time.Second)
-		// 		ups, err := s.ListApisixUpstreams()
-		// 		Expect(err).ShouldNot(HaveOccurred())
-		// 		Expect(ups).Should(BeEmpty(), "upstream count before service creation")
-
-		// 		createExternalService("httpbin.org")
-		// 		verifyAccess()
-		// 	})
-
-		// 	It("update ApisixUpstream to point to different service", func() {
-		// 		createExternalService("unknown.org")
-		// 		createApisixUpstream(apiv2.ExternalTypeService, externalServiceName)
-		// 		createApisixRoute()
-
-		// 		By("update ApisixUpstream to point to valid service")
-		// 		createApisixUpstream(apiv2.ExternalTypeService, externalServiceName)
-		// 		createExternalService("httpbin.org")
-		// 		verifyAccess()
-		// 	})
-
-		// 	It("update ExternalName service", func() {
-		// 		createExternalService("unknown.org")
-		// 		createApisixUpstream(apiv2.ExternalTypeService, externalServiceName)
-		// 		createApisixRoute()
-
-		// 		By("update ExternalName service to valid domain")
-		// 		createExternalService("httpbin.org")
-		// 		verifyAccess()
-		// 	})
-		// })
 	})
 })
