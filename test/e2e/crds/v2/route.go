@@ -30,6 +30,7 @@ import (
 	"github.com/gorilla/websocket"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -802,6 +803,7 @@ spec:
 			}
 		})
 	})
+
 	Context("Test ApisixRoute sync during startup", func() {
 		const route = `
 apiVersion: apisix.apache.org/v2
@@ -1039,6 +1041,265 @@ spec:
 			_, msg, err := conn.ReadMessage()
 			Expect(err).ShouldNot(HaveOccurred(), "reading echo message")
 			Expect(string(msg)).To(Equal(testMessage), "message content verification")
+		})
+	})
+
+	Context("Test ApisixRoute with External Services", func() {
+		const (
+			externalServiceName = "ext-httpbin"
+			upstreamName        = "httpbin-upstream"
+			routeName           = "httpbin-route"
+		)
+
+		createExternalService := func(externalName string) {
+			By(fmt.Sprintf("create ExternalName service: %s -> %s", externalServiceName, externalName))
+			svcSpec := fmt.Sprintf(`
+apiVersion: v1
+kind: Service
+metadata:
+  name: %s
+spec:
+  type: ExternalName
+  externalName: %s
+`, externalServiceName, externalName)
+			err := s.CreateResourceFromString(svcSpec)
+			Expect(err).ShouldNot(HaveOccurred(), "creating ExternalName service")
+		}
+
+		createApisixUpstream := func(externalType apiv2.ApisixUpstreamExternalType, name string) {
+			By(fmt.Sprintf("create ApisixUpstream: type=%s, name=%s", externalType, name))
+			upstreamSpec := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: %s
+spec:
+  externalNodes:
+  - type: %s
+    name: %s
+`, upstreamName, externalType, name)
+			var upstream apiv2.ApisixUpstream
+			applier.MustApplyAPIv2(
+				types.NamespacedName{Namespace: s.Namespace(), Name: upstreamName},
+				&upstream,
+				upstreamSpec,
+			)
+		}
+
+		createApisixRoute := func() {
+			By("create ApisixRoute referencing ApisixUpstream")
+			routeSpec := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: %s
+spec:
+  ingressClassName: apisix
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+      - /ip
+    upstreams:
+    - name: %s
+`, routeName, upstreamName)
+			var route apiv2.ApisixRoute
+			applier.MustApplyAPIv2(
+				types.NamespacedName{Namespace: s.Namespace(), Name: routeName},
+				&route,
+				routeSpec,
+			)
+		}
+
+		createApisixRouteWithHostRewrite := func(host string) {
+			By("create ApisixRoute with host rewrite")
+			routeSpec := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: %s
+spec:
+  ingressClassName: apisix
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+      - /ip
+    upstreams:
+    - name: %s
+    plugins:
+    - name: proxy-rewrite
+      enable: true
+      config:
+        host: %s
+`, routeName, upstreamName, host)
+			var route apiv2.ApisixRoute
+			applier.MustApplyAPIv2(
+				types.NamespacedName{Namespace: s.Namespace(), Name: routeName},
+				&route,
+				routeSpec,
+			)
+		}
+
+		verifyAccess := func() {
+			By("verify access to external service")
+			request := func() int {
+				return s.NewAPISIXClient().GET("/ip").
+					WithHost("httpbin.org").
+					Expect().Raw().StatusCode
+			}
+			Eventually(request).WithTimeout(30 * time.Second).ProbeEvery(2 * time.Second).
+				Should(Equal(http.StatusOK))
+		}
+
+		It("access third-party service directly", func() {
+			createApisixUpstream(apiv2.ExternalTypeDomain, "httpbin.org")
+			createApisixRoute()
+			verifyAccess()
+		})
+
+		It("access third-party service with host rewrite", func() {
+			createApisixUpstream(apiv2.ExternalTypeDomain, "httpbin.org")
+			createApisixRouteWithHostRewrite("httpbin.org")
+			verifyAccess()
+		})
+
+		It("access external domain via ExternalName service", func() {
+			createExternalService("httpbin.org")
+			createApisixUpstream(apiv2.ExternalTypeService, externalServiceName)
+			createApisixRoute()
+			verifyAccess()
+		})
+
+		It("access in-cluster service via ExternalName", func() {
+			By("create temporary httpbin service")
+
+			By("get FQDN of temporary service")
+			fqdn := fmt.Sprintf("%s.%s.svc.cluster.local", "httpbin-service-e2e-test", s.Namespace())
+
+			By("setup external service and route")
+			createExternalService(fqdn)
+			createApisixUpstream(apiv2.ExternalTypeService, externalServiceName)
+			createApisixRoute()
+			verifyAccess()
+		})
+
+		Context("complex scenarios", func() {
+			It("multiple external services in one upstream", func() {
+				By("create ApisixUpstream with multiple external nodes")
+				upstreamSpec := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: httpbin-upstream
+spec:
+  externalNodes:
+  - type: Domain
+    name: httpbin.org
+  - type: Domain
+    name: postman-echo.com
+`
+				var upstream apiv2.ApisixUpstream
+				applier.MustApplyAPIv2(
+					types.NamespacedName{Namespace: s.Namespace(), Name: upstreamName},
+					&upstream,
+					upstreamSpec,
+				)
+
+				createApisixRoute()
+
+				By("verify access to multiple services")
+				time.Sleep(7 * time.Second)
+				hasEtag := false   // postman-echo.com
+				hasNoEtag := false // httpbin.org
+				for range 20 {
+					headers := s.NewAPISIXClient().GET("/ip").
+						WithHeader("Host", "httpbin.org").
+						WithHeader("X-Foo", "bar").
+						Expect().
+						Headers().Raw()
+					if _, ok := headers["Etag"]; ok {
+						hasEtag = true
+					} else {
+						hasNoEtag = true
+					}
+					if hasEtag && hasNoEtag {
+						break
+					}
+				}
+				assert.True(GinkgoT(), hasEtag && hasNoEtag, "both httpbin and postman should be accessed at least once")
+			})
+
+			It("should be able to use backends and upstreams together", func() {
+				upstreamSpec := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: httpbin-upstream
+spec:
+  externalNodes:
+  - type: Domain
+    name: postman-echo.com
+`
+				var upstream apiv2.ApisixUpstream
+				applier.MustApplyAPIv2(
+					types.NamespacedName{Namespace: s.Namespace(), Name: upstreamName},
+					&upstream,
+					upstreamSpec,
+				)
+				By("create ApisixRoute with both backends and upstreams")
+				routeSpec := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: %s
+spec:
+  ingressClassName: apisix
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+      - /ip
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+      resolveGranularity: service
+    upstreams:
+    - name: %s
+`, routeName, upstreamName)
+				var route apiv2.ApisixRoute
+				applier.MustApplyAPIv2(
+					types.NamespacedName{Namespace: s.Namespace(), Name: routeName},
+					&route,
+					routeSpec,
+				)
+				By("verify access to multiple services")
+				time.Sleep(7 * time.Second)
+				hasEtag := false   // postman-echo.com
+				hasNoEtag := false // httpbin.org
+				for range 20 {
+					headers := s.NewAPISIXClient().GET("/ip").
+						WithHeader("Host", "httpbin.org").
+						WithHeader("X-Foo", "bar").
+						Expect().
+						Headers().Raw()
+					if _, ok := headers["Etag"]; ok {
+						hasEtag = true
+					} else {
+						hasNoEtag = true
+					}
+					if hasEtag && hasNoEtag {
+						break
+					}
+				}
+				assert.True(GinkgoT(), hasEtag && hasNoEtag, "both httpbin and postman should be accessed at least once")
+			})
 		})
 	})
 })
