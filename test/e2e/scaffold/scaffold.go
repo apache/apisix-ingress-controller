@@ -162,6 +162,10 @@ func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 	})
 }
 
+func (s *Scaffold) ApisixHTTPEndpoint() string {
+	return s.apisixHttpTunnel.Endpoint()
+}
+
 // GetAPISIXHTTPSEndpoint get apisix https endpoint from tunnel map
 func (s *Scaffold) GetAPISIXHTTPSEndpoint() string {
 	return s.apisixHttpsTunnel.Endpoint()
