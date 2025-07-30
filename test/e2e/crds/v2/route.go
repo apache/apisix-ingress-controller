@@ -1231,7 +1231,7 @@ spec:
 						break
 					}
 				}
-				assert.True(ginkgo.GinkgoT(), hasEtag && hasNoEtag, "both httpbin and postman should be accessed at least once")
+				assert.True(GinkgoT(), hasEtag && hasNoEtag, "both httpbin and postman should be accessed at least once")
 			})
 
 			It("should be able to use backends and upstreams together", func() {
@@ -1298,7 +1298,7 @@ spec:
 						break
 					}
 				}
-				assert.True(ginkgo.GinkgoT(), hasEtag && hasNoEtag, "both httpbin and postman should be accessed at least once")
+				assert.True(GinkgoT(), hasEtag && hasNoEtag, "both httpbin and postman should be accessed at least once")
 			})
 		})
 	})
