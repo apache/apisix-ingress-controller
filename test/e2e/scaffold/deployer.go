@@ -32,6 +32,7 @@ type Deployer interface {
 	CreateAdditionalGateway(namePrefix string) (string, *corev1.Service, error)
 	CleanupAdditionalGateway(identifier string) error
 	GetAdminEndpoint(...*corev1.Service) string
+	GetAdminServiceName() string
 	DefaultDataplaneResource() DataplaneResource
 }
 
