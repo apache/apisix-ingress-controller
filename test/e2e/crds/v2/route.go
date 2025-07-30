@@ -849,7 +849,7 @@ spec:
 			}
 			headers := http.Header{"Host": []string{"httpbin.org"}}
 			_, resp, _ := websocket.DefaultDialer.Dial(u.String(), headers)
-			//Should recieve 200 instead of 101
+			//Should receive 200 instead of 101
 			Expect(resp.StatusCode).Should(Equal(http.StatusOK))
 
 			By("apply ApisixRoute for WebSocket")
