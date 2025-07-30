@@ -177,7 +177,7 @@ func (t *Translator) buildRoute(ar *apiv2.ApisixRoute, service *adc.Service, rul
 	route.ID = id.GenID(route.Name)
 	route.Desc = "Created by apisix-ingress-controller, DO NOT modify it manually"
 	route.Labels = label.GenLabel(ar)
-	route.EnableWebsocket = ptr.To(true)
+	route.EnableWebsocket = ptr.To(rule.Websocket)
 	route.FilterFunc = rule.Match.FilterFunc
 	route.Hosts = rule.Match.Hosts
 	route.Methods = rule.Match.Methods

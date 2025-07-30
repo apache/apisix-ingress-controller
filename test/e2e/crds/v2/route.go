@@ -808,9 +808,49 @@ spec:
     - serviceName: websocket-server-service
       servicePort: 8080
 `
+
+			const apisixRouteSpec2 = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: websocket-route
+spec:
+  ingressClassName: apisix
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+      - /echo
+    backends:
+    - serviceName: websocket-server-service
+      servicePort: 8080
+`
+
 			By("create WebSocket server resources")
 			err := s.CreateResourceFromString(websocketServerResources)
 			Expect(err).ShouldNot(HaveOccurred(), "creating WebSocket server resources")
+
+			By("create ApisixRoute without WebSocker")
+			var apisixRouteWithoutWS apiv2.ApisixRoute
+			applier.MustApplyAPIv2(
+				types.NamespacedName{Namespace: s.Namespace(), Name: "websocket-route"},
+				&apisixRouteWithoutWS,
+				apisixRouteSpec2,
+			)
+			time.Sleep(8 * time.Second)
+
+			By("verify WebSocket connection fails without WebSocket enabled")
+			u := url.URL{
+				Scheme: "ws",
+				Host:   s.ApisixHTTPEndpoint(),
+				Path:   "/echo",
+			}
+			headers := http.Header{"Host": []string{"httpbin.org"}}
+			_, resp, _ := websocket.DefaultDialer.Dial(u.String(), headers)
+			//Should recieve 200 instead of 101
+			Expect(resp.StatusCode).Should(Equal(http.StatusOK))
 
 			By("apply ApisixRoute for WebSocket")
 			var apisixRoute apiv2.ApisixRoute
@@ -822,12 +862,12 @@ spec:
 			By("wait for WebSocket server to be ready")
 			time.Sleep(10 * time.Second)
 			By("verify WebSocket connection")
-			u := url.URL{
+			u = url.URL{
 				Scheme: "ws",
 				Host:   s.ApisixHTTPEndpoint(),
 				Path:   "/echo",
 			}
-			headers := http.Header{"Host": []string{"httpbin.org"}}
+			headers = http.Header{"Host": []string{"httpbin.org"}}
 
 			conn, resp, err := websocket.DefaultDialer.Dial(u.String(), headers)
 			Expect(err).ShouldNot(HaveOccurred(), "WebSocket handshake")
