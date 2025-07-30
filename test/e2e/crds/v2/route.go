@@ -688,7 +688,13 @@ spec:
 				failCount    int
 			)
 
-			time.Sleep(10 * time.Second)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:  "GET",
+				Path:    "/get",
+				Host:    "httpbin.org",
+				Check:   scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout: 10 * time.Second,
+			})
 			for range 90 {
 				code := verifyRequest()
 				if code == http.StatusOK {
@@ -737,7 +743,13 @@ spec:
 			}
 
 			By("wait for route to be ready")
-			time.Sleep(8 * time.Second)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:  "GET",
+				Path:    "/get",
+				Host:    "httpbin.org",
+				Check:   scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout: 10 * time.Second,
+			})
 			By("send requests to verify zero-weight behavior")
 			for range 30 {
 				code := verifyRequest()
@@ -774,7 +786,13 @@ spec:
 			}
 
 			By("wait for route to be ready")
-			time.Sleep(8 * time.Second)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:  "GET",
+				Path:    "/get",
+				Host:    "httpbin.org",
+				Check:   scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout: 10 * time.Second,
+			})
 			By("send requests to verify all requests routed to valid upstream")
 			for range 30 {
 				code := verifyRequest()
