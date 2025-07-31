@@ -43,13 +43,13 @@ var _ = Describe("Test CRD Status", Label("apisix.apache.org", "v2", "apisixrout
 	Context("Test ApisixRoute Sync Status", func() {
 		BeforeEach(func() {
 			By("create GatewayProxy")
-			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Deployer.GetAdminEndpoint(), s.AdminKey())
-			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, "default")
+			gatewayProxy := getGatewayProxyYaml(s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(5 * time.Second)
 
 			By("create IngressClass")
-			err = s.CreateResourceFromStringWithNamespace(ingressClassYaml, "")
+			err = s.CreateResourceFromStringWithNamespace(getIngressClassYaml(s.Namespace(), s.Namespace()), "")
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 			time.Sleep(5 * time.Second)
 		})
@@ -59,7 +59,7 @@ kind: ApisixRoute
 metadata:
   name: default
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   http:
   - name: rule0
     match:
@@ -77,7 +77,7 @@ kind: ApisixRoute
 metadata:
   name: default
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   http:
   - name: rule0
     match:
@@ -97,7 +97,7 @@ spec:
 				Skip("apisix standalone does not validate unknown plugins")
 			}
 			By("apply ApisixRoute with valid plugin")
-			err := s.CreateResourceFromString(arWithInvalidPlugin)
+			err := s.CreateResourceFromString(fmt.Sprintf(arWithInvalidPlugin, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixRoute with valid plugin")
 
 			By("check ApisixRoute status")
@@ -113,7 +113,7 @@ spec:
 			)
 
 			By("Update ApisixRoute")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, ar)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, fmt.Sprintf(ar, s.Namespace()))
 
 			By("check route in APISIX")
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -126,7 +126,7 @@ spec:
 
 		It("dataplane unavailable", func() {
 			By("apply ApisixRoute")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, ar)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, fmt.Sprintf(ar, s.Namespace()))
 
 			By("check route in APISIX")
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -175,7 +175,7 @@ spec:
 
 		It("update the same status only once", func() {
 			By("apply ApisixRoute")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, ar)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, fmt.Sprintf(ar, s.Namespace()))
 
 			output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
 
@@ -228,22 +228,7 @@ metadata:
 spec:
   controllerName: %s
 `
-		const gatewayProxy = `
-apiVersion: apisix.apache.org/v1alpha1
-kind: GatewayProxy
-metadata:
-  name: apisix-proxy-config
-spec:
-  provider:
-    type: ControlPlane
-    controlPlane:
-      endpoints:
-      - %s
-      auth:
-        type: AdminKey
-        adminKey:
-          value: "%s"
-`
+
 		const defaultGateway = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
@@ -263,8 +248,8 @@ spec:
 `
 		BeforeEach(func() {
 			By("create GatewayProxy")
-			gatewayProxy := fmt.Sprintf(gatewayProxy, s.Deployer.GetAdminEndpoint(), s.AdminKey())
-			err := s.CreateResourceFromString(gatewayProxy)
+			gatewayProxy := getGatewayProxyYaml(s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(5 * time.Second)
 

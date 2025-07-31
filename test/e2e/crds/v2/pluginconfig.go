@@ -31,39 +31,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-const gatewayProxyYamlPluginConfig = `
-apiVersion: apisix.apache.org/v1alpha1
-kind: GatewayProxy
-metadata:
-  name: apisix-proxy-config
-  namespace: default
-spec:
-  provider:
-    type: ControlPlane
-    controlPlane:
-      endpoints:
-      - %s
-      auth:
-        type: AdminKey
-        adminKey:
-          value: "%s"
-`
-
-const ingressClassYamlPluginConfig = `
-apiVersion: networking.k8s.io/v1
-kind: IngressClass
-metadata:
-  name: apisix
-spec:
-  controller: "apisix.apache.org/apisix-ingress-controller"
-  parameters:
-    apiGroup: "apisix.apache.org"
-    kind: "GatewayProxy"
-    name: "apisix-proxy-config"
-    namespace: "default"
-    scope: "Namespace"
-`
-
 var _ = Describe("Test ApisixPluginConfig", Label("apisix.apache.org", "v2", "apisixpluginconfig"), func() {
 	var (
 		s = scaffold.NewScaffold(&scaffold.Options{
@@ -75,13 +42,13 @@ var _ = Describe("Test ApisixPluginConfig", Label("apisix.apache.org", "v2", "ap
 	Context("Test ApisixPluginConfig", func() {
 		BeforeEach(func() {
 			By("create GatewayProxy")
-			gatewayProxy := fmt.Sprintf(gatewayProxyYamlPluginConfig, s.Deployer.GetAdminEndpoint(), s.AdminKey())
-			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, "default")
+			gatewayProxy := getGatewayProxyYaml(s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(5 * time.Second)
 
 			By("create IngressClass")
-			err = s.CreateResourceFromStringWithNamespace(ingressClassYamlPluginConfig, "")
+			err = s.CreateResourceFromStringWithNamespace(getIngressClassYaml(s.Namespace(), s.Namespace()), "")
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 			time.Sleep(5 * time.Second)
 		})
@@ -93,7 +60,7 @@ kind: ApisixPluginConfig
 metadata:
   name: test-plugin-config
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   plugins:
   - name: response-rewrite
     enable: true
@@ -109,7 +76,7 @@ kind: ApisixRoute
 metadata:
   name: test-route
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   http:
   - name: rule0
     match:
@@ -123,11 +90,11 @@ spec:
 
 			By("apply ApisixPluginConfig")
 			var apisixPluginConfig apiv2.ApisixPluginConfig
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config"}, &apisixPluginConfig, apisixPluginConfigSpec)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config"}, &apisixPluginConfig, fmt.Sprintf(apisixPluginConfigSpec, s.Namespace()))
 
 			By("apply ApisixRoute that references ApisixPluginConfig")
 			var apisixRoute apiv2.ApisixRoute
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route"}, &apisixRoute, apisixRouteSpec)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route"}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify ApisixRoute works with plugin config")
 			request := func() int {
@@ -158,7 +125,7 @@ kind: ApisixPluginConfig
 metadata:
   name: test-plugin-config-update
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   plugins:
   - name: response-rewrite
     enable: true
@@ -173,7 +140,7 @@ kind: ApisixPluginConfig
 metadata:
   name: test-plugin-config-update
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   plugins:
   - name: response-rewrite
     enable: true
@@ -189,7 +156,7 @@ kind: ApisixRoute
 metadata:
   name: test-route-update
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   http:
   - name: rule0
     match:
@@ -203,11 +170,11 @@ spec:
 
 			By("apply initial ApisixPluginConfig")
 			var apisixPluginConfig apiv2.ApisixPluginConfig
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-update"}, &apisixPluginConfig, apisixPluginConfigSpecV1)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-update"}, &apisixPluginConfig, fmt.Sprintf(apisixPluginConfigSpecV1, s.Namespace()))
 
 			By("apply ApisixRoute that references ApisixPluginConfig")
 			var apisixRoute apiv2.ApisixRoute
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-update"}, &apisixRoute, apisixRouteSpec)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-update"}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify initial plugin config works")
 			request := func() int {
@@ -220,7 +187,7 @@ spec:
 			resp.Header("X-Updated").IsEmpty()
 
 			By("update ApisixPluginConfig")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-update"}, &apisixPluginConfig, apisixPluginConfigSpecV2)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-update"}, &apisixPluginConfig, fmt.Sprintf(apisixPluginConfigSpecV2, s.Namespace()))
 			time.Sleep(5 * time.Second)
 
 			By("verify updated plugin config works")
@@ -242,7 +209,7 @@ kind: ApisixPluginConfig
 metadata:
   name: test-plugin-config-disabled
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   plugins:
   - name: response-rewrite
     enable: false
@@ -262,7 +229,7 @@ kind: ApisixRoute
 metadata:
   name: test-route-disabled
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   http:
   - name: rule0
     match:
@@ -276,11 +243,11 @@ spec:
 
 			By("apply ApisixPluginConfig with disabled plugin")
 			var apisixPluginConfig apiv2.ApisixPluginConfig
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-disabled"}, &apisixPluginConfig, apisixPluginConfigSpec)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-disabled"}, &apisixPluginConfig, fmt.Sprintf(apisixPluginConfigSpec, s.Namespace()))
 
 			By("apply ApisixRoute that references ApisixPluginConfig")
 			var apisixRoute apiv2.ApisixRoute
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-disabled"}, &apisixRoute, apisixRouteSpec)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-disabled"}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify ApisixRoute works")
 			request := func() int {
@@ -309,7 +276,7 @@ kind: ApisixPluginConfig
 metadata:
   name: test-plugin-config-override
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   plugins:
   - name: response-rewrite
     enable: true
@@ -325,7 +292,7 @@ kind: ApisixRoute
 metadata:
   name: test-route-override
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   http:
   - name: rule0
     match:
@@ -346,11 +313,11 @@ spec:
 
 			By("apply ApisixPluginConfig")
 			var apisixPluginConfig apiv2.ApisixPluginConfig
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-override"}, &apisixPluginConfig, apisixPluginConfigSpec)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-override"}, &apisixPluginConfig, fmt.Sprintf(apisixPluginConfigSpec, s.Namespace()))
 
 			By("apply ApisixRoute with overriding plugins")
 			var apisixRoute apiv2.ApisixRoute
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-override"}, &apisixRoute, apisixRouteSpec)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-override"}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify ApisixRoute works")
 			request := func() int {
@@ -379,7 +346,7 @@ metadata:
   name: cross-ns-plugin-config
   namespace: default
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   plugins:
   - name: response-rewrite
     enable: true
@@ -395,7 +362,7 @@ kind: ApisixRoute
 metadata:
   name: test-route-cross-ns
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   http:
   - name: rule0
     match:
@@ -409,13 +376,13 @@ spec:
 `
 
 			By("apply ApisixPluginConfig in default namespace")
-			err := s.CreateResourceFromStringWithNamespace(crossNamespaceApisixPluginConfigSpec, "default")
+			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(crossNamespaceApisixPluginConfigSpec, s.Namespace()), "default")
 			Expect(err).NotTo(HaveOccurred(), "creating default/cross-ns-plugin-config")
 			time.Sleep(5 * time.Second)
 
 			By("apply ApisixRoute in test namespace that references ApisixPluginConfig in default namespace")
 			var apisixRoute apiv2.ApisixRoute
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-cross-ns"}, &apisixRoute, apisixRouteSpec)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-cross-ns"}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify cross-namespace reference works")
 			request := func() int {
@@ -430,7 +397,7 @@ spec:
 			By("delete resources")
 			err = s.DeleteResource("ApisixRoute", "test-route-cross-ns")
 			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixRoute")
-			err = s.DeleteResourceFromStringWithNamespace(crossNamespaceApisixPluginConfigSpec, "default")
+			err = s.DeleteResourceFromStringWithNamespace(fmt.Sprintf(crossNamespaceApisixPluginConfigSpec, s.Namespace()), "default")
 			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixPluginConfig")
 		})
 
@@ -453,7 +420,7 @@ kind: ApisixPluginConfig
 metadata:
   name: test-plugin-config-secret
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   plugins:
   - name: response-rewrite
     enable: true
@@ -469,7 +436,7 @@ kind: ApisixRoute
 metadata:
   name: test-route-secret
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   http:
   - name: rule0
     match:
@@ -487,11 +454,11 @@ spec:
 
 			By("apply ApisixPluginConfig with SecretRef")
 			var apisixPluginConfig apiv2.ApisixPluginConfig
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-secret"}, &apisixPluginConfig, apisixPluginConfigSpec)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-secret"}, &apisixPluginConfig, fmt.Sprintf(apisixPluginConfigSpec, s.Namespace()))
 
 			By("apply ApisixRoute that references ApisixPluginConfig")
 			var apisixRoute apiv2.ApisixRoute
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-secret"}, &apisixRoute, apisixRouteSpec)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-secret"}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify ApisixRoute works with SecretRef")
 			request := func() int {
