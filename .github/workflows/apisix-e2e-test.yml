@@ -111,4 +111,5 @@ jobs:
           PROVIDER_TYPE: ${{ matrix.provider_type }}
           TEST_LABEL: ${{ matrix.cases_subset }}
         run: |
+          go install github.com/onsi/ginkgo/ginkgo
           make ginkgo-e2e-test
