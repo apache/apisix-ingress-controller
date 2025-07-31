@@ -73,6 +73,12 @@ jobs:
         with:
           go-version: "1.23"
 
+      - name: Install ginkgo
+        run: |
+            GINKGO_VERSION=$(cd test/e2e && go list -m  -mod=readonly  -f {{.Version}}  github.com/onsi/ginkgo/v2)
+            go install github.com/onsi/ginkgo/v2/ginkgo@$GINKGO_VERSION
+            sudo cp ~/go/bin/ginkgo /usr/local/bin
+
       - name: Build images
         env:
           TAG: dev
@@ -111,5 +117,4 @@ jobs:
           PROVIDER_TYPE: ${{ matrix.provider_type }}
           TEST_LABEL: ${{ matrix.cases_subset }}
         run: |
-          go install github.com/onsi/ginkgo/ginkgo
           make ginkgo-e2e-test
