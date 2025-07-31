@@ -21,10 +21,13 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 
+	"github.com/gorilla/websocket"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/types"
@@ -651,6 +654,154 @@ spec:
 		})
 	})
 
+	Context("Test ApisixRoute Traffic Split", func() {
+		It("2:1 traffic split test", func() {
+			const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: default
+spec:
+ ingressClassName: apisix
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /get
+   backends:
+   - serviceName: httpbin-service-e2e-test
+     servicePort: 80
+     weight: 10
+   - serviceName: %s
+     servicePort: 9180
+     weight: 5
+`
+			By("apply ApisixRoute with traffic split")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, new(apiv2.ApisixRoute),
+				fmt.Sprintf(apisixRouteSpec, s.Deployer.GetAdminServiceName()))
+			verifyRequest := func() int {
+				return s.NewAPISIXClient().GET("/get").WithHost("httpbin.org").Expect().Raw().StatusCode
+			}
+			By("send requests to verify traffic split")
+			var (
+				successCount int
+				failCount    int
+			)
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:  "GET",
+				Path:    "/get",
+				Host:    "httpbin.org",
+				Check:   scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout: 10 * time.Second,
+			})
+			for range 90 {
+				code := verifyRequest()
+				if code == http.StatusOK {
+					successCount++
+				} else {
+					failCount++
+				}
+			}
+
+			By("verify traffic distribution ratio")
+			ratio := float64(successCount) / float64(failCount)
+			expectedRatio := 10.0 / 5.0 // 2:1 ratio
+			deviation := math.Abs(ratio - expectedRatio)
+			Expect(deviation).Should(BeNumerically("<", 0.5),
+				"traffic distribution deviation too large (got %.2f, expected %.2f)", ratio, expectedRatio)
+		})
+
+		It("zero-weight test", func() {
+			const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: default
+spec:
+ ingressClassName: apisix
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /get
+   backends:
+   - serviceName: httpbin-service-e2e-test
+     servicePort: 80
+     weight: 10
+   - serviceName: %s
+     servicePort: 9180
+     weight: 0
+`
+			By("apply ApisixRoute with zero-weight backend")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, new(apiv2.ApisixRoute),
+				fmt.Sprintf(apisixRouteSpec, s.Deployer.GetAdminServiceName()))
+			verifyRequest := func() int {
+				return s.NewAPISIXClient().GET("/get").WithHost("httpbin.org").Expect().Raw().StatusCode
+			}
+
+			By("wait for route to be ready")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:  "GET",
+				Path:    "/get",
+				Host:    "httpbin.org",
+				Check:   scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout: 10 * time.Second,
+			})
+			By("send requests to verify zero-weight behavior")
+			for range 30 {
+				code := verifyRequest()
+				Expect(code).Should(Equal(200))
+			}
+		})
+		It("valid backend is set even if other backend is invalid", func() {
+			const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: default
+spec:
+ ingressClassName: apisix
+ http:
+ - name: rule1
+   match:
+     hosts:
+     - httpbin.org
+     paths:
+       - /get
+   backends:
+   - serviceName: httpbin-service-e2e-test
+     servicePort: 80
+     weight: 10
+   - serviceName: invalid-service
+     servicePort: 9180
+     weight: 5
+`
+			By("apply ApisixRoute with traffic split")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, new(apiv2.ApisixRoute), apisixRouteSpec)
+			verifyRequest := func() int {
+				return s.NewAPISIXClient().GET("/get").WithHost("httpbin.org").Expect().Raw().StatusCode
+			}
+
+			By("wait for route to be ready")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:  "GET",
+				Path:    "/get",
+				Host:    "httpbin.org",
+				Check:   scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout: 10 * time.Second,
+			})
+			By("send requests to verify all requests routed to valid upstream")
+			for range 30 {
+				code := verifyRequest()
+				Expect(code).Should(Equal(200))
+			}
+		})
+	})
 	Context("Test ApisixRoute sync during startup", func() {
 		const route = `
 apiVersion: apisix.apache.org/v2
@@ -755,6 +906,139 @@ spec:
 				Host:   "httpbin3",
 				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
 			})
+		})
+	})
+
+	Context("Test ApisixRoute WebSocket Support", func() {
+		It("basic websocket functionality", func() {
+			const websocketServerResources = `
+apiVersion: v1
+kind: Pod
+metadata:
+  name: websocket-server
+  labels:
+    app: websocket-server
+spec:
+  containers:
+  - name: websocket-server
+    image: jmalloc/echo-server:latest
+    ports:
+    - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: websocket-server-service
+spec:
+  selector:
+    app: websocket-server
+  ports:
+    - name: ws
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+`
+			const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: websocket-route
+spec:
+  ingressClassName: apisix
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+      - /echo
+    websocket: true
+    backends:
+    - serviceName: websocket-server-service
+      servicePort: 8080
+`
+
+			const apisixRouteSpec2 = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: websocket-route
+spec:
+  ingressClassName: apisix
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+      - /echo
+    backends:
+    - serviceName: websocket-server-service
+      servicePort: 8080
+`
+
+			By("create WebSocket server resources")
+			err := s.CreateResourceFromString(websocketServerResources)
+			Expect(err).ShouldNot(HaveOccurred(), "creating WebSocket server resources")
+
+			By("create ApisixRoute without WebSocker")
+			var apisixRouteWithoutWS apiv2.ApisixRoute
+			applier.MustApplyAPIv2(
+				types.NamespacedName{Namespace: s.Namespace(), Name: "websocket-route"},
+				&apisixRouteWithoutWS,
+				apisixRouteSpec2,
+			)
+			time.Sleep(8 * time.Second)
+
+			By("verify WebSocket connection fails without WebSocket enabled")
+			u := url.URL{
+				Scheme: "ws",
+				Host:   s.ApisixHTTPEndpoint(),
+				Path:   "/echo",
+			}
+			headers := http.Header{"Host": []string{"httpbin.org"}}
+			_, resp, _ := websocket.DefaultDialer.Dial(u.String(), headers)
+			// should receive 200 instead of 101
+			Expect(resp.StatusCode).Should(Equal(http.StatusOK))
+
+			By("apply ApisixRoute for WebSocket")
+			var apisixRoute apiv2.ApisixRoute
+			applier.MustApplyAPIv2(
+				types.NamespacedName{Namespace: s.Namespace(), Name: "websocket-route"},
+				&apisixRoute,
+				apisixRouteSpec,
+			)
+			By("wait for WebSocket server to be ready")
+			time.Sleep(10 * time.Second)
+			By("verify WebSocket connection")
+			u = url.URL{
+				Scheme: "ws",
+				Host:   s.ApisixHTTPEndpoint(),
+				Path:   "/echo",
+			}
+			headers = http.Header{"Host": []string{"httpbin.org"}}
+
+			conn, resp, err := websocket.DefaultDialer.Dial(u.String(), headers)
+			Expect(err).ShouldNot(HaveOccurred(), "WebSocket handshake")
+			Expect(resp.StatusCode).Should(Equal(http.StatusSwitchingProtocols))
+
+			defer func() {
+				_ = conn.Close()
+			}()
+
+			By("send and receive message through WebSocket")
+			testMessage := "hello, this is APISIX"
+			err = conn.WriteMessage(websocket.TextMessage, []byte(testMessage))
+			Expect(err).ShouldNot(HaveOccurred(), "writing WebSocket message")
+
+			// The echo server sends an identification message first
+			_, _, err = conn.ReadMessage()
+			Expect(err).ShouldNot(HaveOccurred(), "reading identification message")
+
+			// Then our echo
+			_, msg, err := conn.ReadMessage()
+			Expect(err).ShouldNot(HaveOccurred(), "reading echo message")
+			Expect(string(msg)).To(Equal(testMessage), "message content verification")
 		})
 	})
 })
