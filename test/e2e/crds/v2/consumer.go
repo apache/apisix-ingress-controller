@@ -133,7 +133,6 @@ spec:
 			By("apply ApisixConsumer")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-consumer"}, &apiv2.ApisixConsumer{}, fmt.Sprintf(keyAuth, s.Namespace()))
 
-			fmt.Println("ASHISH GO CHECK")
 			By("verify ApisixRoute with ApisixConsumer")
 			Eventually(request).WithArguments("/get", Headers{
 				"apikey": "invalid-key",
@@ -167,7 +166,6 @@ spec:
 			By("apply ApisixConsumer")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-consumer"}, &apiv2.ApisixConsumer{}, fmt.Sprintf(keyAuthWiwhSecret, s.Namespace()))
 
-			fmt.Println("ASHISH GO CHECK")
 			By("verify ApisixRoute with ApisixConsumer")
 			Eventually(request).WithArguments("/get", Headers{
 				"apikey": "invalid-key",

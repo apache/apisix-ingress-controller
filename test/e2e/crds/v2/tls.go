@@ -58,7 +58,7 @@ kind: IngressClass
 metadata:
   name: apisix-tls
 spec:
-  controller: "apisix.apache.org/apisix-ingress-controller"
+  controller: %s
   parameters:
     apiGroup: "apisix.apache.org"
     kind: "GatewayProxy"
@@ -107,7 +107,7 @@ var _ = Describe("Test ApisixTls", Label("apisix.apache.org", "v2", "apisixtls")
 			time.Sleep(5 * time.Second)
 
 			By("create IngressClass")
-			err = s.CreateResourceFromStringWithNamespace(ingressClassYamlTls, "")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClassYamlTls, s.GetControllerName()), "")
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 			time.Sleep(5 * time.Second)
 
@@ -123,7 +123,7 @@ var _ = Describe("Test ApisixTls", Label("apisix.apache.org", "v2", "apisixtls")
 			Expect(err).ShouldNot(HaveOccurred(), "deleting GatewayProxy")
 
 			By("delete IngressClass")
-			err = s.DeleteResourceFromStringWithNamespace(ingressClassYamlTls, "")
+			err = s.DeleteResourceFromStringWithNamespace(fmt.Sprintf(ingressClassYamlTls, s.GetControllerName()), "")
 			Expect(err).ShouldNot(HaveOccurred(), "deleting IngressClass")
 		})
 
