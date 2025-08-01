@@ -46,7 +46,7 @@ func createSecret(s *scaffold.Scaffold, secretName string) {
 	assert.Nil(GinkgoT(), err, "create secret error")
 }
 
-var _ = FDescribe("Test Ingress", Label("networking.k8s.io", "ingress"), func() {
+var _ = Describe("Test Ingress", Label("networking.k8s.io", "ingress"), func() {
 	s := scaffold.NewScaffold(&scaffold.Options{
 		ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
 	})
@@ -69,7 +69,7 @@ spec:
           value: "%s"
 `
 
-	PContext("Ingress TLS", func() {
+	Context("Ingress TLS", func() {
 		It("Check if SSL resource was created", func() {
 			By("create GatewayProxy")
 			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
@@ -142,7 +142,7 @@ spec:
 		})
 	})
 
-	PContext("IngressClass Selection", func() {
+	Context("IngressClass Selection", func() {
 		var defaultIngressClass = `
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
@@ -151,12 +151,12 @@ metadata:
   annotations:
     ingressclass.kubernetes.io/is-default-class: "true"
 spec:
-  controller: "apisix.apache.org/apisix-ingress-controller"
+  controller: "%s"
   parameters:
     apiGroup: "apisix.apache.org"
     kind: "GatewayProxy"
     name: "apisix-proxy-config"
-    namespace: "default"
+    namespace: "%s"
     scope: "Namespace"
 `
 
@@ -214,7 +214,7 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			By("create Default IngressClass")
-			err = s.CreateResourceFromStringWithNamespace(defaultIngressClass, "")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultIngressClass, s.GetControllerName(), s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Default IngressClass")
 			time.Sleep(5 * time.Second)
 
@@ -239,7 +239,7 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			By("create Default IngressClass")
-			err = s.CreateResourceFromStringWithNamespace(defaultIngressClass, "")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultIngressClass, s.GetControllerName(), s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Default IngressClass")
 			time.Sleep(5 * time.Second)
 
@@ -264,7 +264,7 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			By("create Default IngressClass")
-			err = s.CreateResourceFromStringWithNamespace(defaultIngressClass, "")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultIngressClass, s.GetControllerName(), s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Default IngressClass")
 			time.Sleep(5 * time.Second)
 
@@ -314,7 +314,7 @@ spec:
 		})
 	})
 
-	PContext("IngressClass with GatewayProxy", func() {
+	Context("IngressClass with GatewayProxy", func() {
 		gatewayProxyYaml := `
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
@@ -483,7 +483,7 @@ stringData:
 
 			By("create GatewayProxy with Secret reference")
 			gatewayProxy := fmt.Sprintf(gatewayProxyWithSecretYaml, s.Namespace(), s.Deployer.GetAdminEndpoint())
-			err = s.CreateResourceFromStringWithNamespace(gatewayProxy, "default")
+			err = s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy with Secret")
 			time.Sleep(5 * time.Second)
 
@@ -507,7 +507,7 @@ stringData:
 		})
 	})
 
-	PContext("HTTPRoutePolicy for Ingress", func() {
+	Context("HTTPRoutePolicy for Ingress", func() {
 		getGatewayProxySpec := func() string {
 			return fmt.Sprintf(`
 apiVersion: apisix.apache.org/v1alpha1
@@ -752,7 +752,7 @@ spec:
 		})
 	})
 
-	PContext("Ingress with GatewayProxy Update", func() {
+	Context("Ingress with GatewayProxy Update", func() {
 		var additionalGatewayGroupID string
 
 		var ingressClass = `
@@ -864,7 +864,7 @@ spec:
 		})
 	})
 
-	Context("GatewayProxy reference Secret", func() {
+	PContext("GatewayProxy reference Secret", func() {
 		const secretSpec = `
 apiVersion: v1
 kind: Secret
