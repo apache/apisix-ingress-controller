@@ -39,7 +39,6 @@ apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
   name: apisix-proxy-tls
-  namespace: default
 spec:
   provider:
     type: ControlPlane
@@ -63,7 +62,7 @@ spec:
     apiGroup: "apisix.apache.org"
     kind: "GatewayProxy"
     name: "apisix-proxy-tls"
-    namespace: "default"
+    namespace: "%s"
     scope: "Namespace"
 `
 
@@ -102,12 +101,12 @@ var _ = Describe("Test ApisixTls", Label("apisix.apache.org", "v2", "apisixtls")
 		BeforeEach(func() {
 			By("create GatewayProxy")
 			gatewayProxy := fmt.Sprintf(gatewayProxyYamlTls, s.Deployer.GetAdminEndpoint(), s.AdminKey())
-			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, "default")
+			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(5 * time.Second)
 
 			By("create IngressClass")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClassYamlTls, s.GetControllerName()), "")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClassYamlTls, s.GetControllerName(), s.Namespace()), "")
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 			time.Sleep(5 * time.Second)
 
@@ -119,11 +118,11 @@ var _ = Describe("Test ApisixTls", Label("apisix.apache.org", "v2", "apisixtls")
 		AfterEach(func() {
 			By("delete GatewayProxy")
 			gatewayProxy := fmt.Sprintf(gatewayProxyYamlTls, s.Deployer.GetAdminEndpoint(), s.AdminKey())
-			err := s.DeleteResourceFromStringWithNamespace(gatewayProxy, "default")
+			err := s.DeleteResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
 			Expect(err).ShouldNot(HaveOccurred(), "deleting GatewayProxy")
 
 			By("delete IngressClass")
-			err = s.DeleteResourceFromStringWithNamespace(fmt.Sprintf(ingressClassYamlTls, s.GetControllerName()), "")
+			err = s.DeleteResourceFromStringWithNamespace(fmt.Sprintf(ingressClassYamlTls, s.GetControllerName(), s.Namespace()), "")
 			Expect(err).ShouldNot(HaveOccurred(), "deleting IngressClass")
 		})
 
