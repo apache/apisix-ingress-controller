@@ -38,7 +38,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = FDescribe("Test ApisixRoute", Label("apisix.apache.org", "v2", "apisixroute"), func() {
+var _ = Describe("Test ApisixRoute", Label("apisix.apache.org", "v2", "apisixroute"), func() {
 	var (
 		s = scaffold.NewScaffold(&scaffold.Options{
 			ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
@@ -59,7 +59,7 @@ var _ = FDescribe("Test ApisixRoute", Label("apisix.apache.org", "v2", "apisixro
 		time.Sleep(5 * time.Second)
 	})
 
-	PContext("Test ApisixRoute", func() {
+	Context("Test ApisixRoute", func() {
 
 		It("Basic tests", func() {
 			const apisixRouteSpec = `
@@ -444,7 +444,7 @@ spec:
 		})
 	})
 
-	PContext("Test ApisixRoute reference ApisixUpstream", func() {
+	Context("Test ApisixRoute reference ApisixUpstream", func() {
 		It("Test reference ApisixUpstream", func() {
 			const apisixRouteSpec = `
 apiVersion: apisix.apache.org/v2
@@ -655,7 +655,7 @@ spec:
 	})
 
 	Context("Test ApisixRoute Traffic Split", func() {
-		FIt("2:1 traffic split test", func() {
+		It("2:1 traffic split test", func() {
 			const apisixRouteSpec = `
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
@@ -802,7 +802,7 @@ spec:
 			}
 		})
 	})
-	PContext("Test ApisixRoute sync during startup", func() {
+	Context("Test ApisixRoute sync during startup", func() {
 		const route = `
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
@@ -909,7 +909,7 @@ spec:
 		})
 	})
 
-	PContext("Test ApisixRoute WebSocket Support", func() {
+	Context("Test ApisixRoute WebSocket Support", func() {
 		It("basic websocket functionality", func() {
 			const websocketServerResources = `
 apiVersion: v1

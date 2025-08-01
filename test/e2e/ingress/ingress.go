@@ -868,7 +868,7 @@ spec:
 		})
 	})
 
-	PContext("GatewayProxy reference Secret", func() {
+	Context("GatewayProxy reference Secret", func() {
 		const secretSpec = `
 apiVersion: v1
 kind: Secret
