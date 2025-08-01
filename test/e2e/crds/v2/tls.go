@@ -55,7 +55,7 @@ const ingressClassYamlTls = `
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
 metadata:
-  name: apisix-tls
+  name: %s
 spec:
   controller: %s
   parameters:
@@ -72,7 +72,7 @@ kind: ApisixRoute
 metadata:
   name: test-route-tls
 spec:
-  ingressClassName: apisix-tls
+  ingressClassName: %s
   http:
   - name: rule0
     match:
@@ -106,13 +106,13 @@ var _ = Describe("Test ApisixTls", Label("apisix.apache.org", "v2", "apisixtls")
 			time.Sleep(5 * time.Second)
 
 			By("create IngressClass")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClassYamlTls, s.GetControllerName(), s.Namespace()), "")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClassYamlTls, s.Namespace(), s.GetControllerName(), s.Namespace()), "")
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 			time.Sleep(5 * time.Second)
 
 			By("create ApisixRoute for TLS testing")
 			var apisixRoute apiv2.ApisixRoute
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-tls"}, &apisixRoute, apisixRouteYamlTls)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-tls"}, &apisixRoute, fmt.Sprintf(apisixRouteYamlTls, s.Namespace()))
 		})
 
 		AfterEach(func() {
@@ -122,7 +122,7 @@ var _ = Describe("Test ApisixTls", Label("apisix.apache.org", "v2", "apisixtls")
 			Expect(err).ShouldNot(HaveOccurred(), "deleting GatewayProxy")
 
 			By("delete IngressClass")
-			err = s.DeleteResourceFromStringWithNamespace(fmt.Sprintf(ingressClassYamlTls, s.GetControllerName(), s.Namespace()), "")
+			err = s.DeleteResourceFromStringWithNamespace(fmt.Sprintf(ingressClassYamlTls, s.Namespace(), s.GetControllerName(), s.Namespace()), "")
 			Expect(err).ShouldNot(HaveOccurred(), "deleting IngressClass")
 		})
 
@@ -139,7 +139,7 @@ kind: ApisixTls
 metadata:
   name: test-tls
 spec:
-  ingressClassName: apisix-tls
+  ingressClassName: %s
   hosts:
   - api6.com
   secret:
@@ -149,7 +149,7 @@ spec:
 
 			By("apply ApisixTls")
 			var apisixTls apiv2.ApisixTls
-			tlsSpec := fmt.Sprintf(apisixTlsSpec, s.Namespace())
+			tlsSpec := fmt.Sprintf(apisixTlsSpec, s.Namespace(), s.Namespace())
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-tls"}, &apisixTls, tlsSpec)
 
 			By("verify TLS configuration in control plane")
@@ -213,7 +213,7 @@ kind: ApisixTls
 metadata:
   name: test-mtls
 spec:
-  ingressClassName: apisix-tls
+  ingressClassName: %s
   hosts:
   - api6.com
   secret:
@@ -228,7 +228,7 @@ spec:
 
 			By("apply ApisixTls with mTLS")
 			var apisixTls apiv2.ApisixTls
-			tlsSpec := fmt.Sprintf(apisixTlsSpec, s.Namespace(), s.Namespace())
+			tlsSpec := fmt.Sprintf(apisixTlsSpec, s.Namespace(), s.Namespace(), s.Namespace())
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-mtls"}, &apisixTls, tlsSpec)
 
 			By("verify mTLS configuration in control plane")
