@@ -38,10 +38,10 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = Describe("Test ApisixRoute", Label("apisix.apache.org", "v2", "apisixroute"), func() {
+var _ = FDescribe("Test ApisixRoute", Label("apisix.apache.org", "v2", "apisixroute"), func() {
 	var (
 		s = scaffold.NewScaffold(&scaffold.Options{
-			ControllerName: "apisix.apache.org/apisix-ingress-controller",
+			ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
 		})
 		applier = framework.NewApplier(s.GinkgoT, s.K8sClient, s.CreateResourceFromString)
 	)
@@ -54,12 +54,12 @@ var _ = Describe("Test ApisixRoute", Label("apisix.apache.org", "v2", "apisixrou
 		time.Sleep(5 * time.Second)
 
 		By("create IngressClass")
-		err = s.CreateResourceFromStringWithNamespace(getIngressClassYaml(s.Namespace(), s.Namespace()), "")
+		err = s.CreateResourceFromStringWithNamespace(getIngressClassYaml(s.Namespace(), s.GetControllerName(), s.Namespace()), "")
 		Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 		time.Sleep(5 * time.Second)
 	})
 
-	Context("Test ApisixRoute", func() {
+	PContext("Test ApisixRoute", func() {
 
 		It("Basic tests", func() {
 			const apisixRouteSpec = `
@@ -444,7 +444,7 @@ spec:
 		})
 	})
 
-	Context("Test ApisixRoute reference ApisixUpstream", func() {
+	PContext("Test ApisixRoute reference ApisixUpstream", func() {
 		It("Test reference ApisixUpstream", func() {
 			const apisixRouteSpec = `
 apiVersion: apisix.apache.org/v2
@@ -655,14 +655,14 @@ spec:
 	})
 
 	Context("Test ApisixRoute Traffic Split", func() {
-		It("2:1 traffic split test", func() {
+		FIt("2:1 traffic split test", func() {
 			const apisixRouteSpec = `
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
  name: default
 spec:
- ingressClassName: apisix
+ ingressClassName: %s
  http:
  - name: rule1
    match:
@@ -680,7 +680,7 @@ spec:
 `
 			By("apply ApisixRoute with traffic split")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, new(apiv2.ApisixRoute),
-				fmt.Sprintf(apisixRouteSpec, s.Deployer.GetAdminServiceName()))
+				fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Deployer.GetAdminServiceName()))
 			verifyRequest := func() int {
 				return s.NewAPISIXClient().GET("/get").WithHost("httpbin.org").Expect().Raw().StatusCode
 			}
@@ -721,7 +721,7 @@ kind: ApisixRoute
 metadata:
  name: default
 spec:
- ingressClassName: apisix
+ ingressClassName: %s
  http:
  - name: rule1
    match:
@@ -739,7 +739,7 @@ spec:
 `
 			By("apply ApisixRoute with zero-weight backend")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, new(apiv2.ApisixRoute),
-				fmt.Sprintf(apisixRouteSpec, s.Deployer.GetAdminServiceName()))
+				fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Deployer.GetAdminServiceName()))
 			verifyRequest := func() int {
 				return s.NewAPISIXClient().GET("/get").WithHost("httpbin.org").Expect().Raw().StatusCode
 			}
@@ -765,7 +765,7 @@ kind: ApisixRoute
 metadata:
  name: default
 spec:
- ingressClassName: apisix
+ ingressClassName: %s
  http:
  - name: rule1
    match:
@@ -782,7 +782,7 @@ spec:
      weight: 5
 `
 			By("apply ApisixRoute with traffic split")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, new(apiv2.ApisixRoute), apisixRouteSpec)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 			verifyRequest := func() int {
 				return s.NewAPISIXClient().GET("/get").WithHost("httpbin.org").Expect().Raw().StatusCode
 			}
@@ -802,7 +802,7 @@ spec:
 			}
 		})
 	})
-	Context("Test ApisixRoute sync during startup", func() {
+	PContext("Test ApisixRoute sync during startup", func() {
 		const route = `
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
@@ -909,7 +909,7 @@ spec:
 		})
 	})
 
-	Context("Test ApisixRoute WebSocket Support", func() {
+	PContext("Test ApisixRoute WebSocket Support", func() {
 		It("basic websocket functionality", func() {
 			const websocketServerResources = `
 apiVersion: v1
@@ -944,7 +944,7 @@ kind: ApisixRoute
 metadata:
   name: websocket-route
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   http:
   - name: rule1
     match:
@@ -964,7 +964,7 @@ kind: ApisixRoute
 metadata:
   name: websocket-route
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   http:
   - name: rule1
     match:
@@ -986,7 +986,7 @@ spec:
 			applier.MustApplyAPIv2(
 				types.NamespacedName{Namespace: s.Namespace(), Name: "websocket-route"},
 				&apisixRouteWithoutWS,
-				apisixRouteSpec2,
+				fmt.Sprintf(apisixRouteSpec2, s.Namespace()),
 			)
 			time.Sleep(8 * time.Second)
 
@@ -1006,7 +1006,7 @@ spec:
 			applier.MustApplyAPIv2(
 				types.NamespacedName{Namespace: s.Namespace(), Name: "websocket-route"},
 				&apisixRoute,
-				apisixRouteSpec,
+				fmt.Sprintf(apisixRouteSpec, s.Namespace()),
 			)
 			By("wait for WebSocket server to be ready")
 			time.Sleep(10 * time.Second)

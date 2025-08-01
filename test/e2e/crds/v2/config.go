@@ -43,7 +43,7 @@ kind: IngressClass
 metadata:
   name: %s
 spec:
-  controller: "apisix.apache.org/apisix-ingress-controller"
+  controller: %s
   parameters:
     apiGroup: "apisix.apache.org"
     kind: "GatewayProxy"
@@ -56,6 +56,6 @@ func getGatewayProxyYaml(namespace, endpoint, adminKey string) string {
 	return fmt.Sprintf(gatewayProxyYaml, namespace, endpoint, adminKey)
 }
 
-func getIngressClassYaml(name, gatewayProxyNamespace string) string {
-	return fmt.Sprintf(ingressClassYaml, name, gatewayProxyNamespace)
+func getIngressClassYaml(name, controllerName, gatewayProxyNamespace string) string {
+	return fmt.Sprintf(ingressClassYaml, name, controllerName, gatewayProxyNamespace)
 }

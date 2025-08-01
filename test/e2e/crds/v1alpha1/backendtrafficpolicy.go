@@ -19,15 +19,22 @@ package v1alpha1
 
 import (
 	"fmt"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = Describe("Test BackendTrafficPolicy base on HTTPRoute", Label("apisix.apache.org", "v1alpha1", "backendtrafficpolicy"), func() {
-	s := scaffold.NewDefaultScaffold()
+	var (
+		s = scaffold.NewScaffold(&scaffold.Options{
+			ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
+		})
+		err error
+	)
 
 	var defaultGatewayProxy = `
 apiVersion: apisix.apache.org/v1alpha1
@@ -59,7 +66,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: apisix
+  name: %s
 spec:
   gatewayClassName: %s
   listeners:
@@ -80,7 +87,7 @@ metadata:
   name: httpbin
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - "httpbin.org"
   rules:
@@ -125,7 +132,25 @@ spec:
 `
 
 		BeforeEach(func() {
-			s.ApplyDefaultGatewayResource(defaultGatewayProxy, defaultGatewayClass, defaultGateway, defaultHTTPRoute)
+			gatewayName := s.Namespace()
+			By("create GatewayProxy")
+			err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayProxy, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
+			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
+			time.Sleep(time.Second)
+
+			By("create GatewayClass")
+			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
+			err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()))
+			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
+			time.Sleep(time.Second)
+
+			By("create Gateway")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName), s.Namespace())
+			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
+			time.Sleep(time.Second)
+
+			By("create HTTPRoute")
+			s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, fmt.Sprintf(defaultHTTPRoute, gatewayName))
 		})
 		It("should rewrite upstream host", func() {
 			s.ResourceApplied("BackendTrafficPolicy", "httpbin", createUpstreamHost, 1)

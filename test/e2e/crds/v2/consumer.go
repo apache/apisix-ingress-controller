@@ -36,7 +36,7 @@ type Headers map[string]string
 var _ = Describe("Test ApisixConsumer", Label("apisix.apache.org", "v2", "apisixconsumer"), func() {
 	var (
 		s = scaffold.NewScaffold(&scaffold.Options{
-			ControllerName: "apisix.apache.org/apisix-ingress-controller",
+			ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
 		})
 		applier = framework.NewApplier(s.GinkgoT, s.K8sClient, s.CreateResourceFromString)
 	)
@@ -49,7 +49,7 @@ var _ = Describe("Test ApisixConsumer", Label("apisix.apache.org", "v2", "apisix
 		time.Sleep(5 * time.Second)
 
 		By("create IngressClass")
-		err = s.CreateResourceFromStringWithNamespace(getIngressClassYaml(s.Namespace(), s.Namespace()), "")
+		err = s.CreateResourceFromStringWithNamespace(getIngressClassYaml(s.Namespace(), s.GetControllerName(), s.Namespace()), "")
 		Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 		time.Sleep(5 * time.Second)
 	})
