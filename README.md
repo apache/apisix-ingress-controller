@@ -28,10 +28,9 @@ resources.
 
 ## Document
 
-* [Quickstart](./docs/quickstart.md)
-* [Concepts](./docs/concepts.md)
-* [Configuration](./docs/configuration.md)
-* [Gateway API](./docs/gateway-api.md)
+* [Getting Started](./docs/en/latest/getting-started)
+* [Concepts](./docs/en/latest/concepts)
+* [Configuration](./docs/en/latest/reference)
 
 ## Getting Started
 
