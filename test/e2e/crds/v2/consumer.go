@@ -157,14 +157,16 @@ spec:
 
 		It("SecretRef tests", func() {
 			By("apply ApisixRoute")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, fmt.Sprintf(defaultApisixRoute, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{},
+				fmt.Sprintf(defaultApisixRoute, s.Namespace()))
 
 			By("apply Secret")
 			err := s.CreateResourceFromString(secret)
 			Expect(err).ShouldNot(HaveOccurred(), "creating Secret for ApisixConsumer")
 
 			By("apply ApisixConsumer")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-consumer"}, &apiv2.ApisixConsumer{}, fmt.Sprintf(keyAuthWiwhSecret, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-consumer"}, &apiv2.ApisixConsumer{},
+				fmt.Sprintf(keyAuthWiwhSecret, s.Namespace()))
 
 			By("verify ApisixRoute with ApisixConsumer")
 			Eventually(request).WithArguments("/get", Headers{
@@ -331,7 +333,8 @@ spec:
 
 		It("SecretRef tests", func() {
 			By("apply ApisixRoute")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, fmt.Sprintf(defaultApisixRoute, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{},
+				fmt.Sprintf(defaultApisixRoute, s.Namespace()))
 
 			By("apply Secret")
 			err := s.CreateResourceFromString(secret)

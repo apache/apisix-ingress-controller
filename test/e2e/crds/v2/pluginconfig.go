@@ -90,11 +90,13 @@ spec:
 
 			By("apply ApisixPluginConfig")
 			var apisixPluginConfig apiv2.ApisixPluginConfig
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config"}, &apisixPluginConfig, fmt.Sprintf(apisixPluginConfigSpec, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config"},
+				&apisixPluginConfig, fmt.Sprintf(apisixPluginConfigSpec, s.Namespace()))
 
 			By("apply ApisixRoute that references ApisixPluginConfig")
 			var apisixRoute apiv2.ApisixRoute
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route"}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route"},
+				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify ApisixRoute works with plugin config")
 			request := func() int {
@@ -170,11 +172,13 @@ spec:
 
 			By("apply initial ApisixPluginConfig")
 			var apisixPluginConfig apiv2.ApisixPluginConfig
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-update"}, &apisixPluginConfig, fmt.Sprintf(apisixPluginConfigSpecV1, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-update"},
+				&apisixPluginConfig, fmt.Sprintf(apisixPluginConfigSpecV1, s.Namespace()))
 
 			By("apply ApisixRoute that references ApisixPluginConfig")
 			var apisixRoute apiv2.ApisixRoute
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-update"}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-update"},
+				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify initial plugin config works")
 			request := func() int {
@@ -187,7 +191,8 @@ spec:
 			resp.Header("X-Updated").IsEmpty()
 
 			By("update ApisixPluginConfig")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-update"}, &apisixPluginConfig, fmt.Sprintf(apisixPluginConfigSpecV2, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-update"},
+				&apisixPluginConfig, fmt.Sprintf(apisixPluginConfigSpecV2, s.Namespace()))
 			time.Sleep(5 * time.Second)
 
 			By("verify updated plugin config works")
@@ -243,11 +248,13 @@ spec:
 
 			By("apply ApisixPluginConfig with disabled plugin")
 			var apisixPluginConfig apiv2.ApisixPluginConfig
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-disabled"}, &apisixPluginConfig, fmt.Sprintf(apisixPluginConfigSpec, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-disabled"},
+				&apisixPluginConfig, fmt.Sprintf(apisixPluginConfigSpec, s.Namespace()))
 
 			By("apply ApisixRoute that references ApisixPluginConfig")
 			var apisixRoute apiv2.ApisixRoute
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-disabled"}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-disabled"},
+				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify ApisixRoute works")
 			request := func() int {
@@ -313,11 +320,13 @@ spec:
 
 			By("apply ApisixPluginConfig")
 			var apisixPluginConfig apiv2.ApisixPluginConfig
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-override"}, &apisixPluginConfig, fmt.Sprintf(apisixPluginConfigSpec, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-override"},
+				&apisixPluginConfig, fmt.Sprintf(apisixPluginConfigSpec, s.Namespace()))
 
 			By("apply ApisixRoute with overriding plugins")
 			var apisixRoute apiv2.ApisixRoute
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-override"}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-override"},
+				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify ApisixRoute works")
 			request := func() int {
@@ -382,7 +391,8 @@ spec:
 
 			By("apply ApisixRoute in test namespace that references ApisixPluginConfig in default namespace")
 			var apisixRoute apiv2.ApisixRoute
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-cross-ns"}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-cross-ns"},
+				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify cross-namespace reference works")
 			request := func() int {
@@ -454,11 +464,13 @@ spec:
 
 			By("apply ApisixPluginConfig with SecretRef")
 			var apisixPluginConfig apiv2.ApisixPluginConfig
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-secret"}, &apisixPluginConfig, fmt.Sprintf(apisixPluginConfigSpec, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-secret"},
+				&apisixPluginConfig, fmt.Sprintf(apisixPluginConfigSpec, s.Namespace()))
 
 			By("apply ApisixRoute that references ApisixPluginConfig")
 			var apisixRoute apiv2.ApisixRoute
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-secret"}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-secret"},
+				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify ApisixRoute works with SecretRef")
 			request := func() int {

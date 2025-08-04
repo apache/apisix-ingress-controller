@@ -86,13 +86,15 @@ spec:
 
 			By("apply ApisixRoute")
 			var apisixRoute apiv2.ApisixRoute
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace(), "/get"))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace(), "/get"))
 
 			By("verify ApisixRoute works")
 			Eventually(request).WithArguments("/get").WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 
 			By("update ApisixRoute")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace(), "/headers"))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace(), "/headers"))
 			Eventually(request).WithArguments("/get").WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
 			s.NewAPISIXClient().GET("/headers").WithHost("httpbin").Expect().Status(http.StatusOK)
 
@@ -161,7 +163,8 @@ spec:
 `
 			By("apply ApisixRoute without plugins")
 			var apisixRoute apiv2.ApisixRoute
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apisixRoute, fmt.Sprintf(apisixRouteSpecPart0, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				&apisixRoute, fmt.Sprintf(apisixRouteSpecPart0, s.Namespace()))
 
 			By("verify ApisixRoute works")
 			request := func() int {
@@ -170,7 +173,8 @@ spec:
 			Eventually(request).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 
 			By("apply ApisixRoute with plugins")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apisixRoute, fmt.Sprintf(apisixRouteSpecPart0, s.Namespace())+apisixRouteSpecPart1)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				&apisixRoute, fmt.Sprintf(apisixRouteSpecPart0, s.Namespace())+apisixRouteSpecPart1)
 			time.Sleep(5 * time.Second)
 
 			By("verify plugin works")
@@ -179,7 +183,8 @@ spec:
 			resp.Header("X-Global-Test").IsEqual("enabled")
 
 			By("remove plugin")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apisixRoute, fmt.Sprintf(apisixRouteSpecPart0, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				&apisixRoute, fmt.Sprintf(apisixRouteSpecPart0, s.Namespace()))
 			time.Sleep(5 * time.Second)
 
 			By("verify no plugin works")
@@ -213,7 +218,8 @@ spec:
 `
 			By("apply ApisixRoute")
 			var apisixRoute apiv2.ApisixRoute
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify ApisixRoute works")
 			request := func() int {
@@ -260,7 +266,8 @@ spec:
 `
 			By("apply ApisixRoute")
 			var apisixRoute apiv2.ApisixRoute
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify ApisixRoute works")
 			request := func() int {
@@ -297,7 +304,8 @@ spec:
 
 			By("apply ApisixRoute")
 			var apisixRoute apiv2.ApisixRoute
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace(), "/get"))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace(), "/get"))
 
 			Eventually(request).WithArguments("/get").WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusServiceUnavailable))
 		})
@@ -329,7 +337,8 @@ spec:
 `
 			By("apply ApisixRoute")
 			var apisixRoute apiv2.ApisixRoute
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify ApisixRoute works")
 			request := func() int {
@@ -393,7 +402,8 @@ spec:
 			}
 			By("apply ApisixRoute")
 			var apisixRoute apiv2.ApisixRoute
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 			Eventually(request).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 
 			// no pod matches the subset label "unknown-key: unknown-value" so there will be no node in the upstream,
@@ -431,7 +441,8 @@ spec:
 			for _, id := range []string{"11111", "1111", "111", "11", "1"} {
 				name := fmt.Sprintf("route-%s", id)
 				host := fmt.Sprintf("httpbin-%s", id)
-				applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: name}, &apisixRoute, fmt.Sprintf(apisixRouteSpec, name, s.Namespace(), host))
+				applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: name},
+					&apisixRoute, fmt.Sprintf(apisixRouteSpec, name, s.Namespace(), host))
 			}
 
 			By("verify ApisixRoute works")
@@ -495,9 +506,11 @@ spec:
 			By("create Service, ApisixUpstream and ApisixRoute")
 			err := s.CreateResourceFromString(serviceSpec)
 			Expect(err).ShouldNot(HaveOccurred(), "apply service")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default-upstream"}, new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec0, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default-upstream"},
+				new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec0, s.Namespace()))
 
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteSpec, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify that the ApisixUpstream reference a Service which is not ExternalName should not request OK")
 			request := func(path string) int {
@@ -506,7 +519,8 @@ spec:
 			Eventually(request).WithArguments("/get").WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusServiceUnavailable))
 
 			By("verify that ApisixUpstream reference a Service which is ExternalName should request OK")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default-upstream"}, new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec1, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default-upstream"},
+				new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec1, s.Namespace()))
 			Eventually(request).WithArguments("/get").WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 		})
 
@@ -552,10 +566,12 @@ spec:
             "X-Upstream-Host": "$upstream_addr"
 `
 			By("apply ApisixUpstream")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default-upstream"}, new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default-upstream"},
+				new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec, s.Namespace()))
 
 			By("apply ApisixRoute")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteSpec, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify ApisixRoute works")
 			request := func(path string) int {
@@ -637,7 +653,8 @@ spec:
 			}
 
 			By("apply apisixroute")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteSpec, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify ApisixRoute works")
 			// expect upstream host is "httpbin"
@@ -645,7 +662,8 @@ spec:
 			Expect(err).ShouldNot(HaveOccurred(), "verify ApisixRoute works")
 
 			By("apply apisixupstream")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-service-e2e-test"}, new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-service-e2e-test"},
+				new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec, s.Namespace()))
 
 			By("verify backend implicit reference to apisixupstream works")
 			// expect upstream host is "hello.httpbin.org" which is rewritten by the apisixupstream
@@ -679,7 +697,8 @@ spec:
      weight: 5
 `
 			By("apply ApisixRoute with traffic split")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, new(apiv2.ApisixRoute),
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				new(apiv2.ApisixRoute),
 				fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Deployer.GetAdminServiceName()))
 			verifyRequest := func() int {
 				return s.NewAPISIXClient().GET("/get").WithHost("httpbin.org").Expect().Raw().StatusCode
@@ -738,7 +757,8 @@ spec:
      weight: 0
 `
 			By("apply ApisixRoute with zero-weight backend")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, new(apiv2.ApisixRoute),
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				new(apiv2.ApisixRoute),
 				fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Deployer.GetAdminServiceName()))
 			verifyRequest := func() int {
 				return s.NewAPISIXClient().GET("/get").WithHost("httpbin.org").Expect().Raw().StatusCode
@@ -783,7 +803,8 @@ spec:
      weight: 5
 `
 			By("apply ApisixRoute with traffic split")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteSpec, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 			verifyRequest := func() int {
 				return s.NewAPISIXClient().GET("/get").WithHost("httpbin.org").Expect().Raw().StatusCode
 			}
@@ -862,7 +883,8 @@ spec:
 			By("apply ApisixRoute")
 			Expect(s.CreateResourceFromString(fmt.Sprintf(route2, s.Namespace()))).ShouldNot(HaveOccurred(), "apply ApisixRoute with nonexistent ingressClassName")
 			Expect(s.CreateResourceFromString(route3)).ShouldNot(HaveOccurred(), "apply ApisixRoute without ingressClassName")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, fmt.Sprintf(route, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				&apiv2.ApisixRoute{}, fmt.Sprintf(route, s.Namespace()))
 
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",

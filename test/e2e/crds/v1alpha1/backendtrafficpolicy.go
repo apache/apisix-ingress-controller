@@ -281,7 +281,7 @@ spec:
 		Expect(err).NotTo(HaveOccurred(), "creating Ingress with GatewayProxy IngressClass")
 	}
 
-	//Tests concerning the default ingress class need to be run serially
+	// Tests concerning the default ingress class need to be run serially
 	Context("Rewrite Upstream Host", Serial, func() {
 		var createUpstreamHost = `
 apiVersion: apisix.apache.org/v1alpha1
