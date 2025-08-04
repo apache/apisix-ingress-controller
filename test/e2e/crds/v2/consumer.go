@@ -341,7 +341,8 @@ spec:
 			Expect(err).ShouldNot(HaveOccurred(), "creating Secret for ApisixConsumer")
 
 			By("apply ApisixConsumer")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-consumer"}, &apiv2.ApisixConsumer{}, fmt.Sprintf(basicAuthWithSecret, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-consumer"},
+				&apiv2.ApisixConsumer{}, fmt.Sprintf(basicAuthWithSecret, s.Namespace()))
 
 			By("verify ApisixRoute with ApisixConsumer")
 			s.RequestAssert(&scaffold.RequestAssert{
