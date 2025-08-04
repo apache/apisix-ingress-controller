@@ -34,7 +34,7 @@ var _ = Describe("Check if controller cache gets synced with correct resources",
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  name: apisix-proxy-config
+  name: %s
 spec:
   provider:
     type: ControlPlane
@@ -73,7 +73,7 @@ spec:
     parametersRef:
       group: apisix.apache.org
       kind: GatewayProxy
-      name: apisix-proxy-config
+      name: %s
 `
 
 	var ResourceApplied = func(s *scaffold.Scaffold, resourType, resourceName, ns, resourceRaw string, observedGeneration int) {
@@ -105,7 +105,8 @@ metadata:
 		By(fmt.Sprintf("create GatewayClass for controller %s", s.GetControllerName()))
 
 		By("create GatewayProxy")
-		gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+		gatewayProxyName := s.Namespace()
+		gatewayProxy := fmt.Sprintf(gatewayProxyYaml, gatewayProxyName, s.Deployer.GetAdminEndpoint(), s.AdminKey())
 		err = s.CreateResourceFromStringWithNamespace(gatewayProxy, gatewayName)
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 		time.Sleep(5 * time.Second)
@@ -122,7 +123,7 @@ metadata:
 		Expect(gcyaml).To(ContainSubstring("message: the gatewayclass has been accepted by the apisix-ingress-controller"), "checking GatewayClass condition message")
 
 		By("create Gateway")
-		err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defautlGateway, gatewayName, gatewayName, gatewayClassName), gatewayName)
+		err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defautlGateway, gatewayProxyName, gatewayName, gatewayName, gatewayClassName), gatewayName)
 		Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 		time.Sleep(10 * time.Second)
 

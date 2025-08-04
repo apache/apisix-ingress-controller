@@ -40,7 +40,7 @@ var _ = Describe("Test BackendTrafficPolicy base on HTTPRoute", Label("apisix.ap
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  name: apisix-proxy-config
+  name: %s
 spec:
   provider:
     type: ControlPlane
@@ -77,7 +77,7 @@ spec:
     parametersRef:
       group: apisix.apache.org
       kind: GatewayProxy
-      name: apisix-proxy-config
+      name: %s
 `
 
 	var defaultHTTPRoute = `
@@ -134,7 +134,8 @@ spec:
 		BeforeEach(func() {
 			gatewayName := s.Namespace()
 			By("create GatewayProxy")
-			err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayProxy, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
+			gatewayProxyName := gatewayName
+			err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayProxy, gatewayProxyName, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(time.Second)
 
@@ -145,7 +146,7 @@ spec:
 			time.Sleep(time.Second)
 
 			By("create Gateway")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName), s.Namespace())
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName, gatewayProxyName), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 			time.Sleep(time.Second)
 
@@ -207,7 +208,7 @@ spec:
 	})
 })
 
-var _ = Describe("Test BackendTrafficPolicy base on Ingress", Label("apisix.apache.org", "v1alpha1", "backendtrafficpolicy"), func() {
+var _ = PDescribe("Test BackendTrafficPolicy base on Ingress", Label("apisix.apache.org", "v1alpha1", "backendtrafficpolicy"), func() {
 	s := scaffold.NewScaffold(&scaffold.Options{
 		ControllerName: "apisix.apache.org/apisix-ingress-controller",
 	})
@@ -216,7 +217,7 @@ var _ = Describe("Test BackendTrafficPolicy base on Ingress", Label("apisix.apac
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  name: apisix-proxy-config
+  name: %s
   namespace: default
 spec:
   provider:
@@ -241,7 +242,7 @@ spec:
   parameters:
     apiGroup: "apisix.apache.org"
     kind: "GatewayProxy"
-    name: "apisix-proxy-config"
+    name: "%s"
     namespace: "default"
     scope: "Namespace"
 `

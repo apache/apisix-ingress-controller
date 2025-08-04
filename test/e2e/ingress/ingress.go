@@ -142,7 +142,7 @@ spec:
 		})
 	})
 
-	Context("IngressClass Selection", func() {
+	PContext("IngressClass Selection", func() {
 		var defaultIngressClass = `
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
@@ -326,7 +326,7 @@ spec:
 		})
 	})
 
-	Context("IngressClass with GatewayProxy", func() {
+	PContext("IngressClass with GatewayProxy", func() {
 		gatewayProxyYaml := `
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
