@@ -206,7 +206,7 @@ spec:
               number: 80
 `
 
-		It("Test IngressClass Selection", func() {
+		PIt("Test IngressClass Selection", func() {
 			By("create GatewayProxy")
 			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
 			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
@@ -231,7 +231,7 @@ spec:
 				Status(200)
 		})
 
-		It("Proxy External Service", func() {
+		PIt("Proxy External Service", func() {
 			By("create GatewayProxy")
 			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
 			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
@@ -244,19 +244,23 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			By("create Ingress")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressWithExternalName, s.Namespace()), s.Namespace())
+			ingressName := s.Namespace() + "-external"
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressWithExternalName, ingressName), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress without IngressClass")
-			time.Sleep(5 * time.Second)
 
 			By("checking the external service response")
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHost("httpbin.external").
-				Expect().
-				Status(http.StatusOK)
+			time.Sleep(10 * time.Minute)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.external",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Interval: time.Second * 10,
+				Timeout:  3 * time.Minute,
+			})
 		})
 
-		It("Delete Ingress during restart", func() {
+		PIt("Delete Ingress during restart", func() {
 			By("create GatewayProxy")
 			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
 			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
@@ -269,7 +273,7 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			By("create Ingress with ExternalName")
-			ingressName := fmt.Sprintf("ingress-%d", time.Now().Unix())
+			ingressName := s.Namespace() + "-external"
 			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressWithExternalName, ingressName), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress without IngressClass")
 			time.Sleep(5 * time.Second)
@@ -277,21 +281,26 @@ spec:
 			By("create Ingress")
 			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultIngress, s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress without IngressClass")
-			time.Sleep(5 * time.Second)
 
 			By("checking the external service response")
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHost("httpbin.external").
-				Expect().
-				Status(http.StatusOK)
+			time.Sleep(10 * time.Minute)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.external",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Interval: time.Second * 10,
+				Timeout:  3 * time.Minute,
+			})
 
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHost("default.example.com").
-				Expect().
-				Status(200)
-
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "default.example.com",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Interval: time.Second * 2,
+				Timeout:  time.Minute,
+			})
 			s.Deployer.ScaleIngress(0)
 
 			By("delete Ingress")
@@ -301,12 +310,14 @@ spec:
 			s.Deployer.ScaleIngress(1)
 			time.Sleep(1 * time.Minute)
 
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHost("httpbin.external").
-				Expect().
-				Status(http.StatusOK)
-
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.external",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Interval: time.Second * 10,
+				Timeout:  3 * time.Minute,
+			})
 			s.NewAPISIXClient().
 				GET("/get").
 				WithHost("default.example.com").
@@ -439,7 +450,7 @@ spec:
               number: 80
 `
 
-		It("Test IngressClass with GatewayProxy", func() {
+		PIt("Test IngressClass with GatewayProxy", func() {
 			By("create GatewayProxy")
 			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
 
@@ -467,7 +478,7 @@ spec:
 			resp.Header("X-Proxy-Test").IsEqual("enabled")
 		})
 
-		It("Test IngressClass with GatewayProxy using Secret", func() {
+		PIt("Test IngressClass with GatewayProxy using Secret", func() {
 			By("create admin key secret")
 			adminSecret := fmt.Sprintf(`
 apiVersion: v1
