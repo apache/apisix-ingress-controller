@@ -191,7 +191,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: apisix-ingress-external
+  name: %s
 spec:
   rules:
   - host: httpbin.external
@@ -244,7 +244,7 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			By("create Ingress")
-			err = s.CreateResourceFromString(ingressWithExternalName)
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressWithExternalName, s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress without IngressClass")
 			time.Sleep(5 * time.Second)
 
@@ -269,12 +269,13 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			By("create Ingress with ExternalName")
-			err = s.CreateResourceFromString(ingressWithExternalName)
+			ingressName := fmt.Sprintf("ingress-%d", time.Now().Unix())
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressWithExternalName, ingressName), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress without IngressClass")
 			time.Sleep(5 * time.Second)
 
 			By("create Ingress")
-			err = s.CreateResourceFromString(fmt.Sprintf(defaultIngress, s.Namespace()))
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultIngress, s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress without IngressClass")
 			time.Sleep(5 * time.Second)
 
@@ -294,7 +295,7 @@ spec:
 			s.Deployer.ScaleIngress(0)
 
 			By("delete Ingress")
-			err = s.DeleteResourceFromString(fmt.Sprintf(defaultIngress, s.Namespace()))
+			err = s.DeleteResourceFromStringWithNamespace(fmt.Sprintf(defaultIngress, s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "deleting Ingress without IngressClass")
 
 			s.Deployer.ScaleIngress(1)
