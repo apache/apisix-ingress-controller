@@ -40,7 +40,7 @@ var _ = Describe("Test Consumer", Label("apisix.apache.org", "v1alpha1", "consum
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  name: apisix-proxy-config
+  name: %s
 spec:
   provider:
     type: ControlPlane
@@ -77,7 +77,7 @@ spec:
     parametersRef:
       group: apisix.apache.org
       kind: GatewayProxy
-      name: apisix-proxy-config
+      name: %s
 `
 
 	var defaultHTTPRoute = `
@@ -161,7 +161,8 @@ spec:
 		BeforeEach(func() {
 			gatewayName := s.Namespace()
 			By("create GatewayProxy")
-			err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayProxy, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
+			gatewayProxyName := s.Namespace()
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayProxy, gatewayProxyName, s.Deployer.GetAdminEndpoint(), s.AdminKey()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(time.Second)
 
@@ -172,7 +173,7 @@ spec:
 			time.Sleep(time.Second)
 
 			By("create Gateway")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName), s.Namespace())
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName, gatewayProxyName), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 			time.Sleep(time.Second)
 
@@ -275,7 +276,8 @@ spec:
 		BeforeEach(func() {
 			gatewayName := s.Namespace()
 			By("create GatewayProxy")
-			err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayProxy, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
+			gatewayProxyName := s.Namespace()
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayProxy, gatewayProxyName, s.Deployer.GetAdminEndpoint(), s.AdminKey()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(time.Second)
 
@@ -286,7 +288,7 @@ spec:
 			time.Sleep(time.Second)
 
 			By("create Gateway")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName), s.Namespace())
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName, gatewayProxyName), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 			time.Sleep(time.Second)
 
@@ -442,7 +444,8 @@ spec:
 		BeforeEach(func() {
 			gatewayName := s.Namespace()
 			By("create GatewayProxy")
-			err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayProxy, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
+			gatewayProxyName := s.Namespace()
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayProxy, gatewayProxyName, s.Deployer.GetAdminEndpoint(), s.AdminKey()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(time.Second)
 
@@ -453,7 +456,7 @@ spec:
 			time.Sleep(time.Second)
 
 			By("create Gateway")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName), s.Namespace())
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName, gatewayProxyName), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 			time.Sleep(time.Second)
 
@@ -565,7 +568,7 @@ spec:
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  name: apisix-proxy-config
+  name: %s
 spec:
   provider:
     type: ControlPlane
@@ -581,7 +584,8 @@ spec:
 		BeforeEach(func() {
 			gatewayName := s.Namespace()
 			By("create GatewayProxy")
-			err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayProxy, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
+			gatewayProxyName := s.Namespace()
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayProxy, gatewayProxyName, s.Deployer.GetAdminEndpoint(), s.AdminKey()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(time.Second)
 
@@ -592,7 +596,7 @@ spec:
 			time.Sleep(time.Second)
 
 			By("create Gateway")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName), s.Namespace())
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName, gatewayProxyName), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 			time.Sleep(time.Second)
 
@@ -640,8 +644,8 @@ spec:
 			})
 
 			By("update GatewayProxy with new admin key")
-			updatedProxy := fmt.Sprintf(updatedGatewayProxy, s.Deployer.GetAdminEndpoint(resources.DataplaneService), resources.AdminAPIKey)
-			err = s.CreateResourceFromString(updatedProxy)
+			updatedProxy := fmt.Sprintf(updatedGatewayProxy, s.Namespace(), s.Deployer.GetAdminEndpoint(resources.DataplaneService), resources.AdminAPIKey)
+			err = s.CreateResourceFromStringWithNamespace(updatedProxy, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "updating GatewayProxy")
 
 			By("verify Consumer works for additional gateway group")
@@ -692,7 +696,8 @@ spec:
 		BeforeEach(func() {
 			gatewayName := s.Namespace()
 			By("create GatewayProxy")
-			err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayProxy, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
+			gatewayProxyName := s.Namespace()
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayProxy, gatewayProxyName, s.Deployer.GetAdminEndpoint(), s.AdminKey()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(time.Second)
 
@@ -703,7 +708,7 @@ spec:
 			time.Sleep(time.Second)
 
 			By("create Gateway")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName), s.Namespace())
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName, gatewayProxyName), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 			time.Sleep(time.Second)
 
