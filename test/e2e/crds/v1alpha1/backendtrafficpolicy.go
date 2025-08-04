@@ -85,6 +85,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: httpbin
+  namespace: %s
 spec:
   parentRefs:
   - name: %s
@@ -151,7 +152,7 @@ spec:
 			time.Sleep(time.Second)
 
 			By("create HTTPRoute")
-			s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, fmt.Sprintf(defaultHTTPRoute, gatewayName))
+			s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, fmt.Sprintf(defaultHTTPRoute, gatewayName, s.Namespace()))
 		})
 		It("should rewrite upstream host", func() {
 			s.ResourceApplied("BackendTrafficPolicy", "httpbin", createUpstreamHost, 1)
@@ -208,9 +209,9 @@ spec:
 	})
 })
 
-var _ = PDescribe("Test BackendTrafficPolicy base on Ingress", Label("apisix.apache.org", "v1alpha1", "backendtrafficpolicy"), func() {
+var _ = Describe("Test BackendTrafficPolicy base on Ingress", Label("apisix.apache.org", "v1alpha1", "backendtrafficpolicy"), func() {
 	s := scaffold.NewScaffold(&scaffold.Options{
-		ControllerName: "apisix.apache.org/apisix-ingress-controller",
+		ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
 	})
 
 	var defaultGatewayProxy = `
@@ -218,7 +219,6 @@ apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
   name: %s
-  namespace: default
 spec:
   provider:
     type: ControlPlane
@@ -238,12 +238,12 @@ metadata:
   annotations:
     ingressclass.kubernetes.io/is-default-class: "true"
 spec:
-  controller: "apisix.apache.org/apisix-ingress-controller"
+  controller: "%s"
   parameters:
     apiGroup: "apisix.apache.org"
     kind: "GatewayProxy"
     name: "%s"
-    namespace: "default"
+    namespace: "%s"
     scope: "Namespace"
 `
 
@@ -267,25 +267,28 @@ spec:
 `
 	var beforeEach = func() {
 		By("create GatewayProxy")
-		gatewayProxy := fmt.Sprintf(defaultGatewayProxy, s.Deployer.GetAdminEndpoint(), s.AdminKey())
-		err := s.CreateResourceFromStringWithNamespace(gatewayProxy, "default")
+		gatewayProxyName := s.Namespace()
+		gatewayProxy := fmt.Sprintf(defaultGatewayProxy, gatewayProxyName, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+		err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 
 		By("create IngressClass with GatewayProxy reference")
-		err = s.CreateResourceFromStringWithNamespace(defaultIngressClass, "")
+		err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultIngressClass, s.GetControllerName(), gatewayProxyName, s.Namespace()), "")
 		Expect(err).NotTo(HaveOccurred(), "creating IngressClass with GatewayProxy")
 
 		By("create Ingress with GatewayProxy IngressClass")
-		err = s.CreateResourceFromString(defaultIngress)
+		err = s.CreateResourceFromStringWithNamespace(defaultIngress, s.Namespace())
 		Expect(err).NotTo(HaveOccurred(), "creating Ingress with GatewayProxy IngressClass")
 	}
 
-	Context("Rewrite Upstream Host", func() {
+	//Tests concerning the default ingress class need to be run serially
+	Context("Rewrite Upstream Host", Serial, func() {
 		var createUpstreamHost = `
 apiVersion: apisix.apache.org/v1alpha1
 kind: BackendTrafficPolicy
 metadata:
   name: httpbin
+  namespace: %s
 spec:
   targetRefs:
   - name: httpbin-service-e2e-test
@@ -300,6 +303,7 @@ apiVersion: apisix.apache.org/v1alpha1
 kind: BackendTrafficPolicy
 metadata:
   name: httpbin
+  namespace: %s
 spec:
   targetRefs:
   - name: httpbin-service-e2e-test
@@ -319,19 +323,20 @@ spec:
 					"Host": "httpbin.org",
 				},
 			}
-			s.ResourceApplied("BackendTrafficPolicy", "httpbin", createUpstreamHost, 1)
+
+			s.ResourceApplied("BackendTrafficPolicy", "httpbin", fmt.Sprintf(createUpstreamHost, s.Namespace()), 1)
 			s.RequestAssert(reqAssert.SetChecks(
 				scaffold.WithExpectedStatus(200),
 				scaffold.WithExpectedBodyContains("httpbin.example.com"),
 			))
 
-			s.ResourceApplied("BackendTrafficPolicy", "httpbin", updateUpstreamHost, 2)
+			s.ResourceApplied("BackendTrafficPolicy", "httpbin", fmt.Sprintf(updateUpstreamHost, s.Namespace()), 2)
 			s.RequestAssert(reqAssert.SetChecks(
 				scaffold.WithExpectedStatus(200),
 				scaffold.WithExpectedBodyContains("httpbin.update.example.com"),
 			))
 
-			err := s.DeleteResourceFromString(createUpstreamHost)
+			err := s.DeleteResourceFromString(fmt.Sprintf(createUpstreamHost, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "deleting BackendTrafficPolicy")
 
 			s.RequestAssert(reqAssert.SetChecks(

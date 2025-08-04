@@ -142,7 +142,8 @@ spec:
 		})
 	})
 
-	PContext("IngressClass Selection", func() {
+	//Tests concerning the default ingress class need to be run serially
+	Context("IngressClass Selection", Serial, func() {
 		var defaultIngressClass = `
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
@@ -326,7 +327,8 @@ spec:
 		})
 	})
 
-	PContext("IngressClass with GatewayProxy", func() {
+	//Tests concerning the default ingress class need to be run serially
+	Context("IngressClass with GatewayProxy", Serial, func() {
 		gatewayProxyYaml := `
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy

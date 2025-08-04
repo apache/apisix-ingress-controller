@@ -117,7 +117,6 @@ spec:
 		By("create GatewayProxy")
 		gatewayProxy := fmt.Sprintf(gatewayProxySpec, framework.ProviderType, s.AdminKey())
 		err = s.CreateResourceFromString(gatewayProxy)
-		fmt.Println("GATEWAY PROXY IS ", gatewayProxy)
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 		time.Sleep(time.Second)
 
