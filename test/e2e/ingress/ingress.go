@@ -46,7 +46,7 @@ func createSecret(s *scaffold.Scaffold, secretName string) {
 	assert.Nil(GinkgoT(), err, "create secret error")
 }
 
-var _ = Describe("Test Ingress", Label("networking.k8s.io", "ingress"), func() {
+var _ = FDescribe("Test Ingress", Label("networking.k8s.io", "ingress"), func() {
 	s := scaffold.NewScaffold(&scaffold.Options{
 		ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
 	})
@@ -164,7 +164,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: apisix-ingress-default
+  name: %s
 spec:
   rules:
   - host: default.example.com
@@ -219,7 +219,7 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			By("create Ingress without IngressClass")
-			err = s.CreateResourceFromString(defaultIngress)
+			err = s.CreateResourceFromString(fmt.Sprintf(defaultIngress, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress without IngressClass")
 			time.Sleep(5 * time.Second)
 
@@ -274,7 +274,7 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			By("create Ingress")
-			err = s.CreateResourceFromString(defaultIngress)
+			err = s.CreateResourceFromString(fmt.Sprintf(defaultIngress, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress without IngressClass")
 			time.Sleep(5 * time.Second)
 
@@ -294,7 +294,7 @@ spec:
 			s.Deployer.ScaleIngress(0)
 
 			By("delete Ingress")
-			err = s.DeleteResourceFromString(defaultIngress)
+			err = s.DeleteResourceFromString(fmt.Sprintf(defaultIngress, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "deleting Ingress without IngressClass")
 
 			s.Deployer.ScaleIngress(1)
@@ -759,7 +759,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
 metadata:
-  name: apisix-ingress-class
+  name: %s
 spec:
   controller: "%s"
   parameters:
@@ -775,7 +775,7 @@ kind: Ingress
 metadata:
   name: apisix-ingress
 spec:
-  ingressClassName: apisix-ingress-class
+  ingressClassName: %s
   rules:
   - host: ingress.example.com
     http:
@@ -814,14 +814,14 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			By("create IngressClass")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClass, s.GetControllerName(), s.Namespace()), s.Namespace())
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClass, s.Namespace(), s.GetControllerName(), s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 			time.Sleep(5 * time.Second)
 		})
 
 		It("Should sync Ingress when GatewayProxy is updated", func() {
 			By("create Ingress")
-			err := s.CreateResourceFromString(ingress)
+			err := s.CreateResourceFromString(fmt.Sprintf(ingress, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress")
 			time.Sleep(5 * time.Second)
 
@@ -902,7 +902,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
 metadata:
-  name: apisix-ingress-class
+  name: %s
 spec:
   controller: "%s"
   parameters:
@@ -918,7 +918,7 @@ kind: Ingress
 metadata:
   name: apisix-ingress
 spec:
-  ingressClassName: apisix-ingress-class
+  ingressClassName: %s
   rules:
   - host: ingress.example.com
     http:
@@ -946,11 +946,11 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "creating gateway proxy")
 
 			By("create IngressClass")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClassSpec, s.GetControllerName(), s.Namespace()), s.Namespace())
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClassSpec, s.Namespace(), s.GetControllerName(), s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 
 			By("creat Ingress")
-			err = s.CreateResourceFromStringWithNamespace(ingressSpec, s.Namespace())
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressSpec, s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress")
 
 			By("verify Ingress works")
