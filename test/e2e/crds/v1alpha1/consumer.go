@@ -120,6 +120,29 @@ spec:
       port: 80
 `
 
+	BeforeEach(func() {
+		gatewayName := s.Namespace()
+		By("create GatewayProxy")
+		gatewayProxyName := s.Namespace()
+		err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayProxy, gatewayProxyName, s.Deployer.GetAdminEndpoint(), s.AdminKey()), s.Namespace())
+		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
+		time.Sleep(time.Second)
+
+		By("create GatewayClass")
+		gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
+		err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()))
+		Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
+		time.Sleep(time.Second)
+
+		By("create Gateway")
+		err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName, gatewayProxyName), s.Namespace())
+		Expect(err).NotTo(HaveOccurred(), "creating Gateway")
+		time.Sleep(time.Second)
+
+		By("create HTTPRoute")
+		s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, fmt.Sprintf(defaultHTTPRoute, gatewayName))
+	})
+
 	Context("Consumer plugins", func() {
 		var limitCountConsumer = `
 apiVersion: apisix.apache.org/v1alpha1
@@ -157,29 +180,6 @@ spec:
       config:
         key: sample-key2
 `
-
-		BeforeEach(func() {
-			gatewayName := s.Namespace()
-			By("create GatewayProxy")
-			gatewayProxyName := s.Namespace()
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayProxy, gatewayProxyName, s.Deployer.GetAdminEndpoint(), s.AdminKey()), s.Namespace())
-			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-			time.Sleep(time.Second)
-
-			By("create GatewayClass")
-			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
-			err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()))
-			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
-			time.Sleep(time.Second)
-
-			By("create Gateway")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName, gatewayProxyName), s.Namespace())
-			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
-			time.Sleep(time.Second)
-
-			By("create HTTPRoute")
-			s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, fmt.Sprintf(defaultHTTPRoute, gatewayName))
-		})
 
 		It("limit-count plugin", func() {
 			s.ResourceApplied("Consumer", "consumer-sample", fmt.Sprintf(limitCountConsumer, s.Namespace()), 1)
@@ -280,29 +280,6 @@ spec:
       config:
         key: consumer-key
 `
-
-		BeforeEach(func() {
-			gatewayName := s.Namespace()
-			By("create GatewayProxy")
-			gatewayProxyName := s.Namespace()
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayProxy, gatewayProxyName, s.Deployer.GetAdminEndpoint(), s.AdminKey()), s.Namespace())
-			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-			time.Sleep(time.Second)
-
-			By("create GatewayClass")
-			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
-			err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()))
-			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
-			time.Sleep(time.Second)
-
-			By("create Gateway")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName, gatewayProxyName), s.Namespace())
-			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
-			time.Sleep(time.Second)
-
-			By("create HTTPRoute")
-			s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, fmt.Sprintf(defaultHTTPRoute, gatewayName))
-		})
 
 		It("Create/Update/Delete", func() {
 			s.ResourceApplied("Consumer", "consumer-sample", fmt.Sprintf(defaultCredential, s.Namespace()), 1)
@@ -464,29 +441,6 @@ spec:
       config:
         key: sample-key2
 `
-
-		BeforeEach(func() {
-			gatewayName := s.Namespace()
-			By("create GatewayProxy")
-			gatewayProxyName := s.Namespace()
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayProxy, gatewayProxyName, s.Deployer.GetAdminEndpoint(), s.AdminKey()), s.Namespace())
-			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-			time.Sleep(time.Second)
-
-			By("create GatewayClass")
-			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
-			err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()))
-			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
-			time.Sleep(time.Second)
-
-			By("create Gateway")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName, gatewayProxyName), s.Namespace())
-			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
-			time.Sleep(time.Second)
-
-			By("create HTTPRoute")
-			s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, fmt.Sprintf(defaultHTTPRoute, gatewayName))
-		})
 		It("Create/Update/Delete", func() {
 			err := s.CreateResourceFromString(keyAuthSecret)
 			Expect(err).NotTo(HaveOccurred(), "creating key-auth secret")
@@ -609,29 +563,6 @@ spec:
           value: "%s"
 `
 
-		BeforeEach(func() {
-			gatewayName := s.Namespace()
-			By("create GatewayProxy")
-			gatewayProxyName := s.Namespace()
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayProxy, gatewayProxyName, s.Deployer.GetAdminEndpoint(), s.AdminKey()), s.Namespace())
-			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-			time.Sleep(time.Second)
-
-			By("create GatewayClass")
-			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
-			err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()))
-			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
-			time.Sleep(time.Second)
-
-			By("create Gateway")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName, gatewayProxyName), s.Namespace())
-			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
-			time.Sleep(time.Second)
-
-			By("create HTTPRoute")
-			s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, fmt.Sprintf(defaultHTTPRoute, gatewayName))
-		})
-
 		It("Should sync consumer when GatewayProxy is updated", func() {
 			s.ResourceApplied("Consumer", "consumer-sample", fmt.Sprintf(defaultCredential, s.Namespace()), 1)
 
@@ -720,30 +651,6 @@ spec:
       config:
         key: sample-key2
 `
-
-		BeforeEach(func() {
-			gatewayName := s.Namespace()
-			By("create GatewayProxy")
-			gatewayProxyName := s.Namespace()
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayProxy, gatewayProxyName, s.Deployer.GetAdminEndpoint(), s.AdminKey()), s.Namespace())
-			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-			time.Sleep(time.Second)
-
-			By("create GatewayClass")
-			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
-			err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()))
-			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
-			time.Sleep(time.Second)
-
-			By("create Gateway")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName, gatewayProxyName), s.Namespace())
-			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
-			time.Sleep(time.Second)
-
-			By("create HTTPRoute")
-			s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, fmt.Sprintf(defaultHTTPRoute, gatewayName))
-		})
-
 		It("Should sync Consumer during startup", func() {
 			Expect(s.CreateResourceFromString(consumer2)).NotTo(HaveOccurred(), "creating unused consumer")
 			s.ResourceApplied("Consumer", "consumer-sample", fmt.Sprintf(consumer1, s.Namespace()), 1)

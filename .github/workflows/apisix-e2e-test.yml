@@ -60,6 +60,7 @@ jobs:
         cases_subset:
         - apisix.apache.org
         - networking.k8s.io
+        - httproute.networking.k8s.io
       fail-fast: false
     runs-on: ubuntu-latest
     steps:
