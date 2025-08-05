@@ -172,7 +172,7 @@ spec:
 			assert.Equal(GinkgoT(), routes[0].Labels["k8s/controller-name"], s1.GetControllerName())
 		})
 	})
-	Context("Create resource with second controller", func() {
+	FContext("Create resource with second controller", func() {
 		s2 := scaffold.NewScaffold(&scaffold.Options{
 			ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
 		})

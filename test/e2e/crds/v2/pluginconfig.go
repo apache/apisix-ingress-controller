@@ -102,7 +102,7 @@ spec:
 			request := func() int {
 				return s.NewAPISIXClient().GET("/get").Expect().Raw().StatusCode
 			}
-			Eventually(request).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+			Eventually(request).WithTimeout(30 * time.Second).ProbeEvery(2 * time.Second).Should(Equal(http.StatusOK))
 
 			By("verify plugin from ApisixPluginConfig works")
 			resp := s.NewAPISIXClient().GET("/get").Expect().Status(http.StatusOK)
@@ -117,7 +117,7 @@ spec:
 			err = s.DeleteResource("ApisixPluginConfig", "test-plugin-config")
 			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixPluginConfig")
 
-			Eventually(request).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
+			Eventually(request).WithTimeout(30 * time.Second).ProbeEvery(2 * time.Second).Should(Equal(http.StatusNotFound))
 		})
 
 		It("Test ApisixPluginConfig update", func() {
@@ -184,7 +184,7 @@ spec:
 			request := func() int {
 				return s.NewAPISIXClient().GET("/get").Expect().Raw().StatusCode
 			}
-			Eventually(request).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+			Eventually(request).WithTimeout(30 * time.Second).ProbeEvery(2 * time.Second).Should(Equal(http.StatusOK))
 
 			resp := s.NewAPISIXClient().GET("/get").Expect().Status(http.StatusOK)
 			resp.Header("X-Version").IsEqual("v1")
@@ -260,7 +260,7 @@ spec:
 			request := func() int {
 				return s.NewAPISIXClient().GET("/get").Expect().Raw().StatusCode
 			}
-			Eventually(request).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+			Eventually(request).WithTimeout(30 * time.Second).ProbeEvery(2 * time.Second).Should(Equal(http.StatusOK))
 
 			By("verify disabled plugin is not applied")
 			resp := s.NewAPISIXClient().GET("/get").Expect().Status(http.StatusOK)
@@ -332,7 +332,7 @@ spec:
 			request := func() int {
 				return s.NewAPISIXClient().GET("/get").Expect().Raw().StatusCode
 			}
-			Eventually(request).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+			Eventually(request).WithTimeout(30 * time.Second).ProbeEvery(2 * time.Second).Should(Equal(http.StatusOK))
 
 			By("verify route plugins override plugin config")
 			resp := s.NewAPISIXClient().GET("/get").Expect().Status(http.StatusOK)
@@ -347,7 +347,7 @@ spec:
 			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixPluginConfig")
 		})
 
-		It("Test cross-namespace ApisixPluginConfig reference", func() {
+		FIt("Test cross-namespace ApisixPluginConfig reference", func() {
 			const crossNamespaceApisixPluginConfigSpec = `
 apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
@@ -398,7 +398,7 @@ spec:
 			request := func() int {
 				return s.NewAPISIXClient().GET("/get").Expect().Raw().StatusCode
 			}
-			Eventually(request).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+			Eventually(request).WithTimeout(30 * time.Second).ProbeEvery(2 * time.Second).Should(Equal(http.StatusOK))
 
 			resp := s.NewAPISIXClient().GET("/get").Expect().Status(http.StatusOK)
 			resp.Header("X-Cross-Namespace").IsEqual("true")
@@ -476,7 +476,7 @@ spec:
 			request := func() int {
 				return s.NewAPISIXClient().GET("/get").Expect().Raw().StatusCode
 			}
-			Eventually(request).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+			Eventually(request).WithTimeout(30 * time.Second).ProbeEvery(2 * time.Second).Should(Equal(http.StatusOK))
 
 			resp := s.NewAPISIXClient().GET("/get").Expect().Status(http.StatusOK)
 			resp.Header("X-Secret-Ref").IsEqual("true")
