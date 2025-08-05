@@ -128,7 +128,7 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			By("create Ingress with TLS")
-			err = s.CreateResourceFromString(tlsIngress)
+			err = s.CreateResourceFromStringWithNamespace(tlsIngress, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress with TLS")
 			time.Sleep(5 * time.Second)
 
@@ -220,7 +220,7 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			By("create Ingress without IngressClass")
-			err = s.CreateResourceFromString(fmt.Sprintf(defaultIngress, s.Namespace()))
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultIngress, s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress without IngressClass")
 			time.Sleep(5 * time.Second)
 
@@ -467,7 +467,7 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			By("create Ingress with GatewayProxy IngressClass")
-			err = s.CreateResourceFromString(testIngress)
+			err = s.CreateResourceFromStringWithNamespace(testIngress, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress with GatewayProxy IngressClass")
 			time.Sleep(5 * time.Second)
 
@@ -507,7 +507,7 @@ stringData:
 			time.Sleep(5 * time.Second)
 
 			By("create Ingress with GatewayProxy IngressClass")
-			err = s.CreateResourceFromString(testIngressWithSecret)
+			err = s.CreateResourceFromStringWithNamespace(testIngressWithSecret, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress with GatewayProxy IngressClass")
 			time.Sleep(5 * time.Second)
 
@@ -653,7 +653,7 @@ spec:
 
 		It("HTTPRoutePolicy targetRef an Ingress", func() {
 			By("create Ingress")
-			err := s.CreateResourceFromString(fmt.Sprintf(ingressSpec, s.Namespace()))
+			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressSpec, s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress")
 
 			By("request the route should be OK")
@@ -745,7 +745,7 @@ spec:
 
 		It("HTTPRoutePolicy status changes on Ingress deleting", func() {
 			By("create Ingress")
-			err := s.CreateResourceFromString(fmt.Sprintf(ingressSpec, s.Namespace()))
+			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressSpec, s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress")
 
 			By("create HTTPRoutePolicy")
@@ -835,7 +835,7 @@ spec:
 
 		It("Should sync Ingress when GatewayProxy is updated", func() {
 			By("create Ingress")
-			err := s.CreateResourceFromString(fmt.Sprintf(ingress, s.Namespace()))
+			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingress, s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress")
 			time.Sleep(5 * time.Second)
 
