@@ -37,7 +37,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = PDescribe("Test HTTPRoute", Label("networking.k8s.io", "httproute"), func() {
+var _ = Describe("Test HTTPRoute", Serial, Label("networking.k8s.io", "httproute"), func() {
 	s := scaffold.NewDefaultScaffold()
 
 	var gatewayProxyYaml = `
