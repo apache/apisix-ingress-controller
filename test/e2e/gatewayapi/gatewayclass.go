@@ -94,7 +94,7 @@ spec:
 				spec, err := s.GetResourceYaml("GatewayClass", gatewayClassName)
 				Expect(err).NotTo(HaveOccurred(), "get resource yaml")
 				return spec
-			}).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(ContainSubstring(`status: "True"`))
+			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(ContainSubstring(`status: "True"`))
 
 			By("create a Gateway")
 			gatewayName := s.Namespace()

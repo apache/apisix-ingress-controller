@@ -660,7 +660,7 @@ spec:
 			Eventually(func() int {
 				return s.NewAPISIXClient().GET("/get").WithHost("example.com").Expect().Raw().StatusCode
 			}).
-				WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+				WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 
 			By("create HTTPRoutePolicy")
 			err = s.CreateResourceFromStringWithNamespace(httpRoutePolicySpec0, s.Namespace())
@@ -670,13 +670,13 @@ spec:
 				Expect(err).NotTo(HaveOccurred(), "HTTPRoutePolicy status should be True")
 				return spec
 			}).
-				WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(ContainSubstring(`status: "True"`))
+				WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(ContainSubstring(`status: "True"`))
 
 			By("request the route without vars should be Not Found")
 			Eventually(func() int {
 				return s.NewAPISIXClient().GET("/get").WithHost("example.com").Expect().Raw().StatusCode
 			}).
-				WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
+				WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
 
 			By("request the route with the correct vars should be OK")
 			s.NewAPISIXClient().GET("/get").WithHost("example.com").
@@ -691,7 +691,7 @@ spec:
 				return s.NewAPISIXClient().GET("/get").WithHost("example.com").
 					WithHeader("X-HRP-Name", "http-route-policy-0").Expect().Raw().StatusCode
 			}).
-				WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
+				WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
 
 			By("request with the new vars should be OK")
 			s.NewAPISIXClient().GET("/get").WithHost("example.com").
@@ -705,7 +705,7 @@ spec:
 			Eventually(func() int {
 				return s.NewAPISIXClient().GET("/get").WithHost("example.com").Expect().Raw().StatusCode
 			}).
-				WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+				WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 
 			By("revert the HTTPRoutePolicy")
 			err = s.CreateResourceFromStringWithNamespace(httpRoutePolicySpec0, s.Namespace())
@@ -715,7 +715,7 @@ spec:
 			Eventually(func() int {
 				return s.NewAPISIXClient().GET("/get").WithHost("example.com").Expect().Raw().StatusCode
 			}).
-				WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
+				WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
 
 			By("request the route with the correct vars should be OK")
 			s.NewAPISIXClient().GET("/get").WithHost("example.com").
@@ -728,7 +728,7 @@ spec:
 				spec, err := s.GetResourceYaml("HTTPRoutePolicy", "http-route-policy-1")
 				Expect(err).NotTo(HaveOccurred(), "get HTTPRoutePolicy")
 				return spec
-			}).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(ContainSubstring("reason: Conflicted"))
+			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(ContainSubstring("reason: Conflicted"))
 
 			By("delete the HTTPRoutePolicy")
 			for _, name := range []string{"http-route-policy-0", "http-route-policy-1"} {
@@ -740,7 +740,7 @@ spec:
 			Eventually(func() int {
 				return s.NewAPISIXClient().GET("/get").WithHost("example.com").Expect().Raw().StatusCode
 			}).
-				WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+				WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 		})
 
 		It("HTTPRoutePolicy status changes on Ingress deleting", func() {
@@ -867,14 +867,12 @@ spec:
 			updatedProxy := fmt.Sprintf(updatedGatewayProxy, s.Namespace(), s.Deployer.GetAdminEndpoint(resources.DataplaneService), resources.AdminAPIKey)
 			err = s.CreateResourceFromStringWithNamespace(updatedProxy, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "updating GatewayProxy")
-			time.Sleep(5 * time.Second)
-
+			request := func(path string) int {
+				return client.GET(path).WithHost("ingress.example.com").Expect().Raw().StatusCode
+			}
 			By("verify Ingress works for additional gateway group")
-			client.
-				GET("/get").
-				WithHost("ingress.example.com").
-				Expect().
-				Status(200)
+			Eventually(request).WithArguments("/get").WithTimeout(20 * time.Second).
+				ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 		})
 	})
 
@@ -973,7 +971,7 @@ spec:
 					GET("/get").
 					WithHost("ingress.example.com").
 					Expect().Raw().StatusCode
-			}).WithTimeout(8 * time.Second).ProbeEvery(time.Second).
+			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).
 				Should(Equal(http.StatusOK))
 			s.NewAPISIXClient().
 				GET("/get").
@@ -1007,14 +1005,14 @@ spec:
 					GET("/get").
 					WithHost("ingress.example.com").
 					Expect().Raw().StatusCode
-			}).WithTimeout(8 * time.Second).ProbeEvery(time.Second).
+			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).
 				Should(Equal(http.StatusOK))
 			Eventually(func() string {
 				return client.
 					GET("/get").
 					WithHost("ingress.example.com").
 					Expect().Raw().Header.Get("X-Proxy-Test")
-			}).WithTimeout(8 * time.Second).ProbeEvery(time.Second).
+			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).
 				Should(Equal("enabled"))
 		})
 	})

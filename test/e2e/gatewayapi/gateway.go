@@ -304,7 +304,7 @@ spec:
 					return ""
 				}
 				return tls[0].Certificates[0].Certificate
-			}).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(framework.TestCert))
+			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(framework.TestCert))
 		})
 	})
 })

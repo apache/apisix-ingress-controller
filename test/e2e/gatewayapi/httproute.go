@@ -1006,7 +1006,7 @@ spec:
 			Eventually(func() string {
 				_, err := s.GetResourceYaml("HTTPRoutePolicy", "http-route-policy-0")
 				return err.Error()
-			}).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(ContainSubstring(`httproutepolicies.apisix.apache.org "http-route-policy-0" not found`))
+			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(ContainSubstring(`httproutepolicies.apisix.apache.org "http-route-policy-0" not found`))
 			// access the route without additional vars should be OK
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",

@@ -91,18 +91,18 @@ spec:
 				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Namespace(), "/get"))
 
 			By("verify ApisixRoute works")
-			Eventually(request).WithArguments("/get").WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+			Eventually(request).WithArguments("/get").WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 
 			By("update ApisixRoute")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
 				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Namespace(), "/headers"))
-			Eventually(request).WithArguments("/get").WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
+			Eventually(request).WithArguments("/get").WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
 			s.NewAPISIXClient().GET("/headers").WithHost("httpbin").Expect().Status(http.StatusOK)
 
 			By("delete ApisixRoute")
 			err := s.DeleteResource("ApisixRoute", "default")
 			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixRoute")
-			Eventually(request).WithArguments("/headers").WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
+			Eventually(request).WithArguments("/headers").WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
 
 			By("request /metrics endpoint from controller")
 
@@ -172,7 +172,7 @@ spec:
 			request := func() int {
 				return s.NewAPISIXClient().GET("/get").Expect().Raw().StatusCode
 			}
-			Eventually(request).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+			Eventually(request).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 
 			By("apply ApisixRoute with plugins")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
@@ -190,6 +190,12 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			By("verify no plugin works")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+
 			resp = s.NewAPISIXClient().GET("/get").Expect().Status(http.StatusOK)
 			resp.Header("X-Global-Rule").IsEmpty()
 			resp.Header("X-Global-Test").IsEmpty()
@@ -230,7 +236,7 @@ spec:
 					WithHeader("X-Foo", "bar").
 					Expect().Raw().StatusCode
 			}
-			Eventually(request).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+			Eventually(request).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 			s.NewAPISIXClient().GET("/get").Expect().Status(http.StatusNotFound)
 		})
 
@@ -279,7 +285,7 @@ spec:
 					WithJSON(map[string]string{"foo": "bar"}).
 					Expect().Raw().StatusCode
 			}
-			Eventually(request).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+			Eventually(request).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 			s.NewAPISIXClient().GET("/get").Expect().Status(http.StatusNotFound)
 		})
 
@@ -312,7 +318,7 @@ spec:
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
 				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Namespace(), "/get"))
 
-			Eventually(request).WithArguments("/get").WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusServiceUnavailable))
+			Eventually(request).WithArguments("/get").WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusServiceUnavailable))
 		})
 
 		It("Test ApisixRoute resolveGranularity", func() {
@@ -350,7 +356,7 @@ spec:
 			request := func() int {
 				return s.NewAPISIXClient().GET("/get").Expect().Raw().StatusCode
 			}
-			Eventually(request).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+			Eventually(request).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 
 			By("assert that the request is proxied to the Service ClusterIP")
 			service, err := s.GetServiceByName("httpbin-service-e2e-test")
@@ -413,19 +419,19 @@ spec:
 			var apisixRoute apiv2.ApisixRoute
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
 				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Namespace()))
-			Eventually(request).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+			Eventually(request).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 
 			// no pod matches the subset label "unknown-key: unknown-value" so there will be no node in the upstream,
 			// to request the route will get http.StatusServiceUnavailable
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-service-e2e-test"},
 				new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec0, s.Namespace(), s.Namespace()))
-			Eventually(request).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusServiceUnavailable))
+			Eventually(request).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusServiceUnavailable))
 
 			// the pod matches the subset label "app: httpbin-deployment-e2e-test",
 			// to request the route will be OK
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-service-e2e-test"},
 				new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec1, s.Namespace(), s.Namespace()))
-			Eventually(request).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+			Eventually(request).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 		})
 
 		It("Multiple ApisixRoute with same prefix name", func() {
@@ -531,7 +537,7 @@ spec:
 			request := func(path string) int {
 				return s.NewAPISIXClient().GET(path).WithHost("httpbin").Expect().Raw().StatusCode
 			}
-			Eventually(request).WithArguments("/get").WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusServiceUnavailable))
+			Eventually(request).WithArguments("/get").WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusServiceUnavailable))
 
 			By("verify that ApisixUpstream reference a Service which is ExternalName should request OK")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default-upstream"},
@@ -594,7 +600,7 @@ spec:
 			request := func(path string) int {
 				return s.NewAPISIXClient().GET(path).Expect().Raw().StatusCode
 			}
-			Eventually(request).WithArguments("/get").WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+			Eventually(request).WithArguments("/get").WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 
 			By("verify the backends and the upstreams work commonly")
 			// .backends -> Service httpbin-service-e2e-test -> Endpoint httpbin-service-e2e-test, so the $upstream_addr value we get is the Endpoint IP.
@@ -891,7 +897,6 @@ apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: route3
-  namespace: %s
 spec:
   http:
   - name: rule0

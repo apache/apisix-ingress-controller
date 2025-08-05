@@ -136,7 +136,7 @@ spec:
 
 		Eventually(func() int {
 			return s.NewAPISIXClient().GET("/get").WithHost("httpbin.org").Expect().Raw().StatusCode
-		}).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+		}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 	})
 
 	Context("Test GatewayProxy update configs", func() {

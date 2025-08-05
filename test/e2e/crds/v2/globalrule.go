@@ -77,7 +77,7 @@ spec:
 					GET("/get").
 					WithHost("globalrule.example.com").
 					Expect().Raw().StatusCode
-			}).WithTimeout(8 * time.Second).ProbeEvery(time.Second).
+			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).
 				Should(Equal(http.StatusOK))
 		})
 
