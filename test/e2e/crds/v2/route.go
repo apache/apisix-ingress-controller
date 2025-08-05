@@ -906,7 +906,8 @@ spec:
 `
 		It("Should sync ApisixRoute during startup", func() {
 			By("apply ApisixRoute")
-			Expect(s.CreateResourceFromStringWithNamespace(fmt.Sprintf(route2, s.Namespace(), s.Namespace()), s.Namespace())).ShouldNot(HaveOccurred(), "apply ApisixRoute with nonexistent ingressClassName")
+			Expect(s.CreateResourceFromStringWithNamespace(fmt.Sprintf(route2, s.Namespace(), s.Namespace()), s.Namespace())).
+				ShouldNot(HaveOccurred(), "apply ApisixRoute with nonexistent ingressClassName")
 			Expect(s.CreateResourceFromStringWithNamespace(route3, s.Namespace())).ShouldNot(HaveOccurred(), "apply ApisixRoute without ingressClassName")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
 				&apiv2.ApisixRoute{}, fmt.Sprintf(route, s.Namespace(), s.Namespace()))
