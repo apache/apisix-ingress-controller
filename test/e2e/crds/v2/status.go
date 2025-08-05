@@ -104,7 +104,7 @@ spec:
 
 			By("check ApisixRoute status")
 			s.RetryAssertion(func() string {
-				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
+				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml", "-n", s.Namespace())
 				return output
 			}).Should(
 				And(
@@ -142,7 +142,7 @@ spec:
 
 			By("check ApisixRoute status")
 			s.RetryAssertion(func() string {
-				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
+				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml", "-n", s.Namespace())
 				return output
 			}).WithTimeout(80 * time.Second).
 				Should(
@@ -156,7 +156,7 @@ spec:
 
 			By("check ApisixRoute status after scaling up")
 			s.RetryAssertion(func() string {
-				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
+				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml", "-n", s.Namespace())
 				return output
 			}).WithTimeout(80 * time.Second).
 				Should(
@@ -179,7 +179,7 @@ spec:
 			By("apply ApisixRoute")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, fmt.Sprintf(ar, s.Namespace(), s.Namespace()))
 
-			output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
+			output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml", "-n", s.Namespace())
 
 			var route apiv2.ApisixRoute
 			err := yaml.Unmarshal([]byte(output), &route)
@@ -190,7 +190,7 @@ spec:
 			s.Deployer.ScaleIngress(0)
 			s.Deployer.ScaleIngress(1)
 
-			output, _ = s.GetOutputFromString("ar", "default", "-o", "yaml")
+			output, _ = s.GetOutputFromString("ar", "default", "-o", "yaml", "-n", s.Namespace())
 
 			var route2 apiv2.ApisixRoute
 			err = yaml.Unmarshal([]byte(output), &route2)
@@ -208,7 +208,6 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: httpbin
-  namespace: %s
 spec:
   parentRefs:
   - name: apisix
