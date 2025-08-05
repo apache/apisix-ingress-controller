@@ -58,6 +58,7 @@ apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: default
+  namespace: %s
 spec:
   ingressClassName: %s
   http:
@@ -76,6 +77,7 @@ apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: default
+  namespace: %s
 spec:
   ingressClassName: %s
   http:
@@ -97,7 +99,7 @@ spec:
 				Skip("apisix standalone does not validate unknown plugins")
 			}
 			By("apply ApisixRoute with valid plugin")
-			err := s.CreateResourceFromString(fmt.Sprintf(arWithInvalidPlugin, s.Namespace()))
+			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(arWithInvalidPlugin, s.Namespace(), s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixRoute with valid plugin")
 
 			By("check ApisixRoute status")
@@ -113,7 +115,7 @@ spec:
 			)
 
 			By("Update ApisixRoute")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, fmt.Sprintf(ar, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, fmt.Sprintf(ar, s.Namespace(), s.Namespace()))
 
 			By("check route in APISIX")
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -126,7 +128,7 @@ spec:
 
 		It("dataplane unavailable", func() {
 			By("apply ApisixRoute")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, fmt.Sprintf(ar, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, fmt.Sprintf(ar, s.Namespace(), s.Namespace()))
 
 			By("check route in APISIX")
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -175,7 +177,7 @@ spec:
 
 		It("update the same status only once", func() {
 			By("apply ApisixRoute")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, fmt.Sprintf(ar, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, fmt.Sprintf(ar, s.Namespace(), s.Namespace()))
 
 			output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
 
@@ -206,6 +208,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: httpbin
+  namespace: %s
 spec:
   parentRefs:
   - name: apisix
@@ -260,7 +263,7 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			By("create Gateway")
-			err = s.CreateResourceFromString(fmt.Sprintf(defaultGateway, gatewayClassName))
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayClassName), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 			time.Sleep(5 * time.Second)
 
@@ -276,7 +279,7 @@ spec:
 
 		It("dataplane unavailable", func() {
 			By("Create HTTPRoute")
-			err := s.CreateResourceFromString(httproute)
+			err := s.CreateResourceFromStringWithNamespace(httproute, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating HTTPRoute")
 
 			By("check route in APISIX")

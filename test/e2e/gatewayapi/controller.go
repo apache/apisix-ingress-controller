@@ -172,7 +172,7 @@ spec:
 			assert.Equal(GinkgoT(), routes[0].Labels["k8s/controller-name"], s1.GetControllerName())
 		})
 	})
-	FContext("Create resource with second controller", func() {
+	Context("Create resource with second controller", func() {
 		s2 := scaffold.NewScaffold(&scaffold.Options{
 			ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
 		})
@@ -181,6 +181,7 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: httpbin2
+  namespace: %s
 spec:
   parentRefs:
   - name: %s
@@ -209,7 +210,7 @@ spec:
 			beforeEach(s2)
 		})
 		It("Apply resource ", func() {
-			ResourceApplied(s2, "HTTPRoute", "httpbin2", s2.Namespace(), fmt.Sprintf(route2, s2.Namespace()), 1)
+			ResourceApplied(s2, "HTTPRoute", "httpbin2", s2.Namespace(), fmt.Sprintf(route2, s2.Namespace(), s2.Namespace()), 1)
 			routes, err := s2.DefaultDataplaneResource().Route().List(s2.Context)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(routes).To(HaveLen(1))

@@ -169,6 +169,8 @@ spec:
 						"httpbin.example.com",
 					),
 				},
+				Timeout:  30 * time.Second,
+				Interval: 2 * time.Second,
 			})
 
 			s.ResourceApplied("BackendTrafficPolicy", "httpbin", updateUpstreamHost, 2)
@@ -185,6 +187,8 @@ spec:
 						"httpbin.update.example.com",
 					),
 				},
+				Timeout:  30 * time.Second,
+				Interval: 2 * time.Second,
 			})
 
 			err := s.DeleteResourceFromString(createUpstreamHost)
@@ -204,6 +208,8 @@ spec:
 						"httpbin.example.com",
 					),
 				},
+				Timeout:  30 * time.Second,
+				Interval: 2 * time.Second,
 			})
 		})
 	})

@@ -347,7 +347,7 @@ spec:
 			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixPluginConfig")
 		})
 
-		FIt("Test cross-namespace ApisixPluginConfig reference", func() {
+		It("Test cross-namespace ApisixPluginConfig reference", Serial, func() {
 			const crossNamespaceApisixPluginConfigSpec = `
 apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
