@@ -166,6 +166,7 @@ spec:
 		})
 		It("Apply resource ", func() {
 			ResourceApplied(s1, "HTTPRoute", "httpbin", s1.Namespace(), fmt.Sprintf(route1, s1.Namespace()), 1)
+			time.Sleep(5 * time.Second)
 			routes, err := s1.DefaultDataplaneResource().Route().List(s1.Context)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(routes).To(HaveLen(1))
@@ -211,6 +212,7 @@ spec:
 		})
 		It("Apply resource ", func() {
 			ResourceApplied(s2, "HTTPRoute", "httpbin2", s2.Namespace(), fmt.Sprintf(route2, s2.Namespace(), s2.Namespace()), 1)
+			time.Sleep(5 * time.Second)
 			routes, err := s2.DefaultDataplaneResource().Route().List(s2.Context)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(routes).To(HaveLen(1))
