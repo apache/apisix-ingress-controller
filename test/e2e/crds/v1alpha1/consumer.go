@@ -222,7 +222,7 @@ spec:
 				Interval: 2 * time.Second,
 			})
 
-			for i := 0; i < 10; i++ {
+			for range 10 {
 				s.RequestAssert(&scaffold.RequestAssert{
 					Method: "GET",
 					Path:   "/get",

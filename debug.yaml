@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: bash-pod
+spec:
+  containers:
+  - name: bash-container
+    image: ubuntu:latest # Or another image with bash, like centos:latest
+    command: ["/bin/bash", "-c", "sleep infinity"] # Keeps the container running
+    stdin: true # Enables interactive input
+    tty: true # Allocates a TTY for interactive sessions
