@@ -120,7 +120,7 @@ spec:
 			Eventually(request).WithTimeout(30 * time.Second).ProbeEvery(2 * time.Second).Should(Equal(http.StatusNotFound))
 		})
 
-		FIt("Test ApisixPluginConfig update", func() {
+		It("Test ApisixPluginConfig update", func() {
 			const apisixPluginConfigSpecV1 = `
 apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
@@ -207,7 +207,7 @@ spec:
 			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixPluginConfig")
 		})
 
-		FIt("Test ApisixPluginConfig with disabled plugin", func() {
+		It("Test ApisixPluginConfig with disabled plugin", func() {
 			const apisixPluginConfigSpec = `
 apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig

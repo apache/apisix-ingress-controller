@@ -128,7 +128,7 @@ spec:
 		Expect(gwyaml).To(ContainSubstring("message: the gateway has been accepted by the apisix-ingress-controller"), "checking Gateway condition message")
 	}
 
-	FContext("Create resource with first controller", func() {
+	Context("Create resource with first controller", func() {
 		s1 := scaffold.NewScaffold(&scaffold.Options{
 			ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
 		})

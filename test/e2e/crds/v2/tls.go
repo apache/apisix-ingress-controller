@@ -190,7 +190,7 @@ spec:
 				Status(200)
 		})
 
-		FIt("ApisixTls with mTLS test", func() {
+		It("ApisixTls with mTLS test", func() {
 			const host = "api6.com"
 
 			By("generate mTLS certificates")
