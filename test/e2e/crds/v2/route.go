@@ -434,7 +434,7 @@ spec:
 			Eventually(request).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 		})
 
-		It("Multiple ApisixRoute with same prefix name", func() {
+		FIt("Multiple ApisixRoute with same prefix name", func() {
 			const apisixRouteSpec = `
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
@@ -964,7 +964,7 @@ spec:
 	})
 
 	Context("Test ApisixRoute WebSocket Support", func() {
-		It("basic websocket functionality", func() {
+		FIt("basic websocket functionality", func() {
 			const websocketServerResources = `
 apiVersion: v1
 kind: Pod

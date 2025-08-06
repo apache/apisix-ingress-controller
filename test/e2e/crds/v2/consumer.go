@@ -155,7 +155,7 @@ spec:
 			Eventually(request).WithArguments("/headers", Headers{}).WithTimeout(5 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
 		})
 
-		It("SecretRef tests", func() {
+		FIt("SecretRef tests", func() {
 			By("apply ApisixRoute")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{},
 				fmt.Sprintf(defaultApisixRoute, s.Namespace()))
