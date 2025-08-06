@@ -23,7 +23,7 @@ const gatewayProxyYaml = `
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  name: apisix-proxy-config
+  name: %s
   namespace: %s
 spec:
   provider:
@@ -47,15 +47,15 @@ spec:
   parameters:
     apiGroup: "apisix.apache.org"
     kind: "GatewayProxy"
-    name: "apisix-proxy-config"
+    name: "%s"
     namespace: "%s"
     scope: "Namespace"
 `
 
 func getGatewayProxyYaml(namespace, endpoint, adminKey string) string {
-	return fmt.Sprintf(gatewayProxyYaml, namespace, endpoint, adminKey)
+	return fmt.Sprintf(gatewayProxyYaml, namespace, namespace, endpoint, adminKey)
 }
 
 func getIngressClassYaml(name, controllerName, gatewayProxyNamespace string) string {
-	return fmt.Sprintf(ingressClassYaml, name, controllerName, gatewayProxyNamespace)
+	return fmt.Sprintf(ingressClassYaml, name, controllerName, gatewayProxyNamespace, gatewayProxyNamespace)
 }
