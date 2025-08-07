@@ -1210,25 +1210,25 @@ spec:
 		}
 
 		FIt("access third-party service directly", func() {
-			upstreamName := "httpbin-upstream-" + s.Namespace()
-			routeName := "httpbin-route-" + s.Namespace()
+			upstreamName := s.Namespace()
+			routeName := s.Namespace()
 			createApisixUpstream(apiv2.ExternalTypeDomain, "httpbin.org", upstreamName)
 			createApisixRoute(routeName, upstreamName)
 			verifyAccess()
 		})
 
 		FIt("access third-party service with host rewrite", func() {
-			upstreamName := "httpbin-upstream-" + s.Namespace()
-			routeName := "httpbin-route-" + s.Namespace()
+			upstreamName := s.Namespace()
+			routeName := s.Namespace()
 			createApisixUpstream(apiv2.ExternalTypeDomain, "httpbin.org", upstreamName)
 			createApisixRouteWithHostRewrite(routeName, "httpbin.org", upstreamName)
 			verifyAccess()
 		})
 
 		FIt("access external domain via ExternalName service", func() {
-			externalServiceName := "ext-httpbin-" + s.Namespace()
-			upstreamName := "httpbin-upstream-" + s.Namespace()
-			routeName := "httpbin-route-" + s.Namespace()
+			externalServiceName := s.Namespace()
+			upstreamName := s.Namespace()
+			routeName := s.Namespace()
 			createExternalService("httpbin.org", externalServiceName)
 			createApisixUpstream(apiv2.ExternalTypeService, externalServiceName, upstreamName)
 			createApisixRoute(routeName, upstreamName)
@@ -1242,9 +1242,9 @@ spec:
 			fqdn := fmt.Sprintf("%s.%s.svc.cluster.local", "httpbin-service-e2e-test", s.Namespace())
 
 			By("setup external service and route")
-			externalServiceName := "ext-httpbin-" + s.Namespace()
-			upstreamName := "httpbin-upstream-" + s.Namespace()
-			routeName := "httpbin-route-" + s.Namespace()
+			externalServiceName := s.Namespace()
+			upstreamName := s.Namespace()
+			routeName := s.Namespace()
 			createExternalService(fqdn, externalServiceName)
 			createApisixUpstream(apiv2.ExternalTypeService, externalServiceName, upstreamName)
 			createApisixRoute(routeName, upstreamName)
@@ -1253,8 +1253,8 @@ spec:
 
 		FContext("complex scenarios", func() {
 			It("multiple external services in one upstream", func() {
-				upstreamName := "httpbin-upstream-" + s.Namespace()
-				routeName := "httpbin-route-" + s.Namespace()
+				upstreamName := s.Namespace()
+				routeName := s.Namespace()
 				By("create ApisixUpstream with multiple external nodes")
 				upstreamSpec := `
 apiVersion: apisix.apache.org/v2
@@ -1301,8 +1301,8 @@ spec:
 			})
 
 			It("should be able to use backends and upstreams together", func() {
-				upstreamName := "httpbin-upstream-" + s.Namespace()
-				routeName := "httpbin-route-" + s.Namespace()
+				upstreamName := s.Namespace()
+				routeName := s.Namespace()
 				upstreamSpec := `
 apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
