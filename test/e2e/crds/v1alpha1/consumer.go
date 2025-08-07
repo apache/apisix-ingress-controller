@@ -192,9 +192,7 @@ spec:
 				Headers: map[string]string{
 					"apikey": "sample-key",
 				},
-				Check:    scaffold.WithExpectedStatus(200),
-				Timeout:  30 * time.Second,
-				Interval: 2 * time.Second,
+				Check: scaffold.WithExpectedStatus(200),
 			})
 
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -204,9 +202,7 @@ spec:
 				Headers: map[string]string{
 					"apikey": "sample-key",
 				},
-				Check:    scaffold.WithExpectedStatus(200),
-				Timeout:  30 * time.Second,
-				Interval: 2 * time.Second,
+				Check: scaffold.WithExpectedStatus(200),
 			})
 
 			By("trigger limit-count")
@@ -217,9 +213,7 @@ spec:
 				Headers: map[string]string{
 					"apikey": "sample-key",
 				},
-				Check:    scaffold.WithExpectedStatus(503),
-				Timeout:  30 * time.Second,
-				Interval: 2 * time.Second,
+				Check: scaffold.WithExpectedStatus(503),
 			})
 
 			for range 10 {
@@ -230,9 +224,7 @@ spec:
 					Headers: map[string]string{
 						"apikey": "sample-key2",
 					},
-					Check:    scaffold.WithExpectedStatus(200),
-					Timeout:  30 * time.Second,
-					Interval: 2 * time.Second,
+					Check: scaffold.WithExpectedStatus(200),
 				})
 			}
 		})
@@ -291,9 +283,7 @@ spec:
 				Headers: map[string]string{
 					"apikey": "sample-key",
 				},
-				Check:    scaffold.WithExpectedStatus(200),
-				Timeout:  30 * time.Second,
-				Interval: 2 * time.Second,
+				Check: scaffold.WithExpectedStatus(200),
 			})
 
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -303,9 +293,7 @@ spec:
 				Headers: map[string]string{
 					"apikey": "sample-key2",
 				},
-				Check:    scaffold.WithExpectedStatus(200),
-				Timeout:  30 * time.Second,
-				Interval: 2 * time.Second,
+				Check: scaffold.WithExpectedStatus(200),
 			})
 
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -316,9 +304,7 @@ spec:
 					Username: "sample-user",
 					Password: "sample-password",
 				},
-				Check:    scaffold.WithExpectedStatus(200),
-				Timeout:  30 * time.Second,
-				Interval: 2 * time.Second,
+				Check: scaffold.WithExpectedStatus(200),
 			})
 
 			By("update Consumer")
@@ -331,9 +317,7 @@ spec:
 				Headers: map[string]string{
 					"apikey": "sample-key",
 				},
-				Check:    scaffold.WithExpectedStatus(401),
-				Timeout:  30 * time.Second,
-				Interval: 2 * time.Second,
+				Check: scaffold.WithExpectedStatus(401),
 			})
 
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -343,9 +327,7 @@ spec:
 				Headers: map[string]string{
 					"apikey": "sample-key2",
 				},
-				Check:    scaffold.WithExpectedStatus(401),
-				Timeout:  30 * time.Second,
-				Interval: 2 * time.Second,
+				Check: scaffold.WithExpectedStatus(401),
 			})
 
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -355,9 +337,7 @@ spec:
 				Headers: map[string]string{
 					"apikey": "consumer-key",
 				},
-				Check:    scaffold.WithExpectedStatus(200),
-				Timeout:  30 * time.Second,
-				Interval: 2 * time.Second,
+				Check: scaffold.WithExpectedStatus(200),
 			})
 
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -368,9 +348,7 @@ spec:
 					Username: "sample-user",
 					Password: "sample-password",
 				},
-				Check:    scaffold.WithExpectedStatus(200),
-				Timeout:  30 * time.Second,
-				Interval: 2 * time.Second,
+				Check: scaffold.WithExpectedStatus(200),
 			})
 
 			By("delete Consumer")
@@ -385,9 +363,7 @@ spec:
 					Username: "sample-user",
 					Password: "sample-password",
 				},
-				Check:    scaffold.WithExpectedStatus(401),
-				Timeout:  30 * time.Second,
-				Interval: 2 * time.Second,
+				Check: scaffold.WithExpectedStatus(401),
 			})
 		})
 
@@ -455,9 +431,7 @@ spec:
 				Headers: map[string]string{
 					"apikey": "sample-key",
 				},
-				Check:    scaffold.WithExpectedStatus(200),
-				Timeout:  30 * time.Second,
-				Interval: 2 * time.Second,
+				Check: scaffold.WithExpectedStatus(200),
 			})
 
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -468,9 +442,7 @@ spec:
 					Username: "sample-user",
 					Password: "sample-password",
 				},
-				Check:    scaffold.WithExpectedStatus(200),
-				Timeout:  30 * time.Second,
-				Interval: 2 * time.Second,
+				Check: scaffold.WithExpectedStatus(200),
 			})
 
 			// update basic-auth password

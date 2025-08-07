@@ -245,7 +245,7 @@ func (s *Scaffold) ApplyDefaultGatewayResource(
 func (s *Scaffold) ApplyHTTPRoute(hrNN types.NamespacedName, spec string, until ...wait.ConditionWithContextFunc) {
 	err := s.CreateResourceFromString(spec)
 	Expect(err).NotTo(HaveOccurred(), "creating HTTPRoute %s", hrNN)
-	framework.HTTPRouteMustHaveCondition(s.GinkgoT, s.K8sClient, 20*time.Second,
+	framework.HTTPRouteMustHaveCondition(s.GinkgoT, s.K8sClient, 8*time.Second,
 		types.NamespacedName{},
 		types.NamespacedName{Namespace: cmp.Or(hrNN.Namespace, s.Namespace()), Name: hrNN.Name},
 		metav1.Condition{

@@ -165,7 +165,7 @@ spec:
 					return false
 				}
 				return true
-			}).WithTimeout(30 * time.Second).ProbeEvery(2 * time.Second).Should(BeTrue())
+			}).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(BeTrue())
 
 			tls, err := s.DefaultDataplaneResource().SSL().List(context.Background())
 			assert.Nil(GinkgoT(), err, "list tls error")
@@ -181,7 +181,7 @@ spec:
 					WithHost("api6.com").
 					Expect().
 					Raw().StatusCode
-			}).WithTimeout(30 * time.Second).ProbeEvery(2 * time.Second).Should(Equal(http.StatusOK))
+			}).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(Equal(http.StatusOK))
 
 			s.NewAPISIXHttpsClient("api6.com").
 				GET("/get").
@@ -245,7 +245,7 @@ spec:
 				}
 				// Check if client CA is configured
 				return tls[0].Client != nil && tls[0].Client.CA != ""
-			}).WithTimeout(30 * time.Second).ProbeEvery(2 * time.Second).Should(BeTrue())
+			}).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(BeTrue())
 
 			tls, err := s.DefaultDataplaneResource().SSL().List(context.Background())
 			assert.Nil(GinkgoT(), err, "list tls error")

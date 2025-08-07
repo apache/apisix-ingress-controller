@@ -469,7 +469,7 @@ spec:
 				host := fmt.Sprintf("httpbin-%s", id)
 				Eventually(func() int {
 					return s.NewAPISIXClient().GET("/get").WithHost(host).Expect().Raw().StatusCode
-				}).WithTimeout(30 * time.Second).ProbeEvery(2 * time.Second).Should(Equal(http.StatusOK))
+				}).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(Equal(http.StatusOK))
 			}
 		})
 	})
@@ -543,7 +543,7 @@ spec:
 			By("verify that ApisixUpstream reference a Service which is ExternalName should request OK")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default-upstream"},
 				new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec1, s.Namespace(), s.Namespace()))
-			Eventually(request).WithArguments("/get").WithTimeout(30 * time.Second).ProbeEvery(2 * time.Second).Should(Equal(http.StatusOK))
+			Eventually(request).WithArguments("/get").WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(Equal(http.StatusOK))
 		})
 
 		It("Test a Mix of Backends and Upstreams", func() {
@@ -1205,7 +1205,7 @@ spec:
 					WithHost("httpbin.org").
 					Expect().Raw().StatusCode
 			}
-			Eventually(request).WithTimeout(30 * time.Second).ProbeEvery(2 * time.Second).
+			Eventually(request).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).
 				Should(Equal(http.StatusOK))
 		}
 

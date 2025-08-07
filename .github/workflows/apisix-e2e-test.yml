@@ -55,6 +55,7 @@ jobs:
     strategy:
       matrix:
         provider_type:
+        - apisix-standalone
         - apisix
         cases_subset:
         - apisix.apache.org
