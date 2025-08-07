@@ -138,6 +138,7 @@ spec:
 				Check:   scaffold.WithExpectedStatus(200),
 			})
 
+			time.Sleep(8 * time.Second)
 			s.Deployer.ScaleDataplane(0)
 
 			By("check ApisixRoute status")
@@ -152,6 +153,7 @@ spec:
 					),
 				)
 
+			time.Sleep(8 * time.Second)
 			s.Deployer.ScaleDataplane(1)
 
 			By("check ApisixRoute status after scaling up")
@@ -288,7 +290,7 @@ spec:
 				Host:   "httpbin",
 				Check:  scaffold.WithExpectedStatus(200),
 			})
-
+			time.Sleep(8 * time.Second)
 			s.Deployer.ScaleDataplane(0)
 
 			By("check ApisixRoute status")
@@ -302,7 +304,7 @@ spec:
 						ContainSubstring(`reason: SyncFailed`),
 					),
 				)
-
+			time.Sleep(8 * time.Second)
 			s.Deployer.ScaleDataplane(1)
 
 			By("check ApisixRoute status after scaling up")
