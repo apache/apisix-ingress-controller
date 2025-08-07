@@ -182,7 +182,7 @@ func (s *APISIXDeployer) DeployDataplane(deployOpts DeployDataplaneOptions) {
 	if opts.Replicas != nil && *opts.Replicas == 0 {
 		deployOpts.SkipCreateTunnels = true
 	}
-	if !deployOpts.SkipCreateTunnels && opts.Replicas != nil && *opts.Replicas > 0 {
+	if !deployOpts.SkipCreateTunnels {
 		err := s.newAPISIXTunnels(opts.ServiceName)
 		Expect(err).ToNot(HaveOccurred(), "creating apisix tunnels")
 	}
