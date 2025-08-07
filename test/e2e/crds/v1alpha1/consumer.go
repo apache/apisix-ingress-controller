@@ -651,7 +651,7 @@ spec:
       config:
         key: sample-key2
 `
-		FIt("Should sync Consumer during startup", func() {
+		It("Should sync Consumer during startup", func() {
 			Expect(s.CreateResourceFromString(consumer2)).NotTo(HaveOccurred(), "creating unused consumer")
 			s.ResourceApplied("Consumer", "consumer-sample", fmt.Sprintf(consumer1, s.Namespace()), 1)
 

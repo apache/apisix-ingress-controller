@@ -966,7 +966,7 @@ spec:
 	})
 
 	Context("Test ApisixRoute WebSocket Support", func() {
-		FIt("basic websocket functionality", func() {
+		It("basic websocket functionality", func() {
 			const websocketServerResources = `
 apiVersion: v1
 kind: Pod
@@ -1100,7 +1100,7 @@ spec:
 		})
 	})
 
-	Context("Test ApisixRoute with External Services", func() {
+	FContext("Test ApisixRoute with External Services", func() {
 		createExternalService := func(externalName string, externalServiceName string) {
 			By(fmt.Sprintf("create ExternalName service: %s -> %s", externalServiceName, externalName))
 			svcSpec := fmt.Sprintf(`
@@ -1209,7 +1209,7 @@ spec:
 				Should(Equal(http.StatusOK))
 		}
 
-		FIt("access third-party service directly", func() {
+		It("access third-party service directly", func() {
 			upstreamName := s.Namespace()
 			routeName := s.Namespace()
 			createApisixUpstream(apiv2.ExternalTypeDomain, "httpbin.org", upstreamName)
@@ -1217,7 +1217,7 @@ spec:
 			verifyAccess()
 		})
 
-		FIt("access third-party service with host rewrite", func() {
+		It("access third-party service with host rewrite", func() {
 			upstreamName := s.Namespace()
 			routeName := s.Namespace()
 			createApisixUpstream(apiv2.ExternalTypeDomain, "httpbin.org", upstreamName)
@@ -1225,7 +1225,7 @@ spec:
 			verifyAccess()
 		})
 
-		FIt("access external domain via ExternalName service", func() {
+		It("access external domain via ExternalName service", func() {
 			externalServiceName := s.Namespace()
 			upstreamName := s.Namespace()
 			routeName := s.Namespace()
@@ -1235,7 +1235,7 @@ spec:
 			verifyAccess()
 		})
 
-		FIt("access in-cluster service via ExternalName", func() {
+		It("access in-cluster service via ExternalName", func() {
 			By("create temporary httpbin service")
 
 			By("get FQDN of temporary service")
@@ -1251,7 +1251,7 @@ spec:
 			verifyAccess()
 		})
 
-		FContext("complex scenarios", func() {
+		Context("complex scenarios", func() {
 			It("multiple external services in one upstream", func() {
 				upstreamName := s.Namespace()
 				routeName := s.Namespace()
@@ -1260,7 +1260,7 @@ spec:
 apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
-  name: httpbin-upstream
+  name: %s
   namespace: %s
 spec:
   externalNodes:
@@ -1273,7 +1273,7 @@ spec:
 				applier.MustApplyAPIv2(
 					types.NamespacedName{Namespace: s.Namespace(), Name: upstreamName},
 					&upstream,
-					fmt.Sprintf(upstreamSpec, s.Namespace()),
+					fmt.Sprintf(upstreamSpec, upstreamName, s.Namespace()),
 				)
 
 				createApisixRoute(routeName, upstreamName)
@@ -1307,7 +1307,7 @@ spec:
 apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
-  name: httpbin-upstream
+  name: %s
 spec:
   externalNodes:
   - type: Domain
@@ -1317,7 +1317,7 @@ spec:
 				applier.MustApplyAPIv2(
 					types.NamespacedName{Namespace: s.Namespace(), Name: upstreamName},
 					&upstream,
-					upstreamSpec,
+					fmt.Sprintf(upstreamSpec, upstreamName),
 				)
 				By("create ApisixRoute with both backends and upstreams")
 				routeSpec := fmt.Sprintf(`

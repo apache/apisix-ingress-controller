@@ -40,7 +40,7 @@ var _ = Describe("Test CRD Status", Label("apisix.apache.org", "v2", "apisixrout
 		applier = framework.NewApplier(s.GinkgoT, s.K8sClient, s.CreateResourceFromString)
 	)
 
-	Context("Test ApisixRoute Sync Status", func() {
+	FContext("Test ApisixRoute Sync Status", func() {
 		BeforeEach(func() {
 			By("create GatewayProxy")
 			gatewayProxy := getGatewayProxyYaml(s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
@@ -126,7 +126,7 @@ spec:
 			})
 		})
 
-		FIt("dataplane unavailable", func() {
+		It("dataplane unavailable", func() {
 			By("apply ApisixRoute")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, fmt.Sprintf(ar, s.Namespace(), s.Namespace()))
 
@@ -204,15 +204,16 @@ spec:
 		})
 	})
 
-	Context("Test HTTPRoute Sync Status", func() {
+	FContext("Test HTTPRoute Sync Status", func() {
 		const httproute = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: httpbin
+  namespace: %s
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - "httpbin"
   rules:
@@ -237,7 +238,8 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: apisix
+  name: %s
+  namespace: %s
 spec:
   gatewayClassName: %s
   listeners:
@@ -248,7 +250,7 @@ spec:
     parametersRef:
       group: apisix.apache.org
       kind: GatewayProxy
-      name: apisix-proxy-config
+      name: %s
 `
 		BeforeEach(func() {
 			By("create GatewayProxy")
@@ -264,23 +266,23 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			By("create Gateway")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayClassName), s.Namespace())
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, s.Namespace(), s.Namespace(), gatewayClassName, s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 			time.Sleep(5 * time.Second)
 
 			By("check Gateway condition")
-			gwyaml, err := s.GetResourceYaml("Gateway", "apisix")
+			gwyaml, err := s.GetResourceYaml("Gateway", s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "getting Gateway yaml")
 			Expect(gwyaml).To(ContainSubstring(`status: "True"`), "checking Gateway condition status")
 			Expect(gwyaml).To(ContainSubstring("message: the gateway has been accepted by the apisix-ingress-controller"), "checking Gateway condition message")
 		})
 		AfterEach(func() {
-			_ = s.DeleteResource("Gateway", "apisix")
+			_ = s.DeleteResource("Gateway", s.Namespace())
 		})
 
-		FIt("dataplane unavailable", func() {
+		It("dataplane unavailable", func() {
 			By("Create HTTPRoute")
-			err := s.CreateResourceFromStringWithNamespace(httproute, s.Namespace())
+			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(httproute, s.Namespace(), s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating HTTPRoute")
 
 			By("check route in APISIX")
