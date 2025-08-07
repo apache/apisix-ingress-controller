@@ -1101,10 +1101,10 @@ spec:
 	})
 
 	Context("Test ApisixRoute with External Services", func() {
-		const (
-			externalServiceName = "ext-httpbin"
-			upstreamName        = "httpbin-upstream"
-			routeName           = "httpbin-route"
+		var (
+			externalServiceName = "ext-httpbin-" + s.Namespace()
+			upstreamName        = "httpbin-upstream-" + s.Namespace()
+			routeName           = "httpbin-route-" + s.Namespace()
 		)
 
 		createExternalService := func(externalName string) {
@@ -1118,7 +1118,7 @@ spec:
   type: ExternalName
   externalName: %s
 `, externalServiceName, externalName)
-			err := s.CreateResourceFromString(svcSpec)
+			err := s.CreateResourceFromStringWithNamespace(svcSpec, s.Namespace())
 			Expect(err).ShouldNot(HaveOccurred(), "creating ExternalName service")
 		}
 
@@ -1129,11 +1129,12 @@ apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
   name: %s
+  namespace: %s
 spec:
   externalNodes:
   - type: %s
     name: %s
-`, upstreamName, externalType, name)
+`, upstreamName, s.Namespace(), externalType, name)
 			var upstream apiv2.ApisixUpstream
 			applier.MustApplyAPIv2(
 				types.NamespacedName{Namespace: s.Namespace(), Name: upstreamName},
@@ -1149,8 +1150,9 @@ apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: %s
+  namespace: %s
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   http:
   - name: rule1
     match:
@@ -1160,7 +1162,7 @@ spec:
       - /ip
     upstreams:
     - name: %s
-`, routeName, upstreamName)
+`, routeName, s.Namespace(), s.Namespace(), upstreamName)
 			var route apiv2.ApisixRoute
 			applier.MustApplyAPIv2(
 				types.NamespacedName{Namespace: s.Namespace(), Name: routeName},
@@ -1176,8 +1178,9 @@ apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: %s
+  namespace: %s
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   http:
   - name: rule1
     match:
@@ -1192,7 +1195,7 @@ spec:
       enable: true
       config:
         host: %s
-`, routeName, upstreamName, host)
+`, routeName, s.Namespace(), s.Namespace(), upstreamName, host)
 			var route apiv2.ApisixRoute
 			applier.MustApplyAPIv2(
 				types.NamespacedName{Namespace: s.Namespace(), Name: routeName},
@@ -1252,6 +1255,7 @@ apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
   name: httpbin-upstream
+  namespace: %s
 spec:
   externalNodes:
   - type: Domain
@@ -1263,7 +1267,7 @@ spec:
 				applier.MustApplyAPIv2(
 					types.NamespacedName{Namespace: s.Namespace(), Name: upstreamName},
 					&upstream,
-					upstreamSpec,
+					fmt.Sprintf(upstreamSpec, s.Namespace()),
 				)
 
 				createApisixRoute()
@@ -1313,8 +1317,9 @@ apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
   name: %s
+  namespace: %s
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   http:
   - name: rule1
     match:
@@ -1328,7 +1333,7 @@ spec:
       resolveGranularity: service
     upstreams:
     - name: %s
-`, routeName, upstreamName)
+`, routeName, s.Namespace(), s.Namespace(), upstreamName)
 				var route apiv2.ApisixRoute
 				applier.MustApplyAPIv2(
 					types.NamespacedName{Namespace: s.Namespace(), Name: routeName},
