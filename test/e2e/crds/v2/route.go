@@ -1101,13 +1101,7 @@ spec:
 	})
 
 	Context("Test ApisixRoute with External Services", func() {
-		var (
-			externalServiceName = "ext-httpbin-" + s.Namespace()
-			upstreamName        = "httpbin-upstream-" + s.Namespace()
-			routeName           = "httpbin-route-" + s.Namespace()
-		)
-
-		createExternalService := func(externalName string) {
+		createExternalService := func(externalName string, externalServiceName string) {
 			By(fmt.Sprintf("create ExternalName service: %s -> %s", externalServiceName, externalName))
 			svcSpec := fmt.Sprintf(`
 apiVersion: v1
@@ -1122,7 +1116,7 @@ spec:
 			Expect(err).ShouldNot(HaveOccurred(), "creating ExternalName service")
 		}
 
-		createApisixUpstream := func(externalType apiv2.ApisixUpstreamExternalType, name string) {
+		createApisixUpstream := func(externalType apiv2.ApisixUpstreamExternalType, name string, upstreamName string) {
 			By(fmt.Sprintf("create ApisixUpstream: type=%s, name=%s", externalType, name))
 			upstreamSpec := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -1143,7 +1137,7 @@ spec:
 			)
 		}
 
-		createApisixRoute := func() {
+		createApisixRoute := func(routeName string, upstreamName string) {
 			By("create ApisixRoute referencing ApisixUpstream")
 			routeSpec := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -1171,7 +1165,7 @@ spec:
 			)
 		}
 
-		createApisixRouteWithHostRewrite := func(host string) {
+		createApisixRouteWithHostRewrite := func(routeName string, host string, upstreamName string) {
 			By("create ApisixRoute with host rewrite")
 			routeSpec := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -1216,21 +1210,28 @@ spec:
 		}
 
 		FIt("access third-party service directly", func() {
-			createApisixUpstream(apiv2.ExternalTypeDomain, "httpbin.org")
-			createApisixRoute()
+			upstreamName := "httpbin-upstream-" + s.Namespace()
+			routeName := "httpbin-route-" + s.Namespace()
+			createApisixUpstream(apiv2.ExternalTypeDomain, "httpbin.org", upstreamName)
+			createApisixRoute(routeName, upstreamName)
 			verifyAccess()
 		})
 
 		FIt("access third-party service with host rewrite", func() {
-			createApisixUpstream(apiv2.ExternalTypeDomain, "httpbin.org")
-			createApisixRouteWithHostRewrite("httpbin.org")
+			upstreamName := "httpbin-upstream-" + s.Namespace()
+			routeName := "httpbin-route-" + s.Namespace()
+			createApisixUpstream(apiv2.ExternalTypeDomain, "httpbin.org", upstreamName)
+			createApisixRouteWithHostRewrite(routeName, "httpbin.org", upstreamName)
 			verifyAccess()
 		})
 
 		FIt("access external domain via ExternalName service", func() {
-			createExternalService("httpbin.org")
-			createApisixUpstream(apiv2.ExternalTypeService, externalServiceName)
-			createApisixRoute()
+			externalServiceName := "ext-httpbin-" + s.Namespace()
+			upstreamName := "httpbin-upstream-" + s.Namespace()
+			routeName := "httpbin-route-" + s.Namespace()
+			createExternalService("httpbin.org", externalServiceName)
+			createApisixUpstream(apiv2.ExternalTypeService, externalServiceName, upstreamName)
+			createApisixRoute(routeName, upstreamName)
 			verifyAccess()
 		})
 
@@ -1241,14 +1242,19 @@ spec:
 			fqdn := fmt.Sprintf("%s.%s.svc.cluster.local", "httpbin-service-e2e-test", s.Namespace())
 
 			By("setup external service and route")
-			createExternalService(fqdn)
-			createApisixUpstream(apiv2.ExternalTypeService, externalServiceName)
-			createApisixRoute()
+			externalServiceName := "ext-httpbin-" + s.Namespace()
+			upstreamName := "httpbin-upstream-" + s.Namespace()
+			routeName := "httpbin-route-" + s.Namespace()
+			createExternalService(fqdn, externalServiceName)
+			createApisixUpstream(apiv2.ExternalTypeService, externalServiceName, upstreamName)
+			createApisixRoute(routeName, upstreamName)
 			verifyAccess()
 		})
 
 		FContext("complex scenarios", func() {
 			It("multiple external services in one upstream", func() {
+				upstreamName := "httpbin-upstream-" + s.Namespace()
+				routeName := "httpbin-route-" + s.Namespace()
 				By("create ApisixUpstream with multiple external nodes")
 				upstreamSpec := `
 apiVersion: apisix.apache.org/v2
@@ -1270,7 +1276,7 @@ spec:
 					fmt.Sprintf(upstreamSpec, s.Namespace()),
 				)
 
-				createApisixRoute()
+				createApisixRoute(routeName, upstreamName)
 
 				By("verify access to multiple services")
 				time.Sleep(7 * time.Second)
@@ -1295,6 +1301,8 @@ spec:
 			})
 
 			It("should be able to use backends and upstreams together", func() {
+				upstreamName := "httpbin-upstream-" + s.Namespace()
+				routeName := "httpbin-route-" + s.Namespace()
 				upstreamSpec := `
 apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
