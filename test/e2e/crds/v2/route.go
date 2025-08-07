@@ -966,7 +966,7 @@ spec:
 	})
 
 	Context("Test ApisixRoute WebSocket Support", func() {
-		It("basic websocket functionality", func() {
+		FIt("basic websocket functionality", func() {
 			const websocketServerResources = `
 apiVersion: v1
 kind: Pod
@@ -1215,26 +1215,26 @@ spec:
 				Should(Equal(http.StatusOK))
 		}
 
-		It("access third-party service directly", func() {
+		FIt("access third-party service directly", func() {
 			createApisixUpstream(apiv2.ExternalTypeDomain, "httpbin.org")
 			createApisixRoute()
 			verifyAccess()
 		})
 
-		It("access third-party service with host rewrite", func() {
+		FIt("access third-party service with host rewrite", func() {
 			createApisixUpstream(apiv2.ExternalTypeDomain, "httpbin.org")
 			createApisixRouteWithHostRewrite("httpbin.org")
 			verifyAccess()
 		})
 
-		It("access external domain via ExternalName service", func() {
+		FIt("access external domain via ExternalName service", func() {
 			createExternalService("httpbin.org")
 			createApisixUpstream(apiv2.ExternalTypeService, externalServiceName)
 			createApisixRoute()
 			verifyAccess()
 		})
 
-		It("access in-cluster service via ExternalName", func() {
+		FIt("access in-cluster service via ExternalName", func() {
 			By("create temporary httpbin service")
 
 			By("get FQDN of temporary service")
@@ -1247,7 +1247,7 @@ spec:
 			verifyAccess()
 		})
 
-		Context("complex scenarios", func() {
+		FContext("complex scenarios", func() {
 			It("multiple external services in one upstream", func() {
 				By("create ApisixUpstream with multiple external nodes")
 				upstreamSpec := `

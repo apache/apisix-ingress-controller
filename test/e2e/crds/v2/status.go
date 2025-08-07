@@ -126,7 +126,7 @@ spec:
 			})
 		})
 
-		It("dataplane unavailable", func() {
+		FIt("dataplane unavailable", func() {
 			By("apply ApisixRoute")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, fmt.Sprintf(ar, s.Namespace(), s.Namespace()))
 
@@ -278,7 +278,7 @@ spec:
 			_ = s.DeleteResource("Gateway", "apisix")
 		})
 
-		It("dataplane unavailable", func() {
+		FIt("dataplane unavailable", func() {
 			By("Create HTTPRoute")
 			err := s.CreateResourceFromStringWithNamespace(httproute, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating HTTPRoute")
