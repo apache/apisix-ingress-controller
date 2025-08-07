@@ -1100,7 +1100,7 @@ spec:
 		})
 	})
 
-	FContext("Test ApisixRoute with External Services", func() {
+	Context("Test ApisixRoute with External Services", func() {
 		createExternalService := func(externalName string, externalServiceName string) {
 			By(fmt.Sprintf("create ExternalName service: %s -> %s", externalServiceName, externalName))
 			svcSpec := fmt.Sprintf(`

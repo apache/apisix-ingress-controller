@@ -40,7 +40,7 @@ var _ = Describe("Test CRD Status", Label("apisix.apache.org", "v2", "apisixrout
 		applier = framework.NewApplier(s.GinkgoT, s.K8sClient, s.CreateResourceFromString)
 	)
 
-	FContext("Test ApisixRoute Sync Status", func() {
+	Context("Test ApisixRoute Sync Status", func() {
 		BeforeEach(func() {
 			By("create GatewayProxy")
 			gatewayProxy := getGatewayProxyYaml(s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
@@ -204,7 +204,7 @@ spec:
 		})
 	})
 
-	FContext("Test HTTPRoute Sync Status", func() {
+	Context("Test HTTPRoute Sync Status", func() {
 		const httproute = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -297,7 +297,7 @@ spec:
 
 			By("check ApisixRoute status")
 			s.RetryAssertion(func() string {
-				output, _ := s.GetOutputFromString("httproute", "httpbin", "-o", "yaml")
+				output, _ := s.GetOutputFromString("httproute", "httpbin", "-o", "yaml", "-n", s.Namespace())
 				return output
 			}).WithTimeout(80 * time.Second).
 				Should(
@@ -311,7 +311,7 @@ spec:
 
 			By("check ApisixRoute status after scaling up")
 			s.RetryAssertion(func() string {
-				output, _ := s.GetOutputFromString("httproute", "httpbin", "-o", "yaml")
+				output, _ := s.GetOutputFromString("httproute", "httpbin", "-o", "yaml", "-n", s.Namespace())
 				return output
 			}).WithTimeout(80 * time.Second).
 				Should(
