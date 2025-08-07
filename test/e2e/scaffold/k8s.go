@@ -141,14 +141,6 @@ func (s *Scaffold) Namespace() string {
 	return s.kubectlOptions.Namespace
 }
 
-func (s *Scaffold) GatewayClassName() string {
-	return fmt.Sprintf("apisix-%d", time.Now().Unix())
-}
-
-// func (s *Scaffold) GatewayName() string{
-// 	return
-// }
-
 func (s *Scaffold) EnsureNumEndpointsReady(t testing.TestingT, endpointsName string, desired int) {
 	e, err := k8s.GetKubernetesClientFromOptionsE(t, s.kubectlOptions)
 	Expect(err).ToNot(HaveOccurred(), "Getting Kubernetes clientset")

@@ -179,6 +179,9 @@ func (s *APISIXDeployer) DeployDataplane(deployOpts DeployDataplaneOptions) {
 	svc := s.deployDataplane(&opts)
 	s.dataplaneService = svc
 
+	if opts.Replicas != nil && *opts.Replicas == 0 {
+		deployOpts.SkipCreateTunnels = true
+	}
 	if !deployOpts.SkipCreateTunnels && opts.Replicas != nil && *opts.Replicas > 0 {
 		err := s.newAPISIXTunnels(opts.ServiceName)
 		Expect(err).ToNot(HaveOccurred(), "creating apisix tunnels")
@@ -227,7 +230,7 @@ func (s *APISIXDeployer) deployDataplane(opts *APISIXDeployOptions) *corev1.Serv
 	Expect(err).ToNot(HaveOccurred(), "executing template")
 
 	k8s.KubectlApplyFromString(s.GinkgoT, kubectlOpts, buf.String())
-	if opts.Replicas != nil && *opts.Replicas > 0 {
+	if opts.Replicas == nil || (opts.Replicas != nil && *opts.Replicas > 0) {
 		err = framework.WaitPodsAvailable(s.GinkgoT, kubectlOpts, metav1.ListOptions{
 			LabelSelector: "app.kubernetes.io/name=apisix",
 		})
