@@ -43,12 +43,12 @@ var _ = Describe("Test ApisixPluginConfig", Label("apisix.apache.org", "v2", "ap
 		BeforeEach(func() {
 			By("create GatewayProxy")
 			gatewayProxy := getGatewayProxyYaml(s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
-			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
+			err := s.CreateResourceFromString(gatewayProxy)
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(5 * time.Second)
 
 			By("create IngressClass")
-			err = s.CreateResourceFromStringWithNamespace(getIngressClassYaml(s.Namespace(), s.GetControllerName(), s.Namespace()), "")
+			err = s.CreateResourceFromString(getIngressClassYaml(s.Namespace(), s.GetControllerName(), s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 			time.Sleep(5 * time.Second)
 		})
@@ -459,7 +459,7 @@ spec:
 `
 
 			By("apply Secret")
-			err := s.CreateResourceFromStringWithNamespace(secretSpec, s.Namespace())
+			err := s.CreateResourceFromString(secretSpec)
 			Expect(err).NotTo(HaveOccurred(), "creating Secret")
 
 			By("apply ApisixPluginConfig with SecretRef")

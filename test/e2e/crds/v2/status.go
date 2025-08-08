@@ -44,12 +44,12 @@ var _ = Describe("Test CRD Status", Label("apisix.apache.org", "v2", "apisixrout
 		BeforeEach(func() {
 			By("create GatewayProxy")
 			gatewayProxy := getGatewayProxyYaml(s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
-			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
+			err := s.CreateResourceFromString(gatewayProxy)
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(5 * time.Second)
 
 			By("create IngressClass")
-			err = s.CreateResourceFromStringWithNamespace(getIngressClassYaml(s.Namespace(), s.GetControllerName(), s.Namespace()), "")
+			err = s.CreateResourceFromString(getIngressClassYaml(s.Namespace(), s.GetControllerName(), s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 			time.Sleep(5 * time.Second)
 		})
@@ -99,7 +99,7 @@ spec:
 				Skip("apisix standalone does not validate unknown plugins")
 			}
 			By("apply ApisixRoute with valid plugin")
-			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(arWithInvalidPlugin, s.Namespace(), s.Namespace()), s.Namespace())
+			err := s.CreateResourceFromString(fmt.Sprintf(arWithInvalidPlugin, s.Namespace(), s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixRoute with valid plugin")
 
 			By("check ApisixRoute status")
@@ -253,18 +253,18 @@ spec:
 		BeforeEach(func() {
 			By("create GatewayProxy")
 			gatewayProxy := getGatewayProxyYaml(s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
-			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
+			err := s.CreateResourceFromString(gatewayProxy)
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(5 * time.Second)
 
 			By("create GatewayClass")
 			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(gatewayClass, gatewayClassName, s.GetControllerName()), "")
+			err = s.CreateResourceFromString(fmt.Sprintf(gatewayClass, gatewayClassName, s.GetControllerName()))
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
 			time.Sleep(5 * time.Second)
 
 			By("create Gateway")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, s.Namespace(), s.Namespace(), gatewayClassName, s.Namespace()), s.Namespace())
+			err = s.CreateResourceFromString(fmt.Sprintf(defaultGateway, s.Namespace(), s.Namespace(), gatewayClassName, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 			time.Sleep(5 * time.Second)
 
@@ -280,7 +280,7 @@ spec:
 
 		It("dataplane unavailable", func() {
 			By("Create HTTPRoute")
-			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(httproute, s.Namespace(), s.Namespace()), s.Namespace())
+			err := s.CreateResourceFromString(fmt.Sprintf(httproute, s.Namespace(), s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating HTTPRoute")
 
 			By("check route in APISIX")

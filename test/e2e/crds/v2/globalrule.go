@@ -57,17 +57,17 @@ spec:
 		BeforeEach(func() {
 			By("create GatewayProxy")
 			gatewayProxy := getGatewayProxyYaml(s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
-			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
+			err := s.CreateResourceFromString(gatewayProxy)
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(5 * time.Second)
 
 			By("create IngressClass")
-			err = s.CreateResourceFromStringWithNamespace(getIngressClassYaml(s.Namespace(), s.GetControllerName(), s.Namespace()), "")
+			err = s.CreateResourceFromString(getIngressClassYaml(s.Namespace(), s.GetControllerName(), s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 			time.Sleep(5 * time.Second)
 
 			By("create Ingress")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressYaml, s.Namespace()), s.Namespace())
+			err = s.CreateResourceFromString(fmt.Sprintf(ingressYaml, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress")
 			time.Sleep(5 * time.Second)
 
@@ -99,7 +99,7 @@ spec:
 `
 
 			By("create ApisixGlobalRule with response-rewrite plugin")
-			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(globalRuleYaml, s.Namespace()), s.Namespace())
+			err := s.CreateResourceFromString(fmt.Sprintf(globalRuleYaml, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixGlobalRule")
 
 			By("verify ApisixGlobalRule status condition")
@@ -166,7 +166,7 @@ spec:
 `
 
 			By("create initial ApisixGlobalRule")
-			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(globalRuleYaml, s.Namespace()), s.Namespace())
+			err := s.CreateResourceFromString(fmt.Sprintf(globalRuleYaml, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixGlobalRule")
 
 			By("verify initial ApisixGlobalRule status condition")
@@ -186,7 +186,7 @@ spec:
 			resp.Header("X-New-Header").IsEmpty()
 
 			By("update ApisixGlobalRule")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(updatedGlobalRuleYaml, s.Namespace()), s.Namespace())
+			err = s.CreateResourceFromString(fmt.Sprintf(updatedGlobalRuleYaml, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "updating ApisixGlobalRule")
 
 			By("verify updated ApisixGlobalRule status condition")
@@ -245,11 +245,11 @@ spec:
 `
 
 			By("create ApisixGlobalRule with proxy-rewrite plugin")
-			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(proxyRewriteGlobalRuleYaml, s.Namespace()), s.Namespace())
+			err := s.CreateResourceFromString(fmt.Sprintf(proxyRewriteGlobalRuleYaml, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixGlobalRule with proxy-rewrite")
 
 			By("create ApisixGlobalRule with response-rewrite plugin")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(responseRewriteGlobalRuleYaml, s.Namespace()), s.Namespace())
+			err = s.CreateResourceFromString(fmt.Sprintf(responseRewriteGlobalRuleYaml, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixGlobalRule with response-rewrite")
 
 			By("verify both ApisixGlobalRule status conditions")

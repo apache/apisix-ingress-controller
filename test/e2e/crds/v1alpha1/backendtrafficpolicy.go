@@ -147,7 +147,7 @@ spec:
 			time.Sleep(time.Second)
 
 			By("create Gateway")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName, gatewayProxyName), s.Namespace())
+			err = s.CreateResourceFromString(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName, gatewayProxyName))
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 			time.Sleep(time.Second)
 
@@ -269,15 +269,15 @@ spec:
 		By("create GatewayProxy")
 		gatewayProxyName := s.Namespace()
 		gatewayProxy := fmt.Sprintf(defaultGatewayProxy, gatewayProxyName, s.Deployer.GetAdminEndpoint(), s.AdminKey())
-		err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
+		err := s.CreateResourceFromString(gatewayProxy)
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 
 		By("create IngressClass with GatewayProxy reference")
-		err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultIngressClass, s.GetControllerName(), gatewayProxyName, s.Namespace()), "")
+		err = s.CreateResourceFromString(fmt.Sprintf(defaultIngressClass, s.GetControllerName(), gatewayProxyName, s.Namespace()))
 		Expect(err).NotTo(HaveOccurred(), "creating IngressClass with GatewayProxy")
 
 		By("create Ingress with GatewayProxy IngressClass")
-		err = s.CreateResourceFromStringWithNamespace(defaultIngress, s.Namespace())
+		err = s.CreateResourceFromString(defaultIngress)
 		Expect(err).NotTo(HaveOccurred(), "creating Ingress with GatewayProxy IngressClass")
 	}
 

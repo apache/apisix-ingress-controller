@@ -65,7 +65,7 @@ spec:
 		It("Create GatewayClass", func() {
 			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
 			By("create default GatewayClass")
-			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defautlGatewayClass, gatewayClassName, s.GetControllerName()), "")
+			err := s.CreateResourceFromString(fmt.Sprintf(defautlGatewayClass, gatewayClassName, s.GetControllerName()))
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
 			time.Sleep(5 * time.Second)
 
@@ -75,7 +75,7 @@ spec:
 			Expect(gcyaml).To(ContainSubstring("message: the gatewayclass has been accepted by the apisix-ingress-controller"), "checking GatewayClass condition message")
 
 			By("create GatewayClass with not accepted")
-			err = s.CreateResourceFromStringWithNamespace(noGatewayClass, "")
+			err = s.CreateResourceFromString(noGatewayClass)
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
 			time.Sleep(5 * time.Second)
 
@@ -88,7 +88,7 @@ spec:
 		It("Delete GatewayClass", func() {
 			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
 			By("create default GatewayClass")
-			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defautlGatewayClass, gatewayClassName, s.GetControllerName()), "")
+			err := s.CreateResourceFromString(fmt.Sprintf(defautlGatewayClass, gatewayClassName, s.GetControllerName()))
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
 			Eventually(func() string {
 				spec, err := s.GetResourceYaml("GatewayClass", gatewayClassName)
@@ -98,7 +98,7 @@ spec:
 
 			By("create a Gateway")
 			gatewayName := s.Namespace()
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName), s.Namespace())
+			err = s.CreateResourceFromString(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName))
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 			time.Sleep(time.Second)
 

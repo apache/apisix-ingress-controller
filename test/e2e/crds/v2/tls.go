@@ -101,12 +101,12 @@ var _ = Describe("Test ApisixTls", Label("apisix.apache.org", "v2", "apisixtls")
 		BeforeEach(func() {
 			By("create GatewayProxy")
 			gatewayProxy := fmt.Sprintf(gatewayProxyYamlTls, s.Deployer.GetAdminEndpoint(), s.AdminKey())
-			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
+			err := s.CreateResourceFromString(gatewayProxy)
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(5 * time.Second)
 
 			By("create IngressClass")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClassYamlTls, s.Namespace(), s.GetControllerName(), s.Namespace()), "")
+			err = s.CreateResourceFromString(fmt.Sprintf(ingressClassYamlTls, s.Namespace(), s.GetControllerName(), s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 			time.Sleep(5 * time.Second)
 
