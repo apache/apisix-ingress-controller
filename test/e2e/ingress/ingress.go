@@ -450,7 +450,7 @@ spec:
               number: 80
 `
 
-		PIt("Test IngressClass with GatewayProxy", func() {
+		It("Test IngressClass with GatewayProxy", func() {
 			By("create GatewayProxy")
 			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
 
@@ -478,7 +478,7 @@ spec:
 			resp.Header("X-Proxy-Test").IsEqual("enabled")
 		})
 
-		PIt("Test IngressClass with GatewayProxy using Secret", func() {
+		It("Test IngressClass with GatewayProxy using Secret", func() {
 			By("create admin key secret")
 			adminSecret := fmt.Sprintf(`
 apiVersion: v1
