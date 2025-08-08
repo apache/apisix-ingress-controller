@@ -131,7 +131,7 @@ e2e-test:
 
 .PHONY: ginkgo-e2e-test
 ginkgo-e2e-test:
-	@ginkgo -cover -coverprofile=coverage.txt -r --randomize-all --randomize-suites --trace --focus=$(E2E_FOCUS) --nodes=$(E2E_NODES) $(TEST_DIR)
+	@ginkgo -cover -coverprofile=coverage.txt -r --randomize-all --randomize-suites --trace --focus=$(E2E_FOCUS) --nodes=$(E2E_NODES) --label-filter="$(TEST_LABEL)" $(TEST_DIR)
 
 .PHONY: install-ginkgo
 install-ginkgo:
