@@ -80,6 +80,8 @@ If you are using Ingress or APISIX custom resources, you can proceed without add
 
 :::
 
+Create a Kubernetes manifest file for a route that proxy requests to two upstream services for load balancing:
+
 <Tabs
 groupId="k8s-api"
 defaultValue="gateway-api"
@@ -90,13 +92,62 @@ values={[
 
 <TabItem value="gateway-api">
 
-APISIX Ingress controller installed with the current helm chart version (`apisix-2.11.2`) has a bug in load balancing, which is actively being fixed.
+```yaml title="lb-route.yaml"
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpbin-external-domain
+spec:
+  type: ExternalName
+  externalName: httpbin.org
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mockapi7-external-domain
+spec:
+  type: ExternalName
+  externalName: mock.api7.ai
+---
+apiVersion: apisix.apache.org/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: passhost-node
+spec:
+  targetRefs:
+  - name: httpbin-external-domain
+    kind: Service
+    group: ""
+  - name: mockapi7-external-domain
+    kind: Service
+    group: ""
+  passHost: node
+  scheme: https
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: lb-route
+spec:
+  parentRefs:
+  - name: apisix
+  rules:
+  - matches:
+    - path:
+        type: Exact
+        value: /headers
+    backendRefs:
+    - name: httpbin-external-domain
+      port: 443
+      weight: 1
+    - name: mockapi7-external-domain
+      port: 443
+      weight: 1
+```
 
 </TabItem>
 
 <TabItem value="apisix-crd">
-
-Create a Kubernetes manifest file for a route that proxy requests to two upstream services for load balancing:
 
 ```yaml title="lb-route.yaml"
 apiVersion: apisix.apache.org/v2
@@ -141,15 +192,15 @@ spec:
       - name: mockapi7-external-domain
 ```
 
+</TabItem>
+
+</Tabs>
+
 Apply the configuration to your cluster:
 
 ```shell
 kubectl apply -f lb-route.yaml
 ```
-
-</TabItem>
-
-</Tabs>
 
 ## Verify
 
