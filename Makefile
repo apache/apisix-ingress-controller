@@ -33,7 +33,7 @@ ADC_VERSION ?= 0.20.0
 GINKGO_VERSION ?= 2.20.0
 TEST_TIMEOUT ?= 80m
 TEST_DIR ?= ./test/e2e/apisix/
-E2E_NODES ?= 2
+E2E_NODES ?= 4
 
 # CRD Reference Documentation
 CRD_REF_DOCS_VERSION ?= v0.1.0
