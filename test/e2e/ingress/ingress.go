@@ -207,7 +207,7 @@ spec:
               number: 80
 `
 
-		PIt("Test IngressClass Selection", func() {
+		It("Test IngressClass Selection", func() {
 			By("create GatewayProxy")
 			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
 			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
@@ -232,7 +232,7 @@ spec:
 				Status(200)
 		})
 
-		PIt("Proxy External Service", func() {
+		It("Proxy External Service", func() {
 			By("create GatewayProxy")
 			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
 			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
@@ -250,7 +250,6 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress without IngressClass")
 
 			By("checking the external service response")
-			time.Sleep(10 * time.Minute)
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method:   "GET",
 				Path:     "/get",
@@ -261,7 +260,7 @@ spec:
 			})
 		})
 
-		PIt("Delete Ingress during restart", func() {
+		It("Delete Ingress during restart", func() {
 			By("create GatewayProxy")
 			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
 			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
@@ -284,7 +283,6 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress without IngressClass")
 
 			By("checking the external service response")
-			time.Sleep(10 * time.Minute)
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method:   "GET",
 				Path:     "/get",
