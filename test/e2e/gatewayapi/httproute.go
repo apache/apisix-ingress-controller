@@ -2082,7 +2082,7 @@ spec:
 				Timeout:  30 * time.Second,
 			})
 
-			time.Sleep((8 * time.Second))
+			time.Sleep(8 * time.Second)
 			By("restart controller and dataplane")
 			s.Deployer.ScaleIngress(0)
 			s.Deployer.ScaleDataplane(0)

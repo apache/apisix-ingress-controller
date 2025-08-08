@@ -793,7 +793,6 @@ spec:
 			}
 
 			By("wait for route to be ready")
-
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method:  "GET",
 				Path:    "/get",

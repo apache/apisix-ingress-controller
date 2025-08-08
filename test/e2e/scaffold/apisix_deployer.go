@@ -230,7 +230,7 @@ func (s *APISIXDeployer) deployDataplane(opts *APISIXDeployOptions) *corev1.Serv
 	Expect(err).ToNot(HaveOccurred(), "executing template")
 
 	k8s.KubectlApplyFromString(s.GinkgoT, kubectlOpts, buf.String())
-	if opts.Replicas == nil || (opts.Replicas != nil && *opts.Replicas > 0) {
+	if opts.Replicas == nil || *opts.Replicas > 0 {
 		err = framework.WaitPodsAvailable(s.GinkgoT, kubectlOpts, metav1.ListOptions{
 			LabelSelector: "app.kubernetes.io/name=apisix",
 		})
