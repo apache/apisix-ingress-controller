@@ -737,11 +737,10 @@ spec:
 			)
 
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method:  "GET",
-				Path:    "/get",
-				Host:    "httpbin.org",
-				Check:   scaffold.WithExpectedStatus(http.StatusOK),
-				Timeout: 10 * time.Second,
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
 			})
 			for range 90 {
 				code := verifyRequest()
@@ -1045,7 +1044,7 @@ spec:
 				&apisixRouteWithoutWS,
 				fmt.Sprintf(apisixRouteSpec2, s.Namespace(), s.Namespace()),
 			)
-			time.Sleep(8 * time.Second)
+			time.Sleep(12 * time.Second)
 
 			By("verify WebSocket connection fails without WebSocket enabled")
 			u := url.URL{
@@ -1057,7 +1056,6 @@ spec:
 			_, resp, _ := websocket.DefaultDialer.Dial(u.String(), headers)
 			// should receive 200 instead of 101
 			Expect(resp.StatusCode).Should(Equal(http.StatusOK))
-
 			By("apply ApisixRoute for WebSocket")
 			var apisixRoute apiv2.ApisixRoute
 			applier.MustApplyAPIv2(

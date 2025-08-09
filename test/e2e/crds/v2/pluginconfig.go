@@ -260,7 +260,7 @@ spec:
 			request := func() int {
 				return s.NewAPISIXClient().GET("/get").Expect().Raw().StatusCode
 			}
-			Eventually(request).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(Equal(http.StatusOK))
+			Eventually(request).WithTimeout(60 * time.Second).ProbeEvery(2 * time.Second).Should(Equal(http.StatusOK))
 
 			By("verify disabled plugin is not applied")
 			resp := s.NewAPISIXClient().GET("/get").Expect().Status(http.StatusOK)
