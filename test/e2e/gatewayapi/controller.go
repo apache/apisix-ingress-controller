@@ -34,7 +34,7 @@ var _ = Describe("Check if controller cache gets synced with correct resources",
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  name: apisix-proxy-config
+  name: %s
 spec:
   provider:
     type: ControlPlane
@@ -73,7 +73,7 @@ spec:
     parametersRef:
       group: apisix.apache.org
       kind: GatewayProxy
-      name: apisix-proxy-config
+      name: %s
 `
 
 	var ResourceApplied = func(s *scaffold.Scaffold, resourType, resourceName, ns, resourceRaw string, observedGeneration int) {
@@ -94,19 +94,14 @@ spec:
 			)
 		time.Sleep(3 * time.Second)
 	}
-	var beforeEach = func(s *scaffold.Scaffold, gatewayName string) {
-		err := s.CreateResourceFromString(fmt.Sprintf(`
-kind: Namespace
-apiVersion: v1
-metadata:
-  name: %s
-`, gatewayName))
-		Expect(err).NotTo(HaveOccurred(), "creating namespace")
+	var beforeEach = func(s *scaffold.Scaffold) {
 		By(fmt.Sprintf("create GatewayClass for controller %s", s.GetControllerName()))
 
 		By("create GatewayProxy")
-		gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Deployer.GetAdminEndpoint(), s.AdminKey())
-		err = s.CreateResourceFromStringWithNamespace(gatewayProxy, gatewayName)
+		gatewayProxyName := s.Namespace()
+		gatewayName := s.Namespace()
+		gatewayProxy := fmt.Sprintf(gatewayProxyYaml, gatewayProxyName, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+		err := s.CreateResourceFromStringWithNamespace(gatewayProxy, gatewayName)
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 		time.Sleep(5 * time.Second)
 
@@ -116,13 +111,13 @@ metadata:
 		time.Sleep(10 * time.Second)
 
 		By("check GatewayClass condition")
-		gcyaml, err := s.GetResourceYamlFromNamespace("GatewayClass", gatewayClassName, gatewayName)
+		gcyaml, err := s.GetResourceYamlFromNamespace("GatewayClass", gatewayClassName, s.Namespace())
 		Expect(err).NotTo(HaveOccurred(), "getting GatewayClass yaml")
 		Expect(gcyaml).To(ContainSubstring(`status: "True"`), "checking GatewayClass condition status")
 		Expect(gcyaml).To(ContainSubstring("message: the gatewayclass has been accepted by the apisix-ingress-controller"), "checking GatewayClass condition message")
 
 		By("create Gateway")
-		err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defautlGateway, gatewayName, gatewayName, gatewayClassName), gatewayName)
+		err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defautlGateway, gatewayName, gatewayName, gatewayClassName, gatewayProxyName), gatewayName)
 		Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 		time.Sleep(10 * time.Second)
 
@@ -135,18 +130,16 @@ metadata:
 
 	Context("Create resource with first controller", func() {
 		s1 := scaffold.NewScaffold(&scaffold.Options{
-			Name:           "gateway1",
-			ControllerName: "apisix.apache.org/apisix-ingress-controller-1",
+			ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
 		})
 		var route1 = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: httpbin
-  namespace: gateway1
 spec:
   parentRefs:
-  - name: gateway1
+  - name: %s
   hostnames:
   - httpbin.example
   rules:
@@ -169,30 +162,30 @@ spec:
       weight: 50
  `
 		BeforeEach(func() {
-			beforeEach(s1, "gateway1")
+			beforeEach(s1)
 		})
 		It("Apply resource ", func() {
-			ResourceApplied(s1, "HTTPRoute", "httpbin", "gateway1", route1, 1)
+			ResourceApplied(s1, "HTTPRoute", "httpbin", s1.Namespace(), fmt.Sprintf(route1, s1.Namespace()), 1)
+			time.Sleep(5 * time.Second)
 			routes, err := s1.DefaultDataplaneResource().Route().List(s1.Context)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(routes).To(HaveLen(1))
-			assert.Equal(GinkgoT(), routes[0].Labels["k8s/controller-name"], "apisix.apache.org/apisix-ingress-controller-1")
+			assert.Equal(GinkgoT(), routes[0].Labels["k8s/controller-name"], s1.GetControllerName())
 		})
 	})
 	Context("Create resource with second controller", func() {
 		s2 := scaffold.NewScaffold(&scaffold.Options{
-			Name:           "gateway2",
-			ControllerName: "apisix.apache.org/apisix-ingress-controller-2",
+			ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
 		})
 		var route2 = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: httpbin2
-  namespace: gateway2
+  namespace: %s
 spec:
   parentRefs:
-  - name: gateway2
+  - name: %s
   hostnames:
   - httpbin.example
   rules:
@@ -215,14 +208,15 @@ spec:
       weight: 50
 `
 		BeforeEach(func() {
-			beforeEach(s2, "gateway2")
+			beforeEach(s2)
 		})
 		It("Apply resource ", func() {
-			ResourceApplied(s2, "HTTPRoute", "httpbin2", "gateway2", route2, 1)
+			ResourceApplied(s2, "HTTPRoute", "httpbin2", s2.Namespace(), fmt.Sprintf(route2, s2.Namespace(), s2.Namespace()), 1)
+			time.Sleep(5 * time.Second)
 			routes, err := s2.DefaultDataplaneResource().Route().List(s2.Context)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(routes).To(HaveLen(1))
-			assert.Equal(GinkgoT(), routes[0].Labels["k8s/controller-name"], "apisix.apache.org/apisix-ingress-controller-2")
+			assert.Equal(GinkgoT(), routes[0].Labels["k8s/controller-name"], s2.GetControllerName())
 		})
 	})
 })

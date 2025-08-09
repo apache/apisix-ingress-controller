@@ -179,6 +179,9 @@ func (s *APISIXDeployer) DeployDataplane(deployOpts DeployDataplaneOptions) {
 	svc := s.deployDataplane(&opts)
 	s.dataplaneService = svc
 
+	if opts.Replicas != nil && *opts.Replicas == 0 {
+		deployOpts.SkipCreateTunnels = true
+	}
 	if !deployOpts.SkipCreateTunnels {
 		err := s.newAPISIXTunnels(opts.ServiceName)
 		Expect(err).ToNot(HaveOccurred(), "creating apisix tunnels")
@@ -227,11 +230,12 @@ func (s *APISIXDeployer) deployDataplane(opts *APISIXDeployOptions) *corev1.Serv
 	Expect(err).ToNot(HaveOccurred(), "executing template")
 
 	k8s.KubectlApplyFromString(s.GinkgoT, kubectlOpts, buf.String())
-
-	err = framework.WaitPodsAvailable(s.GinkgoT, kubectlOpts, metav1.ListOptions{
-		LabelSelector: "app.kubernetes.io/name=apisix",
-	})
-	Expect(err).ToNot(HaveOccurred(), "waiting for gateway pod ready")
+	if opts.Replicas == nil || *opts.Replicas > 0 {
+		err = framework.WaitPodsAvailable(s.GinkgoT, kubectlOpts, metav1.ListOptions{
+			LabelSelector: "app.kubernetes.io/name=apisix",
+		})
+		Expect(err).ToNot(HaveOccurred(), "waiting for gateway pod ready")
+	}
 
 	Eventually(func() bool {
 		svc, err := k8s.GetServiceE(s.GinkgoT, kubectlOpts, opts.ServiceName)

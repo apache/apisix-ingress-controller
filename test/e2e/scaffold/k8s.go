@@ -254,7 +254,7 @@ func (s *Scaffold) ApplyHTTPRoute(hrNN types.NamespacedName, spec string, until 
 		},
 	)
 	for i, f := range until {
-		err := wait.PollUntilContextTimeout(context.Background(), time.Second, 10*time.Second, true, f)
+		err := wait.PollUntilContextTimeout(context.Background(), time.Second, 20*time.Second, true, f)
 		require.NoError(s.GinkgoT, err, "wait for ConditionWithContextFunc[%d] OK", i)
 	}
 }

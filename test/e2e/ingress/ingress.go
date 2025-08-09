@@ -48,7 +48,7 @@ func createSecret(s *scaffold.Scaffold, secretName string) {
 
 var _ = Describe("Test Ingress", Label("networking.k8s.io", "ingress"), func() {
 	s := scaffold.NewScaffold(&scaffold.Options{
-		ControllerName: "apisix.apache.org/apisix-ingress-controller",
+		ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
 	})
 
 	var gatewayProxyYaml = `
@@ -56,7 +56,7 @@ apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
   name: apisix-proxy-config
-  namespace: default
+  namespace: %s
 spec:
   provider:
     type: ControlPlane
@@ -72,10 +72,10 @@ spec:
 	Context("Ingress TLS", func() {
 		It("Check if SSL resource was created", func() {
 			By("create GatewayProxy")
-			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
 
 			By("create GatewayProxy")
-			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, "default")
+			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(5 * time.Second)
 
@@ -87,14 +87,14 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
 metadata:
-  name: apisix
+  name: %s
 spec:
-  controller: "apisix.apache.org/apisix-ingress-controller"
+  controller: "%s"
   parameters:
     apiGroup: "apisix.apache.org"
     kind: "GatewayProxy"
     name: "apisix-proxy-config"
-    namespace: "default"
+    namespace: "%s"
     scope: "Namespace"
 `
 
@@ -104,7 +104,7 @@ kind: Ingress
 metadata:
   name: apisix-ingress-tls
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   tls:
   - hosts:
     - %s
@@ -120,15 +120,15 @@ spec:
             name: httpbin-service-e2e-test
             port:
               number: 80
-`, host, secretName, host)
+`, s.Namespace(), host, secretName, host)
 
 			By("create IngressClass")
-			err = s.CreateResourceFromStringWithNamespace(defaultIngressClass, "")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultIngressClass, s.Namespace(), s.GetControllerName(), s.Namespace()), "")
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 			time.Sleep(5 * time.Second)
 
 			By("create Ingress with TLS")
-			err = s.CreateResourceFromString(tlsIngress)
+			err = s.CreateResourceFromStringWithNamespace(tlsIngress, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress with TLS")
 			time.Sleep(5 * time.Second)
 
@@ -142,7 +142,8 @@ spec:
 		})
 	})
 
-	Context("IngressClass Selection", func() {
+	// Tests concerning the default ingress class need to be run serially
+	Context("IngressClass Selection", Serial, func() {
 		var defaultIngressClass = `
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
@@ -151,12 +152,12 @@ metadata:
   annotations:
     ingressclass.kubernetes.io/is-default-class: "true"
 spec:
-  controller: "apisix.apache.org/apisix-ingress-controller"
+  controller: "%s"
   parameters:
     apiGroup: "apisix.apache.org"
     kind: "GatewayProxy"
     name: "apisix-proxy-config"
-    namespace: "default"
+    namespace: "%s"
     scope: "Namespace"
 `
 
@@ -164,7 +165,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: apisix-ingress-default
+  name: %s
 spec:
   rules:
   - host: default.example.com
@@ -191,7 +192,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: apisix-ingress-external
+  name: %s
 spec:
   rules:
   - host: httpbin.external
@@ -208,18 +209,18 @@ spec:
 
 		It("Test IngressClass Selection", func() {
 			By("create GatewayProxy")
-			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Deployer.GetAdminEndpoint(), s.AdminKey())
-			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, "default")
+			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(5 * time.Second)
 
 			By("create Default IngressClass")
-			err = s.CreateResourceFromStringWithNamespace(defaultIngressClass, "")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultIngressClass, s.GetControllerName(), s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Default IngressClass")
 			time.Sleep(5 * time.Second)
 
 			By("create Ingress without IngressClass")
-			err = s.CreateResourceFromString(defaultIngress)
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultIngress, s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress without IngressClass")
 			time.Sleep(5 * time.Second)
 
@@ -233,79 +234,89 @@ spec:
 
 		It("Proxy External Service", func() {
 			By("create GatewayProxy")
-			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Deployer.GetAdminEndpoint(), s.AdminKey())
-			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, "default")
+			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(5 * time.Second)
 
 			By("create Default IngressClass")
-			err = s.CreateResourceFromStringWithNamespace(defaultIngressClass, "")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultIngressClass, s.GetControllerName(), s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Default IngressClass")
 			time.Sleep(5 * time.Second)
 
 			By("create Ingress")
-			err = s.CreateResourceFromString(ingressWithExternalName)
+			ingressName := s.Namespace() + "-external"
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressWithExternalName, ingressName), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress without IngressClass")
-			time.Sleep(5 * time.Second)
 
 			By("checking the external service response")
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHost("httpbin.external").
-				Expect().
-				Status(http.StatusOK)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.external",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Interval: time.Second * 10,
+				Timeout:  3 * time.Minute,
+			})
 		})
 
 		It("Delete Ingress during restart", func() {
 			By("create GatewayProxy")
-			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Deployer.GetAdminEndpoint(), s.AdminKey())
-			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, "default")
+			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(5 * time.Second)
 
 			By("create Default IngressClass")
-			err = s.CreateResourceFromStringWithNamespace(defaultIngressClass, "")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultIngressClass, s.GetControllerName(), s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Default IngressClass")
 			time.Sleep(5 * time.Second)
 
 			By("create Ingress with ExternalName")
-			err = s.CreateResourceFromString(ingressWithExternalName)
+			ingressName := s.Namespace() + "-external"
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressWithExternalName, ingressName), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress without IngressClass")
 			time.Sleep(5 * time.Second)
 
 			By("create Ingress")
-			err = s.CreateResourceFromString(defaultIngress)
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultIngress, s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress without IngressClass")
-			time.Sleep(5 * time.Second)
 
 			By("checking the external service response")
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHost("httpbin.external").
-				Expect().
-				Status(http.StatusOK)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.external",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Interval: time.Second * 10,
+				Timeout:  3 * time.Minute,
+			})
 
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHost("default.example.com").
-				Expect().
-				Status(200)
-
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "default.example.com",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Interval: time.Second * 2,
+				Timeout:  time.Minute,
+			})
 			s.Deployer.ScaleIngress(0)
 
 			By("delete Ingress")
-			err = s.DeleteResourceFromString(defaultIngress)
+			err = s.DeleteResourceFromStringWithNamespace(fmt.Sprintf(defaultIngress, s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "deleting Ingress without IngressClass")
 
 			s.Deployer.ScaleIngress(1)
 			time.Sleep(1 * time.Minute)
 
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHost("httpbin.external").
-				Expect().
-				Status(http.StatusOK)
-
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.external",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Interval: time.Second * 10,
+				Timeout:  3 * time.Minute,
+			})
 			s.NewAPISIXClient().
 				GET("/get").
 				WithHost("default.example.com").
@@ -314,13 +325,14 @@ spec:
 		})
 	})
 
-	Context("IngressClass with GatewayProxy", func() {
+	// Tests concerning the default ingress class need to be run serially
+	Context("IngressClass with GatewayProxy", Serial, func() {
 		gatewayProxyYaml := `
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
   name: apisix-proxy-config
-  namespace: default
+  namespace: %s
 spec:
   provider:
     type: ControlPlane
@@ -344,7 +356,7 @@ apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
   name: apisix-proxy-config-with-secret
-  namespace: default
+  namespace: %s
 spec:
   provider:
     type: ControlPlane
@@ -374,12 +386,12 @@ metadata:
   annotations:
     ingressclass.kubernetes.io/is-default-class: "true"
 spec:
-  controller: "apisix.apache.org/apisix-ingress-controller"
+  controller: "%s"
   parameters:
     apiGroup: "apisix.apache.org"
     kind: "GatewayProxy"
     name: "apisix-proxy-config"
-    namespace: "default"
+    namespace: "%s"
     scope: "Namespace"
 `
 
@@ -389,12 +401,12 @@ kind: IngressClass
 metadata:
   name: apisix-with-proxy-secret
 spec:
-  controller: "apisix.apache.org/apisix-ingress-controller"
+  controller: "%s"
   parameters:
     apiGroup: "apisix.apache.org"
     kind: "GatewayProxy"
     name: "apisix-proxy-config-with-secret"
-    namespace: "default"
+    namespace: "%s"
     scope: "Namespace"
 `
 
@@ -440,20 +452,20 @@ spec:
 
 		It("Test IngressClass with GatewayProxy", func() {
 			By("create GatewayProxy")
-			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
 
 			By("create GatewayProxy")
-			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, "default")
+			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(5 * time.Second)
 
 			By("create IngressClass with GatewayProxy reference")
-			err = s.CreateResourceFromStringWithNamespace(ingressClassWithProxy, "")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClassWithProxy, s.GetControllerName(), s.Namespace()), "")
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass with GatewayProxy")
 			time.Sleep(5 * time.Second)
 
 			By("create Ingress with GatewayProxy IngressClass")
-			err = s.CreateResourceFromString(testIngress)
+			err = s.CreateResourceFromStringWithNamespace(testIngress, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress with GatewayProxy IngressClass")
 			time.Sleep(5 * time.Second)
 
@@ -473,28 +485,27 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: admin-secret
-  namespace: default
 type: Opaque
 stringData:
   admin-key: %s
 `, s.AdminKey())
-			err := s.CreateResourceFromStringWithNamespace(adminSecret, "default")
+			err := s.CreateResourceFromStringWithNamespace(adminSecret, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating admin secret")
 			time.Sleep(5 * time.Second)
 
 			By("create GatewayProxy with Secret reference")
-			gatewayProxy := fmt.Sprintf(gatewayProxyWithSecretYaml, s.Deployer.GetAdminEndpoint())
-			err = s.CreateResourceFromStringWithNamespace(gatewayProxy, "default")
+			gatewayProxy := fmt.Sprintf(gatewayProxyWithSecretYaml, s.Namespace(), s.Deployer.GetAdminEndpoint())
+			err = s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy with Secret")
 			time.Sleep(5 * time.Second)
 
 			By("create IngressClass with GatewayProxy reference")
-			err = s.CreateResourceFromStringWithNamespace(ingressClassWithProxySecret, "")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClassWithProxySecret, s.GetControllerName(), s.Namespace()), "")
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass with GatewayProxy")
 			time.Sleep(5 * time.Second)
 
 			By("create Ingress with GatewayProxy IngressClass")
-			err = s.CreateResourceFromString(testIngressWithSecret)
+			err = s.CreateResourceFromStringWithNamespace(testIngressWithSecret, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress with GatewayProxy IngressClass")
 			time.Sleep(5 * time.Second)
 
@@ -515,7 +526,7 @@ apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
   name: apisix-proxy-config
-  namespace: default
+  namespace: %s
 spec:
   provider:
     type: ControlPlane
@@ -526,21 +537,21 @@ spec:
         type: AdminKey
         adminKey:
           value: "%s"
-`, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+`, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
 		}
 
 		const ingressClassSpec = `
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
 metadata:
-  name: apisix
+  name: %s
 spec:
-  controller: "apisix.apache.org/apisix-ingress-controller"
+  controller: "%s"
   parameters:
     apiGroup: "apisix.apache.org"
     kind: "GatewayProxy"
     name: "apisix-proxy-config"
-    namespace: "default"
+    namespace: "%s"
     scope: "Namespace"
 `
 		const ingressSpec = `
@@ -549,7 +560,7 @@ kind: Ingress
 metadata:
   name: default
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   rules:
   - host: example.com
     http:
@@ -628,49 +639,49 @@ spec:
 `
 		BeforeEach(func() {
 			By("create GatewayProxy")
-			err := s.CreateResourceFromStringWithNamespace(getGatewayProxySpec(), "default")
+			err := s.CreateResourceFromStringWithNamespace(getGatewayProxySpec(), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(5 * time.Second)
 
 			By("create IngressClass")
-			err = s.CreateResourceFromStringWithNamespace(ingressClassSpec, "")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClassSpec, s.Namespace(), s.GetControllerName(), s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
 			time.Sleep(5 * time.Second)
 		})
 
 		It("HTTPRoutePolicy targetRef an Ingress", func() {
 			By("create Ingress")
-			err := s.CreateResourceFromString(ingressSpec)
+			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressSpec, s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress")
 
 			By("request the route should be OK")
 			Eventually(func() int {
 				return s.NewAPISIXClient().GET("/get").WithHost("example.com").Expect().Raw().StatusCode
 			}).
-				WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+				WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 
 			By("create HTTPRoutePolicy")
-			err = s.CreateResourceFromString(httpRoutePolicySpec0)
+			err = s.CreateResourceFromStringWithNamespace(httpRoutePolicySpec0, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating HTTPRoutePolicy")
 			Eventually(func() string {
 				spec, err := s.GetResourceYaml("HTTPRoutePolicy", "http-route-policy-0")
 				Expect(err).NotTo(HaveOccurred(), "HTTPRoutePolicy status should be True")
 				return spec
 			}).
-				WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(ContainSubstring(`status: "True"`))
+				WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(ContainSubstring(`status: "True"`))
 
 			By("request the route without vars should be Not Found")
 			Eventually(func() int {
 				return s.NewAPISIXClient().GET("/get").WithHost("example.com").Expect().Raw().StatusCode
 			}).
-				WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
+				WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
 
 			By("request the route with the correct vars should be OK")
 			s.NewAPISIXClient().GET("/get").WithHost("example.com").
 				WithHeader("X-HRP-Name", "http-route-policy-0").Expect().Status(http.StatusOK)
 
 			By("update the HTTPRoutePolicy")
-			err = s.CreateResourceFromString(httpRoutePolicySpec1)
+			err = s.CreateResourceFromStringWithNamespace(httpRoutePolicySpec1, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "updating HTTPRoutePolicy")
 
 			By("request with the old vars should be Not Found")
@@ -678,44 +689,44 @@ spec:
 				return s.NewAPISIXClient().GET("/get").WithHost("example.com").
 					WithHeader("X-HRP-Name", "http-route-policy-0").Expect().Raw().StatusCode
 			}).
-				WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
+				WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
 
 			By("request with the new vars should be OK")
 			s.NewAPISIXClient().GET("/get").WithHost("example.com").
 				WithQuery("hrp_name", "http-route-policy-0").Expect().Status(http.StatusOK)
 
 			By("update the HTTPRoutePolicy's targetRef")
-			err = s.CreateResourceFromString(httpRoutePolicySpec2)
+			err = s.CreateResourceFromStringWithNamespace(httpRoutePolicySpec2, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "updating HTTPRoutePolicy")
 
 			By("request the route without vars should be OK")
 			Eventually(func() int {
 				return s.NewAPISIXClient().GET("/get").WithHost("example.com").Expect().Raw().StatusCode
 			}).
-				WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+				WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 
 			By("revert the HTTPRoutePolicy")
-			err = s.CreateResourceFromString(httpRoutePolicySpec0)
+			err = s.CreateResourceFromStringWithNamespace(httpRoutePolicySpec0, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating HTTPRoutePolicy")
 
 			By("request the route without vars should be Not Found")
 			Eventually(func() int {
 				return s.NewAPISIXClient().GET("/get").WithHost("example.com").Expect().Raw().StatusCode
 			}).
-				WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
+				WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
 
 			By("request the route with the correct vars should be OK")
 			s.NewAPISIXClient().GET("/get").WithHost("example.com").
 				WithHeader("X-HRP-Name", "http-route-policy-0").Expect().Status(http.StatusOK)
 
 			By("apply conflict HTTPRoutePolicy")
-			err = s.CreateResourceFromString(httpRoutePolicySpec3)
+			err = s.CreateResourceFromStringWithNamespace(httpRoutePolicySpec3, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating HTTPRoutePolicy")
 			Eventually(func() string {
 				spec, err := s.GetResourceYaml("HTTPRoutePolicy", "http-route-policy-1")
 				Expect(err).NotTo(HaveOccurred(), "get HTTPRoutePolicy")
 				return spec
-			}).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(ContainSubstring("reason: Conflicted"))
+			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(ContainSubstring("reason: Conflicted"))
 
 			By("delete the HTTPRoutePolicy")
 			for _, name := range []string{"http-route-policy-0", "http-route-policy-1"} {
@@ -727,23 +738,20 @@ spec:
 			Eventually(func() int {
 				return s.NewAPISIXClient().GET("/get").WithHost("example.com").Expect().Raw().StatusCode
 			}).
-				WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+				WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 		})
 
 		It("HTTPRoutePolicy status changes on Ingress deleting", func() {
 			By("create Ingress")
-			err := s.CreateResourceFromString(ingressSpec)
+			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressSpec, s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress")
 
 			By("create HTTPRoutePolicy")
-			s.ApplyHTTPRoutePolicy(
-				types.NamespacedName{Name: "apisix"},
-				types.NamespacedName{Namespace: s.Namespace(), Name: "http-route-policy-0"},
-				httpRoutePolicySpec0,
-			)
+			err = s.CreateResourceFromStringWithNamespace(httpRoutePolicySpec0, s.Namespace())
+			Expect(err).NotTo(HaveOccurred(), "creating HTTPRoutePolicy")
 
 			By("delete ingress")
-			err = s.DeleteResource("Ingress", "default")
+			err = s.DeleteResourceFromStringWithNamespace(fmt.Sprintf(ingressSpec, s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "delete Ingress")
 
 			err = framework.PollUntilHTTPRoutePolicyHaveStatus(s.K8sClient, 8*time.Second,
@@ -763,14 +771,14 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
 metadata:
-  name: apisix-ingress-class
+  name: %s
 spec:
-  controller: "apisix.apache.org/apisix-ingress-controller"
+  controller: "%s"
   parameters:
     apiGroup: "apisix.apache.org"
     kind: "GatewayProxy"
     name: "apisix-proxy-config"
-    namespace: "default"
+    namespace: "%s"
     scope: "Namespace"
 `
 		var ingress = `
@@ -779,7 +787,7 @@ kind: Ingress
 metadata:
   name: apisix-ingress
 spec:
-  ingressClassName: apisix-ingress-class
+  ingressClassName: %s
   rules:
   - host: ingress.example.com
     http:
@@ -797,7 +805,7 @@ apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
   name: apisix-proxy-config
-  namespace: default
+  namespace: %s
 spec:
   provider:
     type: ControlPlane
@@ -812,20 +820,20 @@ spec:
 
 		BeforeEach(func() {
 			By("create GatewayProxy")
-			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Deployer.GetAdminEndpoint(), s.AdminKey())
-			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, "default")
+			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(5 * time.Second)
 
 			By("create IngressClass")
-			err = s.CreateResourceFromStringWithNamespace(ingressClass, "")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClass, s.Namespace(), s.GetControllerName(), s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 			time.Sleep(5 * time.Second)
 		})
 
 		It("Should sync Ingress when GatewayProxy is updated", func() {
 			By("create Ingress")
-			err := s.CreateResourceFromString(ingress)
+			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingress, s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress")
 			time.Sleep(5 * time.Second)
 
@@ -854,17 +862,15 @@ spec:
 			Expect(exists).To(BeTrue(), "additional gateway group should exist")
 
 			By("update GatewayProxy with new admin key")
-			updatedProxy := fmt.Sprintf(updatedGatewayProxy, s.Deployer.GetAdminEndpoint(resources.DataplaneService), resources.AdminAPIKey)
-			err = s.CreateResourceFromStringWithNamespace(updatedProxy, "default")
+			updatedProxy := fmt.Sprintf(updatedGatewayProxy, s.Namespace(), s.Deployer.GetAdminEndpoint(resources.DataplaneService), resources.AdminAPIKey)
+			err = s.CreateResourceFromStringWithNamespace(updatedProxy, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "updating GatewayProxy")
-			time.Sleep(5 * time.Second)
-
+			request := func(path string) int {
+				return client.GET(path).WithHost("ingress.example.com").Expect().Raw().StatusCode
+			}
 			By("verify Ingress works for additional gateway group")
-			client.
-				GET("/get").
-				WithHost("ingress.example.com").
-				Expect().
-				Status(200)
+			Eventually(request).WithArguments("/get").WithTimeout(20 * time.Second).
+				ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 		})
 	})
 
@@ -906,9 +912,9 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
 metadata:
-  name: apisix-ingress-class
+  name: %s
 spec:
-  controller: "apisix.apache.org/apisix-ingress-controller"
+  controller: "%s"
   parameters:
     apiGroup: "apisix.apache.org"
     kind: "GatewayProxy"
@@ -922,7 +928,7 @@ kind: Ingress
 metadata:
   name: apisix-ingress
 spec:
-  ingressClassName: apisix-ingress-class
+  ingressClassName: %s
   rules:
   - host: ingress.example.com
     http:
@@ -950,11 +956,11 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "creating gateway proxy")
 
 			By("create IngressClass")
-			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClassSpec, s.Namespace()), s.Namespace())
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClassSpec, s.Namespace(), s.GetControllerName(), s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 
 			By("creat Ingress")
-			err = s.CreateResourceFromStringWithNamespace(ingressSpec, s.Namespace())
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressSpec, s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress")
 
 			By("verify Ingress works")
@@ -963,7 +969,7 @@ spec:
 					GET("/get").
 					WithHost("ingress.example.com").
 					Expect().Raw().StatusCode
-			}).WithTimeout(8 * time.Second).ProbeEvery(time.Second).
+			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).
 				Should(Equal(http.StatusOK))
 			s.NewAPISIXClient().
 				GET("/get").
@@ -997,14 +1003,14 @@ spec:
 					GET("/get").
 					WithHost("ingress.example.com").
 					Expect().Raw().StatusCode
-			}).WithTimeout(8 * time.Second).ProbeEvery(time.Second).
+			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).
 				Should(Equal(http.StatusOK))
 			Eventually(func() string {
 				return client.
 					GET("/get").
 					WithHost("ingress.example.com").
 					Expect().Raw().Header.Get("X-Proxy-Test")
-			}).WithTimeout(8 * time.Second).ProbeEvery(time.Second).
+			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).
 				Should(Equal("enabled"))
 		})
 	})

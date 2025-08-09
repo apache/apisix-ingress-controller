@@ -18,6 +18,7 @@
 package gatewayapi
 
 import (
+	"fmt"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -28,7 +29,7 @@ import (
 
 var _ = Describe("Test GatewayClass", Label("networking.k8s.io", "gatewayclass"), func() {
 	s := scaffold.NewScaffold(&scaffold.Options{
-		ControllerName: "apisix.apache.org/apisix-ingress-controller",
+		ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
 	})
 
 	Context("Create GatewayClass", func() {
@@ -36,9 +37,9 @@ var _ = Describe("Test GatewayClass", Label("networking.k8s.io", "gatewayclass")
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
-  name: apisix
+  name: %s
 spec:
-  controllerName: "apisix.apache.org/apisix-ingress-controller"
+  controllerName: "%s"
 `
 
 		var noGatewayClass = `
@@ -53,27 +54,28 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: apisix
+  name: %s
 spec:
-  gatewayClassName: apisix
+  gatewayClassName: %s
   listeners:
     - name: http1
       protocol: HTTP
       port: 80
 `
 		It("Create GatewayClass", func() {
+			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
 			By("create default GatewayClass")
-			err := s.CreateResourceFromStringWithNamespace(defautlGatewayClass, "")
+			err := s.CreateResourceFromString(fmt.Sprintf(defautlGatewayClass, gatewayClassName, s.GetControllerName()))
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
 			time.Sleep(5 * time.Second)
 
-			gcyaml, err := s.GetResourceYaml("GatewayClass", "apisix")
+			gcyaml, err := s.GetResourceYaml("GatewayClass", gatewayClassName)
 			Expect(err).NotTo(HaveOccurred(), "getting GatewayClass yaml")
 			Expect(gcyaml).To(ContainSubstring(`status: "True"`), "checking GatewayClass condition status")
 			Expect(gcyaml).To(ContainSubstring("message: the gatewayclass has been accepted by the apisix-ingress-controller"), "checking GatewayClass condition message")
 
 			By("create GatewayClass with not accepted")
-			err = s.CreateResourceFromStringWithNamespace(noGatewayClass, "")
+			err = s.CreateResourceFromString(noGatewayClass)
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
 			time.Sleep(5 * time.Second)
 
@@ -84,28 +86,30 @@ spec:
 		})
 
 		It("Delete GatewayClass", func() {
+			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
 			By("create default GatewayClass")
-			err := s.CreateResourceFromStringWithNamespace(defautlGatewayClass, "")
+			err := s.CreateResourceFromString(fmt.Sprintf(defautlGatewayClass, gatewayClassName, s.GetControllerName()))
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
 			Eventually(func() string {
-				spec, err := s.GetResourceYaml("GatewayClass", "apisix")
+				spec, err := s.GetResourceYaml("GatewayClass", gatewayClassName)
 				Expect(err).NotTo(HaveOccurred(), "get resource yaml")
 				return spec
-			}).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(ContainSubstring(`status: "True"`))
+			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(ContainSubstring(`status: "True"`))
 
 			By("create a Gateway")
-			err = s.CreateResourceFromStringWithNamespace(defaultGateway, s.Namespace())
+			gatewayName := s.Namespace()
+			err = s.CreateResourceFromString(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName))
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 			time.Sleep(time.Second)
 
 			By("try to delete the GatewayClass")
-			_, err = s.RunKubectlAndGetOutput("delete", "GatewayClass", "apisix", "--wait=false")
+			_, err = s.RunKubectlAndGetOutput("delete", "GatewayClass", gatewayClassName, "--wait=false")
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = s.GetResourceYaml("GatewayClass", "apisix")
+			_, err = s.GetResourceYaml("GatewayClass", gatewayClassName)
 			Expect(err).NotTo(HaveOccurred(), "get resource yaml")
 
-			output, err := s.RunKubectlAndGetOutput("describe", "GatewayClass", "apisix")
+			output, err := s.RunKubectlAndGetOutput("describe", "GatewayClass", gatewayClassName)
 			Expect(err).NotTo(HaveOccurred(), "describe GatewayClass apisix")
 			Expect(output).To(And(
 				ContainSubstring("Warning"),
@@ -115,15 +119,15 @@ spec:
 			))
 
 			By("delete the Gateway")
-			err = s.DeleteResource("Gateway", "apisix")
+			err = s.DeleteResource("Gateway", gatewayName)
 			Expect(err).NotTo(HaveOccurred(), "deleting Gateway")
 			time.Sleep(time.Second)
 
 			By("try to delete the GatewayClass again")
-			err = s.DeleteResource("GatewayClass", "apisix")
+			err = s.DeleteResource("GatewayClass", gatewayClassName)
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = s.GetResourceYaml("GatewayClass", "apisix")
+			_, err = s.GetResourceYaml("GatewayClass", gatewayClassName)
 			Expect(err).To(HaveOccurred(), "get resource yaml")
 			Expect(err.Error()).To(ContainSubstring("not found"))
 		})

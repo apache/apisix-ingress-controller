@@ -29,8 +29,8 @@ import (
 )
 
 const (
-	DefaultTimeout  = 12 * time.Second
-	DefaultInterval = 1 * time.Second
+	DefaultTimeout  = 30 * time.Second
+	DefaultInterval = 2 * time.Second
 )
 
 type ResponseCheckFunc func(*HTTPResponse) error
