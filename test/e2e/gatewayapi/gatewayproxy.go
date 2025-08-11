@@ -28,7 +28,9 @@ import (
 )
 
 var _ = Describe("Test GatewayProxy", Label("apisix.apache.org", "v1alpha1", "gatewayproxy"), func() {
-	s := scaffold.NewDefaultScaffold()
+	s := scaffold.NewScaffold(&scaffold.Options{
+		ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
+	})
 
 	var defaultGatewayClass = `
 apiVersion: gateway.networking.k8s.io/v1

@@ -38,7 +38,9 @@ import (
 )
 
 var _ = Describe("Test HTTPRoute", Label("networking.k8s.io", "httproute"), func() {
-	s := scaffold.NewDefaultScaffold()
+	s := scaffold.NewScaffold(&scaffold.Options{
+		ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
+	})
 
 	var gatewayProxyYaml = `
 apiVersion: apisix.apache.org/v1alpha1

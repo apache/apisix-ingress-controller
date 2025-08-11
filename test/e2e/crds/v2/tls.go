@@ -91,7 +91,9 @@ var Key = strings.TrimSpace(framework.TestServerKey)
 
 var _ = Describe("Test ApisixTls", Label("apisix.apache.org", "v2", "apisixtls"), func() {
 	var (
-		s       = scaffold.NewDefaultScaffold()
+		s = scaffold.NewScaffold(&scaffold.Options{
+			ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
+		})
 		applier = framework.NewApplier(s.GinkgoT, s.K8sClient, s.CreateResourceFromString)
 	)
 

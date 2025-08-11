@@ -28,7 +28,9 @@ import (
 )
 
 var _ = Describe("Test GatewayClass", Label("networking.k8s.io", "gatewayclass"), func() {
-	s := scaffold.NewDefaultScaffold()
+	s := scaffold.NewScaffold(&scaffold.Options{
+		ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
+	})
 
 	Context("Create GatewayClass", func() {
 		var defautlGatewayClass = `

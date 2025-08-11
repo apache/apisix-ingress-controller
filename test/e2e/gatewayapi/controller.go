@@ -129,7 +129,9 @@ spec:
 	}
 
 	Context("Create resource with first controller", func() {
-		s1 := scaffold.NewDefaultScaffold()
+		s1 := scaffold.NewScaffold(&scaffold.Options{
+			ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
+		})
 		var route1 = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -172,7 +174,9 @@ spec:
 		})
 	})
 	Context("Create resource with second controller", func() {
-		s2 := scaffold.NewDefaultScaffold()
+		s2 := scaffold.NewScaffold(&scaffold.Options{
+			ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
+		})
 		var route2 = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
