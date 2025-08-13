@@ -726,3 +726,10 @@ func (s *StringOrSlice) UnmarshalJSON(p []byte) error {
 	}
 	return json.Unmarshal(p, &s.StrVal)
 }
+
+type Config struct {
+	Name        string
+	ServerAddrs []string
+	Token       string
+	TlsVerify   bool
+}
