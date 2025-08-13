@@ -44,7 +44,7 @@ func createSecret(s *scaffold.Scaffold, secretName string) {
 
 var _ = Describe("Test Gateway", Label("networking.k8s.io", "gateway"), func() {
 	s := scaffold.NewScaffold(&scaffold.Options{
-		ControllerName: "apisix.apache.org/apisix-ingress-controller",
+		ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
 	})
 
 	var gatewayProxyYaml = `
@@ -52,6 +52,7 @@ apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
   name: apisix-proxy-config
+  namespace: %s
 spec:
   provider:
     type: ControlPlane
@@ -69,18 +70,18 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
-  name: apisix
+  name: %s
 spec:
-  controllerName: "apisix.apache.org/apisix-ingress-controller"
+  controllerName: "%s"
 `
 
 		var defaultGateway = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: apisix
+  name: %s
 spec:
-  gatewayClassName: apisix
+  gatewayClassName: %s
   listeners:
     - name: http1
       protocol: HTTP
@@ -111,31 +112,33 @@ spec:
 `
 
 		It("Create Gateway", func() {
+			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
 			By("create GatewayProxy")
-			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
 			err := s.CreateResourceFromString(gatewayProxy)
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(5 * time.Second)
 
 			By("create GatewayClass")
-			err = s.CreateResourceFromStringWithNamespace(defaultGatewayClass, "")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()), "")
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
 			time.Sleep(5 * time.Second)
 
 			By("check GatewayClass condition")
-			gcyaml, err := s.GetResourceYaml("GatewayClass", "apisix")
+			gcyaml, err := s.GetResourceYaml("GatewayClass", gatewayClassName)
 			Expect(err).NotTo(HaveOccurred(), "getting GatewayClass yaml")
 			Expect(gcyaml).To(ContainSubstring(`status: "True"`), "checking GatewayClass condition status")
 			Expect(gcyaml).To(ContainSubstring("message: the gatewayclass has been accepted by the apisix-ingress-controller"), "checking GatewayClass condition message")
 
 			By("create Gateway")
-			err = s.CreateResourceFromStringWithNamespace(defaultGateway, s.
+			gatewayName := s.Namespace()
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName), s.
 				Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 			time.Sleep(5 * time.Second)
 
 			By("check Gateway condition")
-			gwyaml, err := s.GetResourceYaml("Gateway", "apisix")
+			gwyaml, err := s.GetResourceYaml("Gateway", gatewayName)
 			Expect(err).NotTo(HaveOccurred(), "getting Gateway yaml")
 			Expect(gwyaml).To(ContainSubstring(`status: "True"`), "checking Gateway condition status")
 			Expect(gwyaml).To(ContainSubstring("message: the gateway has been accepted by the apisix-ingress-controller"), "checking Gateway condition message")
@@ -155,7 +158,7 @@ spec:
 	Context("Gateway SSL", func() {
 		It("Check if SSL resource was created", func() {
 			By("create GatewayProxy")
-			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
 			err := s.CreateResourceFromString(gatewayProxy)
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(5 * time.Second)
@@ -164,22 +167,23 @@ spec:
 			secretName := _secretName
 			host := "api6.com"
 			createSecret(s, secretName)
+			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
 			var defaultGatewayClass = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
-  name: apisix
+  name: %s
 spec:
-  controllerName: "apisix.apache.org/apisix-ingress-controller"
+  controllerName: "%s"
 `
 
 			var defaultGateway = fmt.Sprintf(`
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: apisix
+  name: %s
 spec:
-  gatewayClassName: apisix
+  gatewayClassName: %s
   listeners:
     - name: http1
       protocol: HTTPS
@@ -195,9 +199,9 @@ spec:
       group: apisix.apache.org
       kind: GatewayProxy
       name: apisix-proxy-config
-`, host, secretName)
+`, s.Namespace(), gatewayClassName, host, secretName)
 			By("create GatewayClass")
-			err = s.CreateResourceFromStringWithNamespace(defaultGatewayClass, "")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()), "")
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
 			time.Sleep(5 * time.Second)
 
@@ -216,20 +220,21 @@ spec:
 
 		It("Gateway SSL with and without hostname", func() {
 			By("create GatewayProxy")
-			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
 			err := s.CreateResourceFromString(gatewayProxy)
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(5 * time.Second)
 
 			secretName := _secretName
 			createSecret(s, secretName)
+			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
 			var defaultGatewayClass = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
-  name: apisix
+  name: %s
 spec:
-  controllerName: "apisix.apache.org/apisix-ingress-controller"
+  controllerName: "%s"
 `
 
 			var defaultGateway = fmt.Sprintf(`
@@ -238,7 +243,7 @@ kind: Gateway
 metadata:
   name: same-namespace-with-https-listener
 spec:
-  gatewayClassName: apisix
+  gatewayClassName: %s
   listeners:
   - name: https
     port: 443
@@ -268,9 +273,9 @@ spec:
       group: apisix.apache.org
       kind: GatewayProxy
       name: apisix-proxy-config
-`, secretName, secretName)
+`, gatewayClassName, secretName, secretName)
 			By("create GatewayClass")
-			err = s.CreateResourceFromStringWithNamespace(defaultGatewayClass, "")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()), "")
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
 			time.Sleep(5 * time.Second)
 
@@ -284,7 +289,7 @@ spec:
 			assert.Len(GinkgoT(), tls, 1, "tls number not expect")
 			assert.Len(GinkgoT(), tls[0].Certificates, 1, "length of certificates not expect")
 			assert.Equal(GinkgoT(), Cert, tls[0].Certificates[0].Certificate, "tls cert not expect")
-			assert.Equal(GinkgoT(), tls[0].Labels["k8s/controller-name"], "apisix.apache.org/apisix-ingress-controller")
+			assert.Equal(GinkgoT(), tls[0].Labels["k8s/controller-name"], s.GetControllerName())
 
 			By("update secret")
 			err = s.NewKubeTlsSecret(secretName, framework.TestCert, framework.TestKey)
@@ -299,7 +304,7 @@ spec:
 					return ""
 				}
 				return tls[0].Certificates[0].Certificate
-			}).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(framework.TestCert))
+			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(framework.TestCert))
 		})
 	})
 })

@@ -36,20 +36,20 @@ type Headers map[string]string
 var _ = Describe("Test ApisixConsumer", Label("apisix.apache.org", "v2", "apisixconsumer"), func() {
 	var (
 		s = scaffold.NewScaffold(&scaffold.Options{
-			ControllerName: "apisix.apache.org/apisix-ingress-controller",
+			ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
 		})
 		applier = framework.NewApplier(s.GinkgoT, s.K8sClient, s.CreateResourceFromString)
 	)
 
 	BeforeEach(func() {
 		By("create GatewayProxy")
-		gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Deployer.GetAdminEndpoint(), s.AdminKey())
-		err := s.CreateResourceFromStringWithNamespace(gatewayProxy, "default")
+		gatewayProxy := s.GetGatewayProxyYaml()
+		err := s.CreateResourceFromString(gatewayProxy)
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 		time.Sleep(5 * time.Second)
 
 		By("create IngressClass")
-		err = s.CreateResourceFromStringWithNamespace(ingressClassYaml, "")
+		err = s.CreateResourceFromString(s.GetIngressClassYaml())
 		Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 		time.Sleep(5 * time.Second)
 	})
@@ -62,7 +62,7 @@ kind: ApisixConsumer
 metadata:
   name: test-consumer
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   authParameter:
     keyAuth:
       value:
@@ -74,7 +74,7 @@ kind: ApisixRoute
 metadata:
   name: default
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   http:
   - name: rule0
     match:
@@ -115,7 +115,7 @@ kind: ApisixConsumer
 metadata:
   name: test-consumer
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   authParameter:
     keyAuth:
       secretRef:
@@ -128,10 +128,10 @@ spec:
 
 		It("Basic tests", func() {
 			By("apply ApisixRoute")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, defaultApisixRoute)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, fmt.Sprintf(defaultApisixRoute, s.Namespace()))
 
 			By("apply ApisixConsumer")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-consumer"}, &apiv2.ApisixConsumer{}, keyAuth)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-consumer"}, &apiv2.ApisixConsumer{}, fmt.Sprintf(keyAuth, s.Namespace()))
 
 			By("verify ApisixRoute with ApisixConsumer")
 			Eventually(request).WithArguments("/get", Headers{
@@ -157,14 +157,16 @@ spec:
 
 		It("SecretRef tests", func() {
 			By("apply ApisixRoute")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, defaultApisixRoute)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{},
+				fmt.Sprintf(defaultApisixRoute, s.Namespace()))
 
 			By("apply Secret")
 			err := s.CreateResourceFromString(secret)
 			Expect(err).ShouldNot(HaveOccurred(), "creating Secret for ApisixConsumer")
 
 			By("apply ApisixConsumer")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-consumer"}, &apiv2.ApisixConsumer{}, keyAuthWiwhSecret)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-consumer"}, &apiv2.ApisixConsumer{},
+				fmt.Sprintf(keyAuthWiwhSecret, s.Namespace()))
 
 			By("verify ApisixRoute with ApisixConsumer")
 			Eventually(request).WithArguments("/get", Headers{
@@ -209,7 +211,7 @@ kind: ApisixConsumer
 metadata:
   name: test-consumer
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   authParameter:
     basicAuth:
       value:
@@ -222,7 +224,7 @@ kind: ApisixRoute
 metadata:
   name: default
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   http:
   - name: rule0
     match:
@@ -267,7 +269,7 @@ kind: ApisixConsumer
 metadata:
   name: test-consumer
 spec:
-  ingressClassName: apisix
+  ingressClassName: %s
   authParameter:
     basicAuth:
       secretRef:
@@ -277,10 +279,10 @@ spec:
 
 		It("Basic tests", func() {
 			By("apply ApisixRoute")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, defaultApisixRoute)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, fmt.Sprintf(defaultApisixRoute, s.Namespace()))
 
 			By("apply ApisixConsumer")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-consumer"}, &apiv2.ApisixConsumer{}, basicAuth)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-consumer"}, &apiv2.ApisixConsumer{}, fmt.Sprintf(basicAuth, s.Namespace()))
 
 			By("verify ApisixRoute with ApisixConsumer")
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -331,14 +333,16 @@ spec:
 
 		It("SecretRef tests", func() {
 			By("apply ApisixRoute")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, defaultApisixRoute)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{},
+				fmt.Sprintf(defaultApisixRoute, s.Namespace()))
 
 			By("apply Secret")
 			err := s.CreateResourceFromString(secret)
 			Expect(err).ShouldNot(HaveOccurred(), "creating Secret for ApisixConsumer")
 
 			By("apply ApisixConsumer")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-consumer"}, &apiv2.ApisixConsumer{}, basicAuthWithSecret)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-consumer"},
+				&apiv2.ApisixConsumer{}, fmt.Sprintf(basicAuthWithSecret, s.Namespace()))
 
 			By("verify ApisixRoute with ApisixConsumer")
 			s.RequestAssert(&scaffold.RequestAssert{

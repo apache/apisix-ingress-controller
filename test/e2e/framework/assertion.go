@@ -123,7 +123,7 @@ func PollUntilAPIv2MustHaveStatus(cli client.Client, timeout time.Duration, nn t
 	if err := apiv2.AddToScheme(cli.Scheme()); err != nil {
 		return err
 	}
-	return wait.PollUntilContextTimeout(context.Background(), time.Second, timeout, true, func(ctx context.Context) (done bool, err error) {
+	return wait.PollUntilContextTimeout(context.Background(), 2*time.Second, timeout, true, func(ctx context.Context) (done bool, err error) {
 		if err := cli.Get(ctx, nn, obj); err != nil {
 			return false, errors.Wrapf(err, "error fetching Object %s", nn)
 		}
@@ -179,7 +179,7 @@ type applier struct {
 func (a *applier) MustApplyAPIv2(nn types.NamespacedName, obj client.Object, spec string) {
 	require.NoError(a.t, a.apply(spec), "creating %s", nn)
 
-	APIv2MustHaveCondition(a.t, a.cli, 8*time.Second, nn, obj, metav1.Condition{
+	APIv2MustHaveCondition(a.t, a.cli, 90*time.Second, nn, obj, metav1.Condition{
 		Type:   string(gatewayv1.RouteConditionAccepted),
 		Status: metav1.ConditionTrue,
 		Reason: string(gatewayv1.GatewayReasonAccepted),
