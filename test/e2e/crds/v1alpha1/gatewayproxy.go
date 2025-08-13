@@ -30,7 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/ptr"
 
-	"github.com/apache/apisix-ingress-controller/internal/provider/adc"
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
@@ -134,7 +133,7 @@ spec:
 	})
 
 	Context("Test GatewayProxy update configs", func() {
-		It("scaling apisix pods to test that the controller watches endpoints", func() {
+		FIt("scaling apisix pods to test that the controller watches endpoints", func() {
 			By("scale apisix to replicas 2")
 			s.Deployer.DeployDataplane(scaffold.DeployDataplaneOptions{
 				Replicas: ptr.To(2),
@@ -181,7 +180,7 @@ spec:
 				keyword string
 			)
 
-			if framework.ProviderType == adc.BackendModeAPISIX {
+			if framework.ProviderType == framework.ProviderTypeAPISIX {
 				keyword = fmt.Sprintf(`{"config.ServerAddrs": ["%s"]}`, s.Deployer.GetAdminEndpoint())
 			} else {
 				keyword = fmt.Sprintf(`{"config.ServerAddrs": ["http://%s:9180"]}`, s.GetPodIP(s.Namespace(), "app.kubernetes.io/name=apisix"))

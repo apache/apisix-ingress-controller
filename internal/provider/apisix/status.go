@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package adc
+package apisix
 
 import (
 	"fmt"
@@ -41,7 +41,7 @@ import (
 // For resources in the current failure map (statusUpdateMap), it marks them as failed.
 // For resources that exist only in the previous failure history (i.e. not in this sync's failures),
 // it marks them as accepted (success).
-func (d *adcClient) handleStatusUpdate(statusUpdateMap map[types.NamespacedNameKind][]string) {
+func (d *apisixProvider) handleStatusUpdate(statusUpdateMap map[types.NamespacedNameKind][]string) {
 	// Mark all resources in the current failure set as failed.
 	for nnk, msgs := range statusUpdateMap {
 		d.updateStatus(nnk, cutils.NewConditionTypeAccepted(
@@ -67,7 +67,7 @@ func (d *adcClient) handleStatusUpdate(statusUpdateMap map[types.NamespacedNameK
 	d.statusUpdateMap = statusUpdateMap
 }
 
-func (d *adcClient) updateStatus(nnk types.NamespacedNameKind, condition metav1.Condition) {
+func (d *apisixProvider) updateStatus(nnk types.NamespacedNameKind, condition metav1.Condition) {
 	switch nnk.Kind {
 	case types.KindApisixRoute:
 		d.updater.Update(status.Update{
@@ -110,7 +110,8 @@ func (d *adcClient) updateStatus(nnk types.NamespacedNameKind, condition metav1.
 			}),
 		})
 	case types.KindHTTPRoute:
-		parentRefs := d.getParentRefs(nnk)
+		parentRefs := d.client.ConfigManager.GetConfigRefsByResourceKey(nnk)
+		log.Debugw("updating HTTPRoute status", zap.Any("parentRefs", parentRefs))
 		gatewayRefs := map[types.NamespacedNameKind]struct{}{}
 		for _, parentRef := range parentRefs {
 			if parentRef.Kind == types.KindGateway {
@@ -146,7 +147,7 @@ func (d *adcClient) updateStatus(nnk types.NamespacedNameKind, condition metav1.
 	}
 }
 
-func (d *adcClient) resolveADCExecutionErrors(
+func (d *apisixProvider) resolveADCExecutionErrors(
 	statusesMap map[string]types.ADCExecutionErrors,
 ) map[types.NamespacedNameKind][]string {
 	statusUpdateMap := map[types.NamespacedNameKind][]string{}
@@ -165,12 +166,12 @@ func (d *adcClient) resolveADCExecutionErrors(
 	return statusUpdateMap
 }
 
-func (d *adcClient) handleEmptyFailedStatuses(
+func (d *apisixProvider) handleEmptyFailedStatuses(
 	configName string,
 	failedStatus types.ADCExecutionServerAddrError,
 	statusUpdateMap map[types.NamespacedNameKind][]string,
 ) {
-	resource, err := d.store.GetResources(configName)
+	resource, err := d.client.GetResources(configName)
 	if err != nil {
 		log.Errorw("failed to get resources from store", zap.String("configName", configName), zap.Error(err))
 		return
@@ -188,7 +189,7 @@ func (d *adcClient) handleEmptyFailedStatuses(
 		d.addResourceToStatusUpdateMap(obj.GetLabels(), failedStatus.Error(), statusUpdateMap)
 	}
 
-	globalRules, err := d.store.ListGlobalRules(configName)
+	globalRules, err := d.client.ListGlobalRules(configName)
 	if err != nil {
 		log.Errorw("failed to list global rules", zap.String("configName", configName), zap.Error(err))
 		return
@@ -198,14 +199,14 @@ func (d *adcClient) handleEmptyFailedStatuses(
 	}
 }
 
-func (d *adcClient) handleDetailedFailedStatuses(
+func (d *apisixProvider) handleDetailedFailedStatuses(
 	configName string,
 	failedStatus types.ADCExecutionServerAddrError,
 	statusUpdateMap map[types.NamespacedNameKind][]string,
 ) {
 	for _, status := range failedStatus.FailedStatuses {
 		id := status.Event.ResourceID
-		labels, err := d.store.GetResourceLabel(configName, status.Event.ResourceType, id)
+		labels, err := d.client.GetResourceLabel(configName, status.Event.ResourceType, id)
 		if err != nil {
 			log.Errorw("failed to get resource label",
 				zap.String("configName", configName),
@@ -223,7 +224,7 @@ func (d *adcClient) handleDetailedFailedStatuses(
 	}
 }
 
-func (d *adcClient) addResourceToStatusUpdateMap(
+func (d *apisixProvider) addResourceToStatusUpdateMap(
 	labels map[string]string,
 	msg string,
 	statusUpdateMap map[types.NamespacedNameKind][]string,

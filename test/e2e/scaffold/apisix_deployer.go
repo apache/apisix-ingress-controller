@@ -30,7 +30,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 
-	"github.com/apache/apisix-ingress-controller/internal/provider/adc"
 	"github.com/apache/apisix-ingress-controller/pkg/utils"
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 )
@@ -212,7 +211,7 @@ func (s *APISIXDeployer) deployDataplane(opts *APISIXDeployOptions) *corev1.Serv
 
 	kubectlOpts := k8s.NewKubectlOptions("", "", opts.Namespace)
 
-	if framework.ProviderType == adc.BackendModeAPISIX {
+	if framework.ProviderType == framework.ProviderTypeAPISIX {
 		opts.ConfigProvider = "etcd"
 		// deploy etcd
 		k8s.KubectlApplyFromString(s.GinkgoT, kubectlOpts, framework.EtcdSpec)
