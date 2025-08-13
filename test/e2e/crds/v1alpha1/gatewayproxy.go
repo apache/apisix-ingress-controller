@@ -133,7 +133,7 @@ spec:
 	})
 
 	Context("Test GatewayProxy update configs", func() {
-		FIt("scaling apisix pods to test that the controller watches endpoints", func() {
+		It("scaling apisix pods to test that the controller watches endpoints", func() {
 			By("scale apisix to replicas 2")
 			s.Deployer.DeployDataplane(scaffold.DeployDataplaneOptions{
 				Replicas: ptr.To(2),
