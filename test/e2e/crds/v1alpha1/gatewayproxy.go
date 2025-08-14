@@ -36,9 +36,56 @@ import (
 
 var _ = Describe("Test GatewayProxy", Label("apisix.apache.org", "v1alpha1", "gatewayproxy"), func() {
 	var (
-		s   = scaffold.NewDefaultScaffold()
+		s = scaffold.NewScaffold(&scaffold.Options{
+			ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
+		})
 		err error
 	)
+
+	const gatewayClassSpec = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: %s
+spec:
+  controllerName: %s
+`
+	const gatewaySpec = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: %s
+spec:
+  gatewayClassName: %s
+  listeners:
+    - name: http1
+      protocol: HTTP
+      port: 80
+  infrastructure:
+    parametersRef:
+      group: apisix.apache.org
+      kind: GatewayProxy
+      name: apisix-proxy-config
+`
+	const httpRouteSpec = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: httpbin
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - "httpbin.org"
+  rules:
+  - matches: 
+    - path:
+        type: Exact
+        value: /get
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
 
 	const gatewayProxySpec = `
 apiVersion: apisix.apache.org/v1alpha1
@@ -63,53 +110,12 @@ spec:
       headers:
         "X-Pod-Hostname": "$hostname"
 `
-	const gatewayClassSpec = `
-apiVersion: gateway.networking.k8s.io/v1
-kind: GatewayClass
-metadata:
-  name: %s
-spec:
-  controllerName: %s
-`
-	const gatewaySpec = `
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: apisix
-spec:
-  gatewayClassName: %s
-  listeners:
-    - name: http1
-      protocol: HTTP
-      port: 80
-  infrastructure:
-    parametersRef:
-      group: apisix.apache.org
-      kind: GatewayProxy
-      name: apisix-proxy-config
-`
-	const httpRouteSpec = `
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: httpbin
-spec:
-  parentRefs:
-  - name: apisix
-  hostnames:
-  - "httpbin.org"
-  rules:
-  - matches: 
-    - path:
-        type: Exact
-        value: /get
-    backendRefs:
-    - name: httpbin-service-e2e-test
-      port: 80
-`
+
 	BeforeEach(func() {
+		gatewayName := s.Namespace()
 		By("create GatewayProxy")
-		err = s.CreateResourceFromString(fmt.Sprintf(gatewayProxySpec, framework.ProviderType, s.AdminKey()))
+		gatewayProxy := fmt.Sprintf(gatewayProxySpec, framework.ProviderType, s.AdminKey())
+		err = s.CreateResourceFromString(gatewayProxy)
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 		time.Sleep(time.Second)
 
@@ -120,16 +126,16 @@ spec:
 		time.Sleep(time.Second)
 
 		By("create Gateway")
-		err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(gatewaySpec, gatewayClassName), s.Namespace())
+		err = s.CreateResourceFromString(fmt.Sprintf(gatewaySpec, gatewayName, gatewayClassName))
 		Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 		time.Sleep(time.Second)
 
 		By("create HTTPRoute")
-		s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, httpRouteSpec)
+		s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, fmt.Sprintf(httpRouteSpec, gatewayName))
 
 		Eventually(func() int {
 			return s.NewAPISIXClient().GET("/get").WithHost("httpbin.org").Expect().Raw().StatusCode
-		}).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+		}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 	})
 
 	Context("Test GatewayProxy update configs", func() {

@@ -19,21 +19,28 @@ package v1alpha1
 
 import (
 	"fmt"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = Describe("Test BackendTrafficPolicy base on HTTPRoute", Label("apisix.apache.org", "v1alpha1", "backendtrafficpolicy"), func() {
-	s := scaffold.NewDefaultScaffold()
+	var (
+		s = scaffold.NewScaffold(&scaffold.Options{
+			ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
+		})
+		err error
+	)
 
 	var defaultGatewayProxy = `
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  name: apisix-proxy-config
+  name: %s
 spec:
   provider:
     type: ControlPlane
@@ -59,7 +66,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: apisix
+  name: %s
 spec:
   gatewayClassName: %s
   listeners:
@@ -70,7 +77,7 @@ spec:
     parametersRef:
       group: apisix.apache.org
       kind: GatewayProxy
-      name: apisix-proxy-config
+      name: %s
 `
 
 	var defaultHTTPRoute = `
@@ -78,9 +85,10 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: httpbin
+  namespace: %s
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - "httpbin.org"
   rules:
@@ -125,7 +133,26 @@ spec:
 `
 
 		BeforeEach(func() {
-			s.ApplyDefaultGatewayResource(defaultGatewayProxy, defaultGatewayClass, defaultGateway, defaultHTTPRoute)
+			gatewayName := s.Namespace()
+			By("create GatewayProxy")
+			gatewayProxyName := gatewayName
+			err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayProxy, gatewayProxyName, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
+			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
+			time.Sleep(time.Second)
+
+			By("create GatewayClass")
+			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
+			err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()))
+			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
+			time.Sleep(time.Second)
+
+			By("create Gateway")
+			err = s.CreateResourceFromString(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName, gatewayProxyName))
+			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
+			time.Sleep(time.Second)
+
+			By("create HTTPRoute")
+			s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, fmt.Sprintf(defaultHTTPRoute, gatewayName, s.Namespace()))
 		})
 		It("should rewrite upstream host", func() {
 			s.ResourceApplied("BackendTrafficPolicy", "httpbin", createUpstreamHost, 1)
@@ -184,15 +211,14 @@ spec:
 
 var _ = Describe("Test BackendTrafficPolicy base on Ingress", Label("apisix.apache.org", "v1alpha1", "backendtrafficpolicy"), func() {
 	s := scaffold.NewScaffold(&scaffold.Options{
-		ControllerName: "apisix.apache.org/apisix-ingress-controller",
+		ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
 	})
 
 	var defaultGatewayProxy = `
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  name: apisix-proxy-config
-  namespace: default
+  name: %s
 spec:
   provider:
     type: ControlPlane
@@ -212,12 +238,12 @@ metadata:
   annotations:
     ingressclass.kubernetes.io/is-default-class: "true"
 spec:
-  controller: "apisix.apache.org/apisix-ingress-controller"
+  controller: "%s"
   parameters:
     apiGroup: "apisix.apache.org"
     kind: "GatewayProxy"
-    name: "apisix-proxy-config"
-    namespace: "default"
+    name: "%s"
+    namespace: "%s"
     scope: "Namespace"
 `
 
@@ -241,12 +267,13 @@ spec:
 `
 	var beforeEach = func() {
 		By("create GatewayProxy")
-		gatewayProxy := fmt.Sprintf(defaultGatewayProxy, s.Deployer.GetAdminEndpoint(), s.AdminKey())
-		err := s.CreateResourceFromStringWithNamespace(gatewayProxy, "default")
+		gatewayProxyName := s.Namespace()
+		gatewayProxy := fmt.Sprintf(defaultGatewayProxy, gatewayProxyName, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+		err := s.CreateResourceFromString(gatewayProxy)
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 
 		By("create IngressClass with GatewayProxy reference")
-		err = s.CreateResourceFromStringWithNamespace(defaultIngressClass, "")
+		err = s.CreateResourceFromString(fmt.Sprintf(defaultIngressClass, s.GetControllerName(), gatewayProxyName, s.Namespace()))
 		Expect(err).NotTo(HaveOccurred(), "creating IngressClass with GatewayProxy")
 
 		By("create Ingress with GatewayProxy IngressClass")
@@ -254,12 +281,14 @@ spec:
 		Expect(err).NotTo(HaveOccurred(), "creating Ingress with GatewayProxy IngressClass")
 	}
 
-	Context("Rewrite Upstream Host", func() {
+	// Tests concerning the default ingress class need to be run serially
+	Context("Rewrite Upstream Host", Serial, func() {
 		var createUpstreamHost = `
 apiVersion: apisix.apache.org/v1alpha1
 kind: BackendTrafficPolicy
 metadata:
   name: httpbin
+  namespace: %s
 spec:
   targetRefs:
   - name: httpbin-service-e2e-test
@@ -274,6 +303,7 @@ apiVersion: apisix.apache.org/v1alpha1
 kind: BackendTrafficPolicy
 metadata:
   name: httpbin
+  namespace: %s
 spec:
   targetRefs:
   - name: httpbin-service-e2e-test
@@ -293,19 +323,20 @@ spec:
 					"Host": "httpbin.org",
 				},
 			}
-			s.ResourceApplied("BackendTrafficPolicy", "httpbin", createUpstreamHost, 1)
+
+			s.ResourceApplied("BackendTrafficPolicy", "httpbin", fmt.Sprintf(createUpstreamHost, s.Namespace()), 1)
 			s.RequestAssert(reqAssert.SetChecks(
 				scaffold.WithExpectedStatus(200),
 				scaffold.WithExpectedBodyContains("httpbin.example.com"),
 			))
 
-			s.ResourceApplied("BackendTrafficPolicy", "httpbin", updateUpstreamHost, 2)
+			s.ResourceApplied("BackendTrafficPolicy", "httpbin", fmt.Sprintf(updateUpstreamHost, s.Namespace()), 2)
 			s.RequestAssert(reqAssert.SetChecks(
 				scaffold.WithExpectedStatus(200),
 				scaffold.WithExpectedBodyContains("httpbin.update.example.com"),
 			))
 
-			err := s.DeleteResourceFromString(createUpstreamHost)
+			err := s.DeleteResourceFromString(fmt.Sprintf(createUpstreamHost, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "deleting BackendTrafficPolicy")
 
 			s.RequestAssert(reqAssert.SetChecks(

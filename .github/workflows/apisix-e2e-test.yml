@@ -73,6 +73,10 @@ jobs:
         with:
           go-version: "1.23"
 
+      - name: Install ginkgo
+        run: |
+            make install-ginkgo
+
       - name: Build images
         env:
           TAG: dev
@@ -111,4 +115,4 @@ jobs:
           PROVIDER_TYPE: ${{ matrix.provider_type }}
           TEST_LABEL: ${{ matrix.cases_subset }}
         run: |
-          make e2e-test
+          make ginkgo-e2e-test

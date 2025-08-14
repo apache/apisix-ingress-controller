@@ -19,21 +19,28 @@ package v1alpha1
 
 import (
 	"fmt"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = Describe("Test Consumer", Label("apisix.apache.org", "v1alpha1", "consumer"), func() {
-	s := scaffold.NewDefaultScaffold()
+	var (
+		s = scaffold.NewScaffold(&scaffold.Options{
+			ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
+		})
+		err error
+	)
 
 	var defaultGatewayProxy = `
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  name: apisix-proxy-config
+  name: %s
 spec:
   provider:
     type: ControlPlane
@@ -59,7 +66,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: apisix
+  name: %s
 spec:
   gatewayClassName: %s
   listeners:
@@ -70,7 +77,7 @@ spec:
     parametersRef:
       group: apisix.apache.org
       kind: GatewayProxy
-      name: apisix-proxy-config
+      name: %s
 `
 
 	var defaultHTTPRoute = `
@@ -94,7 +101,7 @@ metadata:
   name: httpbin
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - "httpbin.org"
   rules:
@@ -113,6 +120,29 @@ spec:
       port: 80
 `
 
+	BeforeEach(func() {
+		gatewayName := s.Namespace()
+		By("create GatewayProxy")
+		gatewayProxyName := s.Namespace()
+		err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayProxy, gatewayProxyName, s.Deployer.GetAdminEndpoint(), s.AdminKey()), s.Namespace())
+		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
+		time.Sleep(time.Second)
+
+		By("create GatewayClass")
+		gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
+		err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()))
+		Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
+		time.Sleep(time.Second)
+
+		By("create Gateway")
+		err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName, gatewayProxyName), s.Namespace())
+		Expect(err).NotTo(HaveOccurred(), "creating Gateway")
+		time.Sleep(time.Second)
+
+		By("create HTTPRoute")
+		s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, fmt.Sprintf(defaultHTTPRoute, gatewayName))
+	})
+
 	Context("Consumer plugins", func() {
 		var limitCountConsumer = `
 apiVersion: apisix.apache.org/v1alpha1
@@ -121,7 +151,7 @@ metadata:
   name: consumer-sample
 spec:
   gatewayRef:
-    name: apisix
+    name: %s
   credentials:
     - type: key-auth
       name: key-auth-sample
@@ -143,7 +173,7 @@ metadata:
   name: consumer-sample2
 spec:
   gatewayRef:
-    name: apisix
+    name: %s
   credentials:
     - type: key-auth
       name: key-auth-sample
@@ -151,13 +181,9 @@ spec:
         key: sample-key2
 `
 
-		BeforeEach(func() {
-			s.ApplyDefaultGatewayResource(defaultGatewayProxy, defaultGatewayClass, defaultGateway, defaultHTTPRoute)
-		})
-
 		It("limit-count plugin", func() {
-			s.ResourceApplied("Consumer", "consumer-sample", limitCountConsumer, 1)
-			s.ResourceApplied("Consumer", "consumer-sample2", unlimitConsumer, 1)
+			s.ResourceApplied("Consumer", "consumer-sample", fmt.Sprintf(limitCountConsumer, s.Namespace()), 1)
+			s.ResourceApplied("Consumer", "consumer-sample2", fmt.Sprintf(unlimitConsumer, s.Namespace()), 1)
 
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
@@ -212,7 +238,7 @@ metadata:
   name: consumer-sample
 spec:
   gatewayRef:
-    name: apisix
+    name: %s
   credentials:
     - type: basic-auth
       name: basic-auth-sample
@@ -234,7 +260,7 @@ metadata:
   name: consumer-sample
 spec:
   gatewayRef:
-    name: apisix
+    name: %s
   credentials:
     - type: basic-auth
       name: basic-auth-sample
@@ -247,12 +273,8 @@ spec:
         key: consumer-key
 `
 
-		BeforeEach(func() {
-			s.ApplyDefaultGatewayResource(defaultGatewayProxy, defaultGatewayClass, defaultGateway, defaultHTTPRoute)
-		})
-
 		It("Create/Update/Delete", func() {
-			s.ResourceApplied("Consumer", "consumer-sample", defaultCredential, 1)
+			s.ResourceApplied("Consumer", "consumer-sample", fmt.Sprintf(defaultCredential, s.Namespace()), 1)
 
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
@@ -286,7 +308,7 @@ spec:
 			})
 
 			By("update Consumer")
-			s.ResourceApplied("Consumer", "consumer-sample", updateCredential, 2)
+			s.ResourceApplied("Consumer", "consumer-sample", fmt.Sprintf(updateCredential, s.Namespace()), 2)
 
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
@@ -330,7 +352,7 @@ spec:
 			})
 
 			By("delete Consumer")
-			err := s.DeleteResourceFromString(updateCredential)
+			err := s.DeleteResourceFromString(fmt.Sprintf(updateCredential, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "deleting Consumer")
 
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -380,7 +402,7 @@ metadata:
   name: consumer-sample
 spec:
   gatewayRef:
-    name: apisix
+    name: %s
   credentials:
     - type: basic-auth
       name: basic-auth-sample
@@ -395,16 +417,12 @@ spec:
       config:
         key: sample-key2
 `
-
-		BeforeEach(func() {
-			s.ApplyDefaultGatewayResource(defaultGatewayProxy, defaultGatewayClass, defaultGateway, defaultHTTPRoute)
-		})
 		It("Create/Update/Delete", func() {
 			err := s.CreateResourceFromString(keyAuthSecret)
 			Expect(err).NotTo(HaveOccurred(), "creating key-auth secret")
 			err = s.CreateResourceFromString(basicAuthSecret)
 			Expect(err).NotTo(HaveOccurred(), "creating basic-auth secret")
-			s.ResourceApplied("Consumer", "consumer-sample", defaultConsumer, 1)
+			s.ResourceApplied("Consumer", "consumer-sample", fmt.Sprintf(defaultConsumer, s.Namespace()), 1)
 
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
@@ -456,7 +474,7 @@ spec:
 			})
 
 			By("delete consumer")
-			err = s.DeleteResourceFromString(defaultConsumer)
+			err = s.DeleteResourceFromString(fmt.Sprintf(defaultConsumer, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "deleting consumer")
 
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -492,7 +510,7 @@ metadata:
   name: consumer-sample
 spec:
   gatewayRef:
-    name: apisix
+    name: %s
   credentials:
     - type: basic-auth
       name: basic-auth-sample
@@ -504,7 +522,7 @@ spec:
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  name: apisix-proxy-config
+  name: %s
 spec:
   provider:
     type: ControlPlane
@@ -517,12 +535,8 @@ spec:
           value: "%s"
 `
 
-		BeforeEach(func() {
-			s.ApplyDefaultGatewayResource(defaultGatewayProxy, defaultGatewayClass, defaultGateway, defaultHTTPRoute)
-		})
-
 		It("Should sync consumer when GatewayProxy is updated", func() {
-			s.ResourceApplied("Consumer", "consumer-sample", defaultCredential, 1)
+			s.ResourceApplied("Consumer", "consumer-sample", fmt.Sprintf(defaultCredential, s.Namespace()), 1)
 
 			// verify basic-auth works
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -561,8 +575,8 @@ spec:
 			})
 
 			By("update GatewayProxy with new admin key")
-			updatedProxy := fmt.Sprintf(updatedGatewayProxy, s.Deployer.GetAdminEndpoint(resources.DataplaneService), resources.AdminAPIKey)
-			err = s.CreateResourceFromString(updatedProxy)
+			updatedProxy := fmt.Sprintf(updatedGatewayProxy, s.Namespace(), s.Deployer.GetAdminEndpoint(resources.DataplaneService), resources.AdminAPIKey)
+			err = s.CreateResourceFromStringWithNamespace(updatedProxy, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "updating GatewayProxy")
 
 			By("verify Consumer works for additional gateway group")
@@ -588,7 +602,7 @@ metadata:
   name: consumer-sample
 spec:
   gatewayRef:
-    name: apisix
+    name: %s
   credentials:
     - type: key-auth
       name: key-auth-sample
@@ -609,14 +623,9 @@ spec:
       config:
         key: sample-key2
 `
-
-		BeforeEach(func() {
-			s.ApplyDefaultGatewayResource(defaultGatewayProxy, defaultGatewayClass, defaultGateway, defaultHTTPRoute)
-		})
-
 		It("Should sync Consumer during startup", func() {
 			Expect(s.CreateResourceFromString(consumer2)).NotTo(HaveOccurred(), "creating unused consumer")
-			s.ResourceApplied("Consumer", "consumer-sample", consumer1, 1)
+			s.ResourceApplied("Consumer", "consumer-sample", fmt.Sprintf(consumer1, s.Namespace()), 1)
 
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",

@@ -38,13 +38,15 @@ import (
 )
 
 var _ = Describe("Test HTTPRoute", Label("networking.k8s.io", "httproute"), func() {
-	s := scaffold.NewDefaultScaffold()
+	s := scaffold.NewScaffold(&scaffold.Options{
+		ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
+	})
 
 	var gatewayProxyYaml = `
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  name: apisix-proxy-config
+  name: %s
 spec:
   provider:
     type: ControlPlane
@@ -58,7 +60,7 @@ spec:
           value: "%s"
 `
 	getGatewayProxySpec := func() string {
-		return fmt.Sprintf(gatewayProxyYaml, framework.ProviderType, s.AdminKey())
+		return fmt.Sprintf(gatewayProxyYaml, s.Namespace(), framework.ProviderType, s.AdminKey())
 	}
 
 	var gatewayClassYaml = `
@@ -74,7 +76,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: apisix
+  name: %s
 spec:
   gatewayClassName: %s
   listeners:
@@ -85,13 +87,13 @@ spec:
     parametersRef:
       group: apisix.apache.org
       kind: GatewayProxy
-      name: apisix-proxy-config
+      name: %s
 `
 	var defaultGatewayHTTPS = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: apisix
+  name: %s
 spec:
   gatewayClassName: %s
   listeners:
@@ -108,11 +110,11 @@ spec:
     parametersRef:
       group: apisix.apache.org
       kind: GatewayProxy
-      name: apisix-proxy-config
+      name: %s
 `
 
 	var beforeEachHTTP = func() {
-		Expect(s.CreateResourceFromString(getGatewayProxySpec())).
+		Expect(s.CreateResourceFromStringWithNamespace(getGatewayProxySpec(), s.Namespace())).
 			NotTo(HaveOccurred(), "creating GatewayProxy")
 
 		gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Nanosecond())
@@ -129,12 +131,12 @@ spec:
 			),
 			"check GatewayClass condition",
 		)
-
-		Expect(s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayClassName), s.Namespace())).
+		gatewayName := s.Namespace()
+		Expect(s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName, s.Namespace()), s.Namespace())).
 			NotTo(HaveOccurred(), "creating Gateway")
 
 		s.RetryAssertion(func() string {
-			gcyaml, _ := s.GetResourceYaml("Gateway", "apisix")
+			gcyaml, _ := s.GetResourceYaml("Gateway", gatewayName)
 			return gcyaml
 		}).Should(
 			And(
@@ -147,7 +149,7 @@ spec:
 
 	var beforeEachHTTPS = func() {
 		By("create GatewayProxy")
-		err := s.CreateResourceFromString(getGatewayProxySpec())
+		err := s.CreateResourceFromStringWithNamespace(getGatewayProxySpec(), s.Namespace())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 
 		secretName := _secretName
@@ -170,11 +172,12 @@ spec:
 		)
 
 		By("create Gateway")
-		err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayHTTPS, gatewayClassName), s.Namespace())
+		gatewayName := s.Namespace()
+		err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayHTTPS, gatewayName, gatewayClassName, s.Namespace()), s.Namespace())
 		Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 
 		s.RetryAssertion(func() string {
-			gcyaml, _ := s.GetResourceYaml("Gateway", "apisix")
+			gcyaml, _ := s.GetResourceYaml("Gateway", gatewayName)
 			return gcyaml
 		}).Should(
 			And(
@@ -193,7 +196,7 @@ metadata:
   name: httpbin
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - api6.com
   rules:
@@ -210,18 +213,21 @@ spec:
 
 		It("Create/Updtea/Delete HTTPRoute", func() {
 			By("create HTTPRoute")
-			s.ResourceApplied("HTTPRoute", "httpbin", exactRouteByGet, 1)
+			gatewayName := s.Namespace()
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(exactRouteByGet, gatewayName), 1)
 
 			By("access dataplane to check the HTTPRoute")
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/get",
-				Host:   "api6.com",
-				Check:  scaffold.WithExpectedStatus(200),
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "api6.com",
+				Check:    scaffold.WithExpectedStatus(200),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			By("delete HTTPRoute")
-			err := s.DeleteResourceFromString(exactRouteByGet)
+			err := s.DeleteResourceFromString(fmt.Sprintf(exactRouteByGet, gatewayName))
 			Expect(err).NotTo(HaveOccurred(), "deleting HTTPRoute")
 
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -233,7 +239,7 @@ spec:
 		})
 	})
 
-	Context("HTTPRoute with Multiple Gateway", func() {
+	Context("HTTPRoute with Multiple Gateway", Serial, func() {
 		var additionalGatewayGroupID string
 		var additionalSvc *corev1.Service
 		var additionalGatewayClassName string
@@ -284,7 +290,7 @@ metadata:
   name: multi-gateway-route
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
     namespace: %s
   - name: additional-gateway
     namespace: %s
@@ -344,15 +350,17 @@ spec:
 
 		It("HTTPRoute should be accessible through both gateways", func() {
 			By("Create HTTPRoute referencing both gateways")
-			multiGatewayRoute := fmt.Sprintf(multiGatewayHTTPRoute, s.Namespace(), additionalSvc.Namespace)
+			multiGatewayRoute := fmt.Sprintf(multiGatewayHTTPRoute, s.Namespace(), s.Namespace(), additionalSvc.Namespace)
 			s.ResourceApplied("HTTPRoute", "multi-gateway-route", multiGatewayRoute, 1)
 
 			By("Access through default gateway")
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			By("Access through additional gateway")
@@ -360,11 +368,13 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "creating client for additional gateway")
 
 			s.RequestAssert(&scaffold.RequestAssert{
-				Client: client,
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin-additional.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				Client:   client,
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin-additional.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			By("Delete Additional Gateway")
@@ -373,10 +383,12 @@ spec:
 
 			By("HTTPRoute should still be accessible through default gateway")
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			By("HTTPRoute should not be accessible through additional gateway")
@@ -407,9 +419,10 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: httpbin
+  namespace: %s
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - httpbin.external
   rules:
@@ -428,7 +441,7 @@ metadata:
   name: httpbin
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - httpbin.example
   rules:
@@ -447,7 +460,7 @@ metadata:
   name: httpbin2
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - httpbin2.example
   rules:
@@ -464,6 +477,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: httpbin-multiple-port
+  namespace: %s
 spec:
   selector:
     app: httpbin-deployment-e2e-test
@@ -486,9 +500,10 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: httpbin
+  namespace: %s
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - httpbin.example
   rules:
@@ -504,8 +519,9 @@ spec:
 		BeforeEach(beforeEachHTTP)
 
 		It("Create/Update/Delete HTTPRoute", func() {
+			gatewayName := s.Namespace()
 			By("create HTTPRoute")
-			s.ResourceApplied("HTTPRoute", "httpbin", exactRouteByGet, 1)
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(exactRouteByGet, gatewayName), 1)
 
 			By("access dataplane to check the HTTPRoute")
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -515,62 +531,73 @@ spec:
 			})
 
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
-			Expect(s.DeleteResourceFromString(exactRouteByGet)).
+			Expect(s.DeleteResourceFromString(fmt.Sprintf(exactRouteByGet, gatewayName))).
 				NotTo(HaveOccurred(), "deleting HTTPRoute")
 
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 		})
 
 		It("Delete Gateway after apply HTTPRoute", func() {
+			gatewayName := s.Namespace()
 			By("create HTTPRoute")
-			s.ResourceApplied("HTTPRoute", "httpbin", exactRouteByGet, 1)
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(exactRouteByGet, gatewayName), 1)
 
 			By("access dataplane to check the HTTPRoute")
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
-			Expect(s.DeleteResource("Gateway", "apisix")).
+			Expect(s.DeleteResource("Gateway", gatewayName)).
 				NotTo(HaveOccurred(), "deleting Gateway")
 
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 		})
 
 		It("Proxy External Service", func() {
 			By("create HTTPRoute")
-			s.ResourceApplied("HTTPRoute", "httpbin", httprouteWithExternalName, 1)
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(httprouteWithExternalName, s.Namespace(), s.Namespace()), 1)
 
 			By("checking the external service response")
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin.external",
-				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.external",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 		})
 
 		It("Match Port", func() {
 			By("create HTTPRoute")
-			s.ResourceApplied("HTTPRoute", "httpbin", invalidBackendPort, 1)
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(invalidBackendPort, s.Namespace(), s.Namespace(), s.Namespace()), 1)
 
 			s.RetryAssertion(func() error {
 				serviceResources, err := s.DefaultDataplaneResource().Service().List(context.Background())
@@ -595,23 +622,27 @@ spec:
 
 		It("Delete HTTPRoute during restart", func() {
 			By("create HTTPRoute httpbin")
-			s.ResourceApplied("HTTPRoute", "httpbin", exactRouteByGet, 1)
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(exactRouteByGet, s.Namespace()), 1)
 
 			By("create HTTPRoute httpbin2")
-			s.ResourceApplied("HTTPRoute", "httpbin2", exactRouteByGet2, 1)
+			s.ResourceApplied("HTTPRoute", "httpbin2", fmt.Sprintf(exactRouteByGet2, s.Namespace()), 1)
 
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin2.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin2.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			s.Deployer.ScaleIngress(0)
@@ -630,10 +661,12 @@ spec:
 			})
 
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin2.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin2.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 		})
 	})
@@ -644,9 +677,10 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: httpbin
+  namespace: %s
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - httpbin.example
   rules:
@@ -663,9 +697,10 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: httpbin
+  namespace: %s
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - httpbin.example
   rules:
@@ -714,7 +749,7 @@ metadata:
   name: httpbin
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - httpbin.example
   rules:
@@ -734,7 +769,7 @@ metadata:
   name: httpbin
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - httpbin.example
   rules:
@@ -755,81 +790,97 @@ spec:
 
 		It("HTTPRoute Exact Match", func() {
 			By("create HTTPRoute")
-			s.ResourceApplied("HTTPRoute", "httpbin", exactRouteByGet, 1)
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(exactRouteByGet, s.Namespace(), s.Namespace()), 1)
 
 			By("access daataplane to check the HTTPRoute")
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/get/xxx",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+				Method:   "GET",
+				Path:     "/get/xxx",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 		})
 
 		It("HTTPRoute Prefix Match", func() {
 			By("create HTTPRoute")
-			s.ResourceApplied("HTTPRoute", "httpbin", prefixRouteByStatus, 1)
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(prefixRouteByStatus, s.Namespace()), 1)
 
 			By("access daataplane to check the HTTPRoute")
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/status/200",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				Method:   "GET",
+				Path:     "/status/200",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/status/201",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusCreated),
+				Method:   "GET",
+				Path:     "/status/201",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusCreated),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 		})
 
 		It("HTTPRoute Method Match", func() {
 			By("create HTTPRoute")
-			s.ResourceApplied("HTTPRoute", "httpbin", methodRouteGETAndDELETEByAnything, 1)
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(methodRouteGETAndDELETEByAnything, s.Namespace()), 1)
 
 			By("access daataplane to check the HTTPRoute")
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/anything",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				Method:   "GET",
+				Path:     "/anything",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "DELETE",
-				Path:   "/anything",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				Method:   "DELETE",
+				Path:     "/anything",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "POST",
-				Path:   "/anything",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+				Method:   "POST",
+				Path:     "/anything",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 		})
 
 		It("HTTPRoute Vars Match", func() {
 			By("create HTTPRoute")
-			s.ResourceApplied("HTTPRoute", "httpbin", varsRoute, 1)
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(varsRoute, s.Namespace(), s.Namespace()), 1)
 
 			By("access dataplane to check the HTTPRoute")
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -839,13 +890,15 @@ spec:
 				Headers: map[string]string{
 					"X-Route-Name": "httpbin",
 				},
-				Check: scaffold.WithExpectedStatus(http.StatusOK),
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 		})
 
 		It("HTTPRoutePolicy in effect", func() {
 			By("create HTTPRoute")
-			s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, varsRoute)
+			s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, fmt.Sprintf(varsRoute, s.Namespace(), s.Namespace()))
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
 				Path:   "/get",
@@ -853,12 +906,14 @@ spec:
 				Headers: map[string]string{
 					"X-Route-Name": "httpbin",
 				},
-				Check: scaffold.WithExpectedStatus(http.StatusOK),
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			By("create HTTPRoutePolicy")
 			s.ApplyHTTPRoutePolicy(
-				types.NamespacedName{Name: "apisix"},
+				types.NamespacedName{Name: s.Namespace()},
 				types.NamespacedName{Namespace: s.Namespace(), Name: "http-route-policy-0"},
 				httpRoutePolicy,
 			)
@@ -871,7 +926,9 @@ spec:
 				Headers: map[string]string{
 					"X-Route-Name": "httpbin",
 				},
-				Check: scaffold.WithExpectedStatus(http.StatusNotFound),
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -885,7 +942,9 @@ spec:
 					"X-Route-Name": "httpbin",
 					"X-HRP-Name":   "http-route-policy-0",
 				},
-				Check: scaffold.WithExpectedStatus(http.StatusOK),
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			By("update HTTPRoutePolicy")
@@ -907,7 +966,7 @@ spec:
     - new-hrp-name
 `
 			s.ApplyHTTPRoutePolicy(
-				types.NamespacedName{Name: "apisix"},
+				types.NamespacedName{Name: s.Namespace()},
 				types.NamespacedName{Namespace: s.Namespace(), Name: "http-route-policy-0"},
 				changedHTTPRoutePolicy,
 			)
@@ -924,7 +983,9 @@ spec:
 					"X-Route-Name": "httpbin",
 					"X-HRP-Name":   "http-route-policy-0",
 				},
-				Check: scaffold.WithExpectedStatus(http.StatusNotFound),
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			// use the new vars can match the route
@@ -936,7 +997,9 @@ spec:
 					"X-Route-Name": "httpbin",
 					"X-HRP-Name":   "new-hrp-name",
 				},
-				Check: scaffold.WithExpectedStatus(http.StatusOK),
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			By("delete the HTTPRoutePolicy")
@@ -945,7 +1008,7 @@ spec:
 			Eventually(func() string {
 				_, err := s.GetResourceYaml("HTTPRoutePolicy", "http-route-policy-0")
 				return err.Error()
-			}).WithTimeout(8 * time.Second).ProbeEvery(time.Second).Should(ContainSubstring(`httproutepolicies.apisix.apache.org "http-route-policy-0" not found`))
+			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(ContainSubstring(`httproutepolicies.apisix.apache.org "http-route-policy-0" not found`))
 			// access the route without additional vars should be OK
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
@@ -954,7 +1017,9 @@ spec:
 				Headers: map[string]string{
 					"X-Route-Name": "httpbin",
 				},
-				Check: scaffold.WithExpectedStatus(http.StatusOK),
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 		})
 
@@ -1027,7 +1092,7 @@ spec:
     - http-route-policy-0
 `
 			By("create HTTPRoute")
-			s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, varsRoute)
+			s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, fmt.Sprintf(varsRoute, s.Namespace(), s.Namespace()))
 
 			By("create HTTPRoutePolices")
 			for name, spec := range map[string]string{
@@ -1036,7 +1101,7 @@ spec:
 				"http-route-policy-2": httpRoutePolicy2,
 			} {
 				s.ApplyHTTPRoutePolicy(
-					types.NamespacedName{Namespace: s.Namespace(), Name: "apisix"},
+					types.NamespacedName{Namespace: s.Namespace(), Name: s.Namespace()},
 					types.NamespacedName{Namespace: s.Namespace(), Name: name},
 					spec,
 					metav1.Condition{
@@ -1046,7 +1111,7 @@ spec:
 			}
 			for _, name := range []string{"http-route-policy-0", "http-route-policy-1", "http-route-policy-2"} {
 				framework.HTTPRoutePolicyMustHaveCondition(s.GinkgoT, s.K8sClient, 10*time.Second,
-					types.NamespacedName{Namespace: s.Namespace(), Name: "apisix"},
+					types.NamespacedName{Namespace: s.Namespace(), Name: s.Namespace()},
 					types.NamespacedName{Namespace: s.Namespace(), Name: name},
 					metav1.Condition{
 						Type:   string(v1alpha2.PolicyConditionAccepted),
@@ -1064,7 +1129,9 @@ spec:
 				Headers: map[string]string{
 					"X-Route-Name": "httpbin",
 				},
-				Check: scaffold.WithExpectedStatus(http.StatusOK),
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			By("delete HTTPRoutePolicies")
@@ -1072,7 +1139,7 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "deleting HTTPRoutePolicy %s", "http-route-policy-2")
 			for _, name := range []string{"http-route-policy-0", "http-route-policy-1"} {
 				framework.HTTPRoutePolicyMustHaveCondition(s.GinkgoT, s.K8sClient, 10*time.Second,
-					types.NamespacedName{Namespace: s.Namespace(), Name: "apisix"},
+					types.NamespacedName{Namespace: s.Namespace(), Name: s.Namespace()},
 					types.NamespacedName{Namespace: s.Namespace(), Name: name},
 					metav1.Condition{
 						Type:   string(v1alpha2.PolicyConditionAccepted),
@@ -1088,14 +1155,16 @@ spec:
 				Headers: map[string]string{
 					"X-Route-Name": "httpbin",
 				},
-				Check: scaffold.WithExpectedStatus(http.StatusNotFound),
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			By("update HTTPRoutePolicy")
-			err = s.CreateResourceFromString(httpRoutePolicy1Priority20)
+			err = s.CreateResourceFromStringWithNamespace(httpRoutePolicy1Priority20, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "update HTTPRoutePolicy's priority to 20")
 			framework.HTTPRoutePolicyMustHaveCondition(s.GinkgoT, s.K8sClient, 10*time.Second,
-				types.NamespacedName{Namespace: s.Namespace(), Name: "apisix"},
+				types.NamespacedName{Namespace: s.Namespace(), Name: s.Namespace()},
 				types.NamespacedName{Namespace: s.Namespace(), Name: "http-route-policy-1"},
 				metav1.Condition{
 					Type: string(v1alpha2.PolicyConditionAccepted),
@@ -1103,7 +1172,7 @@ spec:
 			)
 			for _, name := range []string{"http-route-policy-0", "http-route-policy-1"} {
 				framework.HTTPRoutePolicyMustHaveCondition(s.GinkgoT, s.K8sClient, 10*time.Second,
-					types.NamespacedName{Namespace: s.Namespace(), Name: "apisix"},
+					types.NamespacedName{Namespace: s.Namespace(), Name: s.Namespace()},
 					types.NamespacedName{Namespace: s.Namespace(), Name: name},
 					metav1.Condition{
 						Type:   string(v1alpha2.PolicyConditionAccepted),
@@ -1120,17 +1189,19 @@ spec:
 				Headers: map[string]string{
 					"X-Route-Name": "httpbin",
 				},
-				Check: scaffold.WithExpectedStatus(http.StatusOK),
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 		})
 
 		It("HTTPRoutePolicy status changes on HTTPRoute deleting", func() {
 			By("create HTTPRoute")
-			s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, varsRoute)
+			s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, fmt.Sprintf(varsRoute, s.Namespace(), s.Namespace()))
 
 			By("create HTTPRoutePolicy")
 			s.ApplyHTTPRoutePolicy(
-				types.NamespacedName{Name: "apisix"},
+				types.NamespacedName{Name: s.Namespace()},
 				types.NamespacedName{Namespace: s.Namespace(), Name: "http-route-policy-0"},
 				httpRoutePolicy,
 			)
@@ -1143,7 +1214,9 @@ spec:
 				Headers: map[string]string{
 					"X-Route-Name": "httpbin",
 				},
-				Check: scaffold.WithExpectedStatus(http.StatusNotFound),
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -1157,7 +1230,9 @@ spec:
 					"X-Route-Name": "httpbin",
 					"X-HRP-Name":   "http-route-policy-0",
 				},
-				Check: scaffold.WithExpectedStatus(http.StatusOK),
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			By("delete the HTTPRoute, assert the HTTPRoutePolicy's status will be changed")
@@ -1175,7 +1250,9 @@ spec:
 					"X-Route-Name": "httpbin",
 					"X-HRP-Name":   "http-route-policy-0",
 				},
-				Check: scaffold.WithExpectedStatus(http.StatusNotFound),
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			err := framework.PollUntilHTTPRoutePolicyHaveStatus(s.K8sClient, 8*time.Second, types.NamespacedName{Namespace: s.Namespace(), Name: "http-route-policy-0"},
@@ -1193,9 +1270,10 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: httpbin
+  namespace: %s
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - httpbin.example
   rules:
@@ -1224,9 +1302,10 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: httpbin
+  namespace: %s
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - httpbin.example
   rules:
@@ -1255,9 +1334,10 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: httpbin
+  namespace: %s
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - httpbin.example
   rules:
@@ -1277,9 +1357,10 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: httpbin
+  namespace: %s
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - httpbin.example
   rules:
@@ -1299,9 +1380,10 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: httpbin
+  namespace: %s
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - httpbin.example
   rules:
@@ -1325,9 +1407,10 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: httpbin
+  namespace: %s
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - httpbin.example
   rules:
@@ -1374,9 +1457,10 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: httpbin
+  namespace: %s
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - httpbin.example
   rules:
@@ -1399,7 +1483,7 @@ spec:
 
 		It("HTTPRoute RequestHeaderModifier", func() {
 			By("create HTTPRoute")
-			s.ResourceApplied("HTTPRoute", "httpbin", reqHeaderModifyByHeaders, 1)
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(reqHeaderModifyByHeaders, s.Namespace(), s.Namespace()), 1)
 
 			By("access daataplane to check the HTTPRoute")
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -1416,12 +1500,14 @@ spec:
 					scaffold.WithExpectedBodyContains(`"X-Req-Add": "test,add"`, `"X-Req-Set": "set"`),
 					scaffold.WithExpectedBodyNotContains(`"X-Req-Removed": "remove"`),
 				},
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 		})
 
 		It("HTTPRoute ResponseHeaderModifier", func() {
 			By("create HTTPRoute")
-			s.ResourceApplied("HTTPRoute", "httpbin", respHeaderModifyByHeaders, 1)
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(respHeaderModifyByHeaders, s.Namespace(), s.Namespace()), 1)
 
 			By("access daataplane to check the HTTPRoute")
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -1437,12 +1523,14 @@ spec:
 					}),
 					scaffold.WithExpectedBodyNotContains(`"X-Resp-Add": "add"`, `"X-Resp-Set": "set"`, `"Server"`),
 				},
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 		})
 
 		It("HTTPRoute RequestRedirect", func() {
 			By("create HTTPRoute")
-			s.ResourceApplied("HTTPRoute", "httpbin", httpsRedirectByHeaders, 1)
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(httpsRedirectByHeaders, s.Namespace(), s.Namespace()), 1)
 
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
@@ -1452,10 +1540,12 @@ spec:
 					scaffold.WithExpectedStatus(http.StatusFound),
 					scaffold.WithExpectedHeader("Location", "https://httpbin.example:9443/headers"),
 				},
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			By("update HTTPRoute")
-			s.ResourceApplied("HTTPRoute", "httpbin", hostnameRedirectByHeaders, 2)
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(hostnameRedirectByHeaders, s.Namespace(), s.Namespace()), 2)
 
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
@@ -1465,6 +1555,8 @@ spec:
 					scaffold.WithExpectedStatus(http.StatusMovedPermanently),
 					scaffold.WithExpectedHeader("Location", "http://httpbin.org/headers"),
 				},
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 		})
 
@@ -1507,9 +1599,10 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: httpbin
+  namespace: %s
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - httpbin.example
   rules:
@@ -1527,7 +1620,7 @@ spec:
     - name: httpbin-service-e2e-test
       port: 80
 `
-			s.ResourceApplied("HTTPRoute", "httpbin", echoRoute, 1)
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(echoRoute, s.Namespace(), s.Namespace()), 1)
 
 			s.RetryAssertion(func() string {
 				resp := s.NewAPISIXClient().GET("/headers").WithHost("httpbin.example").Expect().Raw()
@@ -1540,7 +1633,7 @@ spec:
 
 		It("HTTPRoute URLRewrite with ReplaceFullPath And Hostname", func() {
 			By("create HTTPRoute")
-			s.ResourceApplied("HTTPRoute", "httpbin", replaceFullPathAndHost, 1)
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(replaceFullPathAndHost, s.Namespace(), s.Namespace()), 1)
 
 			By("/replace/201 should be rewritten to /headers")
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -1551,6 +1644,8 @@ spec:
 					scaffold.WithExpectedStatus(http.StatusOK),
 					scaffold.WithExpectedBodyContains("replace.example.org"),
 				},
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			By("/replace/500 should be rewritten to /headers")
@@ -1562,19 +1657,23 @@ spec:
 					scaffold.WithExpectedStatus(http.StatusOK),
 					scaffold.WithExpectedBodyContains("replace.example.org"),
 				},
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 		})
 
 		It("HTTPRoute URLRewrite with ReplacePrefixMatch", func() {
 			By("create HTTPRoute")
-			s.ResourceApplied("HTTPRoute", "httpbin", replacePrefixMatch, 1)
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(replacePrefixMatch, s.Namespace(), s.Namespace()), 1)
 
 			By("/replace/201 should be rewritten to /status/201")
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/replace/201",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusCreated),
+				Method:   "GET",
+				Path:     "/replace/201",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusCreated),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			By("/replace/500 should be rewritten to /status/500")
@@ -1585,30 +1684,36 @@ spec:
 				Checks: []scaffold.ResponseCheckFunc{
 					scaffold.WithExpectedStatus(http.StatusInternalServerError),
 				},
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 		})
 
 		It("HTTPRoute ExtensionRef", func() {
 			By("create HTTPRoute")
-			Expect(s.CreateResourceFromString(echoPlugin)).
+			Expect(s.CreateResourceFromStringWithNamespace(echoPlugin, s.Namespace())).
 				NotTo(HaveOccurred(), "creating PluginConfig")
-			s.ResourceApplied("HTTPRoute", "httpbin", extensionRefEchoPlugin, 1)
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(extensionRefEchoPlugin, s.Namespace(), s.Namespace()), 1)
 
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedBodyContains("Hello, World!!"),
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedBodyContains("Hello, World!!"),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
-			Expect(s.CreateResourceFromString(echoPluginUpdated)).
+			Expect(s.CreateResourceFromStringWithNamespace(echoPluginUpdated, s.Namespace())).
 				NotTo(HaveOccurred(), "updating PluginConfig")
 
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedBodyContains("Updated"),
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedBodyContains("Updated"),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 		})
 	})
@@ -1621,7 +1726,7 @@ metadata:
   name: httpbin
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - httpbin.example
   rules:
@@ -1644,7 +1749,7 @@ metadata:
   name: httpbin
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - httpbin.example
   rules:
@@ -1668,7 +1773,7 @@ spec:
 			})
 		})
 		It("HTTPRoute Canary", func() {
-			s.ResourceApplied("HTTPRoute", "httpbin", sameWeiht, 1)
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(sameWeiht, s.Namespace()), 1)
 			time.Sleep(5 * time.Second)
 
 			s.RetryAssertion(func() int {
@@ -1695,7 +1800,7 @@ spec:
 				return hitNginxCnt - hitHttpbinCnt
 			}).WithTimeout(2 * time.Minute).Should(BeNumerically("~", 0, 2))
 
-			s.ResourceApplied("HTTPRoute", "httpbin", oneWeiht, 2)
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(oneWeiht, s.Namespace()), 2)
 
 			s.RetryAssertion(func() int {
 				var (
@@ -1733,7 +1838,7 @@ metadata:
   name: httpbin
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - httpbin.example
   rules:
@@ -1750,7 +1855,7 @@ spec:
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  name: apisix-proxy-config
+  name: %s
 spec:
   provider:
     type: ControlPlane
@@ -1767,14 +1872,16 @@ spec:
 
 		It("Should sync HTTPRoute when GatewayProxy is updated", func() {
 			By("create HTTPRoute")
-			s.ResourceApplied("HTTPRoute", "httpbin", exactRouteByGet, 1)
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(exactRouteByGet, s.Namespace()), 1)
 
 			By("verify HTTPRoute works")
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			By("create additional gateway group to get new admin key")
@@ -1790,25 +1897,29 @@ spec:
 
 			By("HTTPRoute not found for additional gateway group")
 			s.RequestAssert(&scaffold.RequestAssert{
-				Client: client,
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+				Client:   client,
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 
 			By("update GatewayProxy with new admin key")
-			updatedProxy := fmt.Sprintf(updatedGatewayProxy, s.Deployer.GetAdminEndpoint(resources.DataplaneService), resources.AdminAPIKey)
-			err = s.CreateResourceFromString(updatedProxy)
+			updatedProxy := fmt.Sprintf(updatedGatewayProxy, s.Namespace(), s.Deployer.GetAdminEndpoint(resources.DataplaneService), resources.AdminAPIKey)
+			err = s.CreateResourceFromStringWithNamespace(updatedProxy, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "updating GatewayProxy")
 
 			By("verify HTTPRoute works for additional gateway group")
 			s.RequestAssert(&scaffold.RequestAssert{
-				Client: client,
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				Client:   client,
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 		})
 	})
@@ -1854,7 +1965,7 @@ metadata:
   name: lb-route
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   rules:
   - matches:
     - path:
@@ -1870,11 +1981,18 @@ spec:
 `
 
 			By("apply services and HTTPRoute")
-			err := s.CreateResourceFromString(servicesSpec)
+			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(servicesSpec, s.Namespace()), s.Namespace())
 			Expect(err).ShouldNot(HaveOccurred(), "apply services and HTTPRoute")
-			time.Sleep(5 * time.Second)
+			time.Sleep(10 * time.Second)
 
 			By("verify load balancing works")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/headers",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  1 * time.Minute,
+				Interval: 2 * time.Second,
+			})
 			// Test multiple requests to verify load balancing
 			upstreamHosts := make(map[string]int)
 			totalRequests := 20
@@ -1910,7 +2028,7 @@ metadata:
   name: httpbin
 spec:
   parentRefs:
-  - name: apisix
+  - name: %s
   hostnames:
   - httpbin
   rules:
@@ -1944,22 +2062,27 @@ spec:
 `
 		It("Should sync ApisixRoute during startup", func() {
 			By("apply ApisixRoute")
-			Expect(s.CreateResourceFromString(route2)).ShouldNot(HaveOccurred(), "applying HTTPRoute with non-existent parent")
-			s.ResourceApplied("HTTPRoute", "httpbin", route, 1)
+			Expect(s.CreateResourceFromStringWithNamespace(route2, s.Namespace())).ShouldNot(HaveOccurred(), "applying HTTPRoute with non-existent parent")
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(route, s.Namespace()), 1)
 
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin",
-				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Interval: time.Second * 2,
+				Timeout:  30 * time.Second,
 			})
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin2",
-				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin2",
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Interval: time.Second * 2,
+				Timeout:  30 * time.Second,
 			})
 
+			time.Sleep(8 * time.Second)
 			By("restart controller and dataplane")
 			s.Deployer.ScaleIngress(0)
 			s.Deployer.ScaleDataplane(0)
@@ -1967,16 +2090,20 @@ spec:
 			s.Deployer.ScaleIngress(1)
 
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin",
-				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Interval: time.Second * 2,
+				Timeout:  30 * time.Second,
 			})
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/get",
-				Host:   "httpbin2",
-				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin2",
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Interval: time.Second * 2,
+				Timeout:  30 * time.Second,
 			})
 		})
 
