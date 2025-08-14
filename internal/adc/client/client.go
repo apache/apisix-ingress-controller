@@ -38,7 +38,8 @@ import (
 )
 
 type Client struct {
-	mu sync.Mutex
+	syncMu sync.RWMutex
+	mu     sync.Mutex
 	*cache.Store
 
 	executor    ADCExecutor
@@ -67,9 +68,7 @@ type Task struct {
 
 func (d *Client) Update(ctx context.Context, args Task) error {
 	d.mu.Lock()
-	defer d.mu.Unlock()
 	deleteConfigs := d.ConfigManager.Update(args.Key, args.Configs)
-
 	for _, config := range deleteConfigs {
 		if err := d.Store.Delete(config.Name, args.ResourceTypes, args.Labels); err != nil {
 			log.Errorw("failed to delete resources from store",
@@ -89,6 +88,10 @@ func (d *Client) Update(ctx context.Context, args Task) error {
 			return err
 		}
 	}
+	d.mu.Unlock()
+
+	d.syncMu.RLock()
+	defer d.syncMu.RUnlock()
 
 	if len(deleteConfigs) > 0 {
 		err := d.sync(ctx, Task{
@@ -101,6 +104,7 @@ func (d *Client) Update(ctx context.Context, args Task) error {
 			log.Warnw("failed to sync deleted configs", zap.Error(err))
 		}
 	}
+
 	return d.sync(ctx, args)
 }
 
@@ -133,8 +137,6 @@ func (d *Client) UpdateConfig(ctx context.Context, args Task) error {
 
 func (d *Client) Delete(ctx context.Context, args Task) error {
 	d.mu.Lock()
-	defer d.mu.Unlock()
-
 	configs := d.ConfigManager.Get(args.Key)
 	d.ConfigManager.Delete(args.Key)
 
@@ -147,6 +149,10 @@ func (d *Client) Delete(ctx context.Context, args Task) error {
 			return err
 		}
 	}
+	d.mu.Unlock()
+
+	d.syncMu.RLock()
+	defer d.syncMu.RUnlock()
 
 	return d.sync(ctx, Task{
 		Labels:        args.Labels,
@@ -176,8 +182,8 @@ func (d *Client) DeleteConfig(ctx context.Context, args Task) error {
 }
 
 func (c *Client) Sync(ctx context.Context) (map[string]types.ADCExecutionErrors, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.syncMu.Lock()
+	defer c.syncMu.Unlock()
 	log.Debug("syncing all resources")
 
 	configs := c.ConfigManager.List()
@@ -187,16 +193,12 @@ func (c *Client) Sync(ctx context.Context) (map[string]types.ADCExecutionErrors,
 		return nil, nil
 	}
 
-	cfg := map[string]adctypes.Config{}
-	for _, config := range configs {
-		cfg[config.Name] = config
-	}
-
-	log.Debugw("syncing resources with multiple configs", zap.Any("configs", cfg))
+	log.Debugw("syncing resources with multiple configs", zap.Any("configs", configs))
 
 	failedMap := map[string]types.ADCExecutionErrors{}
 	var failedConfigs []string
-	for name, config := range cfg {
+	for _, config := range configs {
+		name := config.Name
 		resources, err := c.GetResources(name)
 		if err != nil {
 			log.Errorw("failed to get resources from store", zap.String("name", name), zap.Error(err))
