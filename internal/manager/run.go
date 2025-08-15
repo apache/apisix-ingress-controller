@@ -42,7 +42,8 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
-	"github.com/apache/apisix-ingress-controller/internal/provider/adc"
+	"github.com/apache/apisix-ingress-controller/internal/provider"
+	_ "github.com/apache/apisix-ingress-controller/internal/provider/init"
 	_ "github.com/apache/apisix-ingress-controller/pkg/metrics"
 )
 
@@ -164,7 +165,9 @@ func Run(ctx context.Context, logger logr.Logger) error {
 		return err
 	}
 
-	provider, err := adc.New(updater.Writer(), readier, &adc.Options{
+	providerType := string(config.ControllerConfig.ProviderConfig.Type)
+
+	provider, err := provider.New(providerType, updater.Writer(), readier, &provider.Options{
 		SyncTimeout:   config.ControllerConfig.ExecADCTimeout.Duration,
 		SyncPeriod:    config.ControllerConfig.ProviderConfig.SyncPeriod.Duration,
 		InitSyncDelay: config.ControllerConfig.ProviderConfig.InitSyncDelay.Duration,

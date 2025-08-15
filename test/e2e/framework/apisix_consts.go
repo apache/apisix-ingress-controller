@@ -30,6 +30,11 @@ var (
 	ProviderType = cmp.Or(os.Getenv("PROVIDER_TYPE"), "apisix")
 )
 
+const (
+	ProviderTypeAPISIX           = "apisix"
+	ProviderTypeAPISIXStandalone = "apisix-standalone"
+)
+
 var (
 	//go:embed manifests/apisix.yaml
 	apisixStandaloneTemplate string

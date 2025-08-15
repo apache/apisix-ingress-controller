@@ -6,7 +6,7 @@
 // "License"); you may not use this file except in compliance
 // with the License.  You may obtain a copy of the License at
 //
-//   http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing,
 // software distributed under the License is distributed on an
@@ -15,29 +15,29 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package adc
+package translator
 
 import (
-	"errors"
 	"fmt"
 	"net"
-	"slices"
 	"strconv"
 
 	"github.com/api7/gopkg/pkg/log"
+	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
+	types "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
-	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
-func (d *adcClient) getConfigsForGatewayProxy(tctx *provider.TranslateContext, gatewayProxy *v1alpha1.GatewayProxy) (*adcConfig, error) {
+func (t *Translator) TranslateGatewayProxyToConfig(tctx *provider.TranslateContext, gatewayProxy *v1alpha1.GatewayProxy, resolveEndpoints bool) (*types.Config, error) {
 	if gatewayProxy == nil || gatewayProxy.Spec.Provider == nil {
 		return nil, nil
 	}
@@ -47,8 +47,8 @@ func (d *adcClient) getConfigsForGatewayProxy(tctx *provider.TranslateContext, g
 		return nil, nil
 	}
 
-	config := adcConfig{
-		Name: k8stypes.NamespacedName{Namespace: gatewayProxy.Namespace, Name: gatewayProxy.Name}.String(),
+	config := types.Config{
+		Name: utils.NamespacedNameKind(gatewayProxy).String(),
 	}
 
 	if provider.ControlPlane.TlsVerify != nil {
@@ -88,19 +88,19 @@ func (d *adcClient) getConfigsForGatewayProxy(tctx *provider.TranslateContext, g
 			Namespace: gatewayProxy.Namespace,
 			Name:      provider.ControlPlane.Service.Name,
 		}
-		_, ok := tctx.Services[namespacedName]
+		svc, ok := tctx.Services[namespacedName]
 		if !ok {
 			return nil, fmt.Errorf("no service found for service reference: %s", namespacedName)
 		}
 
 		// APISIXStandalone, configurations need to be sent to each data plane instance;
 		// In other cases, the service is directly accessed as the adc backend server address.
-		if d.BackendMode == BackendModeAPISIXStandalone {
+		if resolveEndpoints {
 			endpoint := tctx.EndpointSlices[namespacedName]
 			if endpoint == nil {
 				return nil, nil
 			}
-			upstreamNodes, err := d.translator.TranslateBackendRefWithFilter(tctx, gatewayv1.BackendRef{
+			upstreamNodes, err := t.TranslateBackendRefWithFilter(tctx, gatewayv1.BackendRef{
 				BackendObjectReference: gatewayv1.BackendObjectReference{
 					Name:      gatewayv1.ObjectName(provider.ControlPlane.Service.Name),
 					Namespace: (*gatewayv1.Namespace)(&gatewayProxy.Namespace),
@@ -120,106 +120,18 @@ func (d *adcClient) getConfigsForGatewayProxy(tctx *provider.TranslateContext, g
 				config.ServerAddrs = append(config.ServerAddrs, "http://"+net.JoinHostPort(node.Host, strconv.Itoa(node.Port)))
 			}
 		} else {
-			config.ServerAddrs = []string{
-				fmt.Sprintf("http://%s.%s:%d", provider.ControlPlane.Service.Name, gatewayProxy.Namespace, provider.ControlPlane.Service.Port),
+			refPort := provider.ControlPlane.Service.Port
+			var serverAddr string
+			if svc.Spec.Type == corev1.ServiceTypeExternalName {
+				serverAddr = fmt.Sprintf("http://%s:%d", svc.Spec.ExternalName, refPort)
+			} else {
+				serverAddr = fmt.Sprintf("http://%s.%s.svc:%d", provider.ControlPlane.Service.Name, gatewayProxy.Namespace, refPort)
 			}
+			config.ServerAddrs = []string{serverAddr}
 		}
 
 		log.Debugw("add server address to config.ServiceAddrs", zap.Strings("config.ServerAddrs", config.ServerAddrs))
 	}
 
 	return &config, nil
-}
-
-func (d *adcClient) deleteConfigs(rk types.NamespacedNameKind) {
-	d.Lock()
-	defer d.Unlock()
-	delete(d.configs, rk)
-	delete(d.parentRefs, rk)
-}
-
-func (d *adcClient) getParentRefs(rk types.NamespacedNameKind) []types.NamespacedNameKind {
-	d.Lock()
-	defer d.Unlock()
-	return d.parentRefs[rk]
-}
-
-func (d *adcClient) getConfigs(rk types.NamespacedNameKind) []adcConfig {
-	d.Lock()
-	defer d.Unlock()
-	parentRefs := d.parentRefs[rk]
-	configs := make([]adcConfig, 0, len(parentRefs))
-	for _, parentRef := range parentRefs {
-		if config, ok := d.configs[parentRef]; ok {
-			configs = append(configs, config)
-		}
-	}
-	return configs
-}
-
-func (d *adcClient) updateConfigs(rk types.NamespacedNameKind, tctx *provider.TranslateContext) error {
-	d.Lock()
-	defer d.Unlock()
-
-	// set parent refs
-	d.parentRefs[rk] = tctx.ResourceParentRefs[rk]
-	parentRefs := d.parentRefs[rk]
-
-	for _, parentRef := range parentRefs {
-		gatewayProxy, ok := tctx.GatewayProxies[parentRef]
-		if !ok {
-			log.Debugw("no gateway proxy found for parent ref", zap.Any("parentRef", parentRef))
-			continue
-		}
-		config, err := d.getConfigsForGatewayProxy(tctx, &gatewayProxy)
-		if err != nil {
-			return err
-		}
-		if config == nil {
-			log.Debugw("no config found for gateway proxy", zap.Any("parentRef", parentRef))
-			continue
-		}
-		d.configs[parentRef] = *config
-	}
-
-	return nil
-}
-
-// updateConfigForGatewayProxy update config for all referrers of the GatewayProxy
-func (d *adcClient) updateConfigForGatewayProxy(tctx *provider.TranslateContext, gp *v1alpha1.GatewayProxy) error {
-	d.Lock()
-	defer d.Unlock()
-
-	config, err := d.getConfigsForGatewayProxy(tctx, gp)
-	if err != nil {
-		return err
-	}
-
-	referrers := tctx.GatewayProxyReferrers[utils.NamespacedName(gp)]
-
-	if config == nil {
-		for _, ref := range referrers {
-			delete(d.configs, ref)
-		}
-		return nil
-	}
-
-	for _, ref := range referrers {
-		d.configs[ref] = *config
-	}
-
-	d.syncNotify()
-	return nil
-}
-
-func (d *adcClient) findConfigsToDelete(oldParentRefs, newParentRefs []types.NamespacedNameKind) []adcConfig {
-	var deleteConfigs []adcConfig
-	for _, parentRef := range oldParentRefs {
-		if !slices.ContainsFunc(newParentRefs, func(rk types.NamespacedNameKind) bool {
-			return rk.Kind == parentRef.Kind && rk.Namespace == parentRef.Namespace && rk.Name == parentRef.Name
-		}) {
-			deleteConfigs = append(deleteConfigs, d.configs[parentRef])
-		}
-	}
-	return deleteConfigs
 }

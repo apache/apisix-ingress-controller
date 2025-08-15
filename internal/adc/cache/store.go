@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package adc
+package cache
 
 import (
 	"fmt"
@@ -27,11 +27,10 @@ import (
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
-	"github.com/apache/apisix-ingress-controller/internal/provider/adc/cache"
 )
 
 type Store struct {
-	cacheMap          map[string]cache.Cache
+	cacheMap          map[string]Cache
 	pluginMetadataMap map[string]adctypes.PluginMetadata
 
 	sync.Mutex
@@ -39,17 +38,17 @@ type Store struct {
 
 func NewStore() *Store {
 	return &Store{
-		cacheMap:          make(map[string]cache.Cache),
+		cacheMap:          make(map[string]Cache),
 		pluginMetadataMap: make(map[string]adctypes.PluginMetadata),
 	}
 }
 
-func (s *Store) Insert(name string, resourceTypes []string, resources adctypes.Resources, Labels map[string]string) error {
+func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.Resources, Labels map[string]string) error {
 	s.Lock()
 	defer s.Unlock()
 	targetCache, ok := s.cacheMap[name]
 	if !ok {
-		db, err := cache.NewMemDBCache()
+		db, err := NewMemDBCache()
 		if err != nil {
 			return err
 		}
@@ -57,7 +56,7 @@ func (s *Store) Insert(name string, resourceTypes []string, resources adctypes.R
 		targetCache = s.cacheMap[name]
 	}
 	log.Debugw("Inserting resources into cache for", zap.String("name", name))
-	selector := &cache.KindLabelSelector{
+	selector := &KindLabelSelector{
 		Kind:      Labels[label.LabelKind],
 		Name:      Labels[label.LabelName],
 		Namespace: Labels[label.LabelNamespace],
@@ -153,7 +152,7 @@ func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]st
 	if !ok {
 		return nil
 	}
-	selector := &cache.KindLabelSelector{
+	selector := &KindLabelSelector{
 		Kind:      Labels[label.LabelKind],
 		Name:      Labels[label.LabelName],
 		Namespace: Labels[label.LabelNamespace],
