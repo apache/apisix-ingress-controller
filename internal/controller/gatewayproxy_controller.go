@@ -35,6 +35,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
@@ -129,6 +130,16 @@ func (r *GatewayProxyController) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, nil
 	}
 
+	var gatewayclassList gatewayv1.GatewayClassList
+	if err := r.List(ctx, &gatewayclassList, client.MatchingFields{indexer.ControllerName: config.GetControllerName()}); err != nil {
+		r.Log.Error(err, "failed to list GatewayClassList")
+		return ctrl.Result{}, nil
+	}
+	gcMatched := make(map[string]*gatewayv1.GatewayClass)
+	for _, item := range gatewayclassList.Items {
+		gcMatched[item.Name] = &item
+	}
+
 	// list IngressClasses that reference the GatewayProxy
 	if err := r.List(ctx, &ingressClassList, client.MatchingFields{indexer.IngressClassParametersRef: indexKey}); err != nil {
 		r.Log.Error(err, "failed to list IngressClassList")
@@ -138,8 +149,18 @@ func (r *GatewayProxyController) Reconcile(ctx context.Context, req ctrl.Request
 	// append referrers to translate context
 	for _, item := range gatewayList.Items {
 		tctx.GatewayProxyReferrers[req.NamespacedName] = append(tctx.GatewayProxyReferrers[req.NamespacedName], utils.NamespacedNameKind(&item))
+		gcName := string(item.Spec.GatewayClassName)
+		if gcName == "" {
+			continue
+		}
+		if _, ok := gcMatched[gcName]; ok {
+			tctx.GatewayProxyReferrers[req.NamespacedName] = append(tctx.GatewayProxyReferrers[req.NamespacedName], utils.NamespacedNameKind(&item))
+		}
 	}
 	for _, item := range ingressClassList.Items {
+		if item.Spec.Controller != config.GetControllerName() {
+			continue
+		}
 		tctx.GatewayProxyReferrers[req.NamespacedName] = append(tctx.GatewayProxyReferrers[req.NamespacedName], utils.NamespacedNameKind(&item))
 	}
 

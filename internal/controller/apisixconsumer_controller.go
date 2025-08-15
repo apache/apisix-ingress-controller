@@ -83,15 +83,13 @@ func (r *ApisixConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		ingressClass *networkingv1.IngressClass
 		err          error
 	)
-	defer func() {
-		r.updateStatus(ac, err)
-	}()
-
-	ingressClass, err = GetIngressClass(tctx, r.Client, r.Log, ac.Spec.IngressClassName)
-	if err != nil {
-		r.Log.Error(err, "failed to get IngressClass")
-		return ctrl.Result{}, err
+	if ingressClass, err = GetIngressClass(tctx, r.Client, r.Log, ac.Spec.IngressClassName); err != nil {
+		r.Log.V(1).Info("no matching IngressClass available",
+			"ingressClassName", ac.Spec.IngressClassName,
+			"error", err.Error())
+		return ctrl.Result{}, nil
 	}
+	defer func() { r.updateStatus(ac, err) }()
 
 	if err = ProcessIngressClassParameters(tctx, r.Client, r.Log, ac, ingressClass); err != nil {
 		r.Log.Error(err, "failed to process IngressClass parameters", "ingressClass", ingressClass.Name)
@@ -99,6 +97,7 @@ func (r *ApisixConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	if err = r.processSpec(ctx, tctx, ac); err != nil {
+		r.Log.Error(err, "failed to process ApisixConsumer spec", "object", ac)
 		return ctrl.Result{}, err
 	}
 
