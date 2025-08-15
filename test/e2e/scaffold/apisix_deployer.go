@@ -100,13 +100,17 @@ func (s *APISIXDeployer) BeforeEach() {
 	e := utils.ParallelExecutor{}
 
 	e.Add(func() {
+		defer GinkgoRecover()
 		s.DeployDataplane(DeployDataplaneOptions{})
 		s.DeployIngress()
 		adminTunnel, err := s.createAdminTunnel(s.dataplaneService)
 		Expect(err).NotTo(HaveOccurred())
 		s.adminTunnel = adminTunnel
 	})
-	e.Add(s.DeployTestService)
+	e.Add(func() {
+		defer GinkgoRecover()
+		s.DeployTestService()
+	})
 	e.Wait()
 }
 

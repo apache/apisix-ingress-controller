@@ -114,5 +114,6 @@ jobs:
           TEST_DIR: "./test/e2e/apisix/"
           PROVIDER_TYPE: ${{ matrix.provider_type }}
           TEST_LABEL: ${{ matrix.cases_subset }}
+          TEST_ENV: CI
         run: |
           make ginkgo-e2e-test
