@@ -55,7 +55,7 @@ type Options struct {
 type Scaffold struct {
 	*framework.Framework
 
-	opts             *Options
+	opts             Options
 	kubectlOptions   *k8s.KubectlOptions
 	namespace        string
 	t                testing.TestingT
@@ -103,7 +103,7 @@ func NewScaffold(o *Options) *Scaffold {
 
 	s := &Scaffold{
 		Framework: framework.GetFramework(),
-		opts:      o,
+		opts:      *o,
 		t:         GinkgoT(),
 	}
 
@@ -115,6 +115,11 @@ func NewScaffold(o *Options) *Scaffold {
 	}
 
 	return s
+}
+
+func (s *Scaffold) RegisterHooks() {
+	BeforeEach(s.Deployer.BeforeEach)
+	AfterEach(s.Deployer.AfterEach)
 }
 
 // NewDefaultScaffold creates a scaffold with some default options.
