@@ -716,12 +716,12 @@ spec:
       match:
         paths:
           - /ip
-    authentication:
-      enable: true
-      type: keyAuth
-    backends:
-    - serviceName: httpbin
-      servicePort: 80
+      authentication:
+        enable: true
+        type: keyAuth
+      backends:
+      - serviceName: httpbin
+        servicePort: 80
 ```
 
 To enable other plugins:
@@ -745,9 +745,9 @@ spec:
           count: 2
           time_window: 10
           rejected_code: 429
-    backends:
-    - serviceName: httpbin
-      servicePort: 80
+      backends:
+      - serviceName: httpbin
+        servicePort: 80
 ```
 
 </TabItem>
