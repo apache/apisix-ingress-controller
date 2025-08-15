@@ -93,12 +93,12 @@ func (r *ApisixConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	if err = ProcessIngressClassParameters(tctx, r.Client, r.Log, ac, ingressClass); err != nil {
 		r.Log.Error(err, "failed to process IngressClass parameters", "ingressClass", ingressClass.Name)
-		return ctrl.Result{}, err
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	if err = r.processSpec(ctx, tctx, ac); err != nil {
 		r.Log.Error(err, "failed to process ApisixConsumer spec", "object", ac)
-		return ctrl.Result{}, err
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	if err = r.Provider.Update(ctx, tctx, ac); err != nil {

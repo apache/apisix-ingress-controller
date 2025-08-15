@@ -95,7 +95,7 @@ func (r *ApisixGlobalRuleReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	// process IngressClass parameters if they reference GatewayProxy
 	if err := ProcessIngressClassParameters(tctx, r.Client, r.Log, &globalRule, ingressClass); err != nil {
 		r.Log.Error(err, "failed to process IngressClass parameters", "ingressClass", ingressClass.Name)
-		return ctrl.Result{}, err
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	// Sync the global rule to APISIX

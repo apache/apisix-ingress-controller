@@ -134,7 +134,8 @@ func (r *ApisixRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	defer func() { r.updateStatus(&ar, err) }()
 
 	if err = ProcessIngressClassParameters(tctx, r.Client, r.Log, &ar, ic); err != nil {
-		return ctrl.Result{}, err
+		r.Log.Error(err, "failed to process IngressClass parameters")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	if err = r.processApisixRoute(ctx, tctx, &ar); err != nil {
 		return ctrl.Result{}, err
