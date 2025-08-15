@@ -100,7 +100,7 @@ func (r *IngressClassReconciler) Reconcile(ctx context.Context, req ctrl.Request
 
 	if err := r.processInfrastructure(tctx, ingressClass); err != nil {
 		r.Log.Error(err, "failed to process infrastructure for ingressclass", "ingressclass", ingressClass.GetName())
-		return ctrl.Result{}, err
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	if err := r.Provider.Update(ctx, tctx, ingressClass); err != nil {

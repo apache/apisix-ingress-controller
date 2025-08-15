@@ -117,16 +117,10 @@ func (r *ApisixTlsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// get the ingress class
 	ingressClass, err := GetIngressClass(tctx, r.Client, r.Log, tls.Spec.IngressClassName)
 	if err != nil {
-		r.Log.Error(err, "failed to get IngressClass")
-		r.updateStatus(&tls, metav1.Condition{
-			Type:               string(apiv2.ConditionTypeAccepted),
-			Status:             metav1.ConditionFalse,
-			ObservedGeneration: tls.Generation,
-			LastTransitionTime: metav1.Now(),
-			Reason:             string(apiv2.ConditionReasonInvalidSpec),
-			Message:            err.Error(),
-		})
-		return ctrl.Result{}, err
+		r.Log.V(1).Info("no matching IngressClass available, skip processing",
+			"ingressClassName", tls.Spec.IngressClassName,
+			"error", err.Error())
+		return ctrl.Result{}, nil
 	}
 
 	// process IngressClass parameters if they reference GatewayProxy
@@ -140,7 +134,7 @@ func (r *ApisixTlsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Reason:             string(apiv2.ConditionReasonInvalidSpec),
 			Message:            err.Error(),
 		})
-		return ctrl.Result{}, err
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	// process ApisixTls validation
@@ -154,7 +148,7 @@ func (r *ApisixTlsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Reason:             string(apiv2.ConditionReasonInvalidSpec),
 			Message:            err.Error(),
 		})
-		return ctrl.Result{}, err
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	if err := r.Provider.Update(ctx, tctx, &tls); err != nil {
