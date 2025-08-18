@@ -61,7 +61,7 @@ spec:
     spec:
       initContainers:
         - name: config-setup
-          image: apache/apisix:dev
+          image: apache/apisix:3.13.0-ubuntu
           command:
             - sh
             - -c
