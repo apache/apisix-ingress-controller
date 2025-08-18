@@ -21,11 +21,35 @@ import (
 	"sync"
 )
 
+/*
+ConfigManager is a generic configuration association manager that maintains relationships between:
+  - Resource objects (e.g., HTTPRoute, Ingress)
+  - Configuration objects (e.g., Gateway, IngressClass configurations)
+  - Referenced resources (e.g., Secrets referenced by configurations)
+
+Core data structure:
+  - resourceConfigKeys: Resource object → Configuration keys
+     (e.g., HTTPRoute/Ingress → [ConfigKey1, ConfigKey2])
+  - configs:             Configuration storage pool
+     (e.g., ConfigKey → GatewayProxy Configuration)
+  - configRefs:          Configuration → Referenced resources
+     (e.g., ConfigKey → [Gateway, IngressClass])
+
+Main relationships:
+  Resource objects (HTTPRoute/Ingress) --resourceConfigKeys--> Configuration objects
+      --configRefs--> Referenced resources (Gateways/IngressClasses)
+
+Note: The referenced resources in configRefs are typically higher-level abstractions
+that configurations depend on (Gateway/IngressClass), not the low-level resources like Secrets.
+*/
+
 type ConfigManager[K comparable, T any] struct {
-	mu                 sync.Mutex
+	mu sync.Mutex
+
+	configs    map[K]T
+	configRefs map[K][]K
+
 	resourceConfigKeys map[K][]K
-	configs            map[K]T
-	configRefs         map[K][]K
 }
 
 func NewConfigManager[K comparable, T any]() *ConfigManager[K, T] {
