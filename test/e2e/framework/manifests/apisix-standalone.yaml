@@ -72,7 +72,7 @@ spec:
               mountPath: /tmp/apisix-conf
       containers:
         - name: apisix
-          image: apache/apisix:dev
+          image: apache/apisix:3.13.0-ubuntu
           ports:
             - name: http
               containerPort: 9080
