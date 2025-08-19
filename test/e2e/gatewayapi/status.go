@@ -29,9 +29,7 @@ import (
 
 var _ = Describe("Test Gateway API Status", Label("networking.k8s.io", "httproute"), func() {
 	var (
-		s = scaffold.NewScaffold(&scaffold.Options{
-			ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
-		})
+		s = scaffold.NewDefaultScaffold()
 	)
 
 	Context("Test HTTPRoute Sync Status", func() {
