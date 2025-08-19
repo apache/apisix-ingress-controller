@@ -1192,7 +1192,7 @@ func ListMatchingRequests(
 	matchFunc func(obj client.Object) bool,
 	opts ...client.ListOption,
 ) []reconcile.Request {
-	if err := c.List(ctx, listObj); err != nil {
+	if err := c.List(ctx, listObj, opts...); err != nil {
 		logger.Error(err, "failed to list resource")
 		return nil
 	}
