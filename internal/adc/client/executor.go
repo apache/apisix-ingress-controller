@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package adc
+package client
 
 import (
 	"bytes"
@@ -37,21 +37,21 @@ import (
 )
 
 type ADCExecutor interface {
-	Execute(ctx context.Context, mode string, config adcConfig, args []string) error
+	Execute(ctx context.Context, mode string, config adctypes.Config, args []string) error
 }
 
 type DefaultADCExecutor struct {
 	sync.Mutex
 }
 
-func (e *DefaultADCExecutor) Execute(ctx context.Context, mode string, config adcConfig, args []string) error {
+func (e *DefaultADCExecutor) Execute(ctx context.Context, mode string, config adctypes.Config, args []string) error {
 	e.Lock()
 	defer e.Unlock()
 
 	return e.runADC(ctx, mode, config, args)
 }
 
-func (e *DefaultADCExecutor) runADC(ctx context.Context, mode string, config adcConfig, args []string) error {
+func (e *DefaultADCExecutor) runADC(ctx context.Context, mode string, config adctypes.Config, args []string) error {
 	var execErrs = types.ADCExecutionError{
 		Name: config.Name,
 	}
@@ -76,13 +76,13 @@ func (e *DefaultADCExecutor) runADC(ctx context.Context, mode string, config adc
 	return nil
 }
 
-func (e *DefaultADCExecutor) runForSingleServerWithTimeout(ctx context.Context, serverAddr, mode string, config adcConfig, args []string) error {
+func (e *DefaultADCExecutor) runForSingleServerWithTimeout(ctx context.Context, serverAddr, mode string, config adctypes.Config, args []string) error {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	return e.runForSingleServer(ctx, serverAddr, mode, config, args)
 }
 
-func (e *DefaultADCExecutor) runForSingleServer(ctx context.Context, serverAddr, mode string, config adcConfig, args []string) error {
+func (e *DefaultADCExecutor) runForSingleServer(ctx context.Context, serverAddr, mode string, config adctypes.Config, args []string) error {
 	cmdArgs := append([]string{}, args...)
 	if !config.TlsVerify {
 		cmdArgs = append(cmdArgs, "--tls-skip-verify")

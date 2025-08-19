@@ -30,7 +30,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
-	"github.com/apache/apisix-ingress-controller/internal/provider/adc/translator"
+	"github.com/apache/apisix-ingress-controller/internal/adc/translator"
 )
 
 // DataplaneResource defines the interface for accessing dataplane resources
