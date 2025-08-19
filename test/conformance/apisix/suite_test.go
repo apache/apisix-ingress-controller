@@ -140,7 +140,7 @@ func TestMain(m *testing.M) {
 	k8s.CreateNamespace(GinkgoT(), kubectl, namespace)
 	defer k8s.DeleteNamespace(GinkgoT(), kubectl, namespace)
 
-	s := scaffold.NewScaffold(&scaffold.Options{
+	s := scaffold.NewScaffold(scaffold.Options{
 		ControllerName:    "apisix.apache.org/apisix-ingress-controller",
 		SkipHooks:         true,
 		APISIXAdminAPIKey: getEnvOrDefault("APISIX_ADMIN_KEY", "edd1c9f034335f136f87ad84b625c8f1"),
