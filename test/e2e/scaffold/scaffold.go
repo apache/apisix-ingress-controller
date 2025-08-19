@@ -55,7 +55,10 @@ type Options struct {
 type Scaffold struct {
 	*framework.Framework
 
-	opts             Options
+	// opts holds the original, user-provided options.
+	// It is treated as read-only and must not be modified after initialization.
+	opts Options
+
 	kubectlOptions   *k8s.KubectlOptions
 	namespace        string
 	t                testing.TestingT
@@ -70,7 +73,8 @@ type Scaffold struct {
 
 	additionalGateways map[string]*GatewayResources
 
-	Deployer Deployer
+	runtimeOpts Options
+	Deployer    Deployer
 }
 
 // GatewayResources contains resources associated with a specific Gateway group
@@ -87,11 +91,11 @@ func (g *GatewayResources) GetAdminEndpoint() string {
 }
 
 func (s *Scaffold) AdminKey() string {
-	return s.opts.APISIXAdminAPIKey
+	return s.runtimeOpts.APISIXAdminAPIKey
 }
 
 // NewScaffold creates an e2e test scaffold.
-func NewScaffold(o *Options) *Scaffold {
+func NewScaffold(o Options) *Scaffold {
 	if o.Name == "" {
 		o.Name = "default"
 	}
@@ -103,13 +107,13 @@ func NewScaffold(o *Options) *Scaffold {
 
 	s := &Scaffold{
 		Framework: framework.GetFramework(),
-		opts:      *o,
+		opts:      o,
 		t:         GinkgoT(),
 	}
 
 	s.Deployer = NewDeployer(s)
 
-	if !s.opts.SkipHooks {
+	if o.SkipHooks {
 		BeforeEach(s.Deployer.BeforeEach)
 		AfterEach(s.Deployer.AfterEach)
 	}
@@ -120,7 +124,7 @@ func NewScaffold(o *Options) *Scaffold {
 // NewDefaultScaffold creates a scaffold with some default options.
 // apisix-version default v2
 func NewDefaultScaffold() *Scaffold {
-	return NewScaffold(&Options{})
+	return NewScaffold(Options{})
 }
 
 // KillPod kill the pod which name is podName.
@@ -257,8 +261,8 @@ func (s *Scaffold) DeleteResource(resourceType, name string) error {
 
 func (s *Scaffold) NamespaceSelectorLabelStrings() []string {
 	var labels []string
-	if s.opts.NamespaceSelectorLabel != nil {
-		for k, v := range s.opts.NamespaceSelectorLabel {
+	if s.runtimeOpts.NamespaceSelectorLabel != nil {
+		for k, v := range s.runtimeOpts.NamespaceSelectorLabel {
 			for _, v0 := range v {
 				labels = append(labels, fmt.Sprintf("%s=%s", k, v0))
 			}
@@ -272,7 +276,7 @@ func (s *Scaffold) NamespaceSelectorLabelStrings() []string {
 }
 
 func (s *Scaffold) NamespaceSelectorLabel() map[string][]string {
-	return s.opts.NamespaceSelectorLabel
+	return s.runtimeOpts.NamespaceSelectorLabel
 }
 func (s *Scaffold) labelSelector(label string) metav1.ListOptions {
 	return metav1.ListOptions{
@@ -281,7 +285,7 @@ func (s *Scaffold) labelSelector(label string) metav1.ListOptions {
 }
 
 func (s *Scaffold) GetControllerName() string {
-	return s.opts.ControllerName
+	return s.runtimeOpts.ControllerName
 }
 
 // createDataplaneTunnels creates HTTP and HTTPS tunnels for a dataplane service.
