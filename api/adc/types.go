@@ -726,3 +726,24 @@ func (s *StringOrSlice) UnmarshalJSON(p []byte) error {
 	}
 	return json.Unmarshal(p, &s.StrVal)
 }
+
+type Config struct {
+	Name        string
+	ServerAddrs []string
+	Token       string
+	TlsVerify   bool
+}
+
+// MarshalJSON implements custom JSON marshaling for adcConfig
+// It excludes the Token field for security reasons
+func (c Config) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Name        string   `json:"name"`
+		ServerAddrs []string `json:"serverAddrs"`
+		TlsVerify   bool     `json:"tlsVerify"`
+	}{
+		Name:        c.Name,
+		ServerAddrs: c.ServerAddrs,
+		TlsVerify:   c.TlsVerify,
+	})
+}

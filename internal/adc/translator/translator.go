@@ -26,6 +26,13 @@ import (
 type Translator struct {
 	Log logr.Logger
 }
+
+func NewTranslator(log logr.Logger) *Translator {
+	return &Translator{
+		Log: log,
+	}
+}
+
 type TranslateResult struct {
 	Routes         []*adctypes.Route
 	Services       []*adctypes.Service
