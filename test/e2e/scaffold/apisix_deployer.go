@@ -67,6 +67,8 @@ func (s *APISIXDeployer) BeforeEach() {
 	if s.opts.ControllerName == "" {
 		s.opts.ControllerName = fmt.Sprintf("%s/%s", DefaultControllerName, s.namespace)
 	}
+	fmt.Println("Setting up namespace:", s.namespace, "controllerName:", s.opts.ControllerName)
+
 	s.finalizers = nil
 	if s.label == nil {
 		s.label = make(map[string]string)
