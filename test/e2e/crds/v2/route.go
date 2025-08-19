@@ -475,6 +475,74 @@ spec:
 	})
 
 	Context("Test ApisixRoute reference ApisixUpstream", func() {
+		It("Test ApisixUpstream with wrong IngressClass name", func() {
+			const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: default
+  namespace: %s
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - httpbin
+      paths:
+      - /*
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+    plugins:
+    - name: response-rewrite
+      enable: true
+      config:
+        headers:
+          set:
+            "X-Upstream-Host": "$upstream_host"
+
+`
+			const apisixUpstreamSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: httpbin-service-e2e-test
+  namespace: %s
+spec:
+  ingressClassName: invalid
+  passHost: rewrite
+  upstreamHost: hello.httpbin.org
+  loadbalancer:
+    type: "chash"
+    hashOn: "vars"
+    key: "server_name"
+`
+
+			expectUpstreamHostIs := func(expectedUpstreamHost string) func(ctx context.Context) (bool, error) {
+				return func(ctx context.Context) (done bool, err error) {
+					resp := s.NewAPISIXClient().GET("/get").WithHost("httpbin").Expect().Raw()
+					return resp.StatusCode == http.StatusOK && resp.Header.Get("X-Upstream-Host") == expectedUpstreamHost, nil
+				}
+			}
+
+			By("apply apisixroute")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Namespace()))
+
+			By("verify ApisixRoute works")
+			// expect upstream host is "httpbin"
+			err := wait.PollUntilContextTimeout(context.Background(), time.Second, 10*time.Second, true, expectUpstreamHostIs("httpbin"))
+			Expect(err).ShouldNot(HaveOccurred(), "verify ApisixRoute works")
+
+			By("apply apisixupstream")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-service-e2e-test"},
+				new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec, s.Namespace()))
+
+			By("expect upstream host is still \"httpbin\" - apisixupstream is ignored")
+			err = wait.PollUntilContextTimeout(context.Background(), time.Second, 10*time.Second, true, expectUpstreamHostIs("httpbin"))
+			Expect(err).ShouldNot(HaveOccurred(), "verify ApisixRoute works")
+		})
 		It("Test reference ApisixUpstream", func() {
 			const apisixRouteSpec = `
 apiVersion: apisix.apache.org/v2
