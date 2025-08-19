@@ -117,11 +117,6 @@ func NewScaffold(o *Options) *Scaffold {
 	return s
 }
 
-func (s *Scaffold) RegisterHooks() {
-	BeforeEach(s.Deployer.BeforeEach)
-	AfterEach(s.Deployer.AfterEach)
-}
-
 // NewDefaultScaffold creates a scaffold with some default options.
 // apisix-version default v2
 func NewDefaultScaffold() *Scaffold {
