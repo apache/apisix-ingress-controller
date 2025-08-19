@@ -47,7 +47,7 @@ var _ = Describe("Test CRD Status", Label("apisix.apache.org", "v2", "apisixrout
 			time.Sleep(5 * time.Second)
 
 			By("create IngressClass")
-			err = s.CreateResourceFromString(s.GetIngressClassYaml())
+			err = s.CreateResourceFromStringWithNamespace(s.GetIngressClassYaml(), "")
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 			time.Sleep(5 * time.Second)
 		})

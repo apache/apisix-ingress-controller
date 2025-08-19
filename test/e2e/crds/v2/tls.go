@@ -104,24 +104,13 @@ var _ = Describe("Test ApisixTls", Label("apisix.apache.org", "v2", "apisixtls")
 			time.Sleep(5 * time.Second)
 
 			By("create IngressClass")
-			err = s.CreateResourceFromString(fmt.Sprintf(ingressClassYamlTls, s.Namespace(), s.GetControllerName(), s.Namespace()))
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClassYamlTls, s.Namespace(), s.GetControllerName(), s.Namespace()), "")
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 			time.Sleep(5 * time.Second)
 
 			By("create ApisixRoute for TLS testing")
 			var apisixRoute apiv2.ApisixRoute
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-route-tls"}, &apisixRoute, fmt.Sprintf(apisixRouteYamlTls, s.Namespace()))
-		})
-
-		AfterEach(func() {
-			By("delete GatewayProxy")
-			gatewayProxy := fmt.Sprintf(gatewayProxyYamlTls, s.Deployer.GetAdminEndpoint(), s.AdminKey())
-			err := s.DeleteResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
-			Expect(err).ShouldNot(HaveOccurred(), "deleting GatewayProxy")
-
-			By("delete IngressClass")
-			err = s.DeleteResourceFromStringWithNamespace(fmt.Sprintf(ingressClassYamlTls, s.Namespace(), s.GetControllerName(), s.Namespace()), "")
-			Expect(err).ShouldNot(HaveOccurred(), "deleting IngressClass")
 		})
 
 		It("Basic ApisixTls test", func() {
