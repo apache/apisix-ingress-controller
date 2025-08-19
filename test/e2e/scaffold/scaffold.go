@@ -47,9 +47,7 @@ type Options struct {
 	APISIXAdminAPIKey string
 	ControllerName    string
 
-	NamespaceSelectorLabel map[string][]string
-	DisableNamespaceLabel  bool
-	SkipHooks              bool
+	SkipHooks bool
 }
 
 type Scaffold struct {
@@ -66,7 +64,6 @@ type Scaffold struct {
 	httpbinService   *corev1.Service
 
 	finalizers []func()
-	label      map[string]string
 
 	apisixHttpTunnel  *k8s.Tunnel
 	apisixHttpsTunnel *k8s.Tunnel
@@ -113,7 +110,7 @@ func NewScaffold(o Options) *Scaffold {
 
 	s.Deployer = NewDeployer(s)
 
-	if o.SkipHooks {
+	if !o.SkipHooks {
 		BeforeEach(s.Deployer.BeforeEach)
 		AfterEach(s.Deployer.AfterEach)
 	}
@@ -259,25 +256,6 @@ func (s *Scaffold) DeleteResource(resourceType, name string) error {
 	return k8s.RunKubectlE(s.t, s.kubectlOptions, "delete", resourceType, name)
 }
 
-func (s *Scaffold) NamespaceSelectorLabelStrings() []string {
-	var labels []string
-	if s.runtimeOpts.NamespaceSelectorLabel != nil {
-		for k, v := range s.runtimeOpts.NamespaceSelectorLabel {
-			for _, v0 := range v {
-				labels = append(labels, fmt.Sprintf("%s=%s", k, v0))
-			}
-		}
-	} else {
-		for k, v := range s.label {
-			labels = append(labels, fmt.Sprintf("%s=%s", k, v))
-		}
-	}
-	return labels
-}
-
-func (s *Scaffold) NamespaceSelectorLabel() map[string][]string {
-	return s.runtimeOpts.NamespaceSelectorLabel
-}
 func (s *Scaffold) labelSelector(label string) metav1.ListOptions {
 	return metav1.ListOptions{
 		LabelSelector: label,

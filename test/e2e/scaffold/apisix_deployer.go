@@ -71,27 +71,11 @@ func (s *APISIXDeployer) BeforeEach() {
 	fmt.Println("Setting up namespace:", s.namespace, "controllerName:", s.runtimeOpts.ControllerName)
 
 	s.finalizers = nil
-	if s.label == nil {
-		s.label = make(map[string]string)
-	}
-	if s.runtimeOpts.NamespaceSelectorLabel != nil {
-		for k, v := range s.runtimeOpts.NamespaceSelectorLabel {
-			if len(v) > 0 {
-				s.label[k] = v[0]
-			}
-		}
-	} else {
-		s.label["apisix.ingress.watch"] = s.namespace
-	}
 
 	// Initialize additionalGateways map
 	s.additionalGateways = make(map[string]*GatewayResources)
 
-	var nsLabel map[string]string
-	if !s.runtimeOpts.DisableNamespaceLabel {
-		nsLabel = s.label
-	}
-	k8s.CreateNamespaceWithMetadata(s.t, s.kubectlOptions, metav1.ObjectMeta{Name: s.namespace, Labels: nsLabel})
+	k8s.CreateNamespace(s.t, s.kubectlOptions, s.namespace)
 
 	if s.runtimeOpts.APISIXAdminAPIKey == "" {
 		s.runtimeOpts.APISIXAdminAPIKey = getEnvOrDefault("APISIX_ADMIN_KEY", "edd1c9f034335f136f87ad84b625c8f1")
@@ -332,12 +316,7 @@ func (s *APISIXDeployer) CreateAdditionalGateway(namePrefix string) (string, *co
 	// Create a new namespace for this additional gateway
 	additionalNS := fmt.Sprintf("%s-%d", namePrefix, time.Now().Unix())
 
-	// Create namespace with the same labels
-	var nsLabel map[string]string
-	if !s.runtimeOpts.DisableNamespaceLabel {
-		nsLabel = s.label
-	}
-	k8s.CreateNamespaceWithMetadata(s.t, s.kubectlOptions, metav1.ObjectMeta{Name: additionalNS, Labels: nsLabel})
+	k8s.CreateNamespace(s.t, s.kubectlOptions, additionalNS)
 
 	// Create new kubectl options for the new namespace
 	kubectlOpts := &k8s.KubectlOptions{
