@@ -125,9 +125,7 @@ func TestMain(m *testing.M) {
 	f := framework.NewFramework()
 
 	// init newDeployer function
-	scaffold.NewDeployer = func(s *scaffold.Scaffold) scaffold.Deployer {
-		return scaffold.NewAPISIXDeployer(s)
-	}
+	scaffold.NewDeployer = scaffold.NewAPISIXDeployer
 
 	// Check and delete specific namespaces if they exist
 	kubectl := k8s.NewKubectlOptions("", "", "default")

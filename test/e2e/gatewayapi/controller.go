@@ -164,10 +164,13 @@ spec:
 		})
 		It("Apply resource ", func() {
 			ResourceApplied(s1, "HTTPRoute", "httpbin", s1.Namespace(), fmt.Sprintf(route1, s1.Namespace()), 1)
-			time.Sleep(5 * time.Second)
-			routes, err := s1.DefaultDataplaneResource().Route().List(s1.Context)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(routes).To(HaveLen(1))
+
+			s1.RetryAssertion(func() int {
+				routes, _ := s1.DefaultDataplaneResource().Route().List(s1.Context)
+				return len(routes)
+			}).WithInterval(3*time.Second).Should(Equal(1), "checking route count")
+
+			routes, _ := s1.DefaultDataplaneResource().Route().List(s1.Context)
 			assert.Equal(GinkgoT(), routes[0].Labels["k8s/controller-name"], s1.GetControllerName())
 		})
 	})

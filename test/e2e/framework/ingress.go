@@ -20,7 +20,6 @@ package framework
 import (
 	"bytes"
 	_ "embed"
-	"fmt"
 	"text/template"
 	"time"
 
@@ -61,9 +60,6 @@ func (f *Framework) DeployIngress(opts IngressDeployOpts) {
 	f.GomegaT.Expect(err).ToNot(HaveOccurred(), "rendering ingress spec")
 
 	kubectlOpts := k8s.NewKubectlOptions("", "", opts.Namespace)
-
-	fmt.Println("Deploying Ingress with options:", opts)
-	fmt.Println("Rendered Ingress spec:", buf.String())
 	k8s.KubectlApplyFromString(f.GinkgoT, kubectlOpts, buf.String())
 
 	err = WaitPodsAvailable(f.GinkgoT, kubectlOpts, metav1.ListOptions{

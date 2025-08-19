@@ -148,7 +148,6 @@ func (r *GatewayProxyController) Reconcile(ctx context.Context, req ctrl.Request
 
 	// append referrers to translate context
 	for _, item := range gatewayList.Items {
-		tctx.GatewayProxyReferrers[req.NamespacedName] = append(tctx.GatewayProxyReferrers[req.NamespacedName], utils.NamespacedNameKind(&item))
 		gcName := string(item.Spec.GatewayClassName)
 		if gcName == "" {
 			continue

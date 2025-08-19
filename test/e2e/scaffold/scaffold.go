@@ -274,27 +274,23 @@ func (s *Scaffold) createDataplaneTunnels(
 	serviceName string,
 ) (*k8s.Tunnel, *k8s.Tunnel, error) {
 	var (
-		httpNodePort  int
-		httpsNodePort int
-		httpPort      int
-		httpsPort     int
+		httpPort  int
+		httpsPort int
 	)
 
 	for _, port := range svc.Spec.Ports {
 		switch port.Name {
 		case "http":
-			httpNodePort = int(port.NodePort)
 			httpPort = int(port.Port)
 		case "https":
-			httpsNodePort = int(port.NodePort)
 			httpsPort = int(port.Port)
 		}
 	}
 
 	httpTunnel := k8s.NewTunnel(kubectlOpts, k8s.ResourceTypeService, serviceName,
-		httpNodePort, httpPort)
+		0, httpPort)
 	httpsTunnel := k8s.NewTunnel(kubectlOpts, k8s.ResourceTypeService, serviceName,
-		httpsNodePort, httpsPort)
+		0, httpsPort)
 
 	if err := httpTunnel.ForwardPortE(s.t); err != nil {
 		return nil, nil, err

@@ -68,7 +68,6 @@ func (s *APISIXDeployer) BeforeEach() {
 	if s.runtimeOpts.ControllerName == "" {
 		s.runtimeOpts.ControllerName = fmt.Sprintf("%s/%s", DefaultControllerName, s.namespace)
 	}
-	fmt.Println("Setting up namespace:", s.namespace, "controllerName:", s.runtimeOpts.ControllerName)
 
 	s.finalizers = nil
 
@@ -280,14 +279,12 @@ func getEnvOrDefault(key, defaultValue string) string {
 
 func (s *APISIXDeployer) createAdminTunnel(svc *corev1.Service) (*k8s.Tunnel, error) {
 	var (
-		adminNodePort int
-		adminPort     int
+		adminPort int
 	)
 
 	for _, port := range svc.Spec.Ports {
 		switch port.Name {
 		case "admin":
-			adminNodePort = int(port.NodePort)
 			adminPort = int(port.Port)
 		}
 	}
@@ -295,7 +292,7 @@ func (s *APISIXDeployer) createAdminTunnel(svc *corev1.Service) (*k8s.Tunnel, er
 	kubectlOpts := k8s.NewKubectlOptions("", "", svc.Namespace)
 
 	adminTunnel := k8s.NewTunnel(kubectlOpts, k8s.ResourceTypeService, svc.Name,
-		adminNodePort, adminPort)
+		0, adminPort)
 
 	if err := adminTunnel.ForwardPortE(s.t); err != nil {
 		return nil, err
