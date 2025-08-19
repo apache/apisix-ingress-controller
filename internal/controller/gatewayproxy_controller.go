@@ -167,7 +167,7 @@ func (r *GatewayProxyController) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, nil
 	}
 
-	r.Log.V(1).Info("references found for GatewayProxy", "gatewayproxy", req.NamespacedName.String(), "references", tctx.GatewayProxyReferrers[req.NamespacedName])
+	r.Log.V(1).Info("references found for GatewayProxy", "gatewayproxy", req.String(), "references", tctx.GatewayProxyReferrers[req.NamespacedName])
 	if err := r.Provider.Update(ctx, tctx, &gp); err != nil {
 		return reconcile.Result{}, err
 	}
