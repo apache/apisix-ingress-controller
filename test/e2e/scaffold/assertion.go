@@ -201,7 +201,7 @@ func (s *Scaffold) RequestAssert(r *RequestAssert) bool {
 			}
 		}
 		return nil
-	}).WithTimeout(r.Timeout).ProbeEvery(r.Interval).Should(Succeed(), fmt.Sprintf("http endpoint: %s, https endpoint: %s", s.ApisixHTTPEndpoint(), s.GetAPISIXHTTPSEndpoint()))
+	}).WithTimeout(r.Timeout).ProbeEvery(r.Interval).Should(Succeed())
 }
 
 // RetryAssertion provides a reusable Eventually-based assertion
