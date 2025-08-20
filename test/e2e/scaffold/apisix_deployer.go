@@ -153,6 +153,9 @@ func (s *APISIXDeployer) DeployDataplane(deployOpts DeployDataplaneOptions) {
 	if deployOpts.ServiceHTTPSPort != 0 {
 		opts.ServiceHTTPSPort = deployOpts.ServiceHTTPSPort
 	}
+	if deployOpts.AdminKey != "" {
+		opts.AdminKey = deployOpts.AdminKey
+	}
 	if deployOpts.Replicas != nil {
 		opts.Replicas = deployOpts.Replicas
 	}

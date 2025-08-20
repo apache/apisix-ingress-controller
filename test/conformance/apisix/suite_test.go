@@ -139,13 +139,15 @@ func TestMain(m *testing.M) {
 	defer k8s.DeleteNamespace(GinkgoT(), kubectl, namespace)
 
 	adminkey := getEnvOrDefault("APISIX_ADMIN_KEY", "edd1c9f034335f136f87ad84b625c8f1")
+	controllerName := "apisix.apache.org/apisix-ingress-controller"
 	s := scaffold.NewScaffold(scaffold.Options{
-		ControllerName:    "apisix.apache.org/apisix-ingress-controller",
+		ControllerName:    controllerName,
 		SkipHooks:         true,
 		APISIXAdminAPIKey: adminkey,
 	})
 
 	s.Deployer.DeployDataplane(scaffold.DeployDataplaneOptions{
+		AdminKey:          adminkey,
 		Namespace:         namespace,
 		SkipCreateTunnels: true,
 		ServiceType:       "LoadBalancer",
@@ -161,7 +163,7 @@ func TestMain(m *testing.M) {
 	address := svc.Status.LoadBalancer.Ingress[0].IP
 
 	f.DeployIngress(framework.IngressDeployOpts{
-		ControllerName:     s.GetControllerName(),
+		ControllerName:     controllerName,
 		Namespace:          namespace,
 		StatusAddress:      address,
 		InitSyncDelay:      20 * time.Minute,
