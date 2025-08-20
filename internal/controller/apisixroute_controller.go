@@ -306,7 +306,6 @@ func (r *ApisixRouteReconciler) processExternalNodes(ctx context.Context, tc *pr
 }
 
 func (r *ApisixRouteReconciler) processTLSSecret(ctx context.Context, tc *provider.TranslateContext, ups apiv2.ApisixUpstream, secretNs string) error {
-	log.Debug("entered processTLS SECRET")
 	if ups.Spec.TLSSecret != nil && ups.Spec.TLSSecret.Name != "" {
 		var (
 			secret   corev1.Secret
@@ -318,7 +317,6 @@ func (r *ApisixRouteReconciler) processTLSSecret(ctx context.Context, tc *provid
 				return err
 			}
 		}
-		log.Debugf("got secret %+v", secret)
 		tc.Secrets[secretNN] = &secret
 	}
 	return nil
