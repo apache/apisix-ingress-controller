@@ -167,7 +167,7 @@ kind-down:
 		|| echo "kind cluster does not exist"
 
 .PHONY: kind-load-images
-kind-load-images: pull-infra-images kind-load-ingress-image
+kind-load-images: pull-infra-images kind-load-ingress-image kind-load-adc-image
 	@kind load docker-image kennethreitz/httpbin:latest --name $(KIND_NAME) 
 	@kind load docker-image jmalloc/echo-server:latest --name $(KIND_NAME)
 
@@ -175,10 +175,15 @@ kind-load-images: pull-infra-images kind-load-ingress-image
 kind-load-ingress-image:
 	@kind load docker-image $(IMG) --name $(KIND_NAME)
 
+.PHONY: kind-load-adc-image
+kind-load-adc-image:
+	@kind load docker-image ghcr.io/api7/adc:dev --name $(KIND_NAME)
+
 .PHONY: pull-infra-images
 pull-infra-images:
 	@docker pull kennethreitz/httpbin:latest
 	@docker pull jmalloc/echo-server:latest
+	@docker pull ghcr.io/api7/adc:dev
 
 ##@ Build
 

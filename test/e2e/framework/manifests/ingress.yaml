@@ -414,6 +414,44 @@ spec:
           capabilities:
             drop:
             - ALL
+      - image: ghcr.io/api7/adc:dev
+        env:
+        - name: ADC_RUNNING_MODE
+          value: ingress
+        - name: ADC_EXPERIMENTAL_FEATURE_FLAGS 
+          value: remote-state-file,parallel-backend-request
+        name: adc-server
+        args:
+        - "server"
+        - "--listen"
+        - "http://127.0.0.1:3000"
+        - "--listen-status"
+        - "3001"
+        ports:
+        - name: http
+          containerPort: 3000
+          protocol: TCP
+        - name: http-status
+          containerPort: 3001
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /healthz/ready
+            port: 3001
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz/ready
+            port: 3001
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
       volumes:
       - name: ingress-config
         configMap:

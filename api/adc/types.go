@@ -672,7 +672,6 @@ type StatusEvent struct {
 type ResponseDetails struct {
 	Status  int               `json:"status"`
 	Headers map[string]string `json:"headers"`
-	Data    ResponseData      `json:"data"`
 }
 
 type ResponseData struct {
