@@ -129,7 +129,7 @@ spec:
 
 	BeforeEach(func() {
 		By("Create GatewayClass")
-		gatewayClassName = fmt.Sprintf("apisix-%d", time.Now().Unix())
+		gatewayClassName = s.Namespace()
 		err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()), "")
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
 		time.Sleep(5 * time.Second)

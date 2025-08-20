@@ -210,7 +210,7 @@ func (s *Scaffold) ApplyDefaultGatewayResource(
 	time.Sleep(5 * time.Second)
 
 	By("create GatewayClass")
-	gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
+	gatewayClassName := s.Namespace()
 	gatewayString := fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName())
 	err = s.CreateResourceFromStringWithNamespace(gatewayString, "")
 	Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")

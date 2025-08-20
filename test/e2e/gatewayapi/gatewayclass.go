@@ -61,7 +61,7 @@ spec:
       port: 80
 `
 		It("Create GatewayClass", func() {
-			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
+			gatewayClassName := s.Namespace()
 			By("create default GatewayClass")
 			err := s.CreateResourceFromString(fmt.Sprintf(defautlGatewayClass, gatewayClassName, s.GetControllerName()))
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
@@ -84,7 +84,7 @@ spec:
 		})
 
 		It("Delete GatewayClass", func() {
-			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
+			gatewayClassName := s.Namespace()
 			By("create default GatewayClass")
 			err := s.CreateResourceFromString(fmt.Sprintf(defautlGatewayClass, gatewayClassName, s.GetControllerName()))
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")

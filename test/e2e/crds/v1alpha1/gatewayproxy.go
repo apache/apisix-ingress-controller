@@ -118,7 +118,7 @@ spec:
 		time.Sleep(time.Second)
 
 		By("create GatewayClass")
-		gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
+		gatewayClassName := s.Namespace()
 		err = s.CreateResourceFromString(fmt.Sprintf(gatewayClassSpec, gatewayClassName, s.GetControllerName()))
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
 		time.Sleep(time.Second)

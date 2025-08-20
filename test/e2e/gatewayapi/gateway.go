@@ -225,7 +225,7 @@ spec:
 
 			secretName := _secretName
 			createSecret(s, secretName)
-			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
+			gatewayClassName := s.Namespace()
 			var defaultGatewayClass = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
