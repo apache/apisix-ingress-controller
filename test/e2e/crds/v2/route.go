@@ -25,6 +25,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -1366,6 +1367,186 @@ spec:
 				}
 				assert.True(GinkgoT(), hasEtag && hasNoEtag, "both httpbin and postman should be accessed at least once")
 			})
+		})
+	})
+	Context("Test tls secret processed from ApisixUpstream with matching backend", func() {
+		var Cert = strings.TrimSpace(framework.TestServerCert)
+		var Key = strings.TrimSpace(framework.TestServerKey)
+		createSecret := func(s *scaffold.Scaffold, secretName string) {
+			err := s.NewKubeTlsSecret(secretName, Cert, Key)
+			assert.Nil(GinkgoT(), err, "create secret error")
+		}
+		const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: default
+  namespace: %s
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - httpbin
+      paths:
+      - /*
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+
+`
+		const apisixUpstreamSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: httpbin-service-e2e-test
+  namespace: %s
+spec:
+  tlsSecret:
+    name: %s
+    namespace: %s
+`
+
+		It("create ApisixRoute and upstream with tlsSecret", func() {
+			secretName := fmt.Sprintf("test-tls-secret-%s", s.Namespace())
+			createSecret(s, secretName)
+			By("apply apisixupstream")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-service-e2e-test"},
+				new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec, s.Namespace(), secretName, s.Namespace()))
+			By("apply apisixroute")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Namespace()))
+			time.Sleep(6 * time.Second)
+			services, err := s.DefaultDataplaneResource().Service().List(context.Background())
+			Expect(err).ShouldNot(HaveOccurred(), "list services")
+			service := services[0]
+			Expect(service.Upstream.TLS).ShouldNot(Equal(nil), "check tls in service")
+		})
+	})
+
+	Context("Test tls secret processed from ApisixUpstream with matching upstream", func() {
+		var Cert = strings.TrimSpace(framework.TestServerCert)
+		var Key = strings.TrimSpace(framework.TestServerKey)
+		createSecret := func(s *scaffold.Scaffold, secretName string) {
+			err := s.NewKubeTlsSecret(secretName, Cert, Key)
+			assert.Nil(GinkgoT(), err, "create secret error")
+		}
+		const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: default
+  namespace: %s
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - httpbin
+      paths:
+      - /*
+    upstreams:
+    - name: httpbin-service-e2e-test
+`
+		const apisixUpstreamSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: httpbin-service-e2e-test
+  namespace: %s
+spec:
+  tlsSecret:
+    name: %s
+    namespace: %s
+`
+
+		It("create ApisixRoute and upstream with tlsSecret", func() {
+			secretName := fmt.Sprintf("test-tls-secret-%s", s.Namespace())
+			createSecret(s, secretName)
+			By("apply apisixupstream")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-service-e2e-test"},
+				new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec, s.Namespace(), secretName, s.Namespace()))
+			By("apply apisixroute")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Namespace()))
+			time.Sleep(6 * time.Second)
+			services, err := s.DefaultDataplaneResource().Service().List(context.Background())
+			Expect(err).ShouldNot(HaveOccurred(), "list services")
+			service := services[0]
+			Expect(service.Upstream.TLS).ShouldNot(Equal(nil), "check tls in service")
+		})
+	})
+
+	Context("Test external nodes processed from ApisixUpstream with matching backend", func() {
+		It("Test reference ApisixUpstream", func() {
+			const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: default
+  namespace: %s
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      paths:
+      - /*
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+`
+			const apisixUpstreamSpec0 = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: default-upstream
+  namespace: %s
+spec:
+  ingressClassName: %s
+  externalNodes:
+  - type: Service
+    name: httpbin-service-e2e-test
+`
+			const apisixUpstreamSpec1 = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: default-upstream
+  namespace: %s
+spec:
+  ingressClassName: %s
+  externalNodes:
+  - type: Service
+    name: alias-httpbin-service-e2e-test
+`
+			const serviceSpec = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: alias-httpbin-service-e2e-test
+spec:
+  type: ExternalName
+  externalName: httpbin-service-e2e-test
+`
+			By("create Service, ApisixUpstream and ApisixRoute")
+			err := s.CreateResourceFromStringWithNamespace(serviceSpec, s.Namespace())
+			Expect(err).ShouldNot(HaveOccurred(), "apply service")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default-upstream"},
+				new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec0, s.Namespace(), s.Namespace()))
+
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Namespace()))
+
+			request := func(path string) int {
+				return s.NewAPISIXClient().GET(path).WithHost("httpbin").Expect().Raw().StatusCode
+			}
+			By("verify that ApisixUpstream reference a Service which is ExternalName should request OK")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default-upstream"},
+				new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec1, s.Namespace(), s.Namespace()))
+			Eventually(request).WithArguments("/get").WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(Equal(http.StatusOK))
 		})
 	})
 })
