@@ -19,6 +19,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -36,6 +37,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
@@ -208,8 +210,10 @@ func (r *ConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	gateway, err := r.getGateway(ctx, consumer)
 	if err != nil {
-		r.Log.Error(err, "failed to get gateway", "consumer", consumer)
-		statusErr = err
+		r.Log.V(1).Info("no matching Gateway available",
+			"gatewayRef", consumer.Spec.GatewayRef,
+			"error", err.Error())
+		return ctrl.Result{}, nil
 	}
 
 	rk := utils.NamespacedNameKind(consumer)
@@ -295,8 +299,17 @@ func (r *ConsumerReconciler) getGateway(ctx context.Context, consumer *v1alpha1.
 		Name:      consumer.Spec.GatewayRef.Name,
 		Namespace: ns,
 	}, gateway); err != nil {
-		r.Log.Error(err, "failed to get gateway", "gateway", consumer.Spec.GatewayRef.Name)
-		return nil, err
+		return nil, fmt.Errorf("failed to get gateway %s/%s: %w", ns, consumer.Spec.GatewayRef.Name, err)
+	}
+	gatewayClass := gatewayv1.GatewayClass{}
+	if err := r.Get(ctx, client.ObjectKey{
+		Name: string(gateway.Spec.GatewayClassName),
+	}, &gatewayClass); err != nil {
+		return nil, fmt.Errorf("failed to retrieve gatewayclass for gateway: %w", err)
+	}
+
+	if string(gatewayClass.Spec.ControllerName) != config.ControllerConfig.ControllerName {
+		return nil, fmt.Errorf("gateway %s/%s is not managed by this controller", gateway.Namespace, gateway.Name)
 	}
 	return gateway, nil
 }
