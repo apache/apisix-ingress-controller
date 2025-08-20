@@ -319,7 +319,7 @@ spec:
 			Expect(exists).To(BeTrue(), "additional gateway group should exist")
 
 			By("Create additional GatewayClass")
-			additionalGatewayClassName = s.Namespace()
+			additionalGatewayClassName = fmt.Sprintf("additional-gatewayclass-%d", time.Now().Nanosecond())
 			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(gatewayClassYaml, additionalGatewayClassName, s.GetControllerName()), "")
 			Expect(err).NotTo(HaveOccurred(), "creating additional GatewayClass")
 
