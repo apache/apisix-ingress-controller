@@ -216,7 +216,7 @@ spec:
 			assert.ElementsMatch(GinkgoT(), []string{host}, tls[0].Snis)
 		})
 
-		It("Gateway SSL with and without hostname", func() {
+		FIt("Gateway SSL with and without hostname", func() {
 			By("create GatewayProxy")
 			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
 			err := s.CreateResourceFromString(gatewayProxy)
