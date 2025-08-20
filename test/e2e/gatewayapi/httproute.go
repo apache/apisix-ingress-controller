@@ -154,7 +154,7 @@ spec:
 		createSecret(s, secretName)
 
 		By("create GatewayClass")
-		gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Nanosecond())
+		gatewayClassName := s.Namespace()
 		Expect(s.CreateResourceFromStringWithNamespace(fmt.Sprintf(gatewayClassYaml, gatewayClassName, s.GetControllerName()), "")).
 			NotTo(HaveOccurred(), "creating GatewayClass")
 
