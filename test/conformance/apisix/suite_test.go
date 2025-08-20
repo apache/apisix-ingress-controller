@@ -138,10 +138,11 @@ func TestMain(m *testing.M) {
 	k8s.CreateNamespace(GinkgoT(), kubectl, namespace)
 	defer k8s.DeleteNamespace(GinkgoT(), kubectl, namespace)
 
+	adminkey := getEnvOrDefault("APISIX_ADMIN_KEY", "edd1c9f034335f136f87ad84b625c8f1")
 	s := scaffold.NewScaffold(scaffold.Options{
 		ControllerName:    "apisix.apache.org/apisix-ingress-controller",
 		SkipHooks:         true,
-		APISIXAdminAPIKey: getEnvOrDefault("APISIX_ADMIN_KEY", "edd1c9f034335f136f87ad84b625c8f1"),
+		APISIXAdminAPIKey: adminkey,
 	})
 
 	s.Deployer.DeployDataplane(scaffold.DeployDataplaneOptions{
@@ -172,7 +173,7 @@ func TestMain(m *testing.M) {
 
 	defaultGatewayProxyOpts = GatewayProxyOpts{
 		StatusAddress: address,
-		AdminKey:      s.AdminKey(),
+		AdminKey:      adminkey,
 		AdminEndpoint: adminEndpoint,
 	}
 
