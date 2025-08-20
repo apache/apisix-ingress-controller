@@ -1421,7 +1421,7 @@ spec:
 			services, err := s.DefaultDataplaneResource().Service().List(context.Background())
 			Expect(err).ShouldNot(HaveOccurred(), "list services")
 			service := services[0]
-			Expect(service.Upstream.TLS).ShouldNot(Equal(nil), "check tls in service")
+			Expect(service.Upstream.TLS).ShouldNot(BeNil(), "check tls in service")
 		})
 	})
 
@@ -1475,7 +1475,7 @@ spec:
 			services, err := s.DefaultDataplaneResource().Service().List(context.Background())
 			Expect(err).ShouldNot(HaveOccurred(), "list services")
 			service := services[0]
-			Expect(service.Upstream.TLS).ShouldNot(Equal(nil), "check tls in service")
+			Expect(service.Upstream.TLS).ShouldNot(BeNil(), "check tls in service")
 		})
 	})
 
