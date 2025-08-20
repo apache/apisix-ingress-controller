@@ -105,7 +105,7 @@ spec:
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 		time.Sleep(5 * time.Second)
 
-		gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
+		gatewayClassName := s.Namespace()
 		err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defautlGatewayClass, gatewayClassName, gatewayName, s.GetControllerName()), gatewayName)
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
 		time.Sleep(10 * time.Second)

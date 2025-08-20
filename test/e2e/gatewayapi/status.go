@@ -23,7 +23,10 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
+	"sigs.k8s.io/yaml"
 
+	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
@@ -38,10 +41,9 @@ apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: httpbin
-  namespace: %s
 spec:
   parentRefs:
-  - name: %s
+  - name: apisix
   hostnames:
   - "httpbin"
   rules:
@@ -66,8 +68,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  name: %s
-  namespace: %s
+  name: apisix
 spec:
   gatewayClassName: %s
   listeners:
@@ -78,12 +79,11 @@ spec:
     parametersRef:
       group: apisix.apache.org
       kind: GatewayProxy
-      name: %s
+      name: apisix-proxy-config
 `
 		BeforeEach(func() {
 			By("create GatewayProxy")
-			gatewayProxy := s.GetGatewayProxyYaml()
-			err := s.CreateResourceFromString(gatewayProxy)
+			err := s.CreateResourceFromString(s.GetGatewayProxySpec())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(5 * time.Second)
 
@@ -94,12 +94,12 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			By("create Gateway")
-			err = s.CreateResourceFromString(fmt.Sprintf(defaultGateway, s.Namespace(), s.Namespace(), gatewayClassName, s.Namespace()))
+			err = s.CreateResourceFromString(fmt.Sprintf(defaultGateway, gatewayClassName))
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 			time.Sleep(5 * time.Second)
 
 			By("check Gateway condition")
-			gwyaml, err := s.GetResourceYaml("Gateway", s.Namespace())
+			gwyaml, err := s.GetResourceYaml("Gateway", "apisix")
 			Expect(err).NotTo(HaveOccurred(), "getting Gateway yaml")
 			Expect(gwyaml).To(ContainSubstring(`status: "True"`), "checking Gateway condition status")
 			Expect(gwyaml).To(ContainSubstring("message: the gateway has been accepted by the apisix-ingress-controller"), "checking Gateway condition message")
@@ -110,7 +110,7 @@ spec:
 
 		It("dataplane unavailable", func() {
 			By("Create HTTPRoute")
-			err := s.CreateResourceFromString(fmt.Sprintf(httproute, s.Namespace(), s.Namespace()))
+			err := s.CreateResourceFromString(httproute)
 			Expect(err).NotTo(HaveOccurred(), "creating HTTPRoute")
 
 			By("check route in APISIX")
@@ -120,28 +120,52 @@ spec:
 				Host:   "httpbin",
 				Check:  scaffold.WithExpectedStatus(200),
 			})
-			time.Sleep(8 * time.Second)
-			s.Deployer.ScaleDataplane(0)
+
+			By("get yaml from service")
+			serviceYaml, err := s.GetOutputFromString("svc", framework.ProviderType, "-o", "yaml")
+			Expect(err).NotTo(HaveOccurred(), "getting service yaml")
+			By("update service to type ExternalName with invalid host")
+			var k8sservice corev1.Service
+			err = yaml.Unmarshal([]byte(serviceYaml), &k8sservice)
+			Expect(err).NotTo(HaveOccurred(), "unmarshalling service")
+			oldSpec := k8sservice.Spec
+			k8sservice.Spec = corev1.ServiceSpec{
+				Type:         corev1.ServiceTypeExternalName,
+				ExternalName: "invalid.host",
+			}
+			newServiceYaml, err := yaml.Marshal(k8sservice)
+			Expect(err).NotTo(HaveOccurred(), "marshalling service")
+			err = s.CreateResourceFromString(string(newServiceYaml))
+			Expect(err).NotTo(HaveOccurred(), "creating service")
 
 			By("check ApisixRoute status")
 			s.RetryAssertion(func() string {
-				output, _ := s.GetOutputFromString("httproute", "httpbin", "-o", "yaml", "-n", s.Namespace())
+				output, _ := s.GetOutputFromString("httproute", "httpbin", "-o", "yaml")
 				return output
-			}).WithTimeout(80 * time.Second).
+			}).WithTimeout(60 * time.Second).
 				Should(
 					And(
 						ContainSubstring(`status: "False"`),
 						ContainSubstring(`reason: SyncFailed`),
 					),
 				)
-			time.Sleep(8 * time.Second)
-			s.Deployer.ScaleDataplane(1)
+
+			By("update service to original spec")
+			serviceYaml, err = s.GetOutputFromString("svc", framework.ProviderType, "-o", "yaml")
+			Expect(err).NotTo(HaveOccurred(), "getting service yaml")
+			err = yaml.Unmarshal([]byte(serviceYaml), &k8sservice)
+			Expect(err).NotTo(HaveOccurred(), "unmarshalling service")
+			k8sservice.Spec = oldSpec
+			newServiceYaml, err = yaml.Marshal(k8sservice)
+			Expect(err).NotTo(HaveOccurred(), "marshalling service")
+			err = s.CreateResourceFromString(string(newServiceYaml))
+			Expect(err).NotTo(HaveOccurred(), "creating service")
 
 			By("check ApisixRoute status after scaling up")
 			s.RetryAssertion(func() string {
-				output, _ := s.GetOutputFromString("httproute", "httpbin", "-o", "yaml", "-n", s.Namespace())
+				output, _ := s.GetOutputFromString("httproute", "httpbin", "-o", "yaml")
 				return output
-			}).WithTimeout(80 * time.Second).
+			}).WithTimeout(60 * time.Second).
 				Should(
 					And(
 						ContainSubstring(`status: "True"`),

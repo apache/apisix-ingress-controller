@@ -274,3 +274,24 @@ func (s *Scaffold) ApplyHTTPRoutePolicy(refNN, hrpNN types.NamespacedName, spec 
 		framework.HTTPRoutePolicyMustHaveCondition(s.GinkgoT, s.K8sClient, 8*time.Second, refNN, hrpNN, condition)
 	}
 }
+
+func (s *Scaffold) GetGatewayProxySpec() string {
+	var gatewayProxyYaml = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  name: apisix-proxy-config
+spec:
+  provider:
+    type: ControlPlane
+    controlPlane:
+      service:
+        name: %s
+        port: 9180
+      auth:
+        type: AdminKey
+        adminKey:
+          value: "%s"
+`
+	return fmt.Sprintf(gatewayProxyYaml, framework.ProviderType, s.AdminKey())
+}
