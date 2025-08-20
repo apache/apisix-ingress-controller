@@ -280,14 +280,16 @@ spec:
 			By("create Gateway")
 			err = s.CreateResourceFromStringWithNamespace(defaultGateway, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
-			time.Sleep(10 * time.Second)
 
-			tls, err := s.DefaultDataplaneResource().SSL().List(context.Background())
-			assert.Nil(GinkgoT(), err, "list tls error")
-			assert.Len(GinkgoT(), tls, 1, "tls number not expect")
-			assert.Len(GinkgoT(), tls[0].Certificates, 1, "length of certificates not expect")
-			assert.Equal(GinkgoT(), Cert, tls[0].Certificates[0].Certificate, "tls cert not expect")
-			assert.Equal(GinkgoT(), tls[0].Labels["k8s/controller-name"], s.GetControllerName())
+			Eventually(func(g Gomega) {
+				tls, err := s.DefaultDataplaneResource().SSL().List(context.Background())
+				g.Expect(err).NotTo(HaveOccurred(), "list tls error")
+
+				g.Expect(tls).To(HaveLen(1), "tls number not expect")
+				g.Expect(tls[0].Certificates).To(HaveLen(1), "length of certificates not expect")
+				g.Expect(tls[0].Certificates[0].Certificate).To(Equal(Cert), "tls cert not expect")
+				g.Expect(tls[0].Labels["k8s/controller-name"]).To(Equal(s.GetControllerName()), "controller name not expect")
+			}).WithTimeout(30 * time.Second).WithPolling(5 * time.Second).Should(Succeed())
 
 			By("update secret")
 			err = s.NewKubeTlsSecret(secretName, framework.TestCert, framework.TestKey)
