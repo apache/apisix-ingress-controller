@@ -1368,4 +1368,112 @@ spec:
 			})
 		})
 	})
+
+	Context("Test ApisixRoute with ApisixUpstream: retries", func() {
+		const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: default
+  namespace: %s
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - httpbin
+      paths:
+      - /*
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+
+`
+		const apisixUpstreamSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: httpbin-service-e2e-test
+  namespace: %s
+spec:
+  retries: 3
+`
+		It("create ApisixRoute and upstream with retries", func() {
+			By("apply apisixupstream")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-service-e2e-test"},
+				new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec, s.Namespace()))
+			By("apply apisixroute")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Namespace()))
+			Eventually(func() bool {
+				services, err := s.DefaultDataplaneResource().Service().List(context.Background())
+				if err != nil {
+					return false
+				}
+				if len(services) != 1 {
+					return false
+				}
+				if services[0].Upstream == nil {
+					return false
+				}
+				return *services[0].Upstream.Retries == 3
+			}).WithTimeout(30 * time.Second).ProbeEvery(5 * time.Second).Should(BeTrue())
+		})
+	})
+
+	Context("Test ApisixRoute with ApisixUpstream: timeout", func() {
+		const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: default
+  namespace: %s
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - httpbin
+      paths:
+      - /*
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+
+`
+		const apisixUpstreamSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: httpbin-service-e2e-test
+  namespace: %s
+spec:
+  timeout:
+    read: 10s
+    send: 10s
+`
+		It("create ApisixRoute and upstream with retries", func() {
+			By("apply apisixupstream")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-service-e2e-test"},
+				new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec, s.Namespace()))
+			By("apply apisixroute")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Namespace()))
+			Eventually(func() bool {
+				services, err := s.DefaultDataplaneResource().Service().List(context.Background())
+				if err != nil {
+					return false
+				}
+				if len(services) != 1 {
+					return false
+				}
+				if services[0].Upstream == nil {
+					return false
+				}
+				return services[0].Upstream.Timeout.Read == 10 && services[0].Upstream.Timeout.Send == 10
+			}).WithTimeout(30 * time.Second).ProbeEvery(5 * time.Second).Should(BeTrue())
+		})
+	})
 })
