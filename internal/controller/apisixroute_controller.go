@@ -358,9 +358,6 @@ func (r *ApisixRouteReconciler) validateBackends(ctx context.Context, tc *provid
 			}
 		} else {
 			tc.Upstreams[serviceNN] = &au
-			if err = r.processExternalNodes(ctx, tc, au); err != nil {
-				return err
-			}
 			if err := r.processTLSSecret(ctx, tc, au, in.GetNamespace()); err != nil {
 				return err
 			}
