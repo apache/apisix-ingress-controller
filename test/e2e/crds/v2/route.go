@@ -1369,4 +1369,61 @@ spec:
 			})
 		})
 	})
+	Context("Test tls secret processed from ApisixUpstream", func() {
+		var Cert = strings.TrimSpace(framework.TestServerCert)
+		var Key = strings.TrimSpace(framework.TestServerKey)
+		createSecret := func(s *scaffold.Scaffold, secretName string) {
+			err := s.NewKubeTlsSecret(secretName, Cert, Key)
+			assert.Nil(GinkgoT(), err, "create secret error")
+		}
+		const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: default
+  namespace: %s
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - httpbin
+      paths:
+      - /*
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+
+`
+		const apisixUpstreamSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: httpbin-service-e2e-test
+  namespace: %s
+spec:
+  ingressClassName: %s
+  tlsSecret:
+    name: %s
+    namespace: %s
+`
+
+		It("with matching backend", func() {
+			secretName := fmt.Sprintf("test-tls-secret-%s", s.Namespace())
+			createSecret(s, secretName)
+			By("apply apisixupstream")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-service-e2e-test"},
+				new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec, s.Namespace(), s.Namespace(), secretName, s.Namespace()))
+			By("apply apisixroute")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Namespace()))
+			time.Sleep(6 * time.Second)
+			services, err := s.DefaultDataplaneResource().Service().List(context.Background())
+			Expect(err).ShouldNot(HaveOccurred(), "list services")
+			assert.Len(GinkgoT(), services, 1, "there should be one service")
+			service := services[0]
+			Expect(service.Upstream.TLS).ShouldNot(BeNil(), "check tls in service")
+		})
+	})
 })
