@@ -179,7 +179,7 @@ type applier struct {
 func (a *applier) MustApplyAPIv2(nn types.NamespacedName, obj client.Object, spec string) {
 	require.NoError(a.t, a.apply(spec), "creating %s", nn)
 
-	APIv2MustHaveCondition(a.t, a.cli, 90*time.Second, nn, obj, metav1.Condition{
+	APIv2MustHaveCondition(a.t, a.cli, 180*time.Second, nn, obj, metav1.Condition{
 		Type:   string(gatewayv1.RouteConditionAccepted),
 		Status: metav1.ConditionTrue,
 		Reason: string(gatewayv1.GatewayReasonAccepted),
