@@ -218,6 +218,7 @@ type ADCServerOpts struct {
 	LabelSelector       map[string]string `json:"labelSelector,omitempty"`
 	IncludeResourceType []string          `json:"includeResourceType,omitempty"`
 	TlsSkipVerify       *bool             `json:"tlsSkipVerify,omitempty"`
+	CacheKey            string            `json:"cacheKey"`
 }
 
 // HTTPADCExecutor implements ADCExecutor interface using HTTP calls to ADC Server
@@ -370,6 +371,7 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr, mode
 				LabelSelector:       labels,
 				IncludeResourceType: types,
 				TlsSkipVerify:       ptr.To(!tlsVerify),
+				CacheKey:            config.Name,
 			},
 			Config: *resources,
 		},
