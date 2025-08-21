@@ -1403,6 +1403,7 @@ metadata:
   name: httpbin-service-e2e-test
   namespace: %s
 spec:
+  ingressClassName: %s
   tlsSecret:
     name: %s
     namespace: %s
@@ -1413,7 +1414,7 @@ spec:
 			createSecret(s, secretName)
 			By("apply apisixupstream")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-service-e2e-test"},
-				new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec, s.Namespace(), secretName, s.Namespace()))
+				new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec, s.Namespace(), s.Namespace(), secretName, s.Namespace()))
 			By("apply apisixroute")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
 				new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Namespace()))
