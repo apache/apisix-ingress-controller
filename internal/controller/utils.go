@@ -1483,3 +1483,53 @@ func MatchConsumerGatewayRef(ctx context.Context, c client.Client, log logr.Logg
 	}
 	return matchesController(string(gatewayClass.Spec.ControllerName))
 }
+
+func GetGatewayProxyByIngressClass(ctx context.Context, r client.Client, ingressClass *networkingv1.IngressClass) (*v1alpha1.GatewayProxy, error) {
+	if ingressClass.Spec.Parameters == nil {
+		return nil, nil
+	}
+
+	if ingressClass.Spec.Parameters.APIGroup == nil ||
+		*ingressClass.Spec.Parameters.APIGroup != v1alpha1.GroupVersion.Group ||
+		ingressClass.Spec.Parameters.Kind != KindGatewayProxy {
+		return nil, nil
+	}
+
+	namespace := ingressClass.Namespace
+	if ingressClass.Spec.Parameters.Namespace != nil {
+		namespace = *ingressClass.Spec.Parameters.Namespace
+	}
+
+	gatewayProxy := new(v1alpha1.GatewayProxy)
+	if err := r.Get(ctx, client.ObjectKey{
+		Namespace: namespace,
+		Name:      ingressClass.Spec.Parameters.Name,
+	}, gatewayProxy); err != nil {
+		return nil, fmt.Errorf("failed to get gateway proxy: %w", err)
+	}
+	return gatewayProxy, nil
+}
+
+func GetGatewayProxyByGateway(ctx context.Context, r client.Client, gateway *gatewayv1.Gateway) (*v1alpha1.GatewayProxy, error) {
+	if gateway == nil {
+		return nil, nil
+	}
+	infra := gateway.Spec.Infrastructure
+	if infra == nil || infra.ParametersRef == nil {
+		return nil, nil
+	}
+
+	ns := gateway.GetNamespace()
+	paramRef := infra.ParametersRef
+	if string(paramRef.Group) != v1alpha1.GroupVersion.Group || string(paramRef.Kind) != KindGatewayProxy {
+		return nil, nil
+	}
+	gatewayProxy := &v1alpha1.GatewayProxy{}
+	if err := r.Get(context.Background(), client.ObjectKey{
+		Namespace: ns,
+		Name:      paramRef.Name,
+	}, gatewayProxy); err != nil {
+		return nil, fmt.Errorf("failed to get GatewayProxy: %w", err)
+	}
+	return gatewayProxy, nil
+}

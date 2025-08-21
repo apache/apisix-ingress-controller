@@ -59,42 +59,28 @@ func NewAPISIXDeployer(s *Scaffold) Deployer {
 }
 
 func (s *APISIXDeployer) BeforeEach() {
-	s.namespace = fmt.Sprintf("ingress-apisix-e2e-tests-%s-%d", s.opts.Name, time.Now().Nanosecond())
+	s.runtimeOpts = s.opts
+	s.namespace = fmt.Sprintf("ingress-apisix-e2e-tests-%s-%d", s.runtimeOpts.Name, time.Now().Nanosecond())
 	s.kubectlOptions = &k8s.KubectlOptions{
-		ConfigPath: s.opts.Kubeconfig,
+		ConfigPath: s.runtimeOpts.Kubeconfig,
 		Namespace:  s.namespace,
 	}
-	if s.opts.ControllerName == "" {
-		s.opts.ControllerName = fmt.Sprintf("%s/%s", DefaultControllerName, s.namespace)
+	if s.runtimeOpts.ControllerName == "" {
+		s.runtimeOpts.ControllerName = fmt.Sprintf("%s/%s", DefaultControllerName, s.namespace)
 	}
+
 	s.finalizers = nil
-	if s.label == nil {
-		s.label = make(map[string]string)
-	}
-	if s.opts.NamespaceSelectorLabel != nil {
-		for k, v := range s.opts.NamespaceSelectorLabel {
-			if len(v) > 0 {
-				s.label[k] = v[0]
-			}
-		}
-	} else {
-		s.label["apisix.ingress.watch"] = s.namespace
-	}
 
 	// Initialize additionalGateways map
 	s.additionalGateways = make(map[string]*GatewayResources)
 
-	var nsLabel map[string]string
-	if !s.opts.DisableNamespaceLabel {
-		nsLabel = s.label
-	}
-	k8s.CreateNamespaceWithMetadata(s.t, s.kubectlOptions, metav1.ObjectMeta{Name: s.namespace, Labels: nsLabel})
+	k8s.CreateNamespace(s.t, s.kubectlOptions, s.namespace)
 
-	if s.opts.APISIXAdminAPIKey == "" {
-		s.opts.APISIXAdminAPIKey = getEnvOrDefault("APISIX_ADMIN_KEY", "edd1c9f034335f136f87ad84b625c8f1")
+	if s.runtimeOpts.APISIXAdminAPIKey == "" {
+		s.runtimeOpts.APISIXAdminAPIKey = getEnvOrDefault("APISIX_ADMIN_KEY", "edd1c9f034335f136f87ad84b625c8f1")
 	}
 
-	s.Logf("apisix admin api key: %s", s.opts.APISIXAdminAPIKey)
+	s.Logf("apisix admin api key: %s", s.runtimeOpts.APISIXAdminAPIKey)
 
 	e := utils.ParallelExecutor{}
 
@@ -149,7 +135,7 @@ func (s *APISIXDeployer) AfterEach() {
 func (s *APISIXDeployer) DeployDataplane(deployOpts DeployDataplaneOptions) {
 	opts := APISIXDeployOptions{
 		Namespace:        s.namespace,
-		AdminKey:         s.opts.APISIXAdminAPIKey,
+		AdminKey:         s.runtimeOpts.APISIXAdminAPIKey,
 		ServiceHTTPPort:  9080,
 		ServiceHTTPSPort: 9443,
 		Replicas:         ptr.To(1),
@@ -166,6 +152,9 @@ func (s *APISIXDeployer) DeployDataplane(deployOpts DeployDataplaneOptions) {
 	}
 	if deployOpts.ServiceHTTPSPort != 0 {
 		opts.ServiceHTTPSPort = deployOpts.ServiceHTTPSPort
+	}
+	if deployOpts.AdminKey != "" {
+		opts.AdminKey = deployOpts.AdminKey
 	}
 	if deployOpts.Replicas != nil {
 		opts.Replicas = deployOpts.Replicas
@@ -265,7 +254,7 @@ func (s *APISIXDeployer) ScaleDataplane(replicas int) {
 
 func (s *APISIXDeployer) DeployIngress() {
 	s.Framework.DeployIngress(framework.IngressDeployOpts{
-		ControllerName:     s.opts.ControllerName,
+		ControllerName:     s.runtimeOpts.ControllerName,
 		ProviderType:       framework.ProviderType,
 		ProviderSyncPeriod: 1 * time.Hour,
 		Namespace:          s.namespace,
@@ -275,7 +264,7 @@ func (s *APISIXDeployer) DeployIngress() {
 
 func (s *APISIXDeployer) ScaleIngress(replicas int) {
 	s.Framework.DeployIngress(framework.IngressDeployOpts{
-		ControllerName:     s.opts.ControllerName,
+		ControllerName:     s.runtimeOpts.ControllerName,
 		ProviderType:       framework.ProviderType,
 		ProviderSyncPeriod: 1 * time.Hour,
 		Namespace:          s.namespace,
@@ -293,14 +282,12 @@ func getEnvOrDefault(key, defaultValue string) string {
 
 func (s *APISIXDeployer) createAdminTunnel(svc *corev1.Service) (*k8s.Tunnel, error) {
 	var (
-		adminNodePort int
-		adminPort     int
+		adminPort int
 	)
 
 	for _, port := range svc.Spec.Ports {
 		switch port.Name {
 		case "admin":
-			adminNodePort = int(port.NodePort)
 			adminPort = int(port.Port)
 		}
 	}
@@ -308,7 +295,7 @@ func (s *APISIXDeployer) createAdminTunnel(svc *corev1.Service) (*k8s.Tunnel, er
 	kubectlOpts := k8s.NewKubectlOptions("", "", svc.Namespace)
 
 	adminTunnel := k8s.NewTunnel(kubectlOpts, k8s.ResourceTypeService, svc.Name,
-		adminNodePort, adminPort)
+		0, adminPort)
 
 	if err := adminTunnel.ForwardPortE(s.t); err != nil {
 		return nil, err
@@ -329,23 +316,18 @@ func (s *APISIXDeployer) CreateAdditionalGateway(namePrefix string) (string, *co
 	// Create a new namespace for this additional gateway
 	additionalNS := fmt.Sprintf("%s-%d", namePrefix, time.Now().Unix())
 
-	// Create namespace with the same labels
-	var nsLabel map[string]string
-	if !s.opts.DisableNamespaceLabel {
-		nsLabel = s.label
-	}
-	k8s.CreateNamespaceWithMetadata(s.t, s.kubectlOptions, metav1.ObjectMeta{Name: additionalNS, Labels: nsLabel})
+	k8s.CreateNamespace(s.t, s.kubectlOptions, additionalNS)
 
 	// Create new kubectl options for the new namespace
 	kubectlOpts := &k8s.KubectlOptions{
-		ConfigPath: s.opts.Kubeconfig,
+		ConfigPath: s.runtimeOpts.Kubeconfig,
 		Namespace:  additionalNS,
 	}
 
 	s.Logf("additional gateway in namespace %s", additionalNS)
 
 	// Use the same admin key as the main gateway
-	adminKey := s.opts.APISIXAdminAPIKey
+	adminKey := s.runtimeOpts.APISIXAdminAPIKey
 	s.Logf("additional gateway admin api key: %s", adminKey)
 
 	// Store gateway resources info
@@ -399,7 +381,7 @@ func (s *APISIXDeployer) CleanupAdditionalGateway(identifier string) error {
 
 	// Delete the namespace
 	err := k8s.DeleteNamespaceE(s.t, &k8s.KubectlOptions{
-		ConfigPath: s.opts.Kubeconfig,
+		ConfigPath: s.runtimeOpts.Kubeconfig,
 		Namespace:  resources.Namespace,
 	}, resources.Namespace)
 
