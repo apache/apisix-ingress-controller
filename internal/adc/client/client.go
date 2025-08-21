@@ -216,7 +216,7 @@ func (c *Client) Sync(ctx context.Context) (map[string]types.ADCExecutionErrors,
 		}
 
 		if err := c.sync(ctx, Task{
-			Name: name + "-sync",
+			Name: name,
 			Configs: map[types.NamespacedNameKind]adctypes.Config{
 				{}: config,
 			},
