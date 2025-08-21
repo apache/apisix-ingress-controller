@@ -1421,6 +1421,7 @@ spec:
 			time.Sleep(6 * time.Second)
 			services, err := s.DefaultDataplaneResource().Service().List(context.Background())
 			Expect(err).ShouldNot(HaveOccurred(), "list services")
+			assert.Len(GinkgoT(), services, 1, "there should be one service")
 			service := services[0]
 			Expect(service.Upstream.TLS).ShouldNot(BeNil(), "check tls in service")
 		})
