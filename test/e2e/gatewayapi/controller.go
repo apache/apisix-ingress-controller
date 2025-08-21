@@ -105,7 +105,7 @@ spec:
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 		time.Sleep(5 * time.Second)
 
-		gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
+		gatewayClassName := s.Namespace()
 		err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defautlGatewayClass, gatewayClassName, gatewayName, s.GetControllerName()), gatewayName)
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
 		time.Sleep(10 * time.Second)
@@ -129,9 +129,7 @@ spec:
 	}
 
 	Context("Create resource with first controller", func() {
-		s1 := scaffold.NewScaffold(&scaffold.Options{
-			ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
-		})
+		s1 := scaffold.NewDefaultScaffold()
 		var route1 = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -166,17 +164,18 @@ spec:
 		})
 		It("Apply resource ", func() {
 			ResourceApplied(s1, "HTTPRoute", "httpbin", s1.Namespace(), fmt.Sprintf(route1, s1.Namespace()), 1)
-			time.Sleep(5 * time.Second)
-			routes, err := s1.DefaultDataplaneResource().Route().List(s1.Context)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(routes).To(HaveLen(1))
+
+			s1.RetryAssertion(func() int {
+				routes, _ := s1.DefaultDataplaneResource().Route().List(s1.Context)
+				return len(routes)
+			}).WithInterval(3*time.Second).Should(Equal(1), "checking route count")
+
+			routes, _ := s1.DefaultDataplaneResource().Route().List(s1.Context)
 			assert.Equal(GinkgoT(), routes[0].Labels["k8s/controller-name"], s1.GetControllerName())
 		})
 	})
 	Context("Create resource with second controller", func() {
-		s2 := scaffold.NewScaffold(&scaffold.Options{
-			ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
-		})
+		s2 := scaffold.NewDefaultScaffold()
 		var route2 = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute

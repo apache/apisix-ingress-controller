@@ -78,7 +78,7 @@ func (r *ApisixGlobalRuleReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, err
 	}
 
-	r.Log.Info("reconciling global rule", "globalrule", globalRule.Name)
+	r.Log.V(1).Info("reconciling ApisixGlobalRule", "object", globalRule)
 
 	// create a translate context
 	tctx := provider.NewDefaultTranslateContext(ctx)
@@ -86,14 +86,16 @@ func (r *ApisixGlobalRuleReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	// get the ingress class
 	ingressClass, err := GetIngressClass(tctx, r.Client, r.Log, globalRule.Spec.IngressClassName)
 	if err != nil {
-		r.Log.Error(err, "failed to get IngressClass")
-		return ctrl.Result{}, err
+		r.Log.V(1).Info("no matching IngressClass available",
+			"ingressClassName", globalRule.Spec.IngressClassName,
+			"error", err.Error())
+		return ctrl.Result{}, nil
 	}
 
 	// process IngressClass parameters if they reference GatewayProxy
 	if err := ProcessIngressClassParameters(tctx, r.Client, r.Log, &globalRule, ingressClass); err != nil {
 		r.Log.Error(err, "failed to process IngressClass parameters", "ingressClass", ingressClass.Name)
-		return ctrl.Result{}, err
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	// Sync the global rule to APISIX

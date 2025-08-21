@@ -47,9 +47,7 @@ func createSecret(s *scaffold.Scaffold, secretName string) {
 }
 
 var _ = Describe("Test Ingress", Label("networking.k8s.io", "ingress"), func() {
-	s := scaffold.NewScaffold(&scaffold.Options{
-		ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
-	})
+	s := scaffold.NewDefaultScaffold()
 
 	var gatewayProxyYaml = `
 apiVersion: apisix.apache.org/v1alpha1

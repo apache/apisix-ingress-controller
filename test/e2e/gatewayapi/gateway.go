@@ -43,9 +43,7 @@ func createSecret(s *scaffold.Scaffold, secretName string) {
 }
 
 var _ = Describe("Test Gateway", Label("networking.k8s.io", "gateway"), func() {
-	s := scaffold.NewScaffold(&scaffold.Options{
-		ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
-	})
+	s := scaffold.NewDefaultScaffold()
 
 	var gatewayProxyYaml = `
 apiVersion: apisix.apache.org/v1alpha1
@@ -112,7 +110,7 @@ spec:
 `
 
 		It("Create Gateway", func() {
-			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
+			gatewayClassName := s.Namespace()
 			By("create GatewayProxy")
 			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
 			err := s.CreateResourceFromString(gatewayProxy)
@@ -167,7 +165,7 @@ spec:
 			secretName := _secretName
 			host := "api6.com"
 			createSecret(s, secretName)
-			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
+			gatewayClassName := s.Namespace()
 			var defaultGatewayClass = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
@@ -227,7 +225,7 @@ spec:
 
 			secretName := _secretName
 			createSecret(s, secretName)
-			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
+			gatewayClassName := s.Namespace()
 			var defaultGatewayClass = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass

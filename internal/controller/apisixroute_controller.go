@@ -124,15 +124,18 @@ func (r *ApisixRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		ic   *networkingv1.IngressClass
 		err  error
 	)
-	defer func() {
-		r.updateStatus(&ar, err)
-	}()
 
 	if ic, err = GetIngressClass(tctx, r.Client, r.Log, ar.Spec.IngressClassName); err != nil {
-		return ctrl.Result{}, err
+		r.Log.V(1).Info("no matching IngressClass available",
+			"ingressClassName", ar.Spec.IngressClassName,
+			"error", err.Error())
+		return ctrl.Result{}, nil
 	}
+	defer func() { r.updateStatus(&ar, err) }()
+
 	if err = ProcessIngressClassParameters(tctx, r.Client, r.Log, &ar, ic); err != nil {
-		return ctrl.Result{}, err
+		r.Log.Error(err, "failed to process IngressClass parameters")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	if err = r.processApisixRoute(ctx, tctx, &ar); err != nil {
 		return ctrl.Result{}, err
@@ -285,6 +288,43 @@ func (r *ApisixRouteReconciler) validateSecrets(ctx context.Context, tc *provide
 	return nil
 }
 
+func (r *ApisixRouteReconciler) processExternalNodes(ctx context.Context, tc *provider.TranslateContext, ups apiv2.ApisixUpstream) error {
+	for _, node := range ups.Spec.ExternalNodes {
+		if node.Type == apiv2.ExternalTypeService {
+			var (
+				service   corev1.Service
+				serviceNN = k8stypes.NamespacedName{Namespace: ups.GetNamespace(), Name: node.Name}
+			)
+			if err := r.Get(ctx, serviceNN, &service); err != nil {
+				r.Log.Error(err, "failed to get service in ApisixUpstream", "ApisixUpstream", ups.Name, "Service", serviceNN)
+				if client.IgnoreNotFound(err) == nil {
+					continue
+				}
+				return err
+			}
+			tc.Services[utils.NamespacedName(&service)] = &service
+		}
+	}
+	return nil
+}
+
+func (r *ApisixRouteReconciler) processTLSSecret(ctx context.Context, tc *provider.TranslateContext, ups apiv2.ApisixUpstream, secretNs string) error {
+	if ups.Spec.TLSSecret != nil && ups.Spec.TLSSecret.Name != "" {
+		var (
+			secret   corev1.Secret
+			secretNN = k8stypes.NamespacedName{Namespace: cmp.Or(ups.Spec.TLSSecret.Namespace, secretNs), Name: ups.Spec.TLSSecret.Name}
+		)
+		if err := r.Get(ctx, secretNN, &secret); err != nil {
+			r.Log.Error(err, "failed to get secret in ApisixUpstream", "ApisixUpstream", ups.Name, "Secret", secretNN)
+			if client.IgnoreNotFound(err) != nil {
+				return err
+			}
+		}
+		tc.Secrets[secretNN] = &secret
+	}
+	return nil
+}
+
 func (r *ApisixRouteReconciler) validateBackends(ctx context.Context, tc *provider.TranslateContext, in *apiv2.ApisixRoute, http apiv2.ApisixRouteHTTP) error {
 	var backends = make(map[k8stypes.NamespacedName]struct{})
 	for _, backend := range http.Backends {
@@ -321,6 +361,9 @@ func (r *ApisixRouteReconciler) validateBackends(ctx context.Context, tc *provid
 			}
 		} else {
 			tc.Upstreams[serviceNN] = &au
+			if err := r.processTLSSecret(ctx, tc, au, in.GetNamespace()); err != nil {
+				return err
+			}
 		}
 
 		if service.Spec.Type == corev1.ServiceTypeExternalName {
@@ -384,35 +427,12 @@ func (r *ApisixRouteReconciler) validateUpstreams(ctx context.Context, tc *provi
 		}
 		tc.Upstreams[upsNN] = &ups
 
-		for _, node := range ups.Spec.ExternalNodes {
-			if node.Type == apiv2.ExternalTypeService {
-				var (
-					service   corev1.Service
-					serviceNN = k8stypes.NamespacedName{Namespace: ups.GetNamespace(), Name: node.Name}
-				)
-				if err := r.Get(ctx, serviceNN, &service); err != nil {
-					r.Log.Error(err, "failed to get service in ApisixUpstream", "ApisixUpstream", upsNN, "Service", serviceNN)
-					if client.IgnoreNotFound(err) == nil {
-						continue
-					}
-					return err
-				}
-				tc.Services[utils.NamespacedName(&service)] = &service
-			}
+		if err := r.processExternalNodes(ctx, tc, ups); err != nil {
+			return err
 		}
 
-		if ups.Spec.TLSSecret != nil && ups.Spec.TLSSecret.Name != "" {
-			var (
-				secret   corev1.Secret
-				secretNN = k8stypes.NamespacedName{Namespace: cmp.Or(ups.Spec.TLSSecret.Namespace, ar.GetNamespace()), Name: ups.Spec.TLSSecret.Name}
-			)
-			if err := r.Get(ctx, secretNN, &secret); err != nil {
-				r.Log.Error(err, "failed to get secret in ApisixUpstream", "ApisixUpstream", upsNN, "Secret", secretNN)
-				if client.IgnoreNotFound(err) != nil {
-					return err
-				}
-			}
-			tc.Secrets[secretNN] = &secret
+		if err := r.processTLSSecret(ctx, tc, ups, ar.GetNamespace()); err != nil {
+			return err
 		}
 	}
 

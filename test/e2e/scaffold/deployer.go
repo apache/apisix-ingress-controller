@@ -45,4 +45,5 @@ type DeployDataplaneOptions struct {
 	ServiceHTTPPort   int
 	ServiceHTTPSPort  int
 	Replicas          *int
+	AdminKey          string
 }
