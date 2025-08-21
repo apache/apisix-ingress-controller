@@ -210,7 +210,7 @@ func (s *Scaffold) ApplyDefaultGatewayResource(
 	time.Sleep(5 * time.Second)
 
 	By("create GatewayClass")
-	gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
+	gatewayClassName := s.Namespace()
 	gatewayString := fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName())
 	err = s.CreateResourceFromStringWithNamespace(gatewayString, "")
 	Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
@@ -273,4 +273,25 @@ func (s *Scaffold) ApplyHTTPRoutePolicy(refNN, hrpNN types.NamespacedName, spec 
 	for _, condition := range conditions {
 		framework.HTTPRoutePolicyMustHaveCondition(s.GinkgoT, s.K8sClient, 8*time.Second, refNN, hrpNN, condition)
 	}
+}
+
+func (s *Scaffold) GetGatewayProxySpec() string {
+	var gatewayProxyYaml = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  name: apisix-proxy-config
+spec:
+  provider:
+    type: ControlPlane
+    controlPlane:
+      service:
+        name: %s
+        port: 9180
+      auth:
+        type: AdminKey
+        adminKey:
+          value: "%s"
+`
+	return fmt.Sprintf(gatewayProxyYaml, framework.ProviderType, s.AdminKey())
 }
