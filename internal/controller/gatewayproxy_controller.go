@@ -35,6 +35,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
@@ -66,6 +67,12 @@ func (r *GatewayProxyController) SetupWithManager(mrg ctrl.Manager) error {
 		).
 		Watches(&corev1.Secret{},
 			handler.EnqueueRequestsFromMapFunc(r.listGatewayProxiesForSecret),
+		).
+		Watches(&gatewayv1.Gateway{},
+			handler.EnqueueRequestsFromMapFunc(r.listGatewayProxiesByGateway),
+		).
+		Watches(&networkingv1.IngressClass{},
+			handler.EnqueueRequestsFromMapFunc(r.listGatewayProxiesForIngressClass),
 		).
 		Complete(r)
 }
@@ -129,6 +136,16 @@ func (r *GatewayProxyController) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, nil
 	}
 
+	var gatewayclassList gatewayv1.GatewayClassList
+	if err := r.List(ctx, &gatewayclassList, client.MatchingFields{indexer.ControllerName: config.GetControllerName()}); err != nil {
+		r.Log.Error(err, "failed to list GatewayClassList")
+		return ctrl.Result{}, nil
+	}
+	gcMatched := make(map[string]*gatewayv1.GatewayClass)
+	for _, item := range gatewayclassList.Items {
+		gcMatched[item.Name] = &item
+	}
+
 	// list IngressClasses that reference the GatewayProxy
 	if err := r.List(ctx, &ingressClassList, client.MatchingFields{indexer.IngressClassParametersRef: indexKey}); err != nil {
 		r.Log.Error(err, "failed to list IngressClassList")
@@ -137,12 +154,27 @@ func (r *GatewayProxyController) Reconcile(ctx context.Context, req ctrl.Request
 
 	// append referrers to translate context
 	for _, item := range gatewayList.Items {
-		tctx.GatewayProxyReferrers[req.NamespacedName] = append(tctx.GatewayProxyReferrers[req.NamespacedName], utils.NamespacedNameKind(&item))
+		gcName := string(item.Spec.GatewayClassName)
+		if gcName == "" {
+			continue
+		}
+		if _, ok := gcMatched[gcName]; ok {
+			tctx.GatewayProxyReferrers[req.NamespacedName] = append(tctx.GatewayProxyReferrers[req.NamespacedName], utils.NamespacedNameKind(&item))
+		}
 	}
 	for _, item := range ingressClassList.Items {
+		if item.Spec.Controller != config.GetControllerName() {
+			continue
+		}
 		tctx.GatewayProxyReferrers[req.NamespacedName] = append(tctx.GatewayProxyReferrers[req.NamespacedName], utils.NamespacedNameKind(&item))
 	}
+	r.Log.V(1).Info("found Gateways for GatewayProxy", "gatewayproxy", req.String(), "gateways", len(gatewayList.Items), "gatewayclasses", len(gatewayclassList.Items), "ingressclasses", len(ingressClassList.Items))
 
+	if len(tctx.GatewayProxyReferrers[req.NamespacedName]) == 0 {
+		return ctrl.Result{}, nil
+	}
+
+	r.Log.V(1).Info("references found for GatewayProxy", "gatewayproxy", req.String(), "references", tctx.GatewayProxyReferrers[req.NamespacedName])
 	if err := r.Provider.Update(ctx, tctx, &gp); err != nil {
 		return reconcile.Result{}, err
 	}
@@ -183,4 +215,36 @@ func (r *GatewayProxyController) listGatewayProxiesForSecret(ctx context.Context
 	return ListRequests(ctx, r.Client, r.Log, &v1alpha1.GatewayProxyList{}, client.MatchingFields{
 		indexer.SecretIndexRef: indexer.GenIndexKey(secret.GetNamespace(), secret.GetName()),
 	})
+}
+
+func (r *GatewayProxyController) listGatewayProxiesForIngressClass(ctx context.Context, object client.Object) []reconcile.Request {
+	ingressClass, ok := object.(*networkingv1.IngressClass)
+	if !ok {
+		r.Log.Error(errors.New("unexpected object type"), "failed to convert object to IngressClass")
+		return nil
+	}
+	reqs := []reconcile.Request{}
+	gp, _ := GetGatewayProxyByIngressClass(ctx, r.Client, ingressClass)
+	if gp != nil {
+		reqs = append(reqs, reconcile.Request{
+			NamespacedName: utils.NamespacedName(gp),
+		})
+	}
+	return reqs
+}
+
+func (r *GatewayProxyController) listGatewayProxiesByGateway(ctx context.Context, object client.Object) []reconcile.Request {
+	gateway, ok := object.(*gatewayv1.Gateway)
+	if !ok {
+		r.Log.Error(errors.New("unexpected object type"), "failed to convert object to IngressClass")
+		return nil
+	}
+	reqs := []reconcile.Request{}
+	gp, _ := GetGatewayProxyByGateway(ctx, r.Client, gateway)
+	if gp != nil {
+		reqs = append(reqs, reconcile.Request{
+			NamespacedName: utils.NamespacedName(gp),
+		})
+	}
+	return reqs
 }

@@ -60,7 +60,6 @@ func (f *Framework) DeployIngress(opts IngressDeployOpts) {
 	f.GomegaT.Expect(err).ToNot(HaveOccurred(), "rendering ingress spec")
 
 	kubectlOpts := k8s.NewKubectlOptions("", "", opts.Namespace)
-
 	k8s.KubectlApplyFromString(f.GinkgoT, kubectlOpts, buf.String())
 
 	err = WaitPodsAvailable(f.GinkgoT, kubectlOpts, metav1.ListOptions{

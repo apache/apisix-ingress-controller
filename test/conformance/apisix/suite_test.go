@@ -125,9 +125,7 @@ func TestMain(m *testing.M) {
 	f := framework.NewFramework()
 
 	// init newDeployer function
-	scaffold.NewDeployer = func(s *scaffold.Scaffold) scaffold.Deployer {
-		return scaffold.NewAPISIXDeployer(s)
-	}
+	scaffold.NewDeployer = scaffold.NewAPISIXDeployer
 
 	// Check and delete specific namespaces if they exist
 	kubectl := k8s.NewKubectlOptions("", "", "default")
@@ -140,13 +138,16 @@ func TestMain(m *testing.M) {
 	k8s.CreateNamespace(GinkgoT(), kubectl, namespace)
 	defer k8s.DeleteNamespace(GinkgoT(), kubectl, namespace)
 
-	s := scaffold.NewScaffold(&scaffold.Options{
-		ControllerName:    "apisix.apache.org/apisix-ingress-controller",
+	adminkey := getEnvOrDefault("APISIX_ADMIN_KEY", "edd1c9f034335f136f87ad84b625c8f1")
+	controllerName := "apisix.apache.org/apisix-ingress-controller"
+	s := scaffold.NewScaffold(scaffold.Options{
+		ControllerName:    controllerName,
 		SkipHooks:         true,
-		APISIXAdminAPIKey: getEnvOrDefault("APISIX_ADMIN_KEY", "edd1c9f034335f136f87ad84b625c8f1"),
+		APISIXAdminAPIKey: adminkey,
 	})
 
 	s.Deployer.DeployDataplane(scaffold.DeployDataplaneOptions{
+		AdminKey:          adminkey,
 		Namespace:         namespace,
 		SkipCreateTunnels: true,
 		ServiceType:       "LoadBalancer",
@@ -162,7 +163,7 @@ func TestMain(m *testing.M) {
 	address := svc.Status.LoadBalancer.Ingress[0].IP
 
 	f.DeployIngress(framework.IngressDeployOpts{
-		ControllerName:     s.GetControllerName(),
+		ControllerName:     controllerName,
 		Namespace:          namespace,
 		StatusAddress:      address,
 		InitSyncDelay:      20 * time.Minute,
@@ -174,7 +175,7 @@ func TestMain(m *testing.M) {
 
 	defaultGatewayProxyOpts = GatewayProxyOpts{
 		StatusAddress: address,
-		AdminKey:      s.AdminKey(),
+		AdminKey:      adminkey,
 		AdminEndpoint: adminEndpoint,
 	}
 

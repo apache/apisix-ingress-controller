@@ -28,9 +28,7 @@ import (
 )
 
 var _ = Describe("Test GatewayProxy", Label("apisix.apache.org", "v1alpha1", "gatewayproxy"), func() {
-	s := scaffold.NewScaffold(&scaffold.Options{
-		ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
-	})
+	s := scaffold.NewDefaultScaffold()
 
 	var defaultGatewayClass = `
 apiVersion: gateway.networking.k8s.io/v1
@@ -131,7 +129,7 @@ spec:
 
 	BeforeEach(func() {
 		By("Create GatewayClass")
-		gatewayClassName = fmt.Sprintf("apisix-%d", time.Now().Unix())
+		gatewayClassName = s.Namespace()
 		err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()), "")
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
 		time.Sleep(5 * time.Second)

@@ -28,9 +28,7 @@ import (
 )
 
 var _ = Describe("Test GatewayClass", Label("networking.k8s.io", "gatewayclass"), func() {
-	s := scaffold.NewScaffold(&scaffold.Options{
-		ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
-	})
+	s := scaffold.NewDefaultScaffold()
 
 	Context("Create GatewayClass", func() {
 		var defautlGatewayClass = `
@@ -63,7 +61,7 @@ spec:
       port: 80
 `
 		It("Create GatewayClass", func() {
-			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
+			gatewayClassName := s.Namespace()
 			By("create default GatewayClass")
 			err := s.CreateResourceFromString(fmt.Sprintf(defautlGatewayClass, gatewayClassName, s.GetControllerName()))
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
@@ -86,7 +84,7 @@ spec:
 		})
 
 		It("Delete GatewayClass", func() {
-			gatewayClassName := fmt.Sprintf("apisix-%d", time.Now().Unix())
+			gatewayClassName := s.Namespace()
 			By("create default GatewayClass")
 			err := s.CreateResourceFromString(fmt.Sprintf(defautlGatewayClass, gatewayClassName, s.GetControllerName()))
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")

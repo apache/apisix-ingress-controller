@@ -177,14 +177,16 @@ func (a *adcDataplaneResource) dumpResources(ctx context.Context) (*translator.T
 		routes = append(routes, service.Routes...)
 	}
 
-	return &translator.TranslateResult{
+	result := &translator.TranslateResult{
 		Routes:         routes,
 		Services:       resources.Services,
 		SSL:            resources.SSLs,
 		GlobalRules:    resources.GlobalRules,
 		PluginMetadata: resources.PluginMetadata,
 		Consumers:      resources.Consumers,
-	}, nil
+	}
+	log.Debugw("dumped resources from adc", zap.Any("result", result))
+	return result, nil
 }
 
 // adcRouteResource implements RouteResource

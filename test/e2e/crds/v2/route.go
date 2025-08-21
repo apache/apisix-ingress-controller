@@ -25,6 +25,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -41,9 +42,7 @@ import (
 
 var _ = Describe("Test ApisixRoute", Label("apisix.apache.org", "v2", "apisixroute"), func() {
 	var (
-		s = scaffold.NewScaffold(&scaffold.Options{
-			ControllerName: fmt.Sprintf("apisix.apache.org/apisix-ingress-controller-%d", time.Now().Unix()),
-		})
+		s       = scaffold.NewDefaultScaffold()
 		applier = framework.NewApplier(s.GinkgoT, s.K8sClient, s.CreateResourceFromString)
 	)
 
@@ -1122,10 +1121,11 @@ metadata:
   name: %s
   namespace: %s
 spec:
+  ingressClassName: %s
   externalNodes:
   - type: %s
     name: %s
-`, upstreamName, s.Namespace(), externalType, name)
+`, upstreamName, s.Namespace(), s.Namespace(), externalType, name)
 			var upstream apiv2.ApisixUpstream
 			applier.MustApplyAPIv2(
 				types.NamespacedName{Namespace: s.Namespace(), Name: upstreamName},
@@ -1260,41 +1260,40 @@ metadata:
   name: %s
   namespace: %s
 spec:
+  ingressClassName: %s
   externalNodes:
   - type: Domain
-    name: httpbin.org
+    name: httpbin-service-e2e-test
   - type: Domain
-    name: postman-echo.com
+    name: %s
+    port: 9180
 `
 				var upstream apiv2.ApisixUpstream
 				applier.MustApplyAPIv2(
 					types.NamespacedName{Namespace: s.Namespace(), Name: upstreamName},
 					&upstream,
-					fmt.Sprintf(upstreamSpec, upstreamName, s.Namespace()),
+					fmt.Sprintf(upstreamSpec, upstreamName, s.Namespace(), s.Namespace(), s.Deployer.GetAdminServiceName()),
 				)
 
 				createApisixRoute(routeName, upstreamName)
 
 				By("verify access to multiple services")
-				time.Sleep(7 * time.Second)
-				hasEtag := false   // postman-echo.com
-				hasNoEtag := false // httpbin.org
+				httpbin := false // httpbin-service-e2e-test
+				admin := false   // admin api service
 				for range 20 {
-					headers := s.NewAPISIXClient().GET("/ip").
+					status := s.NewAPISIXClient().GET("/ip").
 						WithHeader("Host", "httpbin.org").
 						WithHeader("X-Foo", "bar").
 						Expect().
-						Headers().Raw()
-					if _, ok := headers["Etag"]; ok {
-						hasEtag = true
-					} else {
-						hasNoEtag = true
+						Raw().StatusCode
+					if status == http.StatusOK {
+						httpbin = true
+					} else if status == http.StatusNotFound && httpbin {
+						admin = true
 					}
-					if hasEtag && hasNoEtag {
-						break
-					}
+					time.Sleep(1 * time.Second)
 				}
-				assert.True(GinkgoT(), hasEtag && hasNoEtag, "both httpbin and postman should be accessed at least once")
+				assert.True(GinkgoT(), httpbin && admin, "both httpbin and postman should be accessed at least once")
 			})
 
 			It("should be able to use backends and upstreams together", func() {
@@ -1306,15 +1305,18 @@ kind: ApisixUpstream
 metadata:
   name: %s
 spec:
+  ingressClassName: %s
   externalNodes:
   - type: Domain
-    name: postman-echo.com
+    name: httpbin-service-e2e-test
+  passHost: rewrite
+  upstreamHost: upstream.httpbin.org
 `
 				var upstream apiv2.ApisixUpstream
 				applier.MustApplyAPIv2(
 					types.NamespacedName{Namespace: s.Namespace(), Name: upstreamName},
 					&upstream,
-					fmt.Sprintf(upstreamSpec, upstreamName),
+					fmt.Sprintf(upstreamSpec, upstreamName, s.Namespace()),
 				)
 				By("create ApisixRoute with both backends and upstreams")
 				routeSpec := fmt.Sprintf(`
@@ -1331,7 +1333,7 @@ spec:
       hosts:
       - httpbin.org
       paths:
-      - /ip
+      - /headers
     backends:
     - serviceName: httpbin-service-e2e-test
       servicePort: 80
@@ -1346,25 +1348,24 @@ spec:
 					routeSpec,
 				)
 				By("verify access to multiple services")
-				time.Sleep(7 * time.Second)
-				hasEtag := false   // postman-echo.com
-				hasNoEtag := false // httpbin.org
+				upstreamHost := false // upstream.httpbin.org
+				httpbinHost := false  // httpbin.org
 				for range 20 {
-					headers := s.NewAPISIXClient().GET("/ip").
+					expect := s.NewAPISIXClient().GET("/headers").
 						WithHeader("Host", "httpbin.org").
 						WithHeader("X-Foo", "bar").
-						Expect().
-						Headers().Raw()
-					if _, ok := headers["Etag"]; ok {
-						hasEtag = true
-					} else {
-						hasNoEtag = true
+						Expect()
+					if expect.Raw().StatusCode == http.StatusOK {
+						body := expect.Body().Raw()
+						if strings.Contains(body, `"Host": "upstream.httpbin.org"`) {
+							upstreamHost = true
+						} else if strings.Contains(body, `"Host": "httpbin.org"`) {
+							httpbinHost = true
+						}
 					}
-					if hasEtag && hasNoEtag {
-						break
-					}
+					time.Sleep(1 * time.Second)
 				}
-				assert.True(GinkgoT(), hasEtag && hasNoEtag, "both httpbin and postman should be accessed at least once")
+				assert.True(GinkgoT(), upstreamHost && httpbinHost, "both httpbin and postman should be accessed at least once")
 			})
 		})
 	})
