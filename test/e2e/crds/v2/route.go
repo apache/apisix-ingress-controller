@@ -1398,12 +1398,13 @@ metadata:
   name: httpbin-service-e2e-test
   namespace: %s
 spec:
+  ingressClassName: %s
   retries: 3
 `
 		It("create ApisixRoute and upstream with retries", func() {
 			By("apply apisixupstream")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-service-e2e-test"},
-				new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec, s.Namespace()))
+				new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec, s.Namespace(), s.Namespace()))
 			By("apply apisixroute")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
 				new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Namespace()))
@@ -1451,6 +1452,7 @@ metadata:
   name: httpbin-service-e2e-test
   namespace: %s
 spec:
+  ingressClassName: %s
   timeout:
     read: 10s
     send: 10s
@@ -1458,7 +1460,7 @@ spec:
 		It("create ApisixRoute and upstream with retries", func() {
 			By("apply apisixupstream")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-service-e2e-test"},
-				new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec, s.Namespace()))
+				new(apiv2.ApisixUpstream), fmt.Sprintf(apisixUpstreamSpec, s.Namespace(), s.Namespace()))
 			By("apply apisixroute")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
 				new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Namespace()))
