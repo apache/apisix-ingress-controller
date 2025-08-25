@@ -280,14 +280,24 @@ spec:
 			By("create Gateway")
 			err = s.CreateResourceFromStringWithNamespace(defaultGateway, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
-			time.Sleep(10 * time.Second)
 
-			tls, err := s.DefaultDataplaneResource().SSL().List(context.Background())
-			assert.Nil(GinkgoT(), err, "list tls error")
-			assert.Len(GinkgoT(), tls, 1, "tls number not expect")
-			assert.Len(GinkgoT(), tls[0].Certificates, 1, "length of certificates not expect")
-			assert.Equal(GinkgoT(), Cert, tls[0].Certificates[0].Certificate, "tls cert not expect")
-			assert.Equal(GinkgoT(), tls[0].Labels["k8s/controller-name"], s.GetControllerName())
+			Eventually(func() error {
+				tls, err := s.DefaultDataplaneResource().SSL().List(context.Background())
+				Expect(err).NotTo(HaveOccurred(), "list ssl")
+				if len(tls) != 1 {
+					return fmt.Errorf("expect 1 ssl, got %d", len(tls))
+				}
+				if len(tls[0].Certificates) != 1 {
+					return fmt.Errorf("expect 1 certificate, got %d", len(tls[0].Certificates))
+				}
+				if Cert != tls[0].Certificates[0].Certificate {
+					return fmt.Errorf("expect cert %s, got %s", Cert, tls[0].Certificates[0].Certificate)
+				}
+				if s.GetControllerName() != tls[0].Labels["k8s/controller-name"] {
+					return fmt.Errorf("expect controller name %s, got %s", s.GetControllerName(), tls[0].Labels["k8s/controller-name"])
+				}
+				return nil
+			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).ShouldNot(HaveOccurred())
 
 			By("update secret")
 			err = s.NewKubeTlsSecret(secretName, framework.TestCert, framework.TestKey)
