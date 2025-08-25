@@ -667,6 +667,111 @@ spec:
 				Interval: time.Second * 2,
 			})
 		})
+		It("HTTPRoute with multiple hostnames", func() {
+			route := fmt.Sprintf(`
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: httpbin
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - httpbin.example
+  - httpbin2.example
+  rules:
+  - matches:
+    - path:
+        type: Exact
+        value: /get
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`, s.Namespace())
+
+			s.ResourceApplied("HTTPRoute", "httpbin", route, 1)
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  30 * time.Second,
+				Interval: 2 * time.Second,
+			})
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin2.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  30 * time.Second,
+				Interval: 2 * time.Second,
+			})
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin3.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Timeout:  30 * time.Second,
+				Interval: 2 * time.Second,
+			})
+		})
+
+		It("HTTPRoute with multiple matches in one rule", func() {
+			route := fmt.Sprintf(`
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: httpbin
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - httpbin.example
+  rules:
+  - matches:
+    - path:
+        type: Exact
+        value: /get
+    - path:
+        type: Exact
+        value: /ip
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`, s.Namespace())
+
+			s.ResourceApplied("HTTPRoute", "httpbin", route, 1)
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  30 * time.Second,
+				Interval: 2 * time.Second,
+			})
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/ip",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  30 * time.Second,
+				Interval: 2 * time.Second,
+			})
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/status",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Timeout:  30 * time.Second,
+				Interval: 2 * time.Second,
+			})
+		})
 	})
 
 	Context("HTTPRoute Rule Match", func() {
