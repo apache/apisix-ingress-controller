@@ -481,7 +481,6 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 			t.AttachBackendTrafficPolicyToUpstream(backend.BackendRef, tctx.BackendTrafficPolicies, upstream)
 			upstream.Nodes = append(upstream.Nodes, upNodes...)
 		}
-		t.attachBackendTrafficPolicyToUpstream(nil, upstream)
 
 		// todo: support multiple backends
 		service := adctypes.NewDefaultService()
