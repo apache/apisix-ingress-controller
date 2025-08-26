@@ -49,9 +49,15 @@ type Client struct {
 }
 
 func New(mode string, timeout time.Duration) (*Client, error) {
+	serverURL := os.Getenv("ADC_SERVER_URL")
+	if serverURL == "" {
+		serverURL = defaultHTTPADCExecutorAddr
+	}
+
+	log.Infow("using HTTP ADC Executor", zap.String("server_url", serverURL))
 	return &Client{
 		Store:         cache.NewStore(),
-		executor:      &DefaultADCExecutor{},
+		executor:      NewHTTPADCExecutor(serverURL, timeout),
 		BackendMode:   mode,
 		ConfigManager: common.NewConfigManager[types.NamespacedNameKind, adctypes.Config](),
 	}, nil
