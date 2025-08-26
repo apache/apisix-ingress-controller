@@ -100,7 +100,7 @@ spec:
                         description: Value specifies HMAC authentication credentials.
                         properties:
                           key_id:
-                            description: KeyID is the identifier used to look
+                            description: AccessKey is the identifier used to look
                               up the HMAC secret.
                             type: string
                           secret_key:

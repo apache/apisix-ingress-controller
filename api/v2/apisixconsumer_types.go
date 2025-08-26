@@ -160,7 +160,7 @@ type ApisixConsumerHMACAuth struct {
 
 // ApisixConsumerHMACAuthValue defines configuration for HMAC authentication.
 type ApisixConsumerHMACAuthValue struct {
-	// AccessKey is the identifier used to look up the HMAC secret.
+	// KeyID is the identifier used to look up the HMAC secret.
 	KeyID string `json:"key_id" yaml:"key_id"`
 	// SecretKey is the HMAC secret used to sign the request.
 	SecretKey string `json:"secret_key" yaml:"secret_key"`
