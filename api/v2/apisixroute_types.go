@@ -39,6 +39,7 @@ type ApisixRouteSpec struct {
 	HTTP []ApisixRouteHTTP `json:"http,omitempty" yaml:"http,omitempty"`
 	// Stream defines a list of stream route rules.
 	// Each rule specifies conditions to match TCP/UDP traffic and how to forward them.
+	// Stream is currently not supported.
 	Stream []ApisixRouteStream `json:"stream,omitempty" yaml:"stream,omitempty"`
 }
 
@@ -106,7 +107,7 @@ type ApisixRouteHTTP struct {
 	Authentication ApisixRouteAuthentication `json:"authentication,omitempty" yaml:"authentication,omitempty"`
 }
 
-// ApisixRouteStream defines the configuration for a Layer 4 (TCP/UDP) route.
+// ApisixRouteStream defines the configuration for a Layer 4 (TCP/UDP) route. Currently not supported.
 type ApisixRouteStream struct {
 	// Name is a unique identifier for the route. This field must not be empty.
 	Name string `json:"name" yaml:"name"`
