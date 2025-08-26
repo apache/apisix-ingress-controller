@@ -38,15 +38,7 @@ var (
 
 const (
 	_jwtAuthExpDefaultValue = 86400
-
-	_hmacAuthAlgorithmDefaultValue           = "hmac-sha256"
-	_hmacAuthClockSkewDefaultValue           = int64(0)
-	_hmacAuthKeepHeadersDefaultValue         = false
-	_hmacAuthEncodeURIParamsDefaultValue     = true
-	_hmacAuthValidateRequestBodyDefaultValue = false
-	_hmacAuthMaxReqBodyDefaultValue          = 524288
-
-	_true = "true"
+	_true                   = "true"
 )
 
 func (t *Translator) TranslateApisixConsumer(tctx *provider.TranslateContext, ac *v2.ApisixConsumer) (*TranslateResult, error) {
