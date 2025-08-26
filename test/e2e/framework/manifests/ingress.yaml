@@ -420,6 +420,8 @@ spec:
           value: ingress
         - name: ADC_EXPERIMENTAL_FEATURE_FLAGS 
           value: remote-state-file,parallel-backend-request
+        - name: ADC_INGRESS_LOG_LEVEL
+          value: debug
         name: adc-server
         args:
         - "server"
@@ -447,11 +449,6 @@ spec:
             port: 3001
           initialDelaySeconds: 5
           periodSeconds: 5
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
       volumes:
       - name: ingress-config
         configMap:
