@@ -373,9 +373,8 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr, mode
 	reqBody := ADCServerRequest{
 		Task: ADCServerTask{
 			Opts: ADCServerOpts{
-				Backend: mode,
-				Server:  strings.Split(serverAddr, ","),
-
+				Backend:             mode,
+				Server:              strings.Split(serverAddr, ","),
 				Token:               config.Token,
 				LabelSelector:       labels,
 				IncludeResourceType: types,
