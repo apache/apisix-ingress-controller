@@ -1537,4 +1537,143 @@ spec:
 			Expect(service.Upstream.TLS).ShouldNot(BeNil(), "check tls in service")
 		})
 	})
+
+	Context("Test ApisixRoute Redirect plugin", func() {
+		const (
+			redirectRouteTemplate = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: redirect-route
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+        - /ip
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+    plugins:
+    - name: redirect
+      enable: %t
+      config:
+        %s
+`
+		)
+
+		It("http_to_https redirect", func() {
+			config := `http_to_https: true`
+			route := fmt.Sprintf(redirectRouteTemplate, s.Namespace(), true, config)
+
+			By("apply ApisixRoute with http_to_https redirect")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "redirect-route"},
+				&apiv2.ApisixRoute{}, route)
+
+			By("verify redirect works")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/ip",
+				Host:   "httpbin.org",
+				Check:  scaffold.WithExpectedStatus(http.StatusMovedPermanently),
+				Headers: map[string]string{
+					"Location": "https://httpbin.org:9443/ip",
+				},
+			})
+		})
+
+		It("redirect to specific uri", func() {
+			config := `uri: "$uri/ipip"
+        ret_code: 308`
+			route := fmt.Sprintf(redirectRouteTemplate, s.Namespace(), true, config)
+
+			By("apply ApisixRoute with uri redirect")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "redirect-route"},
+				&apiv2.ApisixRoute{}, route)
+
+			By("verify redirect works")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/ip",
+				Host:   "httpbin.org",
+				Check:  scaffold.WithExpectedStatus(http.StatusPermanentRedirect),
+				Headers: map[string]string{
+					"Location": "/ip/ipip",
+				},
+			})
+		})
+
+		It("disable plugin", func() {
+			config := `http_to_https: true
+        uri: "$uri/ipip"
+        ret_code: 308`
+			route := fmt.Sprintf(redirectRouteTemplate, s.Namespace(), false, config)
+
+			By("apply ApisixRoute with disabled redirect plugin")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "redirect-route"},
+				&apiv2.ApisixRoute{}, route)
+
+			By("verify redirect is disabled")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/ip",
+				Host:   "httpbin.org",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+		})
+
+		It("enable plugin and then delete it", func() {
+			config := `uri: "$uri/ipip"
+        ret_code: 308`
+			route := fmt.Sprintf(redirectRouteTemplate, s.Namespace(), true, config)
+
+			By("apply ApisixRoute with redirect plugin")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "redirect-route"},
+				&apiv2.ApisixRoute{}, route)
+
+			By("verify redirect works")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/ip",
+				Host:   "httpbin.org",
+				Check:  scaffold.WithExpectedStatus(http.StatusPermanentRedirect),
+				Headers: map[string]string{
+					"Location": "/ip/ipip",
+				},
+			})
+
+			By("update ApisixRoute to remove redirect plugin")
+			noPluginRoute := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: redirect-route
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+        - /ip
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+`
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "redirect-route"},
+				&apiv2.ApisixRoute{}, fmt.Sprintf(noPluginRoute, s.Namespace()))
+
+			By("verify redirect is removed")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/ip",
+				Host:   "httpbin.org",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+		})
+	})
 })
