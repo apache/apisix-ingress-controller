@@ -235,15 +235,8 @@ func (t *Translator) translateConsumerJwtAuthPlugin(tctx *provider.TranslateCont
 func (t *Translator) translateConsumerHMACAuthPlugin(tctx *provider.TranslateContext, consumerNamespace string, cfg *v2.ApisixConsumerHMACAuth) (*adctypes.HMACAuthConsumerConfig, error) {
 	if cfg.Value != nil {
 		return &adctypes.HMACAuthConsumerConfig{
-			AccessKey:           cfg.Value.AccessKey,
-			SecretKey:           cfg.Value.SecretKey,
-			Algorithm:           cfg.Value.Algorithm,
-			ClockSkew:           cfg.Value.ClockSkew,
-			SignedHeaders:       cfg.Value.SignedHeaders,
-			KeepHeaders:         cfg.Value.KeepHeaders,
-			EncodeURIParams:     cfg.Value.EncodeURIParams,
-			ValidateRequestBody: cfg.Value.ValidateRequestBody,
-			MaxReqBody:          cfg.Value.MaxReqBody,
+			KeyID:     cfg.Value.KeyID,
+			SecretKey: cfg.Value.SecretKey,
 		}, nil
 	}
 
@@ -255,8 +248,8 @@ func (t *Translator) translateConsumerHMACAuthPlugin(tctx *provider.TranslateCon
 		return nil, fmt.Errorf("secret %s/%s not found", consumerNamespace, cfg.SecretRef.Name)
 	}
 
-	accessKeyRaw, ok := sec.Data["access_key"]
-	if !ok || len(accessKeyRaw) == 0 {
+	keyIDRaw, ok := sec.Data["key_id"]
+	if !ok || len(keyIDRaw) == 0 {
 		return nil, _errKeyNotFoundOrInvalid
 	}
 
@@ -265,78 +258,9 @@ func (t *Translator) translateConsumerHMACAuthPlugin(tctx *provider.TranslateCon
 		return nil, _errKeyNotFoundOrInvalid
 	}
 
-	algorithmRaw, ok := sec.Data["algorithm"]
-	var algorithm string
-	if !ok {
-		algorithm = _hmacAuthAlgorithmDefaultValue
-	} else {
-		algorithm = string(algorithmRaw)
-	}
-
-	clockSkewRaw := sec.Data["clock_skew"]
-	clockSkew, _ := strconv.ParseInt(string(clockSkewRaw), 10, 64)
-	if clockSkew < 0 {
-		clockSkew = _hmacAuthClockSkewDefaultValue
-	}
-
-	signedHeadersRaw := sec.Data["signed_headers"]
-	signedHeaders := make([]string, 0, len(signedHeadersRaw))
-	for _, b := range signedHeadersRaw {
-		signedHeaders = append(signedHeaders, string(b))
-	}
-
-	var keepHeader bool
-	keepHeaderRaw, ok := sec.Data["keep_headers"]
-	if !ok {
-		keepHeader = _hmacAuthKeepHeadersDefaultValue
-	} else {
-		if string(keepHeaderRaw) == _true {
-			keepHeader = true
-		} else {
-			keepHeader = false
-		}
-	}
-
-	var encodeURIParams bool
-	encodeURIParamsRaw, ok := sec.Data["encode_uri_params"]
-	if !ok {
-		encodeURIParams = _hmacAuthEncodeURIParamsDefaultValue
-	} else {
-		if string(encodeURIParamsRaw) == _true {
-			encodeURIParams = true
-		} else {
-			encodeURIParams = false
-		}
-	}
-
-	var validateRequestBody bool
-	validateRequestBodyRaw, ok := sec.Data["validate_request_body"]
-	if !ok {
-		validateRequestBody = _hmacAuthValidateRequestBodyDefaultValue
-	} else {
-		if string(validateRequestBodyRaw) == _true {
-			validateRequestBody = true
-		} else {
-			validateRequestBody = false
-		}
-	}
-
-	maxReqBodyRaw := sec.Data["max_req_body"]
-	maxReqBody, _ := strconv.ParseInt(string(maxReqBodyRaw), 10, 64)
-	if maxReqBody < 0 {
-		maxReqBody = _hmacAuthMaxReqBodyDefaultValue
-	}
-
 	return &adctypes.HMACAuthConsumerConfig{
-		AccessKey:           string(accessKeyRaw),
-		SecretKey:           string(secretKeyRaw),
-		Algorithm:           algorithm,
-		ClockSkew:           clockSkew,
-		SignedHeaders:       signedHeaders,
-		KeepHeaders:         keepHeader,
-		EncodeURIParams:     encodeURIParams,
-		ValidateRequestBody: validateRequestBody,
-		MaxReqBody:          maxReqBody,
+		KeyID:     string(keyIDRaw),
+		SecretKey: string(secretKeyRaw),
 	}, nil
 }
 
