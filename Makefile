@@ -177,13 +177,13 @@ kind-load-ingress-image:
 
 .PHONY: kind-load-adc-image
 kind-load-adc-image:
-	@kind load docker-image ghcr.io/api7/adc:dev --name $(KIND_NAME)
+	@kind load docker-image ghcr.io/api7/adc:$(ADC_VERSION) --name $(KIND_NAME)
 
 .PHONY: pull-infra-images
 pull-infra-images:
 	@docker pull kennethreitz/httpbin:latest
 	@docker pull jmalloc/echo-server:latest
-	@docker pull ghcr.io/api7/adc:dev
+	@docker pull ghcr.io/api7/adc:$(ADC_VERSION)
 
 ##@ Build
 
@@ -209,11 +209,11 @@ build-multi-arch:
 .PHONY: build-multi-arch-image
 build-multi-arch-image: build-multi-arch
     # daemon.json: "features":{"containerd-snapshotter": true}
-	@docker buildx build --load --platform linux/amd64,linux/arm64 --build-arg ADC_VERSION=$(ADC_VERSION) -t $(IMG) .
+	@docker buildx build --load --platform linux/amd64,linux/arm64 -t $(IMG) .
 
 .PHONY: build-push-multi-arch-image
 build-push-multi-arch-image: build-multi-arch
-	@docker buildx build --push --platform linux/amd64,linux/arm64 --build-arg ADC_VERSION=$(ADC_VERSION) -t $(IMG) .
+	@docker buildx build --push --platform linux/amd64,linux/arm64 -t $(IMG) .
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
@@ -224,12 +224,7 @@ run: manifests generate fmt vet ## Run a controller from your host.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: docker-build
 docker-build: set-e2e-goos build ## Build docker image with the manager.
-	@echo "Building with ADC_VERSION=$(ADC_VERSION)"
-	@if [ "$(strip $(ADC_VERSION))" = "dev" ]; then \
-		$(CONTAINER_TOOL) build -t ${IMG} -f Dockerfile.dev . ; \
-	else \
-		$(CONTAINER_TOOL) build --build-arg ADC_VERSION=${ADC_VERSION} -t ${IMG} -f Dockerfile . ; \
-	fi
+	$(CONTAINER_TOOL) build -t ${IMG} -f Dockerfile .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
@@ -302,6 +297,7 @@ KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
+ADC_BIN ?= $(LOCALBIN)/adc
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.4.2
@@ -328,6 +324,11 @@ $(ENVTEST): $(LOCALBIN)
 golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
 $(GOLANGCI_LINT): $(LOCALBIN)
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s $(GOLANGCI_LINT_VERSION)
+
+.PHONY: adc
+adc: $(ADC_BIN) ## Download adc locally if necessary.
+$(ADC_BIN):
+	curl -sSfL https://github.com/api7/adc/releases/download/v${ADC_VERSION}/adc_${ADC_VERSION}_${GOOS}_${GOARCH}.tar.gz | tar -xz -C $(LOCALBIN)
 
 gofmt: ## Apply go fmt
 	@gofmt -w -r 'interface{} -> any' .
