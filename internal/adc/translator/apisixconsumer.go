@@ -261,7 +261,7 @@ func (t *Translator) translateConsumerHMACAuthPlugin(tctx *provider.TranslateCon
 	var accessKeyRaw []byte
 	keyIDRaw, ok := sec.Data["key_id"]
 	if !ok || len(keyIDRaw) == 0 {
-		//For backward compatibility with older versions
+		// For backward compatibility with older versions
 		accessKeyRaw, ok = sec.Data["access_key"]
 		if !ok || len(accessKeyRaw) == 0 {
 			return nil, errKeyNotFoundOrInvalid("access_key/key_id")
@@ -338,7 +338,7 @@ func (t *Translator) translateConsumerHMACAuthPlugin(tctx *provider.TranslateCon
 		KeyID:     string(keyIDRaw),
 		SecretKey: string(secretKeyRaw),
 
-		//Deprecated fields supported for backwards compatibility
+		// Deprecated fields supported for backwards compatibility
 		AccessKey:           string(accessKeyRaw),
 		Algorithm:           algorithm,
 		ClockSkew:           clockSkew,
