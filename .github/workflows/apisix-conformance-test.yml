@@ -98,6 +98,7 @@ jobs:
 
       - name: Loading Docker Image to Kind Cluster
         run: |
+          make kind-load-adc-image
           make kind-load-ingress-image
 
       - name: Run Conformance Test

@@ -177,6 +177,7 @@ kind-load-ingress-image:
 
 .PHONY: kind-load-adc-image
 kind-load-adc-image:
+	@docker pull ghcr.io/api7/adc:$(ADC_VERSION)
 	@docker tag ghcr.io/api7/adc:$(ADC_VERSION) ghcr.io/api7/adc:dev
 	@kind load docker-image ghcr.io/api7/adc:dev --name $(KIND_NAME)
 
@@ -184,7 +185,6 @@ kind-load-adc-image:
 pull-infra-images:
 	@docker pull kennethreitz/httpbin:latest
 	@docker pull jmalloc/echo-server:latest
-	@docker pull ghcr.io/api7/adc:$(ADC_VERSION)
 
 ##@ Build
 
