@@ -61,8 +61,6 @@ jobs:
         provider_type:
         - apisix-standalone
         - apisix
-    env:
-      ADC_VERSION: "dev"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

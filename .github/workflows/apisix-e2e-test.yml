@@ -43,8 +43,6 @@ jobs:
         - networking.k8s.io
       fail-fast: false
     runs-on: ubuntu-latest
-    env:
-      ADC_VERSION: "dev"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
