@@ -742,6 +742,7 @@ _Appears in:_
 ApisixConsumerHMACAuthValue defines configuration for HMAC authentication.
 
 
+
 | Field | Description |
 | --- | --- |
 | `key_id` _string_ | KeyID is the identifier used to look up the HMAC secret. |
