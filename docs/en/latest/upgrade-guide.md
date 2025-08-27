@@ -150,6 +150,10 @@ More details: [ADC Backend Differences](https://github.com/api7/adc/blob/2449ca8
 
 The `ApisixClusterConfig` CRD has been removed in 2.0.0. global rules and configurations should now be managed through the `ApisixGlobalRule` CRDs.
 
+#### `ApisixConsumer` - `hmac-auth`
+
+In apisix >= 3.11, most of the hmac-auth related configuration has been deprecated from consumer and moved to service/route level. The name of a `required` field has also been changed from `access_key` to `key_id`. If you have ApisixConsumer configuration with hmac-auth plugin compatible with <3.11, they will not be compatible with newer versions of APISIX. Since all 3+ versions of apisix are supported by ingress controller, if you dont upgrade APISIX, you don't need to change your ApisixConsumer configuration. But when using >3.11, pass all configurations other than `key_id`(previously `access_key`) via PluginConfig or ApisixRoute.
+
 #### Ingress
 
 ##### API Version Support
