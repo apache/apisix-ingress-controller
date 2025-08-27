@@ -32,26 +32,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  prepare:
-    name: Prepare
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Go Env
-        id: go
-        uses: actions/setup-go@v4
-        with:
-          go-version: "1.23"
-
-      - name: Install kind
-        run: |
-          go install sigs.k8s.io/kind@v0.23.0
-
   e2e-test:
-    needs: 
-      - prepare
     strategy:
       matrix:
         provider_type:
@@ -62,6 +43,8 @@ jobs:
         - networking.k8s.io
       fail-fast: false
     runs-on: ubuntu-latest
+    env:
+      ADC_VERSION: "dev"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -73,6 +56,15 @@ jobs:
         with:
           go-version: "1.23"
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "*"
+
+      - name: Install kind
+        run: |
+          go install sigs.k8s.io/kind@v0.23.0
+
       - name: Install ginkgo
         run: |
             make install-ginkgo
@@ -83,19 +75,9 @@ jobs:
           ARCH: amd64
           ENABLE_PROXY: "false"
           BASE_IMAGE_TAG: "debug"
-          ADC_VERSION: "dev"
         run: |
           echo "building images..."
           make build-image
-
-      - name: Extract adc binary
-        run: |
-          echo "Extracting adc binary..."
-          docker create --name adc-temp apache/apisix-ingress-controller:dev
-          docker cp adc-temp:/bin/adc /usr/local/bin/adc
-          docker rm adc-temp
-          chmod +x /usr/local/bin/adc
-          echo "ADC binary extracted to /usr/local/bin/adc"
 
       - name: Launch Kind Cluster
         run: |
@@ -103,11 +85,20 @@ jobs:
 
       - name: Loading Docker Image to Kind Cluster
         run: |
-          make kind-load-ingress-image
+          make kind-load-images
 
       - name: Install Gateway API And CRDs
         run: |
           make install
+
+      - name: Extract adc binary
+        if: ${{ env.ADC_VERSION == 'dev' }}
+        run: |
+          docker create --name adc-temp ghcr.io/api7/adc:dev
+          docker cp adc-temp:main.js adc.js
+          docker rm adc-temp
+          node $(pwd)/adc.js -v
+          echo "ADC_BIN=node $(pwd)/adc.js" >> $GITHUB_ENV
 
       - name: Run E2E test suite
         shell: bash
