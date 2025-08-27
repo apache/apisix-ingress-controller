@@ -450,6 +450,19 @@ spec:
         key_id: papa
         secret_key: fatpa
 `
+
+			hmacAuthConsumerInvalid = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: hmac-consumer
+spec:
+  ingressClassName: %s
+  authParameter:
+    hmacAuth:
+      value:
+        secret_key: fatpa
+`
 			hmacRoute = `
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
@@ -499,6 +512,10 @@ spec:
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "hmac-route"},
 				&apiv2.ApisixRoute{}, fmt.Sprintf(hmacRoute, s.Namespace()))
 
+			By("apply Invalid ApisixConsumer with missing required field")
+			err := s.CreateResourceFromString(hmacAuthConsumerInvalid)
+			Expect(err).Should(HaveOccurred(), "creating invalid ApisixConsumer")
+
 			By("apply ApisixConsumer")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "hmac-consumer"},
 				&apiv2.ApisixConsumer{}, fmt.Sprintf(hmacAuthConsumer, s.Namespace()))
@@ -525,7 +542,7 @@ spec:
 			})
 
 			By("Delete resources")
-			err := s.DeleteResource("ApisixConsumer", "hmac-consumer")
+			err = s.DeleteResource("ApisixConsumer", "hmac-consumer")
 			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixConsumer")
 
 			err = s.DeleteResource("ApisixRoute", "hmac-route")

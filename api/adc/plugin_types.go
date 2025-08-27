@@ -77,11 +77,11 @@ type JwtAuthConsumerConfig struct {
 // used in Consumer object.
 // +k8s:deepcopy-gen=true
 type HMACAuthConsumerConfig struct {
-	KeyID     string `json:"key_id" yaml:"key_id"`
+	KeyID     string `json:"key_id,omitempty" yaml:"key_id"`
 	SecretKey string `json:"secret_key" yaml:"secret_key"`
 
 	//Deprecated
-	AccessKey           string   `json:"access_key" yaml:"access_key"`
+	AccessKey           string   `json:"access_key,omitempty" yaml:"access_key"`
 	Algorithm           string   `json:"algorithm,omitempty" yaml:"algorithm,omitempty"`
 	ClockSkew           int64    `json:"clock_skew,omitempty" yaml:"clock_skew,omitempty"`
 	SignedHeaders       []string `json:"signed_headers,omitempty" yaml:"signed_headers,omitempty"`
