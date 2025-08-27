@@ -22,7 +22,12 @@ patches:
     name: consumers.apisix.apache.org
     group: apiextensions.k8s.io
     version: v1
-
+- path: patches/hmac_auth_validation.yaml
+  target:
+    kind: CustomResourceDefinition
+    name: apisixconsumers.apisix.apache.org
+    group: apiextensions.k8s.io
+    version: v1
 # [WEBHOOK] To enable webhook, uncomment all the sections with [WEBHOOK] prefix.
 # patches here are for enabling the conversion webhook for each CRD
 #- path: patches/webhook_in_gatewayproxies.yaml

@@ -79,6 +79,16 @@ type JwtAuthConsumerConfig struct {
 type HMACAuthConsumerConfig struct {
 	KeyID     string `json:"key_id" yaml:"key_id"`
 	SecretKey string `json:"secret_key" yaml:"secret_key"`
+
+	//Deprecated
+	AccessKey           string   `json:"access_key" yaml:"access_key"`
+	Algorithm           string   `json:"algorithm,omitempty" yaml:"algorithm,omitempty"`
+	ClockSkew           int64    `json:"clock_skew,omitempty" yaml:"clock_skew,omitempty"`
+	SignedHeaders       []string `json:"signed_headers,omitempty" yaml:"signed_headers,omitempty"`
+	KeepHeaders         bool     `json:"keep_headers,omitempty" yaml:"keep_headers,omitempty"`
+	EncodeURIParams     bool     `json:"encode_uri_params,omitempty" yaml:"encode_uri_params,omitempty"`
+	ValidateRequestBody bool     `json:"validate_request_body,omitempty" yaml:"validate_request_body,omitempty"`
+	MaxReqBody          int64    `json:"max_req_body,omitempty" yaml:"max_req_body,omitempty"`
 }
 
 // LDAPAuthConsumerConfig is the rule config for ldap-auth plugin

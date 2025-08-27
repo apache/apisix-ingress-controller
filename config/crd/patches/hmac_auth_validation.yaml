@@ -1,0 +1,12 @@
+- op: replace
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/authParameter/properties/hmacAuth/properties/value/required
+  value: ["secret_key"]
+- op: add
+  path: /spec/versions/0/schema/openAPIV3Schema/properties/spec/properties/authParameter/properties/hmacAuth/properties/value/x-kubernetes-validations
+  value:
+    - rule: "has(self.key_id) != has(self.access_key)"
+      message: "Must specify exactly one of key_id or access_key"
+    - rule: "has(self.key_id) || has(self.access_key)"
+      message: "Must specify either key_id or access_key"
+    - rule: "!has(self.key_id) || (self.algorithm == '' && self.clock_skew == 0 && size(self.signed_headers) == 0 && !self.keep_headers && !self.encode_uri_params && !self.validate_request_body && self.max_req_body == 0)"
+      message: "When using key_id, deprecated fields are not allowed"
