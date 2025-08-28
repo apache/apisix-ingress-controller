@@ -94,13 +94,15 @@ func (d *Client) applyStoreChanges(args Task, isDelete bool) (StoreDelta, error)
 
 	for _, cfg := range delta.Deleted {
 		if err := d.Store.Delete(cfg.Name, args.ResourceTypes, args.Labels); err != nil {
-			return StoreDelta{}, errors.Wrap(err, "store delete failed")
+			log.Errorw("store delete failed", zap.Error(err), zap.Any("cfg", cfg), zap.Any("args", args))
+			return StoreDelta{}, errors.Wrap(err, fmt.Sprintf("store delete failed for config %s", cfg.Name))
 		}
 	}
 
 	for _, cfg := range delta.Applied {
 		if err := d.Insert(cfg.Name, args.ResourceTypes, args.Resources, args.Labels); err != nil {
-			return StoreDelta{}, errors.Wrap(err, "store insert failed")
+			log.Errorw("store insert failed", zap.Error(err), zap.Any("cfg", cfg), zap.Any("args", args))
+			return StoreDelta{}, errors.Wrap(err, fmt.Sprintf("store insert failed for config %s", cfg.Name))
 		}
 	}
 
