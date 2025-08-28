@@ -19,6 +19,7 @@
 
 # Table of Contents
 
+- [2.0.0-rc4](#200-rc4)
 - [2.0.0-rc3](#200-rc3)
 - [2.0.0-rc2](#200-rc2)
 - [2.0.0-rc1](#200-rc1)
@@ -41,6 +42,78 @@
 - [0.3.0](#030)
 - [0.2.0](#020)
 - [0.1.0](#010)
+
+# 2.0.0-rc4
+
+apisix-ingress-controller 2.0.0-rc4
+
+Welcome to the v2.0.0-rc4 release of apisix-ingress-controller!
+
+This is a release candidate (RC) version.
+
+## Highlights
+
+In APISIX Standalone mode, launching an ADC process for each endpoint causes high startup overhead that grows with the number of endpoints. ADC Server mode addresses this by running as a persistent service, reducing CPU cost and improving synchronization efficiency.
+
+### Features
+
+* feat: support adc server mode [#2520](https://github.com/apache/apisix-ingress-controller/pull/2520)
+
+### Bugfixes
+
+* fix: set websocket when passed true and add websocket e2e test [#2497](https://github.com/apache/apisix-ingress-controller/pull/2497)  
+* fix: deadlock occurs when updating configuration fails [#2531](https://github.com/apache/apisix-ingress-controller/pull/2531)  
+* fix: traffic-split weight distribution and add e2e tests [#2495](https://github.com/apache/apisix-ingress-controller/pull/2495)  
+* fix: list is missing index parameter [#2513](https://github.com/apache/apisix-ingress-controller/pull/2513)  
+* fix: status should not be recorded when ingressclass does not match [#2519](https://github.com/apache/apisix-ingress-controller/pull/2519)  
+* fix: support tlsSecret from http.backends in ApisixRoute [#2518](https://github.com/apache/apisix-ingress-controller/pull/2518)
+
+Please try out the release binaries and report any issues at
+https://github.com/apache/apisix-ingress-controller/issues.
+
+### Contributors
+
+* Ashish Tiwari
+* AlinsRan
+* Traky Deng
+* iliya
+* 琚致远 / Zhiyuan Ju
+
+### Changes
+<details><summary>23 commits</summary>
+<p>
+
+  * [`07672cce`](https://github.com/apache/apisix-ingress-controller/commit/07672ccea3d4082fc6371ffea0691359178f6b83) fix: deadlock occurs when updating configuration fails (#2531)
+  * [`ba39a7ac`](https://github.com/apache/apisix-ingress-controller/commit/ba39a7ac7e804519ada390c88af6c615c5ef5809) chore: upgrade adc to 0.21.0 (#2532)
+  * [`8c5f0dcb`](https://github.com/apache/apisix-ingress-controller/commit/8c5f0dcb2e8b2a249fb6402c7671b672a31d13fd) chore: migrate redirect plugin e2e tests (#2529)
+  * [`69db98c4`](https://github.com/apache/apisix-ingress-controller/commit/69db98c4f8db674ddb15c746438963b684e91fcd) chore: remove adc binary from dockerfile (#2530)
+  * [`75d068aa`](https://github.com/apache/apisix-ingress-controller/commit/75d068aaeae516da5a19055566be1af8672b2cf2) feat: support adc server mode (#2520)
+  * [`1faf2ae4`](https://github.com/apache/apisix-ingress-controller/commit/1faf2ae472ff16b102654a609bb131aa876f5c70) chore: migrate e2e tests for httproute basic (#2525)
+  * [`2a798d13`](https://github.com/apache/apisix-ingress-controller/commit/2a798d13fc5f185c289c0e1327676a7e2efc29c9) fix(test): Unstable controllername assertion (#2523)
+  * [`e5d831e4`](https://github.com/apache/apisix-ingress-controller/commit/e5d831e41731d5525fbc12db319465d4283eacd7) chore: remove redundant backend traffic policy attachment (#2524)
+  * [`eb7c06a6`](https://github.com/apache/apisix-ingress-controller/commit/eb7c06a6f527df1b756ea50ece2bc0fa7dbc6c4e) chore: migrate retries/timeout tests for apisixupstream (#2517)
+  * [`404d1508`](https://github.com/apache/apisix-ingress-controller/commit/404d15087f425cf56400aa732ab66494c98d85c6) docs: mention stream is currently not supported in the CRD docs (#2522)
+  * [`6bc3731a`](https://github.com/apache/apisix-ingress-controller/commit/6bc3731a5c7fee65fe7e1f141484272843ab2bfa) fix: support tlsSecret from http.backends in ApisixRoute (#2518)
+  * [`227062d2`](https://github.com/apache/apisix-ingress-controller/commit/227062d2a8862560bc3c1fa33e99ab119bfec5ca) fix: status should not be recorded when ingressclass does not match (#2519)
+  * [`5775f23a`](https://github.com/apache/apisix-ingress-controller/commit/5775f23a8385aa1d109f1b3e8e51d2727b26c172) fix: list is missing index parameter (#2513)
+  * [`95787e6e`](https://github.com/apache/apisix-ingress-controller/commit/95787e6e68309f136cda80b546e4cbe8b5bccffc) chore: refactor provider (#2507)
+  * [`c9ead0ee`](https://github.com/apache/apisix-ingress-controller/commit/c9ead0eef4248107626edbd9fa27dd35e421423b) fix indentation (#2512)
+  * [`ce0c5f4c`](https://github.com/apache/apisix-ingress-controller/commit/ce0c5f4c2d6c5e04c3c069696f6c726003a51216) refactor: E2E tests to support parallel tests (#2501)
+  * [`77b8210c`](https://github.com/apache/apisix-ingress-controller/commit/77b8210c8084ba05cac00016d60a79c8327e268e) docs: update load balancing Gateway API doc for RC3 fix (#2506)
+  * [`7a435c97`](https://github.com/apache/apisix-ingress-controller/commit/7a435c978e5eec0a51e5a3f78bef84bfb80578d3) chore(deps): bump golang.org/x/oauth2 from 0.24.0 to 0.27.0 (#2485)
+  * [`40712363`](https://github.com/apache/apisix-ingress-controller/commit/40712363d01ee9394eeafc9b2ae8fe0d7e2caa44) chore(test): Refactor loop to use range over integer in test (#2494)
+  * [`ac5e56dd`](https://github.com/apache/apisix-ingress-controller/commit/ac5e56dd5e44142370ee54b72876faa20c098b5f) chore: add test cases for external service (#2500)
+  * [`a2bea453`](https://github.com/apache/apisix-ingress-controller/commit/a2bea453adf4ea36f2bde5f59e18cb79e7aebf85) docs: fix links (#2502)
+  * [`49ef9d40`](https://github.com/apache/apisix-ingress-controller/commit/49ef9d4028362ce6e7bd202093440ca9ac381fa2) fix: set websocket when passed true and add websocket e2e test (#2497)
+  * [`a35cad5e`](https://github.com/apache/apisix-ingress-controller/commit/a35cad5e78e7f15ffc5a9a86b9da246184af34cf) fix: traffic-split weight distribution and add e2e tests (#2495)
+</p>
+</details>
+
+### Dependency Changes
+
+* **golang.org/x/oauth2**  v0.24.0 -> v0.27.0
+
+Previous release can be found at [2.0.0-rc3](https://github.com/apache/apisix-ingress-controller/releases/tag/2.0.0-rc3)
 
 # 2.0.0-rc3
 
