@@ -160,23 +160,26 @@ type ApisixConsumerHMACAuth struct {
 
 // ApisixConsumerHMACAuthValue defines configuration for HMAC authentication.
 type ApisixConsumerHMACAuthValue struct {
-	// AccessKey is the identifier used to look up the HMAC secret.
-	AccessKey string `json:"access_key" yaml:"access_key"`
+	// KeyID is the identifier used to look up the HMAC secret.
+	KeyID string `json:"key_id,omitempty" yaml:"key_id"`
 	// SecretKey is the HMAC secret used to sign the request.
 	SecretKey string `json:"secret_key" yaml:"secret_key"`
-	// Algorithm specifies the hashing algorithm (e.g., "hmac-sha256").
+
+	// AccessKey is the identifier used to look up the HMAC secret. Deprecated from consumer configuration
+	AccessKey string `json:"access_key,omitempty" yaml:"access_key"`
+	// Algorithm specifies the hashing algorithm (e.g., "hmac-sha256"). Deprecated from consumer configuration
 	Algorithm string `json:"algorithm,omitempty" yaml:"algorithm,omitempty"`
-	// ClockSkew is the allowed time difference (in seconds) between client and server clocks.
+	// ClockSkew is the allowed time difference (in seconds) between client and server clocks. Deprecated from consumer configuration
 	ClockSkew int64 `json:"clock_skew,omitempty" yaml:"clock_skew,omitempty"`
-	// SignedHeaders lists the headers that must be included in the signature.
+	// SignedHeaders lists the headers that must be included in the signature. Deprecated from consumer configuration
 	SignedHeaders []string `json:"signed_headers,omitempty" yaml:"signed_headers,omitempty"`
-	// KeepHeaders determines whether the HMAC signature headers are preserved after verification.
+	// KeepHeaders determines whether the HMAC signature headers are preserved after verification. Deprecated from consumer configuration
 	KeepHeaders bool `json:"keep_headers,omitempty" yaml:"keep_headers,omitempty"`
-	// EncodeURIParams indicates whether URI parameters are encoded when calculating the signature.
+	// EncodeURIParams indicates whether URI parameters are encoded when calculating the signature. Deprecated from consumer configuration
 	EncodeURIParams bool `json:"encode_uri_params,omitempty" yaml:"encode_uri_params,omitempty"`
-	// ValidateRequestBody enables HMAC validation of the request body.
+	// ValidateRequestBody enables HMAC validation of the request body. Deprecated from consumer configuration
 	ValidateRequestBody bool `json:"validate_request_body,omitempty" yaml:"validate_request_body,omitempty"`
-	// MaxReqBody sets the maximum size (in bytes) of the request body that can be validated.
+	// MaxReqBody sets the maximum size (in bytes) of the request body that can be validated. Deprecated from consumer configuration
 	MaxReqBody int64 `json:"max_req_body,omitempty" yaml:"max_req_body,omitempty"`
 }
 

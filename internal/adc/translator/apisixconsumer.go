@@ -31,10 +31,13 @@ import (
 )
 
 var (
-	_errKeyNotFoundOrInvalid      = errors.New("key \"key\" not found or invalid in secret")
 	_errUsernameNotFoundOrInvalid = errors.New("key \"username\" not found or invalid in secret")
 	_errPasswordNotFoundOrInvalid = errors.New("key \"password\" not found or invalid in secret")
 )
+
+func errKeyNotFoundOrInvalid(key string) error {
+	return errors.New(fmt.Sprintf("key \"%s\" not found or invalid in secret", key))
+}
 
 const (
 	_jwtAuthExpDefaultValue = 86400
@@ -114,7 +117,7 @@ func (t *Translator) translateConsumerKeyAuthPlugin(tctx *provider.TranslateCont
 	}
 	raw, ok := sec.Data["key"]
 	if !ok || len(raw) == 0 {
-		return nil, _errKeyNotFoundOrInvalid
+		return nil, errKeyNotFoundOrInvalid("key")
 	}
 	return &adctypes.KeyAuthConsumerConfig{Key: string(raw)}, nil
 }
@@ -200,7 +203,7 @@ func (t *Translator) translateConsumerJwtAuthPlugin(tctx *provider.TranslateCont
 	}
 	keyRaw, ok := sec.Data["key"]
 	if !ok || len(keyRaw) == 0 {
-		return nil, _errKeyNotFoundOrInvalid
+		return nil, errKeyNotFoundOrInvalid("key")
 	}
 	base64SecretRaw := sec.Data["base64_secret"]
 	var base64Secret bool
@@ -244,6 +247,7 @@ func (t *Translator) translateConsumerHMACAuthPlugin(tctx *provider.TranslateCon
 			EncodeURIParams:     cfg.Value.EncodeURIParams,
 			ValidateRequestBody: cfg.Value.ValidateRequestBody,
 			MaxReqBody:          cfg.Value.MaxReqBody,
+			KeyID:               cfg.Value.KeyID,
 		}, nil
 	}
 
@@ -254,15 +258,19 @@ func (t *Translator) translateConsumerHMACAuthPlugin(tctx *provider.TranslateCon
 	if sec == nil {
 		return nil, fmt.Errorf("secret %s/%s not found", consumerNamespace, cfg.SecretRef.Name)
 	}
-
-	accessKeyRaw, ok := sec.Data["access_key"]
-	if !ok || len(accessKeyRaw) == 0 {
-		return nil, _errKeyNotFoundOrInvalid
+	var accessKeyRaw []byte
+	keyIDRaw, ok := sec.Data["key_id"]
+	if !ok || len(keyIDRaw) == 0 {
+		// For backward compatibility with older versions
+		accessKeyRaw, ok = sec.Data["access_key"]
+		if !ok || len(accessKeyRaw) == 0 {
+			return nil, errKeyNotFoundOrInvalid("access_key/key_id")
+		}
 	}
 
 	secretKeyRaw, ok := sec.Data["secret_key"]
 	if !ok || len(secretKeyRaw) == 0 {
-		return nil, _errKeyNotFoundOrInvalid
+		return nil, errKeyNotFoundOrInvalid("secret_key")
 	}
 
 	algorithmRaw, ok := sec.Data["algorithm"]
@@ -326,10 +334,12 @@ func (t *Translator) translateConsumerHMACAuthPlugin(tctx *provider.TranslateCon
 	if maxReqBody < 0 {
 		maxReqBody = _hmacAuthMaxReqBodyDefaultValue
 	}
-
 	return &adctypes.HMACAuthConsumerConfig{
+		KeyID:     string(keyIDRaw),
+		SecretKey: string(secretKeyRaw),
+
+		// Deprecated fields supported for backwards compatibility
 		AccessKey:           string(accessKeyRaw),
-		SecretKey:           string(secretKeyRaw),
 		Algorithm:           algorithm,
 		ClockSkew:           clockSkew,
 		SignedHeaders:       signedHeaders,
@@ -356,7 +366,7 @@ func (t *Translator) translateConsumerLDAPAuthPlugin(tctx *provider.TranslateCon
 	}
 	userDNRaw, ok := sec.Data["user_dn"]
 	if !ok || len(userDNRaw) == 0 {
-		return nil, _errKeyNotFoundOrInvalid
+		return nil, errKeyNotFoundOrInvalid("user_dn")
 	}
 
 	return &adctypes.LDAPAuthConsumerConfig{

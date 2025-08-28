@@ -18,6 +18,9 @@
 package v2
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"time"
@@ -32,6 +35,28 @@ import (
 )
 
 type Headers map[string]string
+
+func generateHMACHeaders(keyID, secretKey, method, path string) map[string]string {
+	gmtTime := time.Now().UTC().Format("Mon, 02 Jan 2006 15:04:05 GMT")
+	signingString := fmt.Sprintf("%s\n%s %s\ndate: %s\n", keyID, method, path, gmtTime)
+
+	// Create HMAC signature
+	mac := hmac.New(sha256.New, []byte(secretKey))
+	mac.Write([]byte(signingString))
+	signature := mac.Sum(nil)
+	signatureBase64 := base64.StdEncoding.EncodeToString(signature)
+
+	// Construct Authorization header
+	authHeader := fmt.Sprintf(
+		`Signature keyId="%s",algorithm="hmac-sha256",headers="@request-target date",signature="%s"`,
+		keyID, signatureBase64,
+	)
+
+	return map[string]string{
+		"Date":          gmtTime,
+		"Authorization": authHeader,
+	}
+}
 
 var _ = Describe("Test ApisixConsumer", Label("apisix.apache.org", "v2", "apisixconsumer"), func() {
 	var (
@@ -407,6 +432,158 @@ spec:
 				Host:   "httpbin",
 				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
 			})
+		})
+	})
+
+	Context("Test HMACAuth", func() {
+		const (
+			hmacAuthConsumer = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: hmac-consumer
+spec:
+  ingressClassName: %s
+  authParameter:
+    hmacAuth:
+      value:
+        key_id: papa
+        secret_key: fatpa
+`
+
+			hmacAuthConsumerInvalid = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: hmac-consumer
+spec:
+  ingressClassName: %s
+  authParameter:
+    hmacAuth:
+      value:
+        secret_key: fatpa
+`
+			hmacRoute = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: hmac-route
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+        - /ip
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+    authentication:
+      enable: true
+      type: hmacAuth
+`
+			hmacSecret = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hmac
+data:
+  key_id: cGFwYQ==
+  secret_key: ZmF0cGE=
+`
+			hmacAuthWithSecret = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: hmac-consumer
+spec:
+  ingressClassName: %s
+  authParameter:
+    hmacAuth:
+      secretRef:
+        name: hmac
+`
+		)
+
+		It("Basic tests", func() {
+			By("apply ApisixRoute")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "hmac-route"},
+				&apiv2.ApisixRoute{}, fmt.Sprintf(hmacRoute, s.Namespace()))
+
+			By("apply Invalid ApisixConsumer with missing required field")
+			err := s.CreateResourceFromString(hmacAuthConsumerInvalid)
+			Expect(err).Should(HaveOccurred(), "creating invalid ApisixConsumer")
+
+			By("apply ApisixConsumer")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "hmac-consumer"},
+				&apiv2.ApisixConsumer{}, fmt.Sprintf(hmacAuthConsumer, s.Namespace()))
+
+			By("verify ApisixRoute with ApisixConsumer")
+			// Generate HMAC headers dynamically
+			hmacHeaders := generateHMACHeaders("papa", "fatpa", "GET", "/ip")
+
+			// Test valid HMAC authentication
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:  "GET",
+				Path:    "/ip",
+				Host:    "httpbin.org",
+				Headers: hmacHeaders,
+				Check:   scaffold.WithExpectedStatus(http.StatusOK),
+			})
+
+			// Test missing authorization
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/ip",
+				Host:   "httpbin.org",
+				Check:  scaffold.WithExpectedStatus(http.StatusUnauthorized),
+			})
+
+			By("Delete resources")
+			err = s.DeleteResource("ApisixConsumer", "hmac-consumer")
+			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixConsumer")
+
+			err = s.DeleteResource("ApisixRoute", "hmac-route")
+			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixRoute")
+		})
+
+		It("SecretRef tests", func() {
+			By("apply ApisixRoute")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "hmac-route"},
+				&apiv2.ApisixRoute{}, fmt.Sprintf(hmacRoute, s.Namespace()))
+
+			By("apply Secret")
+			err := s.CreateResourceFromString(hmacSecret)
+			Expect(err).ShouldNot(HaveOccurred(), "creating Secret for ApisixConsumer")
+
+			By("apply ApisixConsumer")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "hmac-consumer"},
+				&apiv2.ApisixConsumer{}, fmt.Sprintf(hmacAuthWithSecret, s.Namespace()))
+
+			By("verify ApisixRoute with ApisixConsumer")
+			// Generate HMAC headers dynamically
+			hmacHeaders := generateHMACHeaders("papa", "fatpa", "GET", "/ip")
+
+			// Test valid HMAC authentication
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:  "GET",
+				Path:    "/ip",
+				Host:    "httpbin.org",
+				Headers: hmacHeaders,
+				Check:   scaffold.WithExpectedStatus(http.StatusOK),
+			})
+
+			By("Delete resources")
+			err = s.DeleteResource("ApisixConsumer", "hmac-consumer")
+			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixConsumer")
+
+			err = s.DeleteResource("ApisixRoute", "hmac-route")
+			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixRoute")
+
+			err = s.DeleteResource("Secret", "hmac")
+			Expect(err).ShouldNot(HaveOccurred(), "deleting Secret")
 		})
 	})
 })

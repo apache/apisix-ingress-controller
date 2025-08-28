@@ -101,28 +101,36 @@ spec:
                         properties:
                           access_key:
                             description: AccessKey is the identifier used to look
-                              up the HMAC secret.
+                              up the HMAC secret. Deprecated from consumer configuration
                             type: string
                           algorithm:
                             description: Algorithm specifies the hashing algorithm
-                              (e.g., "hmac-sha256").
+                              (e.g., "hmac-sha256"). Deprecated from consumer configuration
                             type: string
                           clock_skew:
                             description: ClockSkew is the allowed time difference
-                              (in seconds) between client and server clocks.
+                              (in seconds) between client and server clocks. Deprecated
+                              from consumer configuration
                             format: int64
                             type: integer
                           encode_uri_params:
                             description: EncodeURIParams indicates whether URI parameters
-                              are encoded when calculating the signature.
+                              are encoded when calculating the signature. Deprecated
+                              from consumer configuration
                             type: boolean
                           keep_headers:
                             description: KeepHeaders determines whether the HMAC signature
-                              headers are preserved after verification.
+                              headers are preserved after verification. Deprecated
+                              from consumer configuration
                             type: boolean
+                          key_id:
+                            description: KeyID is the identifier used to look up the
+                              HMAC secret.
+                            type: string
                           max_req_body:
                             description: MaxReqBody sets the maximum size (in bytes)
-                              of the request body that can be validated.
+                              of the request body that can be validated. Deprecated
+                              from consumer configuration
                             format: int64
                             type: integer
                           secret_key:
@@ -131,16 +139,16 @@ spec:
                             type: string
                           signed_headers:
                             description: SignedHeaders lists the headers that must
-                              be included in the signature.
+                              be included in the signature. Deprecated from consumer
+                              configuration
                             items:
                               type: string
                             type: array
                           validate_request_body:
                             description: ValidateRequestBody enables HMAC validation
-                              of the request body.
+                              of the request body. Deprecated from consumer configuration
                             type: boolean
                         required:
-                        - access_key
                         - secret_key
                         type: object
                     type: object

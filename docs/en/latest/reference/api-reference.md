@@ -745,15 +745,16 @@ ApisixConsumerHMACAuthValue defines configuration for HMAC authentication.
 
 | Field | Description |
 | --- | --- |
-| `access_key` _string_ | AccessKey is the identifier used to look up the HMAC secret. |
+| `key_id` _string_ | KeyID is the identifier used to look up the HMAC secret. |
 | `secret_key` _string_ | SecretKey is the HMAC secret used to sign the request. |
-| `algorithm` _string_ | Algorithm specifies the hashing algorithm (e.g., "hmac-sha256"). |
-| `clock_skew` _integer_ | ClockSkew is the allowed time difference (in seconds) between client and server clocks. |
-| `signed_headers` _string array_ | SignedHeaders lists the headers that must be included in the signature. |
-| `keep_headers` _boolean_ | KeepHeaders determines whether the HMAC signature headers are preserved after verification. |
-| `encode_uri_params` _boolean_ | EncodeURIParams indicates whether URI parameters are encoded when calculating the signature. |
-| `validate_request_body` _boolean_ | ValidateRequestBody enables HMAC validation of the request body. |
-| `max_req_body` _integer_ | MaxReqBody sets the maximum size (in bytes) of the request body that can be validated. |
+| `access_key` _string_ | AccessKey is the identifier used to look up the HMAC secret. Deprecated from consumer configuration |
+| `algorithm` _string_ | Algorithm specifies the hashing algorithm (e.g., "hmac-sha256"). Deprecated from consumer configuration |
+| `clock_skew` _integer_ | ClockSkew is the allowed time difference (in seconds) between client and server clocks. Deprecated from consumer configuration |
+| `signed_headers` _string array_ | SignedHeaders lists the headers that must be included in the signature. Deprecated from consumer configuration |
+| `keep_headers` _boolean_ | KeepHeaders determines whether the HMAC signature headers are preserved after verification. Deprecated from consumer configuration |
+| `encode_uri_params` _boolean_ | EncodeURIParams indicates whether URI parameters are encoded when calculating the signature. Deprecated from consumer configuration |
+| `validate_request_body` _boolean_ | ValidateRequestBody enables HMAC validation of the request body. Deprecated from consumer configuration |
+| `max_req_body` _integer_ | MaxReqBody sets the maximum size (in bytes) of the request body that can be validated. Deprecated from consumer configuration |
 
 
 _Appears in:_
