@@ -49,6 +49,8 @@ apisix-ingress-controller 2.0.0-rc4
 
 Welcome to the v2.0.0-rc4 release of apisix-ingress-controller!
 
+*This is a pre-release of apisix-ingress-controller*
+
 This is a release candidate (RC) version.
 
 ## Highlights

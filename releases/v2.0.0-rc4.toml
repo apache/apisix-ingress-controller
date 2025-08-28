@@ -32,13 +32,12 @@ match_deps = "^github.com/(apache/[a-zA-Z0-9-]+)$"
 previous = "2.0.0-rc3"
 
 # pre_release is whether to include a disclaimer about being a pre-release
-pre_release = false
+pre_release = true
 
 # preface is the description of the release which precedes the author list
 # and changelog. This description could include highlights as well as any
 # description of changes. Use markdown formatting.
 preface = """\
-This is a release candidate (RC) version.
 
 ## Highlights
 
