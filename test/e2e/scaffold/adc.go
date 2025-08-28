@@ -35,16 +35,21 @@ import (
 )
 
 var (
-	adcExec = "./bin/adc"
+	adcExec = "adc"
 	adcArgs []string
 )
 
 func init() {
 	adc := os.Getenv("ADC_BIN")
-	if adc != "" && strings.Contains(adc, "node") {
+	if adc == "" {
+		return
+	}
+	if strings.Contains(adc, "node") {
 		parts := strings.Fields(adc)
 		adcExec = parts[0]
 		adcArgs = parts[1:]
+	} else {
+		adcExec = adc
 	}
 }
 
