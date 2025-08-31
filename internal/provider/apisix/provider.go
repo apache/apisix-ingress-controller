@@ -37,6 +37,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	"github.com/apache/apisix-ingress-controller/internal/provider/common"
 	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
@@ -236,19 +237,29 @@ func (d *apisixProvider) Start(ctx context.Context) error {
 	}
 	ticker := time.NewTicker(d.SyncPeriod)
 	defer ticker.Stop()
+
+	retrier := common.NewRetrier(common.NewExponentialBackoff(1*time.Second, 1000*time.Second))
 	for {
 		synced := false
 		select {
 		case <-d.syncCh:
+			retrier.Cancel()
 			synced = true
 		case <-ticker.C:
+			retrier.Cancel()
+			synced = true
+		case <-retrier.C():
 			synced = true
 		case <-ctx.Done():
+			retrier.Cancel()
 			return nil
 		}
 		if synced {
 			if err := d.sync(ctx); err != nil {
 				log.Error(err)
+				retrier.Trigger()
+			} else {
+				retrier.Cancel()
 			}
 		}
 	}
