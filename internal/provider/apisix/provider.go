@@ -229,19 +229,16 @@ func (d *apisixProvider) Start(ctx context.Context) error {
 
 	initalSyncDelay := d.InitSyncDelay
 	if initalSyncDelay > 0 {
-		if d.SyncPeriod < 1 {
-			time.AfterFunc(initalSyncDelay, func() {
-				if err := d.sync(ctx); err != nil {
-					log.Error(err)
-					return
-				}
-			})
-		} else {
-			time.AfterFunc(initalSyncDelay, d.syncNotify)
-		}
+		time.AfterFunc(initalSyncDelay, func() {
+			if d.SyncPeriod > 0 {
+				d.syncNotify()
+			} else if err := d.sync(ctx); err != nil {
+				log.Error(err)
+			}
+		})
 	}
 
-	if d.SyncPeriod < 1 {
+	if d.SyncPeriod <= 0 {
 		return nil
 	}
 	ticker := time.NewTicker(d.SyncPeriod)
