@@ -62,7 +62,7 @@ func NewRetrier(b Backoff) *Retrier {
 	}
 }
 
-func (r *Retrier) Cancel() {
+func (r *Retrier) Reset() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -73,7 +73,7 @@ func (r *Retrier) Cancel() {
 	r.backoff.Reset()
 }
 
-func (r *Retrier) Trigger() {
+func (r *Retrier) Next() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

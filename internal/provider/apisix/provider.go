@@ -242,20 +242,21 @@ func (d *apisixProvider) Start(ctx context.Context) error {
 	defer ticker.Stop()
 
 	retrier := common.NewRetrier(common.NewExponentialBackoff(RetryBaseDelay, RetryMaxDelay))
+
 	for {
 		select {
 		case <-d.syncCh:
 		case <-ticker.C:
 		case <-retrier.C():
 		case <-ctx.Done():
-			retrier.Cancel()
+			retrier.Reset()
 			return nil
 		}
 		if err := d.sync(ctx); err != nil {
 			log.Error(err)
-			retrier.Trigger()
+			retrier.Next()
 		} else {
-			retrier.Cancel()
+			retrier.Reset()
 		}
 	}
 }
