@@ -47,6 +47,8 @@ const (
 
 	RetryBaseDelay = 1 * time.Second
 	RetryMaxDelay  = 1000 * time.Second
+
+	MinSyncPeriod = 1 * time.Second
 )
 
 type apisixProvider struct {
@@ -229,19 +231,14 @@ func (d *apisixProvider) Start(ctx context.Context) error {
 
 	initalSyncDelay := d.InitSyncDelay
 	if initalSyncDelay > 0 {
-		time.AfterFunc(initalSyncDelay, func() {
-			if d.SyncPeriod > 0 {
-				d.syncNotify()
-			} else if err := d.sync(ctx); err != nil {
-				log.Error(err)
-			}
-		})
+		time.AfterFunc(initalSyncDelay, d.syncNotify)
 	}
 
-	if d.SyncPeriod <= 0 {
-		return nil
+	syncPeriod := d.SyncPeriod
+	if syncPeriod < MinSyncPeriod {
+		syncPeriod = MinSyncPeriod
 	}
-	ticker := time.NewTicker(d.SyncPeriod)
+	ticker := time.NewTicker(syncPeriod)
 	defer ticker.Stop()
 
 	retrier := common.NewRetrier(common.NewExponentialBackoff(RetryBaseDelay, RetryMaxDelay))
