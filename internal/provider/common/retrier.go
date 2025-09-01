@@ -77,6 +77,11 @@ func (r *Retrier) Trigger() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	if r.timer != nil {
+		r.timer.Stop()
+		r.timer = nil
+	}
+
 	delay := r.backoff.Next()
 	r.timer = time.AfterFunc(delay, func() {
 		select {
