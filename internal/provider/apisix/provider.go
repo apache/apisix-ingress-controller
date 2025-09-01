@@ -42,7 +42,12 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
-const ProviderTypeAPISIX = "apisix"
+const (
+	ProviderTypeAPISIX = "apisix"
+
+	RetryBaseDelay = 1 * time.Second
+	RetryMaxDelay  = 1000 * time.Second
+)
 
 type apisixProvider struct {
 	provider.Options
@@ -224,12 +229,16 @@ func (d *apisixProvider) Start(ctx context.Context) error {
 
 	initalSyncDelay := d.InitSyncDelay
 	if initalSyncDelay > 0 {
-		time.AfterFunc(initalSyncDelay, func() {
-			if err := d.sync(ctx); err != nil {
-				log.Error(err)
-				return
-			}
-		})
+		if d.SyncPeriod < 1 {
+			time.AfterFunc(initalSyncDelay, func() {
+				if err := d.sync(ctx); err != nil {
+					log.Error(err)
+					return
+				}
+			})
+		} else {
+			time.AfterFunc(initalSyncDelay, d.syncNotify)
+		}
 	}
 
 	if d.SyncPeriod < 1 {
@@ -238,7 +247,7 @@ func (d *apisixProvider) Start(ctx context.Context) error {
 	ticker := time.NewTicker(d.SyncPeriod)
 	defer ticker.Stop()
 
-	retrier := common.NewRetrier(common.NewExponentialBackoff(1*time.Second, 1000*time.Second))
+	retrier := common.NewRetrier(common.NewExponentialBackoff(RetryBaseDelay, RetryMaxDelay))
 	for {
 		synced := false
 		select {
