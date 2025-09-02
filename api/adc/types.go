@@ -505,6 +505,13 @@ func (n *UpstreamNodes) UnmarshalJSON(p []byte) error {
 	return nil
 }
 
+func (n UpstreamNodes) MarshalJSON() ([]byte, error) {
+	if n == nil {
+		return []byte("[]"), nil
+	}
+	return json.Marshal([]UpstreamNode(n))
+}
+
 // ComposeRouteName uses namespace, name and rule name to compose
 // the route name.
 func ComposeRouteName(namespace, name string, rule string) string {

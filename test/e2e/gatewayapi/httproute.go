@@ -781,6 +781,38 @@ spec:
 			applyHTTPRouteAndAssert(s, route, asserts)
 		})
 
+		It("Service Endpoints changed", func() {
+			gatewayName := s.Namespace()
+			By("create HTTPRoute")
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(exactRouteByGet, gatewayName), 1)
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.example",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+
+			By("scale httpbin deployment to 0")
+			s.ScaleHTTPBIN(0)
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.example",
+				Check:  scaffold.WithExpectedStatus(http.StatusServiceUnavailable),
+			})
+
+			By("scale httpbin deployment to 1")
+			s.ScaleHTTPBIN(1)
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.example",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+		})
 	})
 
 	Context("HTTPRoute Rule Match", func() {
