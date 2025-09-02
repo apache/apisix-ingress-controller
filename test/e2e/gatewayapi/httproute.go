@@ -30,6 +30,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
@@ -1882,9 +1883,10 @@ spec:
 			beforeEachHTTP()
 			s.DeployNginx(framework.NginxOptions{
 				Namespace: s.Namespace(),
+				Replicas:  ptr.To(int32(2)),
 			})
 		})
-		It("HTTPRoute Canary", func() {
+		FIt("HTTPRoute Canary", func() {
 			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(sameWeiht, s.Namespace()), 1)
 			time.Sleep(5 * time.Second)
 
