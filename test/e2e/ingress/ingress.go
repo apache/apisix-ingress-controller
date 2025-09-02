@@ -225,12 +225,6 @@ spec:
 			time.Sleep(5 * time.Second)
 
 			By("verify default ingress")
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHost("default.example.com").
-				Expect().
-				Status(200)
-
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
 				Path:   "/get",
@@ -238,7 +232,8 @@ spec:
 				Check:  scaffold.WithExpectedStatus(http.StatusOK),
 			})
 
-			s.ScaleHTTPBIN(0)
+			err = s.ScaleHTTPBIN(0)
+			Expect(err).NotTo(HaveOccurred(), "scaling httpbin to 0")
 
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
@@ -247,7 +242,8 @@ spec:
 				Check:  scaffold.WithExpectedStatus(http.StatusServiceUnavailable),
 			})
 
-			s.ScaleHTTPBIN(2)
+			err = s.ScaleHTTPBIN(1)
+			Expect(err).NotTo(HaveOccurred(), "scaling httpbin to 1")
 
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",

@@ -794,7 +794,8 @@ spec:
 			})
 
 			By("scale httpbin deployment to 0")
-			s.ScaleHTTPBIN(0)
+			err := s.ScaleHTTPBIN(0)
+			Expect(err).NotTo(HaveOccurred(), "scaling httpbin deployment to 0")
 
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
@@ -804,7 +805,8 @@ spec:
 			})
 
 			By("scale httpbin deployment to 1")
-			s.ScaleHTTPBIN(1)
+			err = s.ScaleHTTPBIN(1)
+			Expect(err).NotTo(HaveOccurred(), "scaling httpbin deployment to 1")
 
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
