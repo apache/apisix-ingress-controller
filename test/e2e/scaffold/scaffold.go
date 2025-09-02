@@ -460,6 +460,25 @@ spec:
           value: "%s"
 `
 
+const gatewayProxyWithServiceYaml = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  provider:
+    type: ControlPlane
+    controlPlane:
+      service:
+        name: %s
+        port: 9180
+      auth:
+        type: AdminKey
+        adminKey:
+          value: "%s"
+`
+
 const ingressClassYaml = `
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
@@ -477,6 +496,10 @@ spec:
 
 func (s *Scaffold) GetGatewayProxyYaml() string {
 	return fmt.Sprintf(gatewayProxyYaml, s.namespace, s.namespace, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+}
+
+func (s *Scaffold) GetGatewayProxyWithServiceYaml() string {
+	return fmt.Sprintf(gatewayProxyWithServiceYaml, s.namespace, s.namespace, s.dataplaneService.Name, s.AdminKey())
 }
 
 func (s *Scaffold) GetIngressClassYaml() string {

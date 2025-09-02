@@ -37,11 +37,19 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	"github.com/apache/apisix-ingress-controller/internal/provider/common"
 	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
-const ProviderTypeAPISIX = "apisix"
+const (
+	ProviderTypeAPISIX = "apisix"
+
+	RetryBaseDelay = 1 * time.Second
+	RetryMaxDelay  = 1000 * time.Second
+
+	MinSyncPeriod = 1 * time.Second
+)
 
 type apisixProvider struct {
 	provider.Options
@@ -223,33 +231,32 @@ func (d *apisixProvider) Start(ctx context.Context) error {
 
 	initalSyncDelay := d.InitSyncDelay
 	if initalSyncDelay > 0 {
-		time.AfterFunc(initalSyncDelay, func() {
-			if err := d.sync(ctx); err != nil {
-				log.Error(err)
-				return
-			}
-		})
+		time.AfterFunc(initalSyncDelay, d.syncNotify)
 	}
 
-	if d.SyncPeriod < 1 {
-		return nil
+	syncPeriod := d.SyncPeriod
+	if syncPeriod < MinSyncPeriod {
+		syncPeriod = MinSyncPeriod
 	}
-	ticker := time.NewTicker(d.SyncPeriod)
+	ticker := time.NewTicker(syncPeriod)
 	defer ticker.Stop()
+
+	retrier := common.NewRetrier(common.NewExponentialBackoff(RetryBaseDelay, RetryMaxDelay))
+
 	for {
-		synced := false
 		select {
 		case <-d.syncCh:
-			synced = true
 		case <-ticker.C:
-			synced = true
+		case <-retrier.C():
 		case <-ctx.Done():
+			retrier.Reset()
 			return nil
 		}
-		if synced {
-			if err := d.sync(ctx); err != nil {
-				log.Error(err)
-			}
+		if err := d.sync(ctx); err != nil {
+			log.Error(err)
+			retrier.Next()
+		} else {
+			retrier.Reset()
 		}
 	}
 }

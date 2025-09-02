@@ -1676,4 +1676,59 @@ spec:
 			})
 		})
 	})
+
+	Context("Exception Test", func() {
+		const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: default
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - httpbin
+      paths:
+      - /*
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+`
+		It("try again when sync failed", func() {
+			s.Deployer.ScaleDataplane(0)
+
+			err := s.CreateResourceFromString(fmt.Sprintf(apisixRouteSpec, s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "creating ApisixRoute")
+
+			By("check ApisixRoute status")
+			s.RetryAssertion(func() string {
+				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml", "-n", s.Namespace())
+				return output
+			}).WithTimeout(30 * time.Second).
+				Should(
+					And(
+						ContainSubstring(`status: "False"`),
+						ContainSubstring(`reason: SyncFailed`),
+					),
+				)
+
+			s.Deployer.ScaleDataplane(1)
+
+			s.RetryAssertion(func() string {
+				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml", "-n", s.Namespace())
+				return output
+			}).WithTimeout(60 * time.Second).
+				Should(ContainSubstring(`status: "True"`))
+
+			By("check route in APISIX")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				Check:  scaffold.WithExpectedStatus(200),
+			})
+		})
+	})
 })

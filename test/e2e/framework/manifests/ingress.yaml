@@ -333,7 +333,7 @@ data:
                                         # The period between two consecutive syncs.
                                         # The default value is 0 seconds, which means the controller will not sync.
                                         # If you want to enable the sync, set it to a positive value.
-      init_sync_delay: {{ .InitSyncDelay | default "1m" }}
+      init_sync_delay: {{ .InitSyncDelay | default "20m" }}
 ---
 apiVersion: v1
 kind: Service

@@ -24,6 +24,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/yaml"
 
@@ -41,7 +42,7 @@ var _ = Describe("Test CRD Status", Label("apisix.apache.org", "v2", "apisixrout
 	Context("Test ApisixRoute Sync Status", func() {
 		BeforeEach(func() {
 			By("create GatewayProxy")
-			gatewayProxy := s.GetGatewayProxyYaml()
+			gatewayProxy := s.GetGatewayProxyWithServiceYaml()
 			err := s.CreateResourceFromString(gatewayProxy)
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 			time.Sleep(5 * time.Second)
@@ -144,7 +145,8 @@ spec:
 
 		It("dataplane unavailable", func() {
 			By("apply ApisixRoute")
-			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, fmt.Sprintf(ar, s.Namespace(), s.Namespace()))
+			arYaml := fmt.Sprintf(ar, s.Namespace(), s.Namespace())
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, arYaml)
 
 			By("check route in APISIX")
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -154,13 +156,28 @@ spec:
 				Check:   scaffold.WithExpectedStatus(200),
 			})
 
-			s.Deployer.ScaleDataplane(0)
+			By("get yaml from service")
+			serviceYaml, err := s.GetOutputFromString("svc", framework.ProviderType, "-o", "yaml")
+			Expect(err).NotTo(HaveOccurred(), "getting service yaml")
+			By("update service to type ExternalName with invalid host")
+			var k8sservice corev1.Service
+			err = yaml.Unmarshal([]byte(serviceYaml), &k8sservice)
+			Expect(err).NotTo(HaveOccurred(), "unmarshalling service")
+			oldSpec := k8sservice.Spec
+			k8sservice.Spec = corev1.ServiceSpec{
+				Type:         corev1.ServiceTypeExternalName,
+				ExternalName: "invalid.host",
+			}
+			newServiceYaml, err := yaml.Marshal(k8sservice)
+			Expect(err).NotTo(HaveOccurred(), "marshalling service")
+			err = s.CreateResourceFromString(string(newServiceYaml))
+			Expect(err).NotTo(HaveOccurred(), "creating service")
 
 			By("check ApisixRoute status")
 			s.RetryAssertion(func() string {
-				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml", "-n", s.Namespace())
+				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
 				return output
-			}).WithTimeout(80 * time.Second).
+			}).WithTimeout(60 * time.Second).
 				Should(
 					And(
 						ContainSubstring(`status: "False"`),
@@ -168,13 +185,22 @@ spec:
 					),
 				)
 
-			s.Deployer.ScaleDataplane(1)
+			By("update service to original spec")
+			serviceYaml, err = s.GetOutputFromString("svc", framework.ProviderType, "-o", "yaml")
+			Expect(err).NotTo(HaveOccurred(), "getting service yaml")
+			err = yaml.Unmarshal([]byte(serviceYaml), &k8sservice)
+			Expect(err).NotTo(HaveOccurred(), "unmarshalling service")
+			k8sservice.Spec = oldSpec
+			newServiceYaml, err = yaml.Marshal(k8sservice)
+			Expect(err).NotTo(HaveOccurred(), "marshalling service")
+			err = s.CreateResourceFromString(string(newServiceYaml))
+			Expect(err).NotTo(HaveOccurred(), "creating service")
 
 			By("check ApisixRoute status after scaling up")
 			s.RetryAssertion(func() string {
-				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml", "-n", s.Namespace())
+				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
 				return output
-			}).WithTimeout(80 * time.Second).
+			}).WithTimeout(60 * time.Second).
 				Should(
 					And(
 						ContainSubstring(`status: "True"`),
