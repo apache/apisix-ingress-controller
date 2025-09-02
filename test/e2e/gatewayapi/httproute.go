@@ -1886,7 +1886,7 @@ spec:
 				Replicas:  ptr.To(int32(2)),
 			})
 		})
-		FIt("HTTPRoute Canary", func() {
+		It("HTTPRoute Canary", func() {
 			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(sameWeiht, s.Namespace()), 1)
 			time.Sleep(5 * time.Second)
 
