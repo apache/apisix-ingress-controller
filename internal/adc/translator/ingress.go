@@ -222,7 +222,7 @@ func (t *Translator) TranslateIngress(tctx *provider.TranslateContext, obj *netw
 
 // translateEndpointSliceForIngress create upstream nodes from EndpointSlice
 func (t *Translator) translateEndpointSliceForIngress(weight int, endpointSlices []discoveryv1.EndpointSlice, servicePort *corev1.ServicePort) adctypes.UpstreamNodes {
-	var nodes adctypes.UpstreamNodes
+	nodes := adctypes.UpstreamNodes{}
 	if len(endpointSlices) == 0 {
 		return nodes
 	}

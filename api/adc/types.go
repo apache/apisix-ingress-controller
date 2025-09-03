@@ -505,6 +505,20 @@ func (n *UpstreamNodes) UnmarshalJSON(p []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaler interface for UpstreamNodes.
+// By default, Go serializes a nil slice as JSON null. However, for compatibility
+// with APISIX semantics, we want a nil UpstreamNodes to be encoded as an empty
+// array ([]) instead of null. Non-nil slices are marshaled as usual.
+//
+// See APISIX upstream nodes schema definition for details:
+// https://github.com/apache/apisix/blob/77dacda31277a31d6014b4970e36bae2a5c30907/apisix/schema_def.lua#L295-L338
+func (n UpstreamNodes) MarshalJSON() ([]byte, error) {
+	if n == nil {
+		return []byte("[]"), nil
+	}
+	return json.Marshal([]UpstreamNode(n))
+}
+
 // ComposeRouteName uses namespace, name and rule name to compose
 // the route name.
 func ComposeRouteName(namespace, name string, rule string) string {
