@@ -1375,7 +1375,7 @@ definitions and custom configuration.
 | Field | Description |
 | --- | --- |
 | `ingressClassName` _string_ | IngressClassName is the name of an IngressClass cluster resource. Controller implementations use this field to determine whether they should process this ApisixUpstream resource. |
-| `externalNodes` _[ApisixUpstreamExternalNode](#apisixupstreamexternalnode) array_ | ExternalNodes defines a static list of backend nodes located outside the cluster. When this field is set, the upstream will route traffic directly to these nodes without DNS resolution or service discovery. |
+| `externalNodes` _[ApisixUpstreamExternalNode](#apisixupstreamexternalnode) array_ | ExternalNodes defines a static list of backend nodes. These can be external hosts outside the cluster or cluster-internal Services specified by their DNS name. When this field is set, the upstream will route traffic directly to these nodes without DNS resolution or service discovery. |
 | `loadbalancer` _[LoadBalancer](#loadbalancer)_ | LoadBalancer specifies the load balancer configuration for Kubernetes Service. |
 | `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. Can be `http`, `https`, `grpc`, or `grpcs`. |
 | `retries` _integer_ | Retries defines the number of retry attempts APISIX should make when a failure occurs. Failures include timeouts, network errors, or 5xx status codes. |
