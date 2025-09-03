@@ -285,7 +285,7 @@ func (t *Translator) fillHTTPRoutePolicies(routes []*adctypes.Route, policies []
 }
 
 func (t *Translator) translateEndpointSlice(portName *string, weight int, endpointSlices []discoveryv1.EndpointSlice, endpointFilter func(*discoveryv1.Endpoint) bool) adctypes.UpstreamNodes {
-	var nodes adctypes.UpstreamNodes
+	nodes := adctypes.UpstreamNodes{}
 	if len(endpointSlices) == 0 {
 		return nodes
 	}
