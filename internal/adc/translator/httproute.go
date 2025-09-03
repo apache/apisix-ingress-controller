@@ -525,7 +525,7 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 			// Set other upstreams in traffic-split
 			for i, upstream := range upstreams {
 				weight := apiv2.DefaultWeight
-				// get weight from the backend ref start from the second backend
+				// get weight from the backend refs starting from the second backend
 				if i+1 < len(rule.BackendRefs) && rule.BackendRefs[i+1].Weight != nil {
 					weight = int(*rule.BackendRefs[i+1].Weight)
 				}
