@@ -33,7 +33,8 @@ type ApisixUpstreamSpec struct {
 	// +kubebuilder:validation:Optional
 	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
 
-	// ExternalNodes defines a static list of backend nodes located outside the cluster.
+	// ExternalNodes defines a static list of backend nodes. These can be external hosts
+	// outside the cluster or cluster-internal Services specified by their DNS name.
 	// When this field is set, the upstream will route traffic directly to these nodes
 	// without DNS resolution or service discovery.
 	// +kubebuilder:validation:Optional
