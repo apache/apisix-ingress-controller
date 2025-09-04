@@ -49,7 +49,7 @@ type IngressDeployOpts struct {
 	ProviderSyncPeriod time.Duration
 	Namespace          string
 	StatusAddress      string
-	Replicas           int
+	Replicas           *int
 	InitSyncDelay      time.Duration
 }
 

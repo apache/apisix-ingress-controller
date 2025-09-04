@@ -64,7 +64,11 @@ type ApisixRouteReconciler struct {
 // SetupWithManager sets up the controller with the Manager.
 func (r *ApisixRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&apiv2.ApisixRoute{}).
+		For(&apiv2.ApisixRoute{},
+			builder.WithPredicates(
+				MatchesIngressClassPredicate(r.Client, r.Log),
+			),
+		).
 		WithEventFilter(
 			predicate.Or(
 				predicate.GenerationChangedPredicate{},
@@ -125,10 +129,14 @@ func (r *ApisixRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		err  error
 	)
 
-	if ic, err = GetIngressClass(tctx, r.Client, r.Log, ar.Spec.IngressClassName); err != nil {
+	if ic, err = FindMatchingIngressClass(tctx, r.Client, r.Log, &ar); err != nil {
 		r.Log.V(1).Info("no matching IngressClass available",
 			"ingressClassName", ar.Spec.IngressClassName,
 			"error", err.Error())
+		if err := r.Provider.Delete(ctx, &ar); err != nil {
+			r.Log.Error(err, "failed to delete apisixroute", "apisixroute", ar)
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, nil
 	}
 	defer func() { r.updateStatus(&ar, err) }()
