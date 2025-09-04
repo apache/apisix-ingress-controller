@@ -37,6 +37,7 @@ var (
 
 type NginxOptions struct {
 	Namespace string
+	Replicas  *int32
 }
 
 func init() {

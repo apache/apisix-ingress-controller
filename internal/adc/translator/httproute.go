@@ -33,6 +33,7 @@ import (
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/id"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
@@ -466,32 +467,89 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 	labels := label.GenLabel(httpRoute)
 
 	for ruleIndex, rule := range rules {
-		upstream := adctypes.NewDefaultUpstream()
-		var backendErr error
-		for _, backend := range rule.BackendRefs {
-			if backend.Namespace == nil {
-				namespace := gatewayv1.Namespace(httpRoute.Namespace)
-				backend.Namespace = &namespace
-			}
-			upNodes, err := t.translateBackendRef(tctx, backend.BackendRef, DefaultEndpointFilter)
-			if err != nil {
-				backendErr = err
-				continue
-			}
-			t.AttachBackendTrafficPolicyToUpstream(backend.BackendRef, tctx.BackendTrafficPolicies, upstream)
-			upstream.Nodes = append(upstream.Nodes, upNodes...)
-		}
-
-		// todo: support multiple backends
 		service := adctypes.NewDefaultService()
 		service.Labels = labels
 
 		service.Name = adctypes.ComposeServiceNameWithRule(httpRoute.Namespace, httpRoute.Name, fmt.Sprintf("%d", ruleIndex))
 		service.ID = id.GenID(service.Name)
 		service.Hosts = hosts
-		service.Upstream = upstream
 
-		if backendErr != nil && len(upstream.Nodes) == 0 {
+		var (
+			upstreams         = make([]*adctypes.Upstream, 0)
+			weightedUpstreams = make([]adctypes.TrafficSplitConfigRuleWeightedUpstream, 0)
+			backendErr        error
+		)
+
+		for _, backend := range rule.BackendRefs {
+			if backend.Namespace == nil {
+				namespace := gatewayv1.Namespace(httpRoute.Namespace)
+				backend.Namespace = &namespace
+			}
+			upstream := adctypes.NewDefaultUpstream()
+			upNodes, err := t.translateBackendRef(tctx, backend.BackendRef, DefaultEndpointFilter)
+			if err != nil {
+				backendErr = err
+				continue
+			}
+			if len(upNodes) == 0 {
+				continue
+			}
+
+			t.AttachBackendTrafficPolicyToUpstream(backend.BackendRef, tctx.BackendTrafficPolicies, upstream)
+			upstream.Nodes = upNodes
+			upstreams = append(upstreams, upstream)
+		}
+
+		// Handle multiple backends with traffic-split plugin
+		if len(upstreams) == 0 {
+			// Create a default upstream if no valid backends
+			upstream := adctypes.NewDefaultUpstream()
+			service.Upstream = upstream
+		} else if len(upstreams) == 1 {
+			// Single backend - use directly as service upstream
+			service.Upstream = upstreams[0]
+		} else {
+			// Multiple backends - use traffic-split plugin
+			service.Upstream = upstreams[0]
+			upstreams = upstreams[1:]
+
+			// Set weight in traffic-split for the default upstream
+			weight := apiv2.DefaultWeight
+			if rule.BackendRefs[0].Weight != nil {
+				weight = int(*rule.BackendRefs[0].Weight)
+			}
+			weightedUpstreams = append(weightedUpstreams, adctypes.TrafficSplitConfigRuleWeightedUpstream{
+				Weight: weight,
+			})
+
+			// Set other upstreams in traffic-split
+			for i, upstream := range upstreams {
+				weight := apiv2.DefaultWeight
+				// get weight from the backend refs starting from the second backend
+				if i+1 < len(rule.BackendRefs) && rule.BackendRefs[i+1].Weight != nil {
+					weight = int(*rule.BackendRefs[i+1].Weight)
+				}
+				weightedUpstreams = append(weightedUpstreams, adctypes.TrafficSplitConfigRuleWeightedUpstream{
+					Upstream: upstream,
+					Weight:   weight,
+				})
+			}
+
+			if len(weightedUpstreams) > 0 {
+				if service.Plugins == nil {
+					service.Plugins = make(map[string]any)
+				}
+				service.Plugins["traffic-split"] = &adctypes.TrafficSplitConfig{
+					Rules: []adctypes.TrafficSplitConfigRule{
+						{
+							WeightedUpstreams: weightedUpstreams,
+						},
+					},
+				}
+			}
+		}
+
+		if backendErr != nil && (service.Upstream == nil || len(service.Upstream.Nodes) == 0) {
 			if service.Plugins == nil {
 				service.Plugins = make(map[string]any)
 			}
