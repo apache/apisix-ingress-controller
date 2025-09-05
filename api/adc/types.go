@@ -635,9 +635,9 @@ type ResponseRewriteConfig struct {
 }
 
 type ResponseHeaders struct {
-	Set    map[string]string `json:"set" yaml:"set"`
-	Add    []string          `json:"add" yaml:"add"`
-	Remove []string          `json:"remove" yaml:"remove"`
+	Set    map[string]string `json:"set,omitempty" yaml:"set,omitempty"`
+	Add    []string          `json:"add,omitempty" yaml:"add,omitempty"`
+	Remove []string          `json:"remove,omitempty" yaml:"remove,omitempty"`
 }
 
 // RequestMirror is the rule config for proxy-mirror plugin.
