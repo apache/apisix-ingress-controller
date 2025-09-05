@@ -149,6 +149,28 @@ func WithExpectedHeaders(expectedHeaders map[string]string) ResponseCheckFunc {
 	}
 }
 
+func WithExpectedNotHeader(key string) ResponseCheckFunc {
+	return func(resp *HTTPResponse) error {
+		if resp.Header.Get(key) != "" {
+			return fmt.Errorf("expected header %q to be empty, but got %q",
+				key, resp.Header.Get(key))
+		}
+		return nil
+	}
+}
+
+func WithExpectedNotHeaders(unexpectedHeaders []string) ResponseCheckFunc {
+	return func(resp *HTTPResponse) error {
+		for _, key := range unexpectedHeaders {
+			if resp.Header.Get(key) != "" {
+				return fmt.Errorf("expected header %q to be empty, but got %q",
+					key, resp.Header.Get(key))
+			}
+		}
+		return nil
+	}
+}
+
 func (s *Scaffold) RequestAssert(r *RequestAssert) bool {
 	if r.Client == nil {
 		r.Client = s.NewAPISIXClient()
