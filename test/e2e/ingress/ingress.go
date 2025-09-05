@@ -178,6 +178,26 @@ spec:
               number: 80
 `
 
+		var ingressSpec = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: %s
+spec:
+  ingressClassName: %s
+  rules:
+  - host: default.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
+
 		var ingressWithExternalName = `
 apiVersion: v1
 kind: Service
@@ -321,6 +341,42 @@ spec:
 				WithHost("default.example.com").
 				Expect().
 				Status(404)
+		})
+
+		It("IngressClassName Change", func() {
+			By("create Ingress with IngressClass")
+			err := s.CreateResourceFromString(fmt.Sprintf(ingressSpec, s.Namespace(), "apisix-default"))
+			Expect(err).NotTo(HaveOccurred(), "creating Ingress with IngressClass")
+
+			By("verify default ingress")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "default.example.com",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+
+			By("change IngressClassName to invalid")
+			err = s.CreateResourceFromString(fmt.Sprintf(ingressSpec, s.Namespace(), "invalid"))
+			Expect(err).NotTo(HaveOccurred(), "creating Ingress with IngressClass")
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "default.example.com",
+				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+			})
+
+			By("change IngressClassName to default")
+			err = s.CreateResourceFromString(fmt.Sprintf(ingressSpec, s.Namespace(), "apisix-default"))
+			Expect(err).NotTo(HaveOccurred(), "creating Ingress with IngressClass")
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "default.example.com",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
 		})
 	})
 

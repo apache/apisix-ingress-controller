@@ -326,6 +326,15 @@ data:
     log_level: "debug"
     controller_name: {{ .ControllerName | default "apisix.apache.org/apisix-ingress-controller" }}
     leader_election_id: "apisix-ingress-controller-leader"
+    leader_election:
+      lease_duration: 10s                   # lease_duration is the duration that non-leader candidates will wait
+                                            # after observing a leadership renewal until attempting to acquire leadership of a
+                                            # leader election.
+      renew_deadline: 5s                   # renew_deadline is the time in seconds that the acting controller
+                                            # will retry refreshing leadership before giving up.
+      retry_period: 2s                      # retry_period is the time in seconds that the acting controller
+                                            # will wait between tries of actions with the controller.
+      disable: false                        # Whether to disable leader election.
     exec_adc_timeout: 5s
     provider:
       type: {{ .ProviderType | default "apisix" }}

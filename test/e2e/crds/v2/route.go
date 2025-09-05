@@ -526,6 +526,61 @@ spec:
 				Check:  scaffold.WithExpectedStatus(http.StatusOK),
 			})
 		})
+
+		It("IngressClassName Change", func() {
+			const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: default
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - httpbin
+      paths:
+      - /get
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+`
+
+			By("apply ApisixRoute")
+			var apisixRoute apiv2.ApisixRoute
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+
+			By("change IngressClassName to invalid")
+			err := s.CreateResourceFromString(fmt.Sprintf(apisixRouteSpec, "invalid"))
+			Expect(err).NotTo(HaveOccurred(), "creating ApisixRoute with IngressClass")
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+			})
+
+			By("change IngressClassName to default")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+		})
 	})
 
 	Context("Test ApisixRoute reference ApisixUpstream", func() {

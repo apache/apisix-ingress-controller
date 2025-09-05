@@ -48,6 +48,7 @@ const (
 	KindBackendTrafficPolicy = "BackendTrafficPolicy"
 	KindConsumer             = "Consumer"
 	KindPluginConfig         = "PluginConfig"
+	KindApisixUpstream       = "ApisixUpstream"
 )
 
 func KindOf(obj any) string {
@@ -131,6 +132,12 @@ func GvkOf(obj any) schema.GroupVersionKind {
 			Group:   "apisix.apache.org",
 			Version: "v2",
 			Kind:    KindApisixConsumer,
+		}
+	case *v2.ApisixUpstream:
+		return schema.GroupVersionKind{
+			Group:   "apisix.apache.org",
+			Version: "v2",
+			Kind:    KindApisixUpstream,
 		}
 	case *v1alpha1.HTTPRoutePolicy:
 		return schema.GroupVersionKind{
