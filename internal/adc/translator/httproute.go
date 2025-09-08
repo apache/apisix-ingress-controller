@@ -332,8 +332,8 @@ func (t *Translator) TranslateBackendRefWithFilter(tctx *provider.TranslateConte
 func (t *Translator) composeUpstreamNameForBackendRef(ref gatewayv1.BackendRef) string {
 	var (
 		kind      string
-		namespace string = string(*ref.Namespace)
-		name      string = string(ref.Name)
+		namespace = string(*ref.Namespace)
+		name      = string(ref.Name)
 		port      int32
 	)
 	if ref.Kind == nil {
