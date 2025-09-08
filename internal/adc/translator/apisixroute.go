@@ -261,6 +261,11 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 	service.Upstream = upstreams[0]
 	upstreams = upstreams[1:]
 
+	// Add remaining upstreams to service.Upstreams for independent management
+	if len(upstreams) > 0 {
+		service.Upstreams = upstreams
+	}
+
 	// set weight in traffic-split for the default upstream
 	if len(upstreams) > 0 {
 		weight, err := strconv.Atoi(service.Upstream.Labels["meta_weight"])
@@ -272,15 +277,15 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 		})
 	}
 
-	// set others upstreams in traffic-split
+	// set others upstreams in traffic-split using upstream_id
 	for _, item := range upstreams {
 		weight, err := strconv.Atoi(item.Labels["meta_weight"])
 		if err != nil {
 			weight = apiv2.DefaultWeight
 		}
 		weightedUpstreams = append(weightedUpstreams, adc.TrafficSplitConfigRuleWeightedUpstream{
-			Upstream: item,
-			Weight:   weight,
+			UpstreamID: item.ID,
+			Weight:     weight,
 		})
 	}
 

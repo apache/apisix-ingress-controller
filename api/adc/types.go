@@ -168,6 +168,7 @@ type Service struct {
 	StreamRoutes    []*StreamRoute `json:"stream_routes,omitempty" yaml:"stream_routes,omitempty"`
 	StripPathPrefix *bool          `json:"strip_path_prefix,omitempty" yaml:"strip_path_prefix,omitempty"`
 	Upstream        *Upstream      `json:"upstream,omitempty" yaml:"upstream,omitempty"`
+	Upstreams       []*Upstream    `json:"upstreams,omitempty" yaml:"upstreams,omitempty"`
 }
 
 // +k8s:deepcopy-gen=true
