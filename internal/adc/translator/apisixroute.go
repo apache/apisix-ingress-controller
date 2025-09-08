@@ -226,6 +226,10 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 		if backend.Weight != nil {
 			upstream.Labels["meta_weight"] = strconv.FormatInt(int64(*backend.Weight), 10)
 		}
+
+		upstreamName := apiv2.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, int32(backend.ServicePort.IntValue()), backend.ResolveGranularity)
+		upstream.Name = upstreamName
+		upstream.ID = id.GenID(upstreamName)
 		upstreams = append(upstreams, upstream)
 	}
 
@@ -248,6 +252,9 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 			upstream.Labels["meta_weight"] = strconv.FormatInt(int64(*upstreamRef.Weight), 10)
 		}
 
+		upstreamName := apiv2.ComposeExternalUpstreamName(upsNN.Namespace, upsNN.Name)
+		upstream.Name = upstreamName
+		upstream.ID = id.GenID(upstreamName)
 		upstreams = append(upstreams, upstream)
 	}
 
@@ -259,6 +266,10 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 	// the first valid upstream is used as service.upstream;
 	// the others are configured in the traffic-split plugin
 	service.Upstream = upstreams[0]
+	// remove the id and name of the service.upstream, adc schema does not need id and name for service.upstream
+	service.Upstream.ID = ""
+	service.Upstream.Name = ""
+
 	upstreams = upstreams[1:]
 
 	// Add remaining upstreams to service.Upstreams for independent management
