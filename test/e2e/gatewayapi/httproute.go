@@ -1718,8 +1718,8 @@ spec:
         type: PathPrefix
         value: /resource/foo
     filters:
-    - type: CORS
-      cors:
+    - cors:
+		  - type: CORS 
         allowOrigins:
         - http://foo.example
         - http://bar.example
