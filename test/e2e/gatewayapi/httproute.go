@@ -2006,7 +2006,7 @@ spec:
 			})
 		})
 
-		FIt("HTTPRoute CORS Filter", func() {
+		It("HTTPRoute CORS Filter", func() {
 			By("create HTTPRoute with CORS filter")
 			s.ResourceApplied("HTTPRoute", "http-route-cors", fmt.Sprintf(corsFilter, s.Namespace(), s.Namespace()), 1)
 
