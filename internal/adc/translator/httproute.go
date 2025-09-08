@@ -329,6 +329,25 @@ func (t *Translator) TranslateBackendRefWithFilter(tctx *provider.TranslateConte
 	return t.translateBackendRef(tctx, ref, endpointFilter)
 }
 
+func (t *Translator) composeUpstreamNameForBackendRef(ref gatewayv1.BackendRef) string {
+	var (
+		kind      string
+		namespace string = string(*ref.Namespace)
+		name      string = string(ref.Name)
+		port      int32
+	)
+	if ref.Kind == nil {
+		kind = "Service"
+	} else {
+		kind = string(*ref.Kind)
+	}
+	if ref.Port != nil {
+		port = int32(*ref.Port)
+	}
+
+	return fmt.Sprintf("%s_%s_%s_%d", kind, namespace, name, port)
+}
+
 func (t *Translator) translateBackendRef(tctx *provider.TranslateContext, ref gatewayv1.BackendRef, endpointFilter func(*discoveryv1.Endpoint) bool) (adctypes.UpstreamNodes, error) {
 	if ref.Kind != nil && *ref.Kind != "Service" {
 		return adctypes.UpstreamNodes{}, fmt.Errorf("kind %s is not supported", *ref.Kind)
@@ -497,6 +516,11 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 
 			t.AttachBackendTrafficPolicyToUpstream(backend.BackendRef, tctx.BackendTrafficPolicies, upstream)
 			upstream.Nodes = upNodes
+
+			// Compose upstream name similar to ApisixRoute
+			upstreamName := t.composeUpstreamNameForBackendRef(backend.BackendRef)
+			upstream.Name = upstreamName
+			upstream.ID = id.GenID(upstreamName)
 			upstreams = append(upstreams, upstream)
 		}
 
@@ -508,10 +532,22 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 		} else if len(upstreams) == 1 {
 			// Single backend - use directly as service upstream
 			service.Upstream = upstreams[0]
+			// remove the id and name of the service.upstream, adc schema does not need id and name for service.upstream
+			service.Upstream.ID = ""
+			service.Upstream.Name = ""
 		} else {
 			// Multiple backends - use traffic-split plugin
 			service.Upstream = upstreams[0]
+			// remove the id and name of the service.upstream, adc schema does not need id and name for service.upstream
+			service.Upstream.ID = ""
+			service.Upstream.Name = ""
+
 			upstreams = upstreams[1:]
+
+			// Add remaining upstreams to service.Upstreams for independent management
+			if len(upstreams) > 0 {
+				service.Upstreams = upstreams
+			}
 
 			// Set weight in traffic-split for the default upstream
 			weight := apiv2.DefaultWeight
@@ -522,7 +558,7 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 				Weight: weight,
 			})
 
-			// Set other upstreams in traffic-split
+			// Set other upstreams in traffic-split using upstream_id
 			for i, upstream := range upstreams {
 				weight := apiv2.DefaultWeight
 				// get weight from the backend refs starting from the second backend
@@ -530,8 +566,8 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 					weight = int(*rule.BackendRefs[i+1].Weight)
 				}
 				weightedUpstreams = append(weightedUpstreams, adctypes.TrafficSplitConfigRuleWeightedUpstream{
-					Upstream: upstream,
-					Weight:   weight,
+					UpstreamID: upstream.ID,
+					Weight:     weight,
 				})
 			}
 
