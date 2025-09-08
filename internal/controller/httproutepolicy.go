@@ -198,7 +198,7 @@ func (r *IngressReconciler) updateHTTPRoutePolicyStatusOnDeleting(ctx context.Co
 				if err := r.Get(ctx, namespacedName, &ingress); err != nil {
 					continue
 				}
-				ingressClass, err := r.getIngressClass(ctx, &ingress)
+				ingressClass, err := FindMatchingIngressClass(ctx, r.Client, r.Log, &ingress)
 				if err != nil {
 					continue
 				}

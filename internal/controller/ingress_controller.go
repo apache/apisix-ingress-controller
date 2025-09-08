@@ -70,7 +70,7 @@ func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkingv1.Ingress{},
 			builder.WithPredicates(
-				predicate.NewPredicateFuncs(r.checkIngressClass),
+				MatchesIngressClassPredicate(r.Client, r.Log),
 			),
 		).
 		WithEventFilter(
@@ -151,10 +151,13 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// create a translate context
 	tctx := provider.NewDefaultTranslateContext(ctx)
 
-	ingressClass, err := r.getIngressClass(ctx, ingress)
+	ingressClass, err := FindMatchingIngressClass(tctx, r.Client, r.Log, ingress)
 	if err != nil {
-		r.Log.Error(err, "failed to get IngressClass")
-		return ctrl.Result{}, err
+		if err := r.Provider.Delete(ctx, ingress); err != nil {
+			r.Log.Error(err, "failed to delete ingress resources", "ingress", ingress.Name)
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, nil
 	}
 
 	tctx.RouteParentRefs = append(tctx.RouteParentRefs, gatewayv1.ParentReference{
@@ -205,22 +208,6 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	return ctrl.Result{}, nil
-}
-
-// getIngressClass get the ingress class for the ingress
-func (r *IngressReconciler) getIngressClass(ctx context.Context, obj client.Object) (*networkingv1.IngressClass, error) {
-	ingress := obj.(*networkingv1.Ingress)
-	var ingressClassName string
-	if ingress.Spec.IngressClassName != nil {
-		ingressClassName = *ingress.Spec.IngressClassName
-	}
-	return GetIngressClass(ctx, r.Client, r.Log, ingressClassName)
-}
-
-// checkIngressClass check if the ingress uses the ingress class that we control
-func (r *IngressReconciler) checkIngressClass(obj client.Object) bool {
-	_, err := r.getIngressClass(context.Background(), obj)
-	return err == nil
 }
 
 // matchesIngressController check if the ingress class is controlled by us
@@ -307,7 +294,7 @@ func (r *IngressReconciler) listIngressesByService(ctx context.Context, obj clie
 
 	requests := make([]reconcile.Request, 0, len(ingressList.Items))
 	for _, ingress := range ingressList.Items {
-		if r.checkIngressClass(&ingress) {
+		if MatchesIngressClass(r.Client, r.Log, &ingress) {
 			requests = append(requests, reconcile.Request{
 				NamespacedName: client.ObjectKey{
 					Namespace: ingress.Namespace,
@@ -340,7 +327,7 @@ func (r *IngressReconciler) listIngressesBySecret(ctx context.Context, obj clien
 
 	requests := make([]reconcile.Request, 0, len(ingressList.Items))
 	for _, ingress := range ingressList.Items {
-		if r.checkIngressClass(&ingress) {
+		if MatchesIngressClass(r.Client, r.Log, &ingress) {
 			requests = append(requests, reconcile.Request{
 				NamespacedName: client.ObjectKey{
 					Namespace: ingress.Namespace,

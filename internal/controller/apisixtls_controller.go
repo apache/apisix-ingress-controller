@@ -36,7 +36,6 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
-	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
@@ -59,7 +58,7 @@ func (r *ApisixTlsReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&apiv2.ApisixTls{},
 			builder.WithPredicates(
-				predicate.NewPredicateFuncs(r.checkIngressClass),
+				MatchesIngressClassPredicate(r.Client, r.Log),
 			),
 		).
 		WithEventFilter(
@@ -115,7 +114,7 @@ func (r *ApisixTlsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	tctx := provider.NewDefaultTranslateContext(ctx)
 
 	// get the ingress class
-	ingressClass, err := GetIngressClass(tctx, r.Client, r.Log, tls.Spec.IngressClassName)
+	ingressClass, err := FindMatchingIngressClass(tctx, r.Client, r.Log, &tls)
 	if err != nil {
 		r.Log.V(1).Info("no matching IngressClass available, skip processing",
 			"ingressClassName", tls.Spec.IngressClassName,
@@ -225,47 +224,6 @@ func (r *ApisixTlsReconciler) updateStatus(tls *apiv2.ApisixTls, condition metav
 			return tlsResult
 		}),
 	})
-}
-
-// checkIngressClass checks if the ApisixTls uses the ingress class that we control
-func (r *ApisixTlsReconciler) checkIngressClass(obj client.Object) bool {
-	tls, ok := obj.(*apiv2.ApisixTls)
-	if !ok {
-		return false
-	}
-
-	return r.matchesIngressClass(tls.Spec.IngressClassName)
-}
-
-// matchesIngressClass checks if the given ingress class name matches our controlled classes
-func (r *ApisixTlsReconciler) matchesIngressClass(ingressClassName string) bool {
-	if ingressClassName == "" {
-		// Check for default ingress class
-		ingressClassList := &networkingv1.IngressClassList{}
-		if err := r.List(context.Background(), ingressClassList, client.MatchingFields{
-			indexer.IngressClass: config.GetControllerName(),
-		}); err != nil {
-			r.Log.Error(err, "failed to list ingress classes")
-			return false
-		}
-
-		// Find the ingress class that is marked as default
-		for _, ic := range ingressClassList.Items {
-			if IsDefaultIngressClass(&ic) && matchesController(ic.Spec.Controller) {
-				return true
-			}
-		}
-		return false
-	}
-
-	// Check if the specified ingress class is controlled by us
-	var ingressClass networkingv1.IngressClass
-	if err := r.Get(context.Background(), client.ObjectKey{Name: ingressClassName}, &ingressClass); err != nil {
-		r.Log.Error(err, "failed to get ingress class", "ingressClass", ingressClassName)
-		return false
-	}
-
-	return matchesController(ingressClass.Spec.Controller)
 }
 
 func (r *ApisixTlsReconciler) listApisixTlsForSecret(ctx context.Context, obj client.Object) []reconcile.Request {

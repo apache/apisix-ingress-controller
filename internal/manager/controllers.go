@@ -210,10 +210,11 @@ func registerReadinessGVK(c client.Client, readier readiness.ReadinessManager) {
 				types.GvkOf(&apiv2.ApisixPluginConfig{}),
 				types.GvkOf(&apiv2.ApisixTls{}),
 				types.GvkOf(&apiv2.ApisixConsumer{}),
+				types.GvkOf(&apiv2.ApisixUpstream{}),
 			},
 			Filter: readiness.GVKFilter(func(obj *unstructured.Unstructured) bool {
 				icName, _, _ := unstructured.NestedString(obj.Object, "spec", "ingressClassName")
-				ingressClass, _ := controller.GetIngressClass(context.Background(), c, log, icName)
+				ingressClass, _ := controller.FindMatchingIngressClassByName(context.Background(), c, log, icName)
 				return ingressClass != nil
 			}),
 		},
