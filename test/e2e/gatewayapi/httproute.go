@@ -1719,7 +1719,7 @@ spec:
         value: /resource/foo
     filters:
     - cors:
-		  - type: CORS 
+      - type: CORS
         allowOrigins:
         - http://foo.example
         - http://bar.example
