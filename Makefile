@@ -27,7 +27,7 @@ IMG ?= apache/apisix-ingress-controller:$(IMAGE_TAG)
 ENVTEST_K8S_VERSION = 1.30.0
 KIND_NAME ?= apisix-ingress-cluster
 
-GATEAY_API_VERSION ?= v1.2.0
+GATEAY_API_VERSION ?= v1.3.0
 ADC_VERSION ?= 0.21.0
 
 GINKGO_VERSION ?= 2.20.0
