@@ -60,6 +60,8 @@ func (t *Translator) fillPluginsFromHTTPRouteFilters(
 			t.fillPluginFromHTTPResponseHeaderFilter(plugins, filter.ResponseHeaderModifier)
 		case gatewayv1.HTTPRouteFilterExtensionRef:
 			t.fillPluginFromExtensionRef(plugins, namespace, filter.ExtensionRef, tctx)
+		case gatewayv1.HTTPRouteFilterCORS:
+			t.fillPluginFromHTTPCORSFilter(plugins, filter.CORS)
 		}
 	}
 }
@@ -127,6 +129,50 @@ func (t *Translator) fillPluginFromURLRewriteFilter(plugins adctypes.Plugins, ur
 			}
 		}
 	}
+}
+
+func (t *Translator) fillPluginFromHTTPCORSFilter(plugins adctypes.Plugins, cors *gatewayv1.HTTPCORSFilter) {
+	pluginName := adctypes.PluginCORS
+	obj := plugins[pluginName]
+	var plugin *adctypes.CorsConfig
+	if obj == nil {
+		plugin = &adctypes.CorsConfig{}
+		plugins[pluginName] = plugin
+	} else {
+		plugin = obj.(*adctypes.CorsConfig)
+	}
+
+	if len(cors.AllowOrigins) != 0 {
+		origins := make([]string, 0)
+		for _, allowOrigin := range cors.AllowOrigins {
+			origins = append(origins, string(allowOrigin))
+		}
+		plugin.AllowOrigins = strings.Join(origins, ",")
+	}
+
+	if len(cors.AllowHeaders) != 0 {
+		headers := make([]string, 0)
+		for _, allowHeader := range cors.AllowHeaders {
+			headers = append(headers, string(allowHeader))
+		}
+		plugin.AllowHeaders = strings.Join(headers, ",")
+	}
+
+	if len(cors.AllowMethods) != 0 {
+		methods := make([]string, 0)
+		for _, allowMethod := range cors.AllowMethods {
+			methods = append(methods, string(allowMethod))
+		}
+		plugin.AllowHeaders = strings.Join(methods, ",")
+	}
+	if len(cors.ExposeHeaders) != 0 {
+		exposeHeaders := make([]string, 0)
+		for _, exposeHeader := range cors.ExposeHeaders {
+			exposeHeaders = append(exposeHeaders, string(exposeHeader))
+		}
+		plugin.ExposeHeaders = strings.Join(exposeHeaders, ",")
+	}
+	plugin.AllowCredential = bool(cors.AllowCredentials)
 }
 
 func (t *Translator) fillPluginFromHTTPRequestHeaderFilter(plugins adctypes.Plugins, reqHeaderModifier *gatewayv1.HTTPHeaderFilter) {

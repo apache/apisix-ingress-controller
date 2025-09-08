@@ -27,9 +27,11 @@ type IPRestrictConfig struct {
 // CorsConfig is the rule config for cors plugin.
 // +k8s:deepcopy-gen=true
 type CorsConfig struct {
-	AllowOrigins string `json:"allow_origins,omitempty"`
-	AllowMethods string `json:"allow_methods,omitempty"`
-	AllowHeaders string `json:"allow_headers,omitempty"`
+	AllowOrigins    string `json:"allow_origins,omitempty"`
+	AllowMethods    string `json:"allow_methods,omitempty"`
+	AllowHeaders    string `json:"allow_headers,omitempty"`
+	ExposeHeaders   string `json:"expose_headers,omitempty"`
+	AllowCredential bool   `json:"allow_credential,omitempty"`
 }
 
 // CSRfConfig is the rule config for csrf plugin.
