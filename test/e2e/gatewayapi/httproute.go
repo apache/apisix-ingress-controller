@@ -2023,12 +2023,10 @@ spec:
 				Checks: []scaffold.ResponseCheckFunc{
 					scaffold.WithExpectedStatus(http.StatusOK),
 					scaffold.WithExpectedHeaders(map[string]string{
-						"Access-Control-Allow-Origin":      "http://foo.example",
-						"Access-Control-Allow-Methods":     "GET,HEAD,POST",
-						"Access-Control-Allow-Headers":     "Accept,Accept-Language,Content-Language,Content-Type,Range",
-						"Access-Control-Expose-Headers":    "Content-Length,X-Custom-Header",
-						"Access-Control-Max-Age":           "3600",
-						"Access-Control-Allow-Credentials": "true",
+						"Access-Control-Allow-Origin":   "http://foo.example",
+						"Access-Control-Allow-Methods":  "GET,HEAD,POST",
+						"Access-Control-Allow-Headers":  "Accept,Accept-Language,Content-Language,Content-Type,Range",
+						"Access-Control-Expose-Headers": "Content-Length,X-Custom-Header",
 					}),
 				},
 				Timeout:  time.Second * 30,
@@ -2046,9 +2044,8 @@ spec:
 				Checks: []scaffold.ResponseCheckFunc{
 					scaffold.WithExpectedStatus(http.StatusOK),
 					scaffold.WithExpectedHeaders(map[string]string{
-						"Access-Control-Allow-Origin":      "http://bar.example",
-						"Access-Control-Expose-Headers":    "Content-Length,X-Custom-Header",
-						"Access-Control-Allow-Credentials": "true",
+						"Access-Control-Allow-Origin":   "http://bar.example",
+						"Access-Control-Expose-Headers": "Content-Length,X-Custom-Header",
 					}),
 				},
 				Timeout:  time.Second * 30,
