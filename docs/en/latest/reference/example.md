@@ -21,7 +21,7 @@ kind: GatewayProxy
 metadata:
   namespace: ingress-apisix
   name: apisix-config
-  namespace: ingress-apisix-ingress
+  namespace: ingress-apisix
 spec:
   provider:
     type: ControlPlane
@@ -92,7 +92,7 @@ spec:
     apiGroup: apisix.apache.org
     kind: GatewayProxy
     name: apisix-config
-    namespace: ingress-apisix-ingress
+    namespace: ingress-apisix
     scope: Namespace
 ```
 
@@ -112,7 +112,7 @@ spec:
     apiGroup: apisix.apache.org
     kind: GatewayProxy
     name: apisix-config
-    namespace: ingress-apisix-ingress
+    namespace: ingress-apisix
     scope: Namespace
 ```
 
