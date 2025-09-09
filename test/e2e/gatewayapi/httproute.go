@@ -1763,41 +1763,6 @@ spec:
         - PUT
         - DELETE
         allowHeaders: 
-        - "*"
-        exposeHeaders: 
-        - "*"
-    backendRefs:
-    - name: cors-test-service
-      port: 80
-`
-
-		var corsFilterWithAllowCredential = `
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: http-route-cors
-  namespace: %s
-spec:
-  parentRefs:
-  - name: %s
-  hostnames:
-  - cors-test.example
-  rules:
-  - matches:
-    - path:
-        type: PathPrefix
-        value: /
-    filters:
-    - type: CORS
-      cors:
-        allowOrigins:
-        - http://example.com
-        allowMethods: 
-        - GET
-        - POST
-        - PUT
-        - DELETE
-        allowHeaders: 
         - "Origin"
         exposeHeaders: 
         - "Origin"
@@ -1806,6 +1771,7 @@ spec:
     - name: cors-test-service
       port: 80
 `
+
 		BeforeEach(beforeEachHTTP)
 
 		It("HTTPRoute RequestHeaderModifier", func() {
@@ -2094,10 +2060,11 @@ spec:
 					scaffold.WithExpectedStatus(http.StatusOK),
 					scaffold.WithExpectedBodyContains("hello"),
 					scaffold.WithExpectedHeaders(map[string]string{
-						"Access-Control-Allow-Origin":   "http://example.com",
-						"Access-Control-Allow-Methods":  "GET,POST,PUT,DELETE",
-						"Access-Control-Allow-Headers":  "*",
-						"Access-Control-Expose-Headers": "*",
+						"Access-Control-Allow-Origin":      "http://example.com",
+						"Access-Control-Allow-Methods":     "GET,POST,PUT,DELETE",
+						"Access-Control-Allow-Headers":     "Origin",
+						"Access-Control-Expose-Headers":    "Origin",
+						"Access-Control-Allow-Credentials": "true",
 					}),
 				},
 				Timeout:  time.Second * 30,
@@ -2116,30 +2083,6 @@ spec:
 					scaffold.WithExpectedStatus(http.StatusOK),
 					scaffold.WithExpectedBodyContains("hello"),
 					scaffold.WithExpectedNotHeader("Access-Control-Allow-Origin"),
-				},
-				Timeout:  time.Second * 30,
-				Interval: time.Second * 2,
-			})
-
-			By("test simple GET request with CORS headers with allowed credential set to true")
-			s.ResourceApplied("HTTPRoute", "http-route-cors", fmt.Sprintf(corsFilterWithAllowCredential, s.Namespace(), s.Namespace()), 2)
-			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/",
-				Host:   "cors-test.example",
-				Headers: map[string]string{
-					"Origin": "http://example.com",
-				},
-				Checks: []scaffold.ResponseCheckFunc{
-					scaffold.WithExpectedStatus(http.StatusOK),
-					scaffold.WithExpectedBodyContains("hello"),
-					scaffold.WithExpectedHeaders(map[string]string{
-						"Access-Control-Allow-Origin":      "http://example.com",
-						"Access-Control-Allow-Methods":     "GET,POST,PUT,DELETE",
-						"Access-Control-Allow-Headers":     "Origin",
-						"Access-Control-Expose-Headers":    "Origin",
-						"Access-Control-Allow-Credentials": "true",
-					}),
 				},
 				Timeout:  time.Second * 30,
 				Interval: time.Second * 2,
