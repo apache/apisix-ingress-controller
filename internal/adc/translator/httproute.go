@@ -329,25 +329,6 @@ func (t *Translator) TranslateBackendRefWithFilter(tctx *provider.TranslateConte
 	return t.translateBackendRef(tctx, ref, endpointFilter)
 }
 
-func (t *Translator) composeUpstreamNameForBackendRef(ref gatewayv1.BackendRef) string {
-	var (
-		kind      string
-		namespace = string(*ref.Namespace)
-		name      = string(ref.Name)
-		port      int32
-	)
-	if ref.Kind == nil {
-		kind = "Service"
-	} else {
-		kind = string(*ref.Kind)
-	}
-	if ref.Port != nil {
-		port = int32(*ref.Port)
-	}
-
-	return fmt.Sprintf("%s_%s_%s_%d", kind, namespace, name, port)
-}
-
 func (t *Translator) translateBackendRef(tctx *provider.TranslateContext, ref gatewayv1.BackendRef, endpointFilter func(*discoveryv1.Endpoint) bool) (adctypes.UpstreamNodes, error) {
 	if ref.Kind != nil && *ref.Kind != "Service" {
 		return adctypes.UpstreamNodes{}, fmt.Errorf("kind %s is not supported", *ref.Kind)
@@ -517,7 +498,21 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 			t.AttachBackendTrafficPolicyToUpstream(backend.BackendRef, tctx.BackendTrafficPolicies, upstream)
 			upstream.Nodes = upNodes
 
-			upstreamName := t.composeUpstreamNameForBackendRef(backend.BackendRef)
+			var (
+				kind string
+				port int32
+			)
+			if backend.Kind == nil {
+				kind = "Service"
+			} else {
+				kind = string(*backend.Kind)
+			}
+			if backend.Port != nil {
+				port = int32(*backend.Port)
+			}
+			namespace := string(*backend.Namespace)
+			name := string(backend.Name)
+			upstreamName := adctypes.ComposeUpstreamNameForBackendRef(kind, namespace, name, port)
 			upstream.Name = upstreamName
 			upstream.ID = id.GenID(upstreamName)
 			upstreams = append(upstreams, upstream)
