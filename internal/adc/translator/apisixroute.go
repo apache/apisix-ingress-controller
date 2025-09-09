@@ -266,13 +266,12 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 	// the first valid upstream is used as service.upstream;
 	// the others are configured in the traffic-split plugin
 	service.Upstream = upstreams[0]
-	// remove the id and name of the service.upstream, adc schema does not need id and name for service.upstream
+	// remove the id and name of the service.upstream, adc schema does not need id and name for it
 	service.Upstream.ID = ""
 	service.Upstream.Name = ""
 
 	upstreams = upstreams[1:]
 
-	// Add remaining upstreams to service.Upstreams for independent management
 	if len(upstreams) > 0 {
 		service.Upstreams = upstreams
 	}

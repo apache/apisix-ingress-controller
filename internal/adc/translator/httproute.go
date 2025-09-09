@@ -517,7 +517,6 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 			t.AttachBackendTrafficPolicyToUpstream(backend.BackendRef, tctx.BackendTrafficPolicies, upstream)
 			upstream.Nodes = upNodes
 
-			// Compose upstream name similar to ApisixRoute
 			upstreamName := t.composeUpstreamNameForBackendRef(backend.BackendRef)
 			upstream.Name = upstreamName
 			upstream.ID = id.GenID(upstreamName)
@@ -532,19 +531,18 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 		} else if len(upstreams) == 1 {
 			// Single backend - use directly as service upstream
 			service.Upstream = upstreams[0]
-			// remove the id and name of the service.upstream, adc schema does not need id and name for service.upstream
+			// remove the id and name of the service.upstream, adc schema does not need id and name for it
 			service.Upstream.ID = ""
 			service.Upstream.Name = ""
 		} else {
 			// Multiple backends - use traffic-split plugin
 			service.Upstream = upstreams[0]
-			// remove the id and name of the service.upstream, adc schema does not need id and name for service.upstream
+			// remove the id and name of the service.upstream, adc schema does not need id and name for it
 			service.Upstream.ID = ""
 			service.Upstream.Name = ""
 
 			upstreams = upstreams[1:]
 
-			// Add remaining upstreams to service.Upstreams for independent management
 			if len(upstreams) > 0 {
 				service.Upstreams = upstreams
 			}
