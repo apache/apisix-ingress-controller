@@ -2043,9 +2043,6 @@ spec:
 			Expect(s.CreateResourceFromStringWithNamespace(corsTestService, s.Namespace())).
 				NotTo(HaveOccurred(), "creating CORS test service")
 
-			// Wait for the deployment to be ready
-			time.Sleep(5 * time.Second)
-
 			By("create HTTPRoute with CORS filter")
 			s.ResourceApplied("HTTPRoute", "http-route-cors", fmt.Sprintf(corsFilter, s.Namespace(), s.Namespace()), 1)
 
