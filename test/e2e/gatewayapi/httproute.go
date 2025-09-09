@@ -1764,6 +1764,8 @@ spec:
         - DELETE
         allowHeaders: 
         - "*"
+        exposeHeaders: 
+        - "*"
     backendRefs:
     - name: cors-test-service
       port: 80
@@ -2045,7 +2047,6 @@ spec:
 
 			By("create HTTPRoute with CORS filter")
 			s.ResourceApplied("HTTPRoute", "http-route-cors", fmt.Sprintf(corsFilter, s.Namespace(), s.Namespace()), 1)
-
 			By("test simple GET request with CORS headers from allowed origin")
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
@@ -2058,7 +2059,10 @@ spec:
 					scaffold.WithExpectedStatus(http.StatusOK),
 					scaffold.WithExpectedBodyContains("hello"),
 					scaffold.WithExpectedHeaders(map[string]string{
-						"Access-Control-Allow-Origin": "http://example.com",
+						"Access-Control-Allow-Origin":   "http://example.com",
+						"Access-Control-Allow-Methods":  "GET,POST,PUT,DELETE",
+						"Access-Control-Allow-Headers":  "*",
+						"Access-Control-Expose-Headers": "*",
 					}),
 				},
 				Timeout:  time.Second * 30,

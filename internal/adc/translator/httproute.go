@@ -142,33 +142,33 @@ func (t *Translator) fillPluginFromHTTPCORSFilter(plugins adctypes.Plugins, cors
 		plugin = obj.(*adctypes.CorsConfig)
 	}
 
-	if len(cors.AllowOrigins) != 0 {
-		origins := make([]string, 0)
-		for _, allowOrigin := range cors.AllowOrigins {
-			origins = append(origins, string(allowOrigin))
+	if len(cors.AllowOrigins) > 0 {
+		origins := make([]string, len(cors.AllowOrigins))
+		for i, allowOrigin := range cors.AllowOrigins {
+			origins[i] = string(allowOrigin)
 		}
 		plugin.AllowOrigins = strings.Join(origins, ",")
 	}
 
-	if len(cors.AllowHeaders) != 0 {
-		headers := make([]string, 0)
-		for _, allowHeader := range cors.AllowHeaders {
-			headers = append(headers, string(allowHeader))
+	if len(cors.AllowHeaders) > 0 {
+		headers := make([]string, len(cors.AllowHeaders))
+		for i, allowHeader := range cors.AllowHeaders {
+			headers[i] = string(allowHeader)
 		}
 		plugin.AllowHeaders = strings.Join(headers, ",")
 	}
 
-	if len(cors.AllowMethods) != 0 {
-		methods := make([]string, 0)
-		for _, allowMethod := range cors.AllowMethods {
-			methods = append(methods, string(allowMethod))
+	if len(cors.AllowMethods) > 0 {
+		methods := make([]string, len(cors.AllowMethods))
+		for i, allowMethod := range cors.AllowMethods {
+			methods[i] = string(allowMethod)
 		}
-		plugin.AllowHeaders = strings.Join(methods, ",")
+		plugin.AllowMethods = strings.Join(methods, ",")
 	}
-	if len(cors.ExposeHeaders) != 0 {
-		exposeHeaders := make([]string, 0)
-		for _, exposeHeader := range cors.ExposeHeaders {
-			exposeHeaders = append(exposeHeaders, string(exposeHeader))
+	if len(cors.ExposeHeaders) > 0 {
+		exposeHeaders := make([]string, len(cors.ExposeHeaders))
+		for i, exposeHeader := range cors.ExposeHeaders {
+			exposeHeaders[i] = string(exposeHeader)
 		}
 		plugin.ExposeHeaders = strings.Join(exposeHeaders, ",")
 	}
