@@ -81,7 +81,8 @@ func New(updater status.Updater, readier readiness.ReadinessManager, opts ...pro
 	}
 
 	return &apisixProvider{
-		client:         cli,
+		client: cli,
+		//TODO: Maybe pass port/address from external configuration
 		adcdebugserver: common.NewADCDebugServer(cli.Store, cli.ConfigManager, 8432),
 		Options:        o,
 		translator:     &translator.Translator{},
