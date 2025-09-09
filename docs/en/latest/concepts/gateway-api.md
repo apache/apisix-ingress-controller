@@ -63,7 +63,7 @@ The following example demonstrates how to configure an HTTPRoute resource to rou
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: apisix
 spec:
   controllerName: "apisix.apache.org/apisix-ingress-controller"
@@ -73,7 +73,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: apisix
   namespace: default
 spec:
@@ -88,7 +88,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: httpbin
 spec:
   parentRefs:

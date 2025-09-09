@@ -19,9 +19,9 @@ To update the Control Plane endpoint and admin key for connectivity between APIS
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: apisix-config
-  namespace: apisix-ingress
+  namespace: ingress-apisix-ingress
 spec:
   provider:
     type: ControlPlane
@@ -53,7 +53,7 @@ values={[
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: apisix
 spec:
   controllerName: "apisix.apache.org/apisix-ingress-controller"
@@ -61,7 +61,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: apisix
 spec:
   gatewayClassName: apisix
@@ -84,7 +84,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: apisix
 spec:
   controller: apisix.apache.org/apisix-ingress-controller
@@ -92,7 +92,7 @@ spec:
     apiGroup: apisix.apache.org
     kind: GatewayProxy
     name: apisix-config
-    namespace: apisix-ingress
+    namespace: ingress-apisix-ingress
     scope: Namespace
 ```
 
@@ -104,7 +104,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: apisix
 spec:
   controller: apisix.apache.org/apisix-ingress-controller
@@ -112,7 +112,7 @@ spec:
     apiGroup: apisix.apache.org
     kind: GatewayProxy
     name: apisix-config
-    namespace: apisix-ingress
+    namespace: ingress-apisix-ingress
     scope: Namespace
 ```
 
@@ -139,7 +139,7 @@ values={[
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: httpbin
 spec:
   parentRefs:
@@ -162,7 +162,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: httpbin
 spec:
   ingressClassName: apisix
@@ -186,7 +186,7 @@ spec:
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: httpbin
 spec:
   ingressClassName: apisix
@@ -223,7 +223,7 @@ values={[
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: httpbin-external-domain
 spec:
   type: ExternalName
@@ -232,7 +232,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: get-ip
 spec:
   parentRefs:
@@ -255,7 +255,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: httpbin-external-domain
 spec:
   type: ExternalName
@@ -264,7 +264,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: get-ip
 spec:
   rules:
@@ -287,7 +287,7 @@ spec:
 apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: httpbin-external-domain
 spec:
   externalNodes:
@@ -297,7 +297,7 @@ spec:
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: get-ip
 spec:
   ingressClassName: apisix
@@ -332,7 +332,7 @@ values={[
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: httpbin
 spec:
   parentRefs:
@@ -359,7 +359,7 @@ spec:
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: httpbin
 spec:
   ingressClassName: apisix
@@ -401,7 +401,7 @@ values={[
 apiVersion: apisix.apache.org/v1alpha1
 kind: BackendTrafficPolicy
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: httpbin
 spec:
   targetRefs:
@@ -428,7 +428,7 @@ spec:
 apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: httpbin
 spec:
   ingressClassName: apisix
@@ -466,7 +466,7 @@ To create a consumer and configure the authentication credentials directly on th
 apiVersion: apisix.apache.org/v1alpha1
 kind: Consumer
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: alice
 spec:
   gatewayRef:
@@ -484,7 +484,7 @@ You can also use the secret CRD, where the credential should be base64 encoded:
 apiVersion: v1
 kind: Secret
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: key-auth-primary
 data:
   key: YWxpY2UtcHJpbWFyeS1rZXk=
@@ -492,7 +492,7 @@ data:
 apiVersion: apisix.apache.org/v1alpha1
 kind: Consumer
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: alice
 spec:
   gatewayRef:
@@ -514,7 +514,7 @@ To create a consumer and configure the authentication credentials directly on th
 apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: alice
 spec:
   ingressClassName: apisix
@@ -530,7 +530,7 @@ You can also use the secret CRD, where the credential should be base64 encoded:
 apiVersion: v1
 kind: Secret
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: key-auth-primary
 data:
   key: YWxpY2UtcHJpbWFyeS1rZXk=
@@ -538,7 +538,7 @@ data:
 apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: alice
 spec:
   ingressClassName: apisix
@@ -570,7 +570,7 @@ values={[
 apiVersion: apisix.apache.org/v1alpha1
 kind: Consumer
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: alice
 spec:
   gatewayRef:
@@ -622,7 +622,7 @@ values={[
 apiVersion: apisix.apache.org/v1alpha1
 kind: HTTPRoutePolicy
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: http-route-policy
 spec:
   targetRefs:
@@ -647,7 +647,7 @@ spec:
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: httpbin
 spec:
   ingressClassName: apisix
@@ -694,7 +694,7 @@ values={[
 apiVersion: apisix.apache.org/v1alpha1
 kind: PluginConfig
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: auth-plugin-config
 spec:
   plugins:
@@ -706,7 +706,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: get-ip
 spec:
   parentRefs:
@@ -737,7 +737,7 @@ To enable `basic-auth`, `key-auth`, `wolf-rbac`, `jwt-auth`, `ldap-auth`, or `hm
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: get-ip
 spec:
   ingressClassName: apisix
@@ -760,7 +760,7 @@ To enable other plugins:
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: get-ip
 spec:
   ingressClassName: apisix
@@ -803,7 +803,7 @@ values={[
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: apisix-config
 spec:
   plugins:
@@ -824,7 +824,7 @@ spec:
 apiVersion: apisix.apache.org/v2
 kind: ApisixGlobalRule
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: apisix-global-rule-logging
 spec:
   ingressClassName: apisix
@@ -861,7 +861,7 @@ values={[
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: apisix-config
 spec:
   pluginMetadata:
@@ -916,7 +916,7 @@ values={[
 apiVersion: apisix.apache.org/v1alpha1
 kind: PluginConfig
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: example-plugin-config
 spec:
   plugins:
@@ -930,7 +930,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: httpbin
 spec:
   parentRefs:
@@ -959,7 +959,7 @@ spec:
 apiVersion: apisix.apache.org/v2
 kind: ApisixPluginConfig
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: example-plugin-config
 spec:
   ingressClassName: apisix
@@ -974,7 +974,7 @@ spec:
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: httpbin
 spec:
   ingressClassName: apisix
@@ -1014,7 +1014,7 @@ To configure the `statusAddress`:
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: apisix-config
 spec:
   statusAddress:
@@ -1033,7 +1033,7 @@ To configure the `statusAddress`:
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: apisix-config
 spec:
   statusAddress:
@@ -1046,7 +1046,7 @@ To configure the `publishService`:
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: apisix-config
 spec:
   publishService: apisix-ee-3-gateway-gateway

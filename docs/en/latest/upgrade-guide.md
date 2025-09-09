@@ -108,7 +108,7 @@ From version 2.0.0, the data plane must be connected via the `GatewayProxy` CRD:
 apiVersion: networking.k8s.io/v1
 kind: IngressClass
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: apisix
 spec:
   controller: "apisix.apache.org/apisix-ingress-controller"
@@ -122,7 +122,7 @@ spec:
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  namespace: apisix
+  namespace: ingress-apisix
   name: apisix-proxy-config
 spec:
   provider:
