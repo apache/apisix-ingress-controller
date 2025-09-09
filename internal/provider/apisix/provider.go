@@ -64,7 +64,8 @@ type apisixProvider struct {
 
 	syncCh chan struct{}
 
-	client *adcclient.Client
+	client         *adcclient.Client
+	adcdebugserver *common.ADCDebugServer
 }
 
 func New(updater status.Updater, readier readiness.ReadinessManager, opts ...provider.Option) (provider.Provider, error) {
@@ -80,12 +81,13 @@ func New(updater status.Updater, readier readiness.ReadinessManager, opts ...pro
 	}
 
 	return &apisixProvider{
-		client:     cli,
-		Options:    o,
-		translator: &translator.Translator{},
-		updater:    updater,
-		readier:    readier,
-		syncCh:     make(chan struct{}, 1),
+		client:         cli,
+		adcdebugserver: common.NewADCDebugServer(cli.Store, cli.ConfigManager, 8432),
+		Options:        o,
+		translator:     &translator.Translator{},
+		updater:        updater,
+		readier:        readier,
+		syncCh:         make(chan struct{}, 1),
 	}, nil
 }
 
@@ -228,7 +230,7 @@ func (d *apisixProvider) buildConfig(tctx *provider.TranslateContext, nnk types.
 
 func (d *apisixProvider) Start(ctx context.Context) error {
 	d.readier.WaitReady(ctx, 5*time.Minute)
-
+	go d.adcdebugserver.Start(ctx)
 	initalSyncDelay := d.InitSyncDelay
 	if initalSyncDelay > 0 {
 		time.AfterFunc(initalSyncDelay, d.syncNotify)
