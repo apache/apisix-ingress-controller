@@ -379,7 +379,7 @@ func (asrv *ADCDebugServer) showResourceDetail(w http.ResponseWriter, r *http.Re
 		</html>
 	`))
 
-	tmpl.Execute(w, ResourceDetailData{
+	_ = tmpl.Execute(w, ResourceDetailData{
 		ConfigName:   configName,
 		Resource:     string(jsonData),
 		ResourceID:   resourceID,
