@@ -82,7 +82,7 @@ func New(updater status.Updater, readier readiness.ReadinessManager, opts ...pro
 
 	return &apisixProvider{
 		client: cli,
-		//TODO: Maybe pass port/address from external configuration
+		// TODO: Maybe pass port/address from external configuration
 		adcdebugserver: common.NewADCDebugServer(cli.Store, cli.ConfigManager, 8432),
 		Options:        o,
 		translator:     &translator.Translator{},
@@ -231,7 +231,11 @@ func (d *apisixProvider) buildConfig(tctx *provider.TranslateContext, nnk types.
 
 func (d *apisixProvider) Start(ctx context.Context) error {
 	d.readier.WaitReady(ctx, 5*time.Minute)
-	go d.adcdebugserver.Start(ctx)
+	go func() {
+		if err := d.adcdebugserver.Start(ctx); err != nil {
+			log.Warnf("adc debug server failed to start: %s", err.Error())
+		}
+	}()
 	initalSyncDelay := d.InitSyncDelay
 	if initalSyncDelay > 0 {
 		time.AfterFunc(initalSyncDelay, d.syncNotify)
