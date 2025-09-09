@@ -1702,6 +1702,76 @@ spec:
       port: 80
 `
 
+		var corsTestService = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: cors-test-service
+spec:
+  selector:
+    app: cors-test
+  ports:
+  - port: 80
+    targetPort: 5678
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cors-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cors-test
+  template:
+    metadata:
+      labels:
+        app: cors-test
+    spec:
+      containers:
+      - name: cors-test
+        image: hashicorp/http-echo
+        args: ["-text=hello", "-listen=:5678"]
+        ports:
+        - containerPort: 5678
+`
+
+		var corsFilter = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: http-route-cors
+  namespace: %s
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - cors-test.example
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    filters:
+    - type: CORS
+      cors:
+        allowOrigins:
+        - http://example.com
+        allowMethods: 
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        allowHeaders: 
+        - "Origin"
+        exposeHeaders: 
+        - "Origin"
+        allowCredentials: true
+    backendRefs:
+    - name: cors-test-service
+      port: 80
+`
+
 		BeforeEach(beforeEachHTTP)
 
 		It("HTTPRoute RequestHeaderModifier", func() {
@@ -1966,6 +2036,54 @@ spec:
 				Path:     "/get",
 				Host:     "httpbin.example",
 				Check:    scaffold.WithExpectedBodyContains("Updated"),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+		})
+
+		It("HTTPRoute CORS Filter", func() {
+			By("create test service and deployment")
+			Expect(s.CreateResourceFromStringWithNamespace(corsTestService, s.Namespace())).
+				NotTo(HaveOccurred(), "creating CORS test service")
+
+			By("create HTTPRoute with CORS filter")
+			s.ResourceApplied("HTTPRoute", "http-route-cors", fmt.Sprintf(corsFilter, s.Namespace(), s.Namespace()), 1)
+			By("test simple GET request with CORS headers from allowed origin")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/",
+				Host:   "cors-test.example",
+				Headers: map[string]string{
+					"Origin": "http://example.com",
+				},
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedBodyContains("hello"),
+					scaffold.WithExpectedHeaders(map[string]string{
+						"Access-Control-Allow-Origin":      "http://example.com",
+						"Access-Control-Allow-Methods":     "GET,POST,PUT,DELETE",
+						"Access-Control-Allow-Headers":     "Origin",
+						"Access-Control-Expose-Headers":    "Origin",
+						"Access-Control-Allow-Credentials": "true",
+					}),
+				},
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+
+			By("test simple GET request with CORS headers from disallowed origin")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/",
+				Host:   "cors-test.example",
+				Headers: map[string]string{
+					"Origin": "http://disallowed.com",
+				},
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedBodyContains("hello"),
+					scaffold.WithExpectedNotHeader("Access-Control-Allow-Origin"),
+				},
 				Timeout:  time.Second * 30,
 				Interval: time.Second * 2,
 			})
