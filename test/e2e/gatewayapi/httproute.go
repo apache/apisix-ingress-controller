@@ -1702,6 +1702,40 @@ spec:
       port: 80
 `
 
+		var corsTestService = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: cors-test-service
+spec:
+  selector:
+    app: cors-test
+  ports:
+  - port: 80
+    targetPort: 5678
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cors-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cors-test
+  template:
+    metadata:
+      labels:
+        app: cors-test
+    spec:
+      containers:
+      - name: cors-test
+        image: hashicorp/http-echo
+        args: ["-text=hello", "-listen=:5678"]
+        ports:
+        - containerPort: 5678
+`
+
 		var corsFilter = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -1712,27 +1746,26 @@ spec:
   parentRefs:
   - name: %s
   hostnames:
-  - httpbin.example
+  - cors-test.example
   rules:
   - matches:
     - path:
         type: PathPrefix
-        value: /headers
+        value: /
     filters:
     - type: CORS
       cors:
         allowOrigins:
-        - http://foo.example
+        - http://example.com
         allowMethods: 
         - GET
         - POST
         - PUT
         - DELETE
-        - OPTIONS
         allowHeaders: 
         - "*"
     backendRefs:
-    - name: httpbin-service-e2e-test
+    - name: cors-test-service
       port: 80
 `
 
@@ -2005,23 +2038,48 @@ spec:
 			})
 		})
 
-		FIt("HTTPRoute CORS Filter", func() {
+		It("HTTPRoute CORS Filter", func() {
+			By("create test service and deployment")
+			Expect(s.CreateResourceFromStringWithNamespace(corsTestService, s.Namespace())).
+				NotTo(HaveOccurred(), "creating CORS test service")
+
+			// Wait for the deployment to be ready
+			time.Sleep(5 * time.Second)
+
 			By("create HTTPRoute with CORS filter")
 			s.ResourceApplied("HTTPRoute", "http-route-cors", fmt.Sprintf(corsFilter, s.Namespace(), s.Namespace()), 1)
-			time.Sleep(time.Hour)
-			By("test simple GET request with CORS headers")
+
+			By("test simple GET request with CORS headers from allowed origin")
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
-				Path:   "/headers",
-				Host:   "httpbin.example",
+				Path:   "/",
+				Host:   "cors-test.example",
 				Headers: map[string]string{
-					"Origin": "http://foo.example",
+					"Origin": "http://example.com",
 				},
 				Checks: []scaffold.ResponseCheckFunc{
 					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedBodyContains("hello"),
 					scaffold.WithExpectedHeaders(map[string]string{
-						"Access-Control-Allow-Origin": "http://foo.example",
+						"Access-Control-Allow-Origin": "http://example.com",
 					}),
+				},
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+
+			By("test simple GET request with CORS headers from disallowed origin")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/",
+				Host:   "cors-test.example",
+				Headers: map[string]string{
+					"Origin": "http://disallowed.com",
+				},
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedBodyContains("hello"),
+					scaffold.WithExpectedNotHeader("Access-Control-Allow-Origin"),
 				},
 				Timeout:  time.Second * 30,
 				Interval: time.Second * 2,
