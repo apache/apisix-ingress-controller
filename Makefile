@@ -262,11 +262,11 @@ endif
 
 .PHONY: install-gateway-api
 install-gateway-api: ## Install Gateway API CRDs into the K8s cluster specified in ~/.kube/config.
-	kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEAY_API_VERSION)/standard-install.yaml
+	kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEAY_API_VERSION)/experimental-install.yaml
 
 .PHONY: uninstall-gateway-api
 uninstall-gateway-api: ## Uninstall Gateway API CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	kubectl delete -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEAY_API_VERSION)/standard-install.yaml
+	kubectl delete -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEAY_API_VERSION)/experimental-install.yaml
 
 .PHONY: install
 install: manifests kustomize install-gateway-api ## Install CRDs into the K8s cluster specified in ~/.kube/config.
