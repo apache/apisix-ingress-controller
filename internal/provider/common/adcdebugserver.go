@@ -13,7 +13,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/types"
 )
 
-// Define the structs that were missing
 type ConfigListData struct {
 	ConfigNames []string
 }
@@ -88,12 +87,10 @@ func (asrv *ADCDebugServer) handleIndex(w http.ResponseWriter, r *http.Request) 
 		configNames = append(configNames, cfg.Name)
 	}
 
-	// Create template with urlencode function
 	tmpl := template.New("index").Funcs(template.FuncMap{
 		"urlencode": url.QueryEscape,
 	})
 
-	// Parse the template
 	tmpl, err := tmpl.Parse(`
 		<html>
 		<head><title>ADC Debug Server</title></head>
@@ -123,7 +120,6 @@ func (asrv *ADCDebugServer) handleConfig(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Decode the config name
 	configName, err := url.QueryUnescape(configNameEncoded)
 	if err != nil {
 		http.Error(w, "Invalid config name encoding", http.StatusBadRequest)
@@ -149,13 +145,11 @@ func (asrv *ADCDebugServer) handleConfig(w http.ResponseWriter, r *http.Request)
 	}
 
 	if resourceID == "" {
-		// Show resources of a specific type
 		asrv.showResources(w, r, configName, configNameEncoded, resourceType)
 		return
 	}
 
-	// Show specific resource details
-	asrv.showResourceDetail(w, r, configName, configNameEncoded, resourceType, resourceID)
+	asrv.showResourceDetail(w, r, configName, resourceType, resourceID)
 }
 
 func (asrv *ADCDebugServer) showResourceTypes(w http.ResponseWriter, configName, configNameEncoded string) {
@@ -241,7 +235,6 @@ func (asrv *ADCDebugServer) showResources(w http.ResponseWriter, r *http.Request
 			})
 		}
 	case "globalrules":
-		// GlobalRules is a map, so we need to handle it differently
 		for key := range resources.GlobalRules {
 			resourceInfos = append(resourceInfos, ResourceInfo{
 				ID:   key,
@@ -262,7 +255,6 @@ func (asrv *ADCDebugServer) showResources(w http.ResponseWriter, r *http.Request
 			})
 		}
 	case "routes":
-		// Routes are nested within services
 		for _, svc := range resources.Services {
 			for _, route := range svc.Routes {
 				resourceInfos = append(resourceInfos, ResourceInfo{
@@ -300,7 +292,7 @@ func (asrv *ADCDebugServer) showResources(w http.ResponseWriter, r *http.Request
 	})
 }
 
-func (asrv *ADCDebugServer) showResourceDetail(w http.ResponseWriter, r *http.Request, configName, configNameEncoded, resourceType, resourceID string) {
+func (asrv *ADCDebugServer) showResourceDetail(w http.ResponseWriter, r *http.Request, configName, resourceType, resourceID string) {
 	resources, err := asrv.store.GetResources(configName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -354,7 +346,6 @@ func (asrv *ADCDebugServer) showResourceDetail(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Pretty-print the resource as JSON
 	jsonData, err := json.MarshalIndent(resource, "", "  ")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
