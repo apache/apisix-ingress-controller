@@ -75,7 +75,6 @@ kind: Gateway
 metadata:
   namespace: ingress-apisix
   name: apisix
-  namespace: default
 spec:
   gatewayClassName: apisix
   listeners:
