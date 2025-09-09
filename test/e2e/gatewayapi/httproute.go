@@ -1790,6 +1790,17 @@ spec:
     filters:
     - type: CORS
       cors:
+        allowOrigins:
+        - http://example.com
+        allowMethods: 
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        allowHeaders: 
+        - "Origin"
+        exposeHeaders: 
+        - "Origin"
         allowCredentials: true
     backendRefs:
     - name: cors-test-service
@@ -2111,7 +2122,7 @@ spec:
 			})
 
 			By("test simple GET request with CORS headers with allowed credential set to true")
-			s.ResourceApplied("HTTPRoute", "http-route-cors", fmt.Sprintf(corsFilterWithAllowCredential, s.Namespace(), s.Namespace()), 1)
+			s.ResourceApplied("HTTPRoute", "http-route-cors", fmt.Sprintf(corsFilterWithAllowCredential, s.Namespace(), s.Namespace()), 2)
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
 				Path:   "/",
@@ -2123,6 +2134,10 @@ spec:
 					scaffold.WithExpectedStatus(http.StatusOK),
 					scaffold.WithExpectedBodyContains("hello"),
 					scaffold.WithExpectedHeaders(map[string]string{
+						"Access-Control-Allow-Origin":      "http://example.com",
+						"Access-Control-Allow-Methods":     "GET,POST,PUT,DELETE",
+						"Access-Control-Allow-Headers":     "Origin",
+						"Access-Control-Expose-Headers":    "Origin",
 						"Access-Control-Allow-Credentials": "true",
 					}),
 				},
