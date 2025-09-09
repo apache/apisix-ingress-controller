@@ -63,6 +63,7 @@ If you are using Gateway API, you should first configure the GatewayClass and Ga
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
+  namespace: apisix
   name: apisix
 spec:
   controllerName: apisix.apache.org/apisix-ingress-controller
@@ -70,6 +71,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
+  namespace: apisix
   name: apisix
 spec:
   gatewayClassName: apisix
@@ -107,6 +109,7 @@ values={[
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
+  namespace: apisix
   name: getting-started-ip
 spec:
   parentRefs:
@@ -129,6 +132,7 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
+  namespace: apisix
   name: getting-started-ip
 spec:
   ingressClassName: apisix
@@ -152,6 +156,7 @@ spec:
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
+  namespace: apisix
   name: getting-started-ip
 spec:
   ingressClassName: apisix
