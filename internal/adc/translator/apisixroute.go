@@ -226,6 +226,10 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 		if backend.Weight != nil {
 			upstream.Labels["meta_weight"] = strconv.FormatInt(int64(*backend.Weight), 10)
 		}
+
+		upstreamName := adc.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, int32(backend.ServicePort.IntValue()), backend.ResolveGranularity)
+		upstream.Name = upstreamName
+		upstream.ID = id.GenID(upstreamName)
 		upstreams = append(upstreams, upstream)
 	}
 
@@ -248,6 +252,9 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 			upstream.Labels["meta_weight"] = strconv.FormatInt(int64(*upstreamRef.Weight), 10)
 		}
 
+		upstreamName := adc.ComposeExternalUpstreamName(upsNN.Namespace, upsNN.Name)
+		upstream.Name = upstreamName
+		upstream.ID = id.GenID(upstreamName)
 		upstreams = append(upstreams, upstream)
 	}
 
@@ -259,7 +266,15 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 	// the first valid upstream is used as service.upstream;
 	// the others are configured in the traffic-split plugin
 	service.Upstream = upstreams[0]
+	// remove the id and name of the service.upstream, adc schema does not need id and name for it
+	service.Upstream.ID = ""
+	service.Upstream.Name = ""
+
 	upstreams = upstreams[1:]
+
+	if len(upstreams) > 0 {
+		service.Upstreams = upstreams
+	}
 
 	// set weight in traffic-split for the default upstream
 	if len(upstreams) > 0 {
@@ -272,15 +287,15 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 		})
 	}
 
-	// set others upstreams in traffic-split
+	// set others upstreams in traffic-split using upstream_id
 	for _, item := range upstreams {
 		weight, err := strconv.Atoi(item.Labels["meta_weight"])
 		if err != nil {
 			weight = apiv2.DefaultWeight
 		}
 		weightedUpstreams = append(weightedUpstreams, adc.TrafficSplitConfigRuleWeightedUpstream{
-			Upstream: item,
-			Weight:   weight,
+			UpstreamID: item.ID,
+			Weight:     weight,
 		})
 	}
 

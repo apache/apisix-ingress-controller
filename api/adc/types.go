@@ -168,6 +168,7 @@ type Service struct {
 	StreamRoutes    []*StreamRoute `json:"stream_routes,omitempty" yaml:"stream_routes,omitempty"`
 	StripPathPrefix *bool          `json:"strip_path_prefix,omitempty" yaml:"strip_path_prefix,omitempty"`
 	Upstream        *Upstream      `json:"upstream,omitempty" yaml:"upstream,omitempty"`
+	Upstreams       []*Upstream    `json:"upstreams,omitempty" yaml:"upstreams,omitempty"`
 }
 
 // +k8s:deepcopy-gen=true
@@ -760,4 +761,60 @@ func (c Config) MarshalJSON() ([]byte, error) {
 		ServerAddrs: c.ServerAddrs,
 		TlsVerify:   c.TlsVerify,
 	})
+}
+
+var (
+	ResolveGranularity = struct {
+		Endpoint string
+		Service  string
+	}{
+		Endpoint: "endpoint",
+		Service:  "service",
+	}
+)
+
+// ComposeUpstreamName uses namespace, name, subset (optional), port, resolveGranularity info to compose
+// the upstream name.
+// the resolveGranularity is not composited in the upstream name when it is endpoint.
+// ref: https://github.com/apache/apisix-ingress-controller/blob/10059afe3e84b693cc61e6df7a0040890a9d16eb/pkg/types/apisix/v1/types.go#L595-L598
+func ComposeUpstreamName(namespace, name, subset string, port int32, resolveGranularity string) string {
+	pstr := strconv.Itoa(int(port))
+	// FIXME Use sync.Pool to reuse this buffer if the upstream
+	// name composing code path is hot.
+	var p []byte
+	plen := len(namespace) + len(name) + len(pstr) + 2
+	if subset != "" {
+		plen = plen + len(subset) + 1
+	}
+	if resolveGranularity == ResolveGranularity.Service {
+		plen = plen + len(resolveGranularity) + 1
+	}
+
+	p = make([]byte, 0, plen)
+	buf := bytes.NewBuffer(p)
+	buf.WriteString(namespace)
+	buf.WriteByte('_')
+	buf.WriteString(name)
+	buf.WriteByte('_')
+	if subset != "" {
+		buf.WriteString(subset)
+		buf.WriteByte('_')
+	}
+	buf.WriteString(pstr)
+	if resolveGranularity == ResolveGranularity.Service {
+		buf.WriteByte('_')
+		buf.WriteString(resolveGranularity)
+	}
+
+	return buf.String()
+}
+
+// ComposeExternalUpstreamName uses ApisixUpstream namespace, name to compose the upstream name.
+func ComposeExternalUpstreamName(namespace, name string) string {
+	return namespace + "_" + name
+}
+
+// ComposeUpstreamNameForBackendRef composes upstream name using kind, namespace, name and port.
+func ComposeUpstreamNameForBackendRef(kind, namespace, name string, port int32) string {
+	return fmt.Sprintf("%s_%s_%s_%d", kind, namespace, name, port)
 }

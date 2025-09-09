@@ -543,6 +543,24 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 
 			t.AttachBackendTrafficPolicyToUpstream(backend.BackendRef, tctx.BackendTrafficPolicies, upstream)
 			upstream.Nodes = upNodes
+
+			var (
+				kind string
+				port int32
+			)
+			if backend.Kind == nil {
+				kind = "Service"
+			} else {
+				kind = string(*backend.Kind)
+			}
+			if backend.Port != nil {
+				port = int32(*backend.Port)
+			}
+			namespace := string(*backend.Namespace)
+			name := string(backend.Name)
+			upstreamName := adctypes.ComposeUpstreamNameForBackendRef(kind, namespace, name, port)
+			upstream.Name = upstreamName
+			upstream.ID = id.GenID(upstreamName)
 			upstreams = append(upstreams, upstream)
 		}
 
@@ -554,10 +572,21 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 		} else if len(upstreams) == 1 {
 			// Single backend - use directly as service upstream
 			service.Upstream = upstreams[0]
+			// remove the id and name of the service.upstream, adc schema does not need id and name for it
+			service.Upstream.ID = ""
+			service.Upstream.Name = ""
 		} else {
 			// Multiple backends - use traffic-split plugin
 			service.Upstream = upstreams[0]
+			// remove the id and name of the service.upstream, adc schema does not need id and name for it
+			service.Upstream.ID = ""
+			service.Upstream.Name = ""
+
 			upstreams = upstreams[1:]
+
+			if len(upstreams) > 0 {
+				service.Upstreams = upstreams
+			}
 
 			// Set weight in traffic-split for the default upstream
 			weight := apiv2.DefaultWeight
@@ -568,7 +597,7 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 				Weight: weight,
 			})
 
-			// Set other upstreams in traffic-split
+			// Set other upstreams in traffic-split using upstream_id
 			for i, upstream := range upstreams {
 				weight := apiv2.DefaultWeight
 				// get weight from the backend refs starting from the second backend
@@ -576,8 +605,8 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 					weight = int(*rule.BackendRefs[i+1].Weight)
 				}
 				weightedUpstreams = append(weightedUpstreams, adctypes.TrafficSplitConfigRuleWeightedUpstream{
-					Upstream: upstream,
-					Weight:   weight,
+					UpstreamID: upstream.ID,
+					Weight:     weight,
 				})
 			}
 
