@@ -1771,6 +1771,30 @@ spec:
       port: 80
 `
 
+		var corsFilterWithAllowCredential = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: http-route-cors
+  namespace: %s
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - cors-test.example
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    filters:
+    - type: CORS
+      cors:
+        allowCredentials: true
+    backendRefs:
+    - name: cors-test-service
+      port: 80
+`
 		BeforeEach(beforeEachHTTP)
 
 		It("HTTPRoute RequestHeaderModifier", func() {
@@ -2081,6 +2105,26 @@ spec:
 					scaffold.WithExpectedStatus(http.StatusOK),
 					scaffold.WithExpectedBodyContains("hello"),
 					scaffold.WithExpectedNotHeader("Access-Control-Allow-Origin"),
+				},
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+
+			By("test simple GET request with CORS headers with allowed credential set to true")
+			s.ResourceApplied("HTTPRoute", "http-route-cors", fmt.Sprintf(corsFilterWithAllowCredential, s.Namespace(), s.Namespace()), 1)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/",
+				Host:   "cors-test.example",
+				Headers: map[string]string{
+					"Origin": "http://example.com",
+				},
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedBodyContains("hello"),
+					scaffold.WithExpectedHeaders(map[string]string{
+						"Access-Control-Allow-Credentials": "true",
+					}),
 				},
 				Timeout:  time.Second * 30,
 				Interval: time.Second * 2,
