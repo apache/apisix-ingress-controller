@@ -145,7 +145,7 @@ func (r *ApisixRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		r.Log.Error(err, "failed to process IngressClass parameters")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	if err = r.processApisixRoute(ctx, tctx, &ar); err != nil {
+	if err = r.processApisixRoute(tctx, &ar); err != nil {
 		return ctrl.Result{}, err
 	}
 	if err = r.Provider.Update(ctx, tctx, &ar); err != nil {
@@ -160,7 +160,7 @@ func (r *ApisixRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	return ctrl.Result{}, nil
 }
 
-func (r *ApisixRouteReconciler) processApisixRoute(ctx context.Context, tc *provider.TranslateContext, in *apiv2.ApisixRoute) error {
+func (r *ApisixRouteReconciler) processApisixRoute(tctx *provider.TranslateContext, in *apiv2.ApisixRoute) error {
 	var (
 		rules = make(map[string]struct{})
 	)
@@ -175,18 +175,13 @@ func (r *ApisixRouteReconciler) processApisixRoute(ctx context.Context, tc *prov
 		rules[http.Name] = struct{}{}
 
 		// check secret
-		for _, plugin := range http.Plugins {
-			if !plugin.Enable {
-				continue
-			}
-			// check secret
-			if err := r.validateSecrets(ctx, tc, in, plugin.SecretRef); err != nil {
-				return err
-			}
+		if err := r.validatePlugins(tctx, in, http.Plugins); err != nil {
+			return err
 		}
+
 		// check plugin config reference
 		if http.PluginConfigName != "" {
-			if err := r.validatePluginConfig(ctx, tc, in, http); err != nil {
+			if err := r.validatePluginConfig(tctx, in, http); err != nil {
 				return err
 			}
 		}
@@ -208,11 +203,32 @@ func (r *ApisixRouteReconciler) processApisixRoute(ctx context.Context, tc *prov
 		}
 
 		// process backend
-		if err := r.validateBackends(ctx, tc, in, http); err != nil {
+		if err := r.validateHTTPBackends(tctx, in, http); err != nil {
 			return err
 		}
 		// process upstreams
-		if err := r.validateUpstreams(ctx, tc, in, http); err != nil {
+		if err := r.validateUpstreams(tctx, in, http); err != nil {
+			return err
+		}
+	}
+
+	for _, stream := range in.Spec.Stream {
+		// check rule names
+		if _, ok := rules[stream.Name]; ok {
+			return types.ReasonError{
+				Reason:  string(apiv2.ConditionReasonInvalidSpec),
+				Message: "duplicate route rule name",
+			}
+		}
+		rules[stream.Name] = struct{}{}
+
+		// check secret
+		if err := r.validatePlugins(tctx, in, stream.Plugins); err != nil {
+			return err
+		}
+
+		// process backend
+		if err := r.validateStreamBackend(tctx, in, stream); err != nil {
 			return err
 		}
 	}
@@ -220,7 +236,30 @@ func (r *ApisixRouteReconciler) processApisixRoute(ctx context.Context, tc *prov
 	return nil
 }
 
-func (r *ApisixRouteReconciler) validatePluginConfig(ctx context.Context, tc *provider.TranslateContext, in *apiv2.ApisixRoute, http apiv2.ApisixRouteHTTP) error {
+func (r *ApisixRouteReconciler) validatePlugins(tctx *provider.TranslateContext, in *apiv2.ApisixRoute, plugins []apiv2.ApisixRoutePlugin) error {
+	// check secret
+	for _, plugin := range plugins {
+		if !plugin.Enable {
+			continue
+		}
+		// check secret
+		if err := r.validateSecrets(tctx, in, plugin.SecretRef); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *ApisixRouteReconciler) validateStreamBackend(tctx *provider.TranslateContext, in *apiv2.ApisixRoute, stream apiv2.ApisixRouteStream) error {
+	return r.validateHTTPBackend(tctx, apiv2.ApisixRouteHTTPBackend{
+		ServiceName:        stream.Backend.ServiceName,
+		ServicePort:        stream.Backend.ServicePort,
+		Subset:             stream.Backend.Subset,
+		ResolveGranularity: stream.Backend.ResolveGranularity,
+	}, in.GetNamespace())
+}
+
+func (r *ApisixRouteReconciler) validatePluginConfig(tctx *provider.TranslateContext, in *apiv2.ApisixRoute, http apiv2.ApisixRouteHTTP) error {
 	pcNamespace := in.Namespace
 	if http.PluginConfigNamespace != "" {
 		pcNamespace = http.PluginConfigNamespace
@@ -234,7 +273,7 @@ func (r *ApisixRouteReconciler) validatePluginConfig(ctx context.Context, tc *pr
 		}
 		pcNN = utils.NamespacedName(&pc)
 	)
-	if err := r.Get(ctx, pcNN, &pc); err != nil {
+	if err := r.Get(tctx, pcNN, &pc); err != nil {
 		return types.ReasonError{
 			Reason:  string(apiv2.ConditionReasonInvalidSpec),
 			Message: fmt.Sprintf("failed to get ApisixPluginConfig: %s", pcNN),
@@ -244,7 +283,7 @@ func (r *ApisixRouteReconciler) validatePluginConfig(ctx context.Context, tc *pr
 	// Check if ApisixPluginConfig has IngressClassName and if it matches
 	if in.Spec.IngressClassName != pc.Spec.IngressClassName && pc.Spec.IngressClassName != "" {
 		var pcIC networkingv1.IngressClass
-		if err := r.Get(ctx, client.ObjectKey{Name: pc.Spec.IngressClassName}, &pcIC); err != nil {
+		if err := r.Get(tctx, client.ObjectKey{Name: pc.Spec.IngressClassName}, &pcIC); err != nil {
 			return types.ReasonError{
 				Reason:  string(apiv2.ConditionReasonInvalidSpec),
 				Message: fmt.Sprintf("failed to get IngressClass %s for ApisixPluginConfig %s: %v", pc.Spec.IngressClassName, pcNN, err),
@@ -258,21 +297,16 @@ func (r *ApisixRouteReconciler) validatePluginConfig(ctx context.Context, tc *pr
 		}
 	}
 
-	tc.ApisixPluginConfigs[pcNN] = &pc
+	tctx.ApisixPluginConfigs[pcNN] = &pc
 
 	// Also check secrets referenced by plugin config
-	for _, plugin := range pc.Spec.Plugins {
-		if !plugin.Enable {
-			continue
-		}
-		if err := r.validateSecrets(ctx, tc, in, plugin.SecretRef); err != nil {
-			return err
-		}
+	if err := r.validatePlugins(tctx, in, pc.Spec.Plugins); err != nil {
+		return err
 	}
 	return nil
 }
 
-func (r *ApisixRouteReconciler) validateSecrets(ctx context.Context, tc *provider.TranslateContext, in *apiv2.ApisixRoute, secretRef string) error {
+func (r *ApisixRouteReconciler) validateSecrets(tctx *provider.TranslateContext, in *apiv2.ApisixRoute, secretRef string) error {
 	if secretRef == "" {
 		return nil
 	}
@@ -285,65 +319,61 @@ func (r *ApisixRouteReconciler) validateSecrets(ctx context.Context, tc *provide
 		}
 		secretNN = utils.NamespacedName(&secret)
 	)
-	if err := r.Get(ctx, secretNN, &secret); err != nil {
+	if err := r.Get(tctx, secretNN, &secret); err != nil {
 		return types.ReasonError{
 			Reason:  string(apiv2.ConditionReasonInvalidSpec),
 			Message: fmt.Sprintf("failed to get Secret: %s", secretNN),
 		}
 	}
 
-	tc.Secrets[utils.NamespacedName(&secret)] = &secret
+	tctx.Secrets[utils.NamespacedName(&secret)] = &secret
 	return nil
 }
 
-func (r *ApisixRouteReconciler) processExternalNodes(ctx context.Context, tc *provider.TranslateContext, ups apiv2.ApisixUpstream) error {
+func (r *ApisixRouteReconciler) processExternalNodes(tctx *provider.TranslateContext, ups apiv2.ApisixUpstream) error {
 	for _, node := range ups.Spec.ExternalNodes {
 		if node.Type == apiv2.ExternalTypeService {
 			var (
 				service   corev1.Service
 				serviceNN = k8stypes.NamespacedName{Namespace: ups.GetNamespace(), Name: node.Name}
 			)
-			if err := r.Get(ctx, serviceNN, &service); err != nil {
+			if err := r.Get(tctx, serviceNN, &service); err != nil {
 				r.Log.Error(err, "failed to get service in ApisixUpstream", "ApisixUpstream", ups.Name, "Service", serviceNN)
 				if client.IgnoreNotFound(err) == nil {
 					continue
 				}
 				return err
 			}
-			tc.Services[utils.NamespacedName(&service)] = &service
+			tctx.Services[utils.NamespacedName(&service)] = &service
 		}
 	}
 	return nil
 }
 
-func (r *ApisixRouteReconciler) processTLSSecret(ctx context.Context, tc *provider.TranslateContext, ups apiv2.ApisixUpstream, secretNs string) error {
+func (r *ApisixRouteReconciler) processTLSSecret(tctx *provider.TranslateContext, ups apiv2.ApisixUpstream) error {
 	if ups.Spec.TLSSecret != nil && ups.Spec.TLSSecret.Name != "" {
 		var (
 			secret   corev1.Secret
-			secretNN = k8stypes.NamespacedName{Namespace: cmp.Or(ups.Spec.TLSSecret.Namespace, secretNs), Name: ups.Spec.TLSSecret.Name}
+			secretNN = k8stypes.NamespacedName{Namespace: cmp.Or(ups.Spec.TLSSecret.Namespace, ups.Namespace), Name: ups.Spec.TLSSecret.Name}
 		)
-		if err := r.Get(ctx, secretNN, &secret); err != nil {
+		if err := r.Get(tctx, secretNN, &secret); err != nil {
 			r.Log.Error(err, "failed to get secret in ApisixUpstream", "ApisixUpstream", ups.Name, "Secret", secretNN)
 			if client.IgnoreNotFound(err) != nil {
 				return err
 			}
 		}
-		tc.Secrets[secretNN] = &secret
+		tctx.Secrets[secretNN] = &secret
 	}
 	return nil
 }
 
-func (r *ApisixRouteReconciler) validateBackends(ctx context.Context, tc *provider.TranslateContext, in *apiv2.ApisixRoute, http apiv2.ApisixRouteHTTP) error {
+func (r *ApisixRouteReconciler) validateHTTPBackends(tctx *provider.TranslateContext, in *apiv2.ApisixRoute, http apiv2.ApisixRouteHTTP) error {
 	var backends = make(map[k8stypes.NamespacedName]struct{})
 	for _, backend := range http.Backends {
-		var (
-			au        apiv2.ApisixUpstream
-			service   corev1.Service
-			serviceNN = k8stypes.NamespacedName{
-				Namespace: in.GetNamespace(),
-				Name:      backend.ServiceName,
-			}
-		)
+		serviceNN := k8stypes.NamespacedName{
+			Namespace: in.GetNamespace(),
+			Name:      backend.ServiceName,
+		}
 		if _, ok := backends[serviceNN]; ok {
 			return types.ReasonError{
 				Reason:  string(apiv2.ConditionReasonInvalidSpec),
@@ -351,70 +381,86 @@ func (r *ApisixRouteReconciler) validateBackends(ctx context.Context, tc *provid
 			}
 		}
 		backends[serviceNN] = struct{}{}
-
-		if err := r.Get(ctx, serviceNN, &service); err != nil {
-			if err = client.IgnoreNotFound(err); err == nil {
-				r.Log.Error(errors.New("service not found"), "Service", serviceNN)
-				continue
-			}
+		if err := r.validateHTTPBackend(tctx, backend, in.GetNamespace()); err != nil {
 			return err
 		}
-
-		// try to get apisixupstream with the same name as the backend service
-		log.Debugw("try to get apisixupstream with the same name as the backend service", zap.Stringer("Service", serviceNN))
-		if err := r.Get(ctx, serviceNN, &au); err != nil {
-			log.Debugw("no ApisixUpstream with the same name as the backend service found", zap.Stringer("Service", serviceNN), zap.Error(err))
-			if err = client.IgnoreNotFound(err); err != nil {
-				return err
-			}
-		} else {
-			tc.Upstreams[serviceNN] = &au
-			if err := r.processTLSSecret(ctx, tc, au, in.GetNamespace()); err != nil {
-				return err
-			}
-		}
-
-		if service.Spec.Type == corev1.ServiceTypeExternalName {
-			tc.Services[serviceNN] = &service
-			continue
-		}
-
-		if backend.ResolveGranularity == "service" && service.Spec.ClusterIP == "" {
-			r.Log.Error(errors.New("service has no ClusterIP"), "Service", serviceNN, "ResolveGranularity", backend.ResolveGranularity)
-			continue
-		}
-
-		if !slices.ContainsFunc(service.Spec.Ports, func(port corev1.ServicePort) bool {
-			return port.Port == int32(backend.ServicePort.IntValue())
-		}) {
-			r.Log.Error(errors.New("port not found in service"), "Service", serviceNN, "port", backend.ServicePort.String())
-			continue
-		}
-		tc.Services[serviceNN] = &service
-
-		var endpoints discoveryv1.EndpointSliceList
-		if err := r.List(ctx, &endpoints,
-			client.InNamespace(service.Namespace),
-			client.MatchingLabels{
-				discoveryv1.LabelServiceName: service.Name,
-			},
-		); err != nil {
-			return types.ReasonError{
-				Reason:  string(apiv2.ConditionReasonInvalidSpec),
-				Message: fmt.Sprintf("failed to list endpoint slices: %v", err),
-			}
-		}
-
-		// backend.subset specifies a subset of upstream nodes.
-		// It specifies that the target pod's label should be a superset of the subset labels of the ApisixUpstream of the serviceName
-		subsetLabels := r.getSubsetLabels(tc, serviceNN, backend)
-		tc.EndpointSlices[serviceNN] = r.filterEndpointSlicesBySubsetLabels(ctx, endpoints.Items, subsetLabels)
 	}
 
 	return nil
 }
 
-func (r *ApisixRouteReconciler) validateUpstreams(ctx context.Context, tc *provider.TranslateContext, ar *apiv2.ApisixRoute, http apiv2.ApisixRouteHTTP) error {
+func (r *ApisixRouteReconciler) validateHTTPBackend(tctx *provider.TranslateContext, backend apiv2.ApisixRouteHTTPBackend, ns string) error {
+	var (
+		au        apiv2.ApisixUpstream
+		service   corev1.Service
+		serviceNN = k8stypes.NamespacedName{
+			Namespace: ns,
+			Name:      backend.ServiceName,
+		}
+	)
+
+	if err := r.Get(tctx, serviceNN, &service); err != nil {
+		if err = client.IgnoreNotFound(err); err == nil {
+			r.Log.Error(errors.New("service not found"), "Service", serviceNN)
+			return nil
+		}
+		return err
+	}
+
+	// try to get apisixupstream with the same name as the backend service
+	log.Debugw("try to get apisixupstream with the same name as the backend service", zap.Stringer("Service", serviceNN))
+	if err := r.Get(tctx, serviceNN, &au); err != nil {
+		log.Debugw("no ApisixUpstream with the same name as the backend service found", zap.Stringer("Service", serviceNN), zap.Error(err))
+		if err = client.IgnoreNotFound(err); err != nil {
+			return err
+		}
+	} else {
+		tctx.Upstreams[serviceNN] = &au
+		if err := r.processTLSSecret(tctx, au); err != nil {
+			return err
+		}
+	}
+
+	if service.Spec.Type == corev1.ServiceTypeExternalName {
+		tctx.Services[serviceNN] = &service
+		return nil
+	}
+
+	if backend.ResolveGranularity == "service" && service.Spec.ClusterIP == "" {
+		r.Log.Error(errors.New("service has no ClusterIP"), "Service", serviceNN, "ResolveGranularity", backend.ResolveGranularity)
+		return nil
+	}
+
+	if !slices.ContainsFunc(service.Spec.Ports, func(port corev1.ServicePort) bool {
+		return port.Port == int32(backend.ServicePort.IntValue())
+	}) {
+		r.Log.Error(errors.New("port not found in service"), "Service", serviceNN, "port", backend.ServicePort.String())
+		return nil
+	}
+	tctx.Services[serviceNN] = &service
+
+	var endpoints discoveryv1.EndpointSliceList
+	if err := r.List(tctx, &endpoints,
+		client.InNamespace(service.Namespace),
+		client.MatchingLabels{
+			discoveryv1.LabelServiceName: service.Name,
+		},
+	); err != nil {
+		return types.ReasonError{
+			Reason:  string(apiv2.ConditionReasonInvalidSpec),
+			Message: fmt.Sprintf("failed to list endpoint slices: %v", err),
+		}
+	}
+
+	// backend.subset specifies a subset of upstream nodes.
+	// It specifies that the target pod's label should be a superset of the subset labels of the ApisixUpstream of the serviceName
+	subsetLabels := r.getSubsetLabels(tctx, serviceNN, backend.Subset)
+	tctx.EndpointSlices[serviceNN] = r.filterEndpointSlicesBySubsetLabels(tctx, endpoints.Items, subsetLabels)
+
+	return nil
+}
+
+func (r *ApisixRouteReconciler) validateUpstreams(tctx *provider.TranslateContext, ar *apiv2.ApisixRoute, http apiv2.ApisixRouteHTTP) error {
 	for _, upstream := range http.Upstreams {
 		if upstream.Name == "" {
 			continue
@@ -426,20 +472,20 @@ func (r *ApisixRouteReconciler) validateUpstreams(ctx context.Context, tc *provi
 				Name:      upstream.Name,
 			}
 		)
-		if err := r.Get(ctx, upsNN, &ups); err != nil {
+		if err := r.Get(tctx, upsNN, &ups); err != nil {
 			r.Log.Error(err, "failed to get ApisixUpstream", "ApisixUpstream", upsNN)
 			if client.IgnoreNotFound(err) == nil {
 				continue
 			}
 			return err
 		}
-		tc.Upstreams[upsNN] = &ups
+		tctx.Upstreams[upsNN] = &ups
 
-		if err := r.processExternalNodes(ctx, tc, ups); err != nil {
+		if err := r.processExternalNodes(tctx, ups); err != nil {
 			return err
 		}
 
-		if err := r.processTLSSecret(ctx, tc, ups, ar.GetNamespace()); err != nil {
+		if err := r.processTLSSecret(tctx, ups); err != nil {
 			return err
 		}
 	}
@@ -610,8 +656,8 @@ func (r *ApisixRouteReconciler) listApisixRoutesForPluginConfig(ctx context.Cont
 	return pkgutils.DedupComparable(requests)
 }
 
-func (r *ApisixRouteReconciler) getSubsetLabels(tctx *provider.TranslateContext, auNN k8stypes.NamespacedName, backend apiv2.ApisixRouteHTTPBackend) map[string]string {
-	if backend.Subset == "" {
+func (r *ApisixRouteReconciler) getSubsetLabels(tctx *provider.TranslateContext, auNN k8stypes.NamespacedName, subset string) map[string]string {
+	if subset == "" {
 		return nil
 	}
 
@@ -621,9 +667,9 @@ func (r *ApisixRouteReconciler) getSubsetLabels(tctx *provider.TranslateContext,
 	}
 
 	// try to get the subset labels from the ApisixUpstream subsets
-	for _, subset := range au.Spec.Subsets {
-		if backend.Subset == subset.Name {
-			return subset.Labels
+	for _, s := range au.Spec.Subsets {
+		if subset == s.Name {
+			return s.Labels
 		}
 	}
 

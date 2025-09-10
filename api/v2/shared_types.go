@@ -46,6 +46,11 @@ const (
 )
 
 const (
+	ResolveGranularityService  = "service"
+	ResolveGranularityEndpoint = "endpoint"
+)
+
+const (
 	// OpEqual means the equal ("==") operator in nginxVars.
 	OpEqual = "Equal"
 	// OpNotEqual means the not equal ("~=") operator in nginxVars.

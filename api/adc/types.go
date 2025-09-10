@@ -195,15 +195,13 @@ type Timeout struct {
 
 // +k8s:deepcopy-gen=true
 type StreamRoute struct {
-	Description string            `json:"description,omitempty"`
-	ID          string            `json:"id,omitempty"`
-	Labels      map[string]string `json:"labels,omitempty"`
-	Name        string            `json:"name"`
-	Plugins     Plugins           `json:"plugins,omitempty"`
-	RemoteAddr  string            `json:"remote_addr,omitempty"`
-	ServerAddr  string            `json:"server_addr,omitempty"`
-	ServerPort  *int64            `json:"server_port,omitempty"`
-	Sni         string            `json:"sni,omitempty"`
+	Metadata `json:",inline" yaml:",inline"`
+
+	Plugins    Plugins `json:"plugins,omitempty"`
+	RemoteAddr string  `json:"remote_addr,omitempty"`
+	ServerAddr string  `json:"server_addr,omitempty"`
+	ServerPort int32   `json:"server_port,omitempty"`
+	SNI        string  `json:"sni,omitempty"`
 }
 
 // +k8s:deepcopy-gen=true
@@ -537,6 +535,24 @@ func ComposeRouteName(namespace, name string, rule string) string {
 	return buf.String()
 }
 
+// ComposeStreamRouteName uses namespace, name and rule name to compose
+// the stream_route name.
+func ComposeStreamRouteName(namespace, name string, rule string) string {
+	// FIXME Use sync.Pool to reuse this buffer if the upstream
+	// name composing code path is hot.
+	p := make([]byte, 0, len(namespace)+len(name)+len(rule)+6)
+	buf := bytes.NewBuffer(p)
+
+	buf.WriteString(namespace)
+	buf.WriteByte('_')
+	buf.WriteString(name)
+	buf.WriteByte('_')
+	buf.WriteString(rule)
+	buf.WriteString("_tcp")
+
+	return buf.String()
+}
+
 func ComposeServiceNameWithRule(namespace, name string, rule string) string {
 	// FIXME Use sync.Pool to reuse this buffer if the upstream
 	// name composing code path is hot.
@@ -550,6 +566,24 @@ func ComposeServiceNameWithRule(namespace, name string, rule string) string {
 	buf.WriteString(name)
 	buf.WriteByte('_')
 	buf.WriteString(rule)
+
+	return buf.String()
+}
+
+func ComposeServiceNameWithStream(namespace, name string, rule string) string {
+	// FIXME Use sync.Pool to reuse this buffer if the upstream
+	// name composing code path is hot.
+	var p []byte
+	plen := len(namespace) + len(name) + 6
+
+	p = make([]byte, 0, plen)
+	buf := bytes.NewBuffer(p)
+	buf.WriteString(namespace)
+	buf.WriteByte('_')
+	buf.WriteString(name)
+	buf.WriteByte('_')
+	buf.WriteString(rule)
+	buf.WriteString("_stream")
 
 	return buf.String()
 }
@@ -595,6 +629,18 @@ func NewDefaultUpstream() *Upstream {
 // NewDefaultRoute returns an empty Route with default values.
 func NewDefaultRoute() *Route {
 	return &Route{
+		Metadata: Metadata{
+			Desc: "Created by apisix-ingress-controller, DO NOT modify it manually",
+			Labels: map[string]string{
+				"managed-by": "apisix-ingress-controller",
+			},
+		},
+	}
+}
+
+// NewDefaultStreamRoute returns an empty StreamRoute with default values.
+func NewDefaultStreamRoute() *StreamRoute {
+	return &StreamRoute{
 		Metadata: Metadata{
 			Desc: "Created by apisix-ingress-controller, DO NOT modify it manually",
 			Labels: map[string]string{

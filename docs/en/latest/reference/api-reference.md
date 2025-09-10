@@ -1178,7 +1178,7 @@ It defines routing rules for both HTTP and stream traffic.
 | --- | --- |
 | `ingressClassName` _string_ | IngressClassName is the name of the IngressClass this route belongs to. It allows multiple controllers to watch and reconcile different routes. |
 | `http` _[ApisixRouteHTTP](#apisixroutehttp) array_ | HTTP defines a list of HTTP route rules. Each rule specifies conditions to match HTTP requests and how to forward them. |
-| `stream` _[ApisixRouteStream](#apisixroutestream) array_ | Stream defines a list of stream route rules. Each rule specifies conditions to match TCP/UDP traffic and how to forward them. Stream is currently not supported. |
+| `stream` _[ApisixRouteStream](#apisixroutestream) array_ | Stream defines a list of stream route rules. Each rule specifies conditions to match TCP/UDP traffic and how to forward them. |
 
 
 _Appears in:_
@@ -1194,7 +1194,7 @@ ApisixRouteStream defines the configuration for a Layer 4 (TCP/UDP) route. Curre
 | Field | Description |
 | --- | --- |
 | `name` _string_ | Name is a unique identifier for the route. This field must not be empty. |
-| `protocol` _string_ | Protocol specifies the L4 protocol to match. Can be `tcp` or `udp`. |
+| `protocol` _string_ | Protocol specifies the L4 protocol to match. Can be `TCP` or `UDP`. |
 | `match` _[ApisixRouteStreamMatch](#apisixroutestreammatch)_ | Match defines the criteria used to match incoming TCP or UDP connections. |
 | `backend` _[ApisixRouteStreamBackend](#apisixroutestreambackend)_ | Backend specifies the destination service to which traffic should be forwarded. |
 | `plugins` _[ApisixRoutePlugin](#apisixrouteplugin) array_ | Plugins defines a list of plugins to apply to this route. |
@@ -1214,7 +1214,7 @@ ApisixRouteStreamBackend represents the backend service for a TCP or UDP stream 
 | --- | --- |
 | `serviceName` _string_ | ServiceName is the name of the Kubernetes Service. Cross-namespace references are not supported—ensure the ApisixRoute and the Service are in the same namespace. |
 | `servicePort` _[IntOrString](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#intorstring-intstr-util)_ | ServicePort is the port of the Kubernetes Service. This can be either the port name or port number. |
-| `resolveGranularity` _string_ | ResolveGranularity determines how the backend service is resolved. Valid values are `endpoints` and `service`. When set to `endpoints`, individual pod IPs will be used; otherwise, the Service's ClusterIP or ExternalIP is used. The default is `endpoints`. |
+| `resolveGranularity` _string_ | ResolveGranularity determines how the backend service is resolved. Valid values are `endpoint` and `service`. When set to `endpoint`, individual pod IPs will be used; otherwise, the Service's ClusterIP or ExternalIP is used. The default is `endpoint`. |
 | `subset` _string_ | Subset specifies a named subset of the target Service. The subset must be pre-defined in the corresponding ApisixUpstream resource. |
 
 

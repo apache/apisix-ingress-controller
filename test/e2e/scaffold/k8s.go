@@ -295,3 +295,22 @@ spec:
 `
 	return fmt.Sprintf(gatewayProxyYaml, framework.ProviderType, s.AdminKey())
 }
+
+func (s *Scaffold) WaitUntilDeploymentAvailable(name string) {
+	k8s.WaitUntilDeploymentAvailable(s.GinkgoT, s.kubectlOptions, name, 10, 10*time.Second)
+}
+
+func (s *Scaffold) RunDigDNSClientFromK8s(args ...string) (string, error) {
+	kubectlArgs := []string{
+		"run",
+		"dig",
+		"-i",
+		"--rm",
+		"--restart=Never",
+		"--image-pull-policy=IfNotPresent",
+		"--image=toolbelt/dig",
+		"--",
+	}
+	kubectlArgs = append(kubectlArgs, args...)
+	return s.RunKubectlAndGetOutput(kubectlArgs...)
+}

@@ -35,6 +35,24 @@ const (
 
 type ResponseCheckFunc func(*HTTPResponse) error
 
+// ErrorReporter implements httpexpect.Reporter
+type ErrorReporter struct {
+	err error
+}
+
+func (r *ErrorReporter) Errorf(message string, args ...interface{}) {
+	r.err = fmt.Errorf(message, args...)
+}
+
+func (r *ErrorReporter) Fatalf(message string, args ...interface{}) {
+	r.err = fmt.Errorf(message, args...)
+}
+
+// Err returns the stored error
+func (r *ErrorReporter) Err() error {
+	return r.err
+}
+
 type HTTPResponse struct {
 	*http.Response
 
@@ -194,8 +212,10 @@ func (s *Scaffold) RequestAssert(r *RequestAssert) bool {
 		r.Checks = append(r.Checks, r.Check)
 	}
 
-	return EventuallyWithOffset(1, func() error {
-		req := r.request(r.Method, r.Path, r.Body)
+	return EventuallyWithOffset(1, func() (err error) {
+		reporter := &ErrorReporter{}
+
+		req := r.request(r.Method, r.Path, r.Body).WithReporter(reporter)
 		if len(r.Headers) > 0 {
 			req = req.WithHeaders(r.Headers)
 		}
@@ -211,6 +231,10 @@ func (s *Scaffold) RequestAssert(r *RequestAssert) bool {
 			req = req.WithBasicAuth(r.BasicAuth.Username, r.BasicAuth.Password)
 		}
 		expResp := req.Expect()
+
+		if reporter.Err() != nil {
+			return reporter.Err()
+		}
 
 		resp := &HTTPResponse{
 			Response: expResp.Raw(),

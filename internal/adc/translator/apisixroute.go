@@ -50,6 +50,14 @@ func (t *Translator) TranslateApisixRoute(tctx *provider.TranslateContext, ar *a
 		}
 		result.Services = append(result.Services, service)
 	}
+
+	for _, part := range ar.Spec.Stream {
+		service, err := t.translateStreamRule(tctx, ar, part)
+		if err != nil {
+			return nil, err
+		}
+		result.Services = append(result.Services, service)
+	}
 	return result, nil
 }
 
@@ -88,7 +96,7 @@ func (t *Translator) buildPlugins(tctx *provider.TranslateContext, ar *apiv2.Api
 	t.loadPluginConfigPlugins(tctx, ar, rule, plugins)
 
 	// Apply plugins from the route itself
-	t.loadRoutePlugins(tctx, ar, rule, plugins)
+	t.loadRoutePlugins(tctx, ar, rule.Plugins, plugins)
 
 	// Add authentication plugins
 	t.addAuthenticationPlugins(rule, plugins)
@@ -121,8 +129,8 @@ func (t *Translator) loadPluginConfigPlugins(tctx *provider.TranslateContext, ar
 	}
 }
 
-func (t *Translator) loadRoutePlugins(tctx *provider.TranslateContext, ar *apiv2.ApisixRoute, rule apiv2.ApisixRouteHTTP, plugins adc.Plugins) {
-	for _, plugin := range rule.Plugins {
+func (t *Translator) loadRoutePlugins(tctx *provider.TranslateContext, ar *apiv2.ApisixRoute, routePlugins []apiv2.ApisixRoutePlugin, plugins adc.Plugins) {
+	for _, plugin := range routePlugins {
 		if !plugin.Enable {
 			continue
 		}
@@ -210,7 +218,7 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 			upstream, _ = t.translateApisixUpstream(tctx, au)
 		}
 
-		if backend.ResolveGranularity == "service" {
+		if backend.ResolveGranularity == apiv2.ResolveGranularityService {
 			upstream.Nodes, backendErr = t.translateApisixRouteBackendResolveGranularityService(tctx, utils.NamespacedName(ar), backend)
 			if backendErr != nil {
 				t.Log.Error(backendErr, "failed to translate ApisixRoute backend with ResolveGranularity Service")
@@ -341,6 +349,20 @@ func (t *Translator) translateApisixRouteBackendResolveGranularityService(tctx *
 	}, nil
 }
 
+func (t *Translator) translateApisixRouteStreamBackendResolveGranularity(tctx *provider.TranslateContext, arNN types.NamespacedName, backend apiv2.ApisixRouteStreamBackend) (adc.UpstreamNodes, error) {
+	tsBackend := apiv2.ApisixRouteHTTPBackend{
+		ServiceName:        backend.ServiceName,
+		ServicePort:        backend.ServicePort,
+		ResolveGranularity: backend.ResolveGranularity,
+		Subset:             backend.Subset,
+	}
+	if backend.ResolveGranularity == apiv2.ResolveGranularityService {
+		return t.translateApisixRouteBackendResolveGranularityService(tctx, arNN, tsBackend)
+	} else {
+		return t.translateApisixRouteBackendResolveGranularityEndpoint(tctx, arNN, tsBackend)
+	}
+}
+
 func (t *Translator) translateApisixRouteBackendResolveGranularityEndpoint(tctx *provider.TranslateContext, arNN types.NamespacedName, backend apiv2.ApisixRouteHTTPBackend) (adc.UpstreamNodes, error) {
 	weight := int32(*cmp.Or(backend.Weight, ptr.To(apiv2.DefaultWeight)))
 	backendRef := gatewayv1.BackendRef{
@@ -354,4 +376,38 @@ func (t *Translator) translateApisixRouteBackendResolveGranularityEndpoint(tctx 
 		Weight: &weight,
 	}
 	return t.translateBackendRef(tctx, backendRef, DefaultEndpointFilter)
+}
+
+func (t *Translator) translateStreamRule(tctx *provider.TranslateContext, ar *apiv2.ApisixRoute, part apiv2.ApisixRouteStream) (*adc.Service, error) {
+	// add stream route plugins
+	plugins := make(adc.Plugins)
+	t.loadRoutePlugins(tctx, ar, part.Plugins, plugins)
+
+	sr := adc.NewDefaultStreamRoute()
+	sr.Name = adc.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
+	sr.ID = id.GenID(sr.Name)
+	sr.ServerPort = part.Match.IngressPort
+	sr.SNI = part.Match.Host
+	sr.Plugins = plugins
+
+	svc := adc.NewDefaultService()
+	svc.Name = adc.ComposeServiceNameWithStream(ar.Namespace, ar.Name, part.Name)
+	svc.ID = id.GenID(svc.Name)
+	svc.StreamRoutes = append(svc.StreamRoutes, sr)
+
+	auNN := types.NamespacedName{Namespace: ar.GetNamespace(), Name: part.Backend.ServiceName}
+	upstream := adc.NewDefaultUpstream()
+	if au, ok := tctx.Upstreams[auNN]; ok {
+		upstream, _ = t.translateApisixUpstream(tctx, au)
+	}
+	nodes, err := t.translateApisixRouteStreamBackendResolveGranularity(tctx, utils.NamespacedName(ar), part.Backend)
+	if err != nil {
+		return nil, err
+	}
+	upstream.Nodes = nodes
+	upstream.ID = ""
+	upstream.Name = ""
+
+	svc.Upstream = upstream
+	return svc, nil
 }

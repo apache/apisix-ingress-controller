@@ -162,10 +162,12 @@ func (s *APISIXDeployer) DeployDataplane(deployOpts DeployDataplaneOptions) {
 
 	for _, close := range []func(){
 		s.closeAdminTunnel,
-		s.closeApisixHttpTunnel,
-		s.closeApisixHttpsTunnel,
 	} {
 		close()
+	}
+
+	if s.apisixTunnels != nil {
+		s.apisixTunnels.Close()
 	}
 
 	svc := s.deployDataplane(&opts)
@@ -181,13 +183,12 @@ func (s *APISIXDeployer) DeployDataplane(deployOpts DeployDataplaneOptions) {
 }
 
 func (s *APISIXDeployer) newAPISIXTunnels(serviceName string) error {
-	httpTunnel, httpsTunnel, err := s.createDataplaneTunnels(s.dataplaneService, s.kubectlOptions, serviceName)
+	apisixTunnels, err := s.createDataplaneTunnels(s.dataplaneService, s.kubectlOptions, serviceName)
 	if err != nil {
 		return err
 	}
 
-	s.apisixHttpTunnel = httpTunnel
-	s.apisixHttpsTunnel = httpsTunnel
+	s.apisixTunnels = apisixTunnels
 	return nil
 }
 
@@ -348,13 +349,12 @@ func (s *APISIXDeployer) CreateAdditionalGateway(namePrefix string) (string, *co
 	resources.DataplaneService = svc
 
 	// Create tunnels for the dataplane
-	httpTunnel, httpsTunnel, err := s.createDataplaneTunnels(svc, kubectlOpts, svc.Name)
+	tunnels, err := s.createDataplaneTunnels(svc, kubectlOpts, svc.Name)
 	if err != nil {
 		return "", nil, err
 	}
 
-	resources.HttpTunnel = httpTunnel
-	resources.HttpsTunnel = httpsTunnel
+	resources.Tunnels = tunnels
 
 	// Use namespace as identifier for APISIX deployments
 	identifier := additionalNS
@@ -372,12 +372,7 @@ func (s *APISIXDeployer) CleanupAdditionalGateway(identifier string) error {
 	}
 
 	// Close tunnels if they exist
-	if resources.HttpTunnel != nil {
-		resources.HttpTunnel.Close()
-	}
-	if resources.HttpsTunnel != nil {
-		resources.HttpsTunnel.Close()
-	}
+	resources.Tunnels.Close()
 
 	// Delete the namespace
 	err := k8s.DeleteNamespaceE(s.t, &k8s.KubectlOptions{

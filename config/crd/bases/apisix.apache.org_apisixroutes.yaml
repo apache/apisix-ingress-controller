@@ -355,7 +355,6 @@ spec:
                 description: |-
                   Stream defines a list of stream route rules.
                   Each rule specifies conditions to match TCP/UDP traffic and how to forward them.
-                  Stream is currently not supported.
                 items:
                   description: ApisixRouteStream defines the configuration for a Layer
                     4 (TCP/UDP) route. Currently not supported.
@@ -365,11 +364,15 @@ spec:
                         traffic should be forwarded.
                       properties:
                         resolveGranularity:
+                          default: endpoint
                           description: |-
                             ResolveGranularity determines how the backend service is resolved.
-                            Valid values are `endpoints` and `service`. When set to `endpoints`,
+                            Valid values are `endpoint` and `service`. When set to `endpoint`,
                             individual pod IPs will be used; otherwise, the Service's ClusterIP or ExternalIP is used.
-                            The default is `endpoints`.
+                            The default is `endpoint`.
+                          enum:
+                          - endpoint
+                          - service
                           type: string
                         serviceName:
                           description: |-
@@ -407,6 +410,8 @@ spec:
                             IngressPort is the port on which the APISIX Ingress proxy server listens.
                             This must be a statically configured port, as APISIX does not support dynamic port binding.
                           format: int32
+                          maximum: 65535
+                          minimum: 0
                           type: integer
                       required:
                       - ingressPort
@@ -442,7 +447,10 @@ spec:
                       type: array
                     protocol:
                       description: Protocol specifies the L4 protocol to match. Can
-                        be `tcp` or `udp`.
+                        be `TCP` or `UDP`.
+                      enum:
+                      - TCP
+                      - UDP
                       type: string
                   required:
                   - backend

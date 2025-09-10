@@ -39,7 +39,6 @@ type ApisixRouteSpec struct {
 	HTTP []ApisixRouteHTTP `json:"http,omitempty" yaml:"http,omitempty"`
 	// Stream defines a list of stream route rules.
 	// Each rule specifies conditions to match TCP/UDP traffic and how to forward them.
-	// Stream is currently not supported.
 	Stream []ApisixRouteStream `json:"stream,omitempty" yaml:"stream,omitempty"`
 }
 
@@ -111,7 +110,9 @@ type ApisixRouteHTTP struct {
 type ApisixRouteStream struct {
 	// Name is a unique identifier for the route. This field must not be empty.
 	Name string `json:"name" yaml:"name"`
-	// Protocol specifies the L4 protocol to match. Can be `tcp` or `udp`.
+	// Protocol specifies the L4 protocol to match. Can be `TCP` or `UDP`.
+	//
+	// +kubebuilder:validation:Enum=TCP;UDP
 	Protocol string `json:"protocol" yaml:"protocol"`
 	// Match defines the criteria used to match incoming TCP or UDP connections.
 	Match ApisixRouteStreamMatch `json:"match" yaml:"match"`
@@ -225,6 +226,9 @@ type ApisixRouteAuthentication struct {
 type ApisixRouteStreamMatch struct {
 	// IngressPort is the port on which the APISIX Ingress proxy server listens.
 	// This must be a statically configured port, as APISIX does not support dynamic port binding.
+	//
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=65535
 	IngressPort int32 `json:"ingressPort" yaml:"ingressPort"`
 	// Host is the destination host address used to match the incoming TCP/UDP traffic.
 	Host string `json:"host,omitempty" yaml:"host,omitempty"`
@@ -240,9 +244,12 @@ type ApisixRouteStreamBackend struct {
 	// This can be either the port name or port number.
 	ServicePort intstr.IntOrString `json:"servicePort" yaml:"servicePort"`
 	// ResolveGranularity determines how the backend service is resolved.
-	// Valid values are `endpoints` and `service`. When set to `endpoints`,
+	// Valid values are `endpoint` and `service`. When set to `endpoint`,
 	// individual pod IPs will be used; otherwise, the Service's ClusterIP or ExternalIP is used.
-	// The default is `endpoints`.
+	// The default is `endpoint`.
+	//
+	// +kubebuilder:default=endpoint
+	// +kubebuilder:validation:Enum=endpoint;service
 	ResolveGranularity string `json:"resolveGranularity,omitempty" yaml:"resolveGranularity,omitempty"`
 	// Subset specifies a named subset of the target Service.
 	// The subset must be pre-defined in the corresponding ApisixUpstream resource.
