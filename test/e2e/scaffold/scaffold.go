@@ -26,6 +26,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/api7/gopkg/pkg/log"
 	"github.com/gavv/httpexpect/v2"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/gruntwork-io/terratest/modules/testing"
@@ -80,17 +81,27 @@ type Tunnels struct {
 
 func (t *Tunnels) Close() {
 	if t.HTTP != nil {
-		t.HTTP.Close()
+		t.safeClose(t.HTTP.Close)
 		t.HTTP = nil
 	}
 	if t.HTTPS != nil {
-		t.HTTPS.Close()
+		t.safeClose(t.HTTPS.Close)
 		t.HTTPS = nil
 	}
 	if t.TCP != nil {
-		t.TCP.Close()
+		t.safeClose(t.TCP.Close)
 		t.TCP = nil
 	}
+}
+
+func (t *Tunnels) safeClose(close func()) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Errorf("panic when closing tunnel: %v", r)
+		}
+	}()
+
+	close()
 }
 
 // GatewayResources contains resources associated with a specific Gateway group

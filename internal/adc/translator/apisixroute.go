@@ -350,16 +350,16 @@ func (t *Translator) translateApisixRouteBackendResolveGranularityService(tctx *
 }
 
 func (t *Translator) translateApisixRouteStreamBackendResolveGranularity(tctx *provider.TranslateContext, arNN types.NamespacedName, backend apiv2.ApisixRouteStreamBackend) (adc.UpstreamNodes, error) {
-	tsBakcnd := apiv2.ApisixRouteHTTPBackend{
+	tsBackend := apiv2.ApisixRouteHTTPBackend{
 		ServiceName:        backend.ServiceName,
 		ServicePort:        backend.ServicePort,
 		ResolveGranularity: backend.ResolveGranularity,
 		Subset:             backend.Subset,
 	}
 	if backend.ResolveGranularity == apiv2.ResolveGranularityService {
-		return t.translateApisixRouteBackendResolveGranularityService(tctx, arNN, tsBakcnd)
+		return t.translateApisixRouteBackendResolveGranularityService(tctx, arNN, tsBackend)
 	} else {
-		return t.translateApisixRouteBackendResolveGranularityEndpoint(tctx, arNN, tsBakcnd)
+		return t.translateApisixRouteBackendResolveGranularityEndpoint(tctx, arNN, tsBackend)
 	}
 }
 
