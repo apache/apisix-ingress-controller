@@ -410,6 +410,8 @@ spec:
                             IngressPort is the port on which the APISIX Ingress proxy server listens.
                             This must be a statically configured port, as APISIX does not support dynamic port binding.
                           format: int32
+                          maximum: 65535
+                          minimum: 0
                           type: integer
                       required:
                       - ingressPort

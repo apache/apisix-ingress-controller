@@ -226,6 +226,9 @@ type ApisixRouteAuthentication struct {
 type ApisixRouteStreamMatch struct {
 	// IngressPort is the port on which the APISIX Ingress proxy server listens.
 	// This must be a statically configured port, as APISIX does not support dynamic port binding.
+	//
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=65535
 	IngressPort int32 `json:"ingressPort" yaml:"ingressPort"`
 	// Host is the destination host address used to match the incoming TCP/UDP traffic.
 	Host string `json:"host,omitempty" yaml:"host,omitempty"`
