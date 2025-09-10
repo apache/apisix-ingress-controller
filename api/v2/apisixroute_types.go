@@ -39,7 +39,6 @@ type ApisixRouteSpec struct {
 	HTTP []ApisixRouteHTTP `json:"http,omitempty" yaml:"http,omitempty"`
 	// Stream defines a list of stream route rules.
 	// Each rule specifies conditions to match TCP/UDP traffic and how to forward them.
-	// Stream is currently not supported.
 	Stream []ApisixRouteStream `json:"stream,omitempty" yaml:"stream,omitempty"`
 }
 
