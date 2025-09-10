@@ -53,6 +53,7 @@ If you are using Gateway API, you should first configure the GatewayClass and Ga
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
+  namespace: ingress-apisix
   name: apisix
 spec:
   controllerName: apisix.apache.org/apisix-ingress-controller
@@ -60,6 +61,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
+  namespace: ingress-apisix
   name: apisix
 spec:
   gatewayClassName: apisix
@@ -96,6 +98,7 @@ Create a Kubernetes manifest file to configure a consumer:
 apiVersion: apisix.apache.org/v1alpha1
 kind: Consumer
 metadata:
+  namespace: ingress-apisix
   name: tom
 spec:
   gatewayRef:
@@ -113,6 +116,7 @@ Create a Kubernetes manifest file to configure a route and enable key authentica
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: ingress-apisix
   name: httpbin-external-domain
 spec:
   type: ExternalName
@@ -121,6 +125,7 @@ spec:
 apiVersion: apisix.apache.org/v1alpha1
 kind: PluginConfig
 metadata:
+  namespace: ingress-apisix
   name: auth-plugin-config
 spec:
   plugins:
@@ -132,6 +137,7 @@ spec:
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
+  namespace: ingress-apisix
   name: getting-started-ip
 spec:
   parentRefs:
@@ -168,6 +174,7 @@ Create a Kubernetes manifest file to configure a consumer:
 apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
 metadata:
+  namespace: ingress-apisix
   name: tom
 spec:
   ingressClassName: apisix
@@ -183,6 +190,7 @@ Create a Kubernetes manifest file to configure a route and enable key authentica
 apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
+  namespace: ingress-apisix
   name: httpbin-external-domain
 spec:
   externalNodes:
@@ -192,6 +200,7 @@ spec:
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
+  namespace: ingress-apisix
   name: getting-started-ip
 spec:
   ingressClassName: apisix

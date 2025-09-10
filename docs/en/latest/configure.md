@@ -50,6 +50,7 @@ The `controller_name` field is used to identify the `controllerName` in the Gate
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
+  namespace: ingress-apisix
   name: apisix
 spec:
   controllerName: "apisix.apache.org/apisix-ingress-controller"
