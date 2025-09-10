@@ -197,12 +197,11 @@ type Timeout struct {
 type StreamRoute struct {
 	Metadata `json:",inline" yaml:",inline"`
 
-	Labels     map[string]string `json:"labels,omitempty"`
-	Plugins    Plugins           `json:"plugins,omitempty"`
-	RemoteAddr string            `json:"remote_addr,omitempty"`
-	ServerAddr string            `json:"server_addr,omitempty"`
-	ServerPort int32             `json:"server_port,omitempty"`
-	SNI        string            `json:"sni,omitempty"`
+	Plugins    Plugins `json:"plugins,omitempty"`
+	RemoteAddr string  `json:"remote_addr,omitempty"`
+	ServerAddr string  `json:"server_addr,omitempty"`
+	ServerPort int32   `json:"server_port,omitempty"`
+	SNI        string  `json:"sni,omitempty"`
 }
 
 // +k8s:deepcopy-gen=true
