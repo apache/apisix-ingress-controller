@@ -1,3 +1,16 @@
+---
+title: Configuration File
+slug: /reference/apisix-ingress-controller/configuration-file
+description: Configure the APISIX Ingress Controller using the config.yaml file, including configurations such as log settings, leader election, metrics, and sync behavior.
+---
+
+The APISIX Ingress Controller uses a configuration file `config.yaml` to define core settings such as log level, leader election behavior, metrics endpoints, and sync intervals. 
+
+Configurations are defined in a Kubernetes ConfigMap and mounted into the controller pod as a file at runtime. To apply changes, you can update the ConfigMap and restart the controller Deployment to reload the configurations.
+
+Below are all available configuration options, including their default values and usage:
+
+```yaml
 log_level: "info"                               # The log level of the APISIX Ingress Controller.
                                                 # The default value is "info".
 
@@ -40,3 +53,4 @@ provider:
                                         # If you want to enable the sync, set it to a positive value.
   init_sync_delay: 20m                  # The initial delay before the first sync, only used when the controller is started.
                                         # The default value is 20 minutes.
+```
