@@ -365,11 +365,15 @@ spec:
                         traffic should be forwarded.
                       properties:
                         resolveGranularity:
+                          default: endpoint
                           description: |-
                             ResolveGranularity determines how the backend service is resolved.
-                            Valid values are `endpoints` and `service`. When set to `endpoints`,
+                            Valid values are `endpoint` and `service`. When set to `endpoint`,
                             individual pod IPs will be used; otherwise, the Service's ClusterIP or ExternalIP is used.
-                            The default is `endpoints`.
+                            The default is `endpoint`.
+                          enum:
+                          - endpoint
+                          - service
                           type: string
                         serviceName:
                           description: |-
@@ -442,7 +446,10 @@ spec:
                       type: array
                     protocol:
                       description: Protocol specifies the L4 protocol to match. Can
-                        be `tcp` or `udp`.
+                        be `TCP` or `UDP`.
+                      enum:
+                      - TCP
+                      - UDP
                       type: string
                   required:
                   - backend

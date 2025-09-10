@@ -35,6 +35,13 @@ data:
     nginx_config:
       worker_processes: 2
       error_log_level: info
+    apisix:
+      proxy_mode: http&stream      
+      stream_proxy:                 # TCP/UDP proxy
+        tcp:                        # TCP proxy port list
+          - 9100
+        udp:                        # UDP proxy port list
+          - 9200
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -83,6 +90,12 @@ spec:
             - name: admin
               containerPort: 9180
               protocol: TCP
+            - name: tcp
+              containerPort: 9100
+              protocol: TCP
+            - name: udp
+              containerPort: 9200
+              protocol: UDP
           volumeMounts:
             - name: config-writable
               mountPath: /usr/local/apisix/conf
@@ -113,6 +126,14 @@ spec:
       name: admin
       protocol: TCP
       targetPort: 9180
+    - name: tcp
+      port: 9100
+      protocol: TCP
+      targetPort: 9100
+    - name: udp
+      port: 9200
+      protocol: UDP
+      targetPort: 9200
   selector:
     app.kubernetes.io/name: apisix 
   type: {{ .ServiceType | default "NodePort" }}

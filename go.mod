@@ -7,12 +7,13 @@ toolchain go1.24.7
 require (
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/api7/gopkg v0.2.1-0.20230601092738-0f3730f9b57a
+	github.com/eclipse/paho.mqtt.golang v1.5.0
 	github.com/gavv/httpexpect/v2 v2.16.0
 	github.com/go-logr/logr v1.4.2
 	github.com/go-logr/zapr v1.3.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
-	github.com/gorilla/websocket v1.5.1
+	github.com/gorilla/websocket v1.5.3
 	github.com/gruntwork-io/terratest v0.50.0
 	github.com/hashicorp/go-memdb v1.3.4
 	github.com/incubator4/go-resty-expr v0.1.1
