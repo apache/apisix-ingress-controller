@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/incubator4/go-resty-expr/expr"
 )
 
@@ -815,8 +816,8 @@ var (
 		Endpoint string
 		Service  string
 	}{
-		Endpoint: "endpoint",
-		Service:  "service",
+		Endpoint: apiv2.ResolveGranularityEndpoint,
+		Service:  apiv2.ResolveGranularityService,
 	}
 )
 
