@@ -19,6 +19,7 @@ package apisix
 
 import (
 	"context"
+	"net/http"
 	"sync"
 	"time"
 
@@ -81,15 +82,18 @@ func New(updater status.Updater, readier readiness.ReadinessManager, opts ...pro
 	}
 
 	return &apisixProvider{
-		client: cli,
-		// TODO: Maybe pass port/address from external configuration
-		adcdebugserver: common.NewADCDebugServer(cli.Store, cli.ConfigManager, 8432),
+		client:         cli,
+		adcdebugserver: common.NewADCDebugServer(cli.Store, cli.ConfigManager),
 		Options:        o,
 		translator:     &translator.Translator{},
 		updater:        updater,
 		readier:        readier,
 		syncCh:         make(chan struct{}, 1),
 	}, nil
+}
+
+func (d *apisixProvider) Register(pathPrefix string, mux *http.ServeMux) {
+	d.adcdebugserver.SetupHandler(pathPrefix, mux)
 }
 
 func (d *apisixProvider) Update(ctx context.Context, tctx *provider.TranslateContext, obj client.Object) error {
@@ -231,11 +235,6 @@ func (d *apisixProvider) buildConfig(tctx *provider.TranslateContext, nnk types.
 
 func (d *apisixProvider) Start(ctx context.Context) error {
 	d.readier.WaitReady(ctx, 5*time.Minute)
-	go func() {
-		if err := d.adcdebugserver.Start(ctx); err != nil {
-			log.Warnf("adc debug server failed to start: %s", err.Error())
-		}
-	}()
 	initalSyncDelay := d.InitSyncDelay
 	if initalSyncDelay > 0 {
 		time.AfterFunc(initalSyncDelay, d.syncNotify)

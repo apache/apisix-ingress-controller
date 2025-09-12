@@ -43,6 +43,7 @@ const (
 
 	DefaultMetricsAddr = ":8080"
 	DefaultProbeAddr   = ":8081"
+	DefaultServerAddr  = ":9092"
 )
 
 // Config contains all config items which are necessary for
@@ -52,6 +53,7 @@ type Config struct {
 	ControllerName   string             `json:"controller_name" yaml:"controller_name"`
 	LeaderElectionID string             `json:"leader_election_id" yaml:"leader_election_id"`
 	MetricsAddr      string             `json:"metrics_addr" yaml:"metrics_addr"`
+	ServerAddr       string             `json:"server_addr" yaml:"server_addr"`
 	EnableHTTP2      bool               `json:"enable_http2" yaml:"enable_http2"`
 	ProbeAddr        string             `json:"probe_addr" yaml:"probe_addr"`
 	SecureMetrics    bool               `json:"secure_metrics" yaml:"secure_metrics"`

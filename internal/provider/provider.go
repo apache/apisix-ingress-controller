@@ -33,6 +33,7 @@ import (
 )
 
 type Provider interface {
+	RegisterHandler
 	Update(context.Context, *TranslateContext, client.Object) error
 	Delete(context.Context, client.Object) error
 	Start(context.Context) error

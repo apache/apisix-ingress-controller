@@ -14,31 +14,20 @@
 // KIND, either express or implied.  See the License for the
 // specific language governing permissions and limitations
 // under the License.
-
 package common
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
 	"net/url"
+	"strings"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/adc/cache"
 	"github.com/apache/apisix-ingress-controller/internal/types"
 )
-
-type ConfigListData struct {
-	ConfigNames []string
-}
-
-type ResourceListData struct {
-	ConfigName   string
-	ResourceType string
-	Resources    []ResourceInfo
-}
 
 type ResourceInfo struct {
 	ID   string
@@ -47,122 +36,106 @@ type ResourceInfo struct {
 	Link string
 }
 
-type ResourceDetailData struct {
-	ConfigName   string
-	Resource     interface{}
-	ResourceID   string
-	ResourceType string
-}
-
 type ADCDebugServer struct {
 	store         *cache.Store
-	handler       http.Handler
 	configManager *ConfigManager[types.NamespacedNameKind, adctypes.Config]
-	port          int
+	pathPrefix    string
 }
 
-func (asrv *ADCDebugServer) setupHandler() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", asrv.handleIndex)
+// helper to always provide urlencode in templates
+func newTemplate(name, body string) *template.Template {
+	return template.Must(template.New(name).
+		Funcs(template.FuncMap{"urlencode": url.QueryEscape}).
+		Parse(body))
+}
+
+func (asrv *ADCDebugServer) SetupHandler(pathPrefix string, mux *http.ServeMux) {
+	asrv.pathPrefix = pathPrefix
 	mux.HandleFunc("/config", asrv.handleConfig)
-	asrv.handler = mux
+	mux.HandleFunc("/", asrv.handleIndex)
 }
 
-func NewADCDebugServer(store *cache.Store, configManager *ConfigManager[types.NamespacedNameKind, adctypes.Config], port int) *ADCDebugServer {
-	srv := &ADCDebugServer{
-		store:         store,
-		configManager: configManager,
-		port:          port,
-	}
-	srv.setupHandler()
-	return srv
-}
-
-func (asrv *ADCDebugServer) Start(ctx context.Context) error {
-	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", asrv.port),
-		Handler: asrv.handler,
-	}
-
-	go func() {
-		<-ctx.Done()
-		_ = server.Shutdown(context.Background())
-	}()
-
-	return server.ListenAndServe()
+func NewADCDebugServer(store *cache.Store, configManager *ConfigManager[types.NamespacedNameKind, adctypes.Config]) *ADCDebugServer {
+	return &ADCDebugServer{store: store, configManager: configManager}
 }
 
 func (asrv *ADCDebugServer) handleIndex(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
-		return
-	}
-
 	configs := asrv.configManager.List()
-	configNames := make([]string, 0)
+	configNames := make([]string, 0, len(configs))
 	for _, cfg := range configs {
 		configNames = append(configNames, cfg.Name)
 	}
 
-	tmpl := template.New("index").Funcs(template.FuncMap{
-		"urlencode": url.QueryEscape,
-	})
-
-	tmpl, err := tmpl.Parse(`
+	tmpl := newTemplate("index", `
 		<html>
 		<head><title>ADC Debug Server</title></head>
 		<body>
 			<h1>Configurations</h1>
 			<ul>
 				{{range .ConfigNames}}
-				<li><a href="/config?name={{. | urlencode}}">{{.}}</a></li>
+				<li><a href="{{$.Prefix}}/config?name={{. | urlencode}}">{{.}}</a></li>
 				{{end}}
 			</ul>
 		</body>
 		</html>
 	`)
 
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	_ = tmpl.Execute(w, ConfigListData{ConfigNames: configNames})
+	_ = tmpl.Execute(w, struct {
+		ConfigNames []string
+		Prefix      string
+	}{ConfigNames: configNames, Prefix: asrv.pathPrefix})
 }
 
 func (asrv *ADCDebugServer) handleConfig(w http.ResponseWriter, r *http.Request) {
+	// Get the raw query parameter
 	configNameEncoded := r.URL.Query().Get("name")
 	if configNameEncoded == "" {
 		http.Error(w, "Config name is required", http.StatusBadRequest)
 		return
 	}
 
+	// URL decode potentially multiple times until we get the original value
 	configName, err := url.QueryUnescape(configNameEncoded)
 	if err != nil {
 		http.Error(w, "Invalid config name encoding", http.StatusBadRequest)
 		return
 	}
 
-	resourceType := r.URL.Query().Get("type")
-	resourceIDEncoded := r.URL.Query().Get("id")
+	// Check if we need to decode again (handles double-encoding)
+	if strings.Contains(configName, "%") {
+		if decodedAgain, err := url.QueryUnescape(configName); err == nil {
+			configName = decodedAgain
+		}
+	}
 
-	var resourceID string
+	// Similarly handle resourceID
+	resourceIDEncoded := r.URL.Query().Get("id")
+	resourceID := ""
 	if resourceIDEncoded != "" {
 		resourceID, err = url.QueryUnescape(resourceIDEncoded)
 		if err != nil {
 			http.Error(w, "Invalid resource ID encoding", http.StatusBadRequest)
 			return
 		}
+
+		// Check if we need to decode again
+		if strings.Contains(resourceID, "%") {
+			if decodedAgain, err := url.QueryUnescape(resourceID); err == nil {
+				resourceID = decodedAgain
+			}
+		}
 	}
 
+	resourceType := r.URL.Query().Get("type")
+
+	// Rest of the function remains the same
 	if resourceType == "" {
-		// Show resource types for this config
-		asrv.showResourceTypes(w, configName, configNameEncoded)
+		asrv.showResourceTypes(w, configName, url.QueryEscape(configName))
 		return
 	}
 
 	if resourceID == "" {
-		asrv.showResources(w, r, configName, configNameEncoded, resourceType)
+		asrv.showResources(w, r, configName, url.QueryEscape(configName), resourceType)
 		return
 	}
 
@@ -170,45 +143,33 @@ func (asrv *ADCDebugServer) handleConfig(w http.ResponseWriter, r *http.Request)
 }
 
 func (asrv *ADCDebugServer) showResourceTypes(w http.ResponseWriter, configName, configNameEncoded string) {
-	resourceTypes := []string{
-		"services", "routes", "consumers", "ssls",
-		"globalrules", "pluginmetadata",
-	}
+	resourceTypes := []string{"services", "routes", "consumers", "ssls", "globalrules", "pluginmetadata"}
 
-	tmpl := template.New("resources").Funcs(template.FuncMap{
-		"urlencode": url.QueryEscape,
-	})
+	tmpl := newTemplate("resources", `
+        <html>
+        <head><title>Resources for {{.ConfigName}}</title></head>
+        <body>
+            <h1>Resources for {{.ConfigName}}</h1>
+            <ul>
+                {{range .ResourceTypes}}
+                <li><a href="{{$.Prefix}}/config?name={{$.ConfigNameEncoded}}&type={{. | urlencode}}">{{.}}</a></li>
+                {{end}}
+            </ul>
+        </body>
+        </html>
+    `)
 
-	tmpl, err := tmpl.Parse(`
-		<html>
-		<head><title>Resources for {{.ConfigName}}</title></head>
-		<body>
-			<h1>Resources for {{.ConfigName}}</h1>
-			<ul>
-				{{range .ResourceTypes}}
-				<li><a href="/config?name={{$.ConfigNameEncoded}}&type={{.}}">{{.}}</a></li>
-				{{end}}
-			</ul>
-		</body>
-		</html>
-	`)
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	data := struct {
+	_ = tmpl.Execute(w, struct {
 		ConfigName        string
 		ConfigNameEncoded string
 		ResourceTypes     []string
+		Prefix            string
 	}{
 		ConfigName:        configName,
 		ConfigNameEncoded: configNameEncoded,
 		ResourceTypes:     resourceTypes,
-	}
-
-	_ = tmpl.Execute(w, data)
+		Prefix:            asrv.pathPrefix,
+	})
 }
 
 func (asrv *ADCDebugServer) showResources(w http.ResponseWriter, r *http.Request, configName, configNameEncoded, resourceType string) {
@@ -219,7 +180,6 @@ func (asrv *ADCDebugServer) showResources(w http.ResponseWriter, r *http.Request
 	}
 
 	var resourceInfos []ResourceInfo
-
 	switch resourceType {
 	case "services":
 		for _, svc := range resources.Services {
@@ -227,8 +187,8 @@ func (asrv *ADCDebugServer) showResources(w http.ResponseWriter, r *http.Request
 				ID:   svc.ID,
 				Name: svc.Name,
 				Type: resourceType,
-				Link: fmt.Sprintf("/config?name=%s&type=%s&id=%s",
-					configNameEncoded, resourceType, url.QueryEscape(svc.ID)),
+				Link: fmt.Sprintf("%s/config?name=%s&type=%s&id=%s",
+					asrv.pathPrefix, configNameEncoded, url.QueryEscape(resourceType), url.QueryEscape(svc.ID)),
 			})
 		}
 	case "consumers":
@@ -237,8 +197,8 @@ func (asrv *ADCDebugServer) showResources(w http.ResponseWriter, r *http.Request
 				ID:   consumer.Username,
 				Name: consumer.Username,
 				Type: resourceType,
-				Link: fmt.Sprintf("/config?name=%s&type=%s&id=%s",
-					configNameEncoded, resourceType, url.QueryEscape(consumer.Username)),
+				Link: fmt.Sprintf("%s/config?name=%s&type=%s&id=%s",
+					asrv.pathPrefix, configNameEncoded, url.QueryEscape(resourceType), url.QueryEscape(consumer.Username)),
 			})
 		}
 	case "ssls":
@@ -247,8 +207,8 @@ func (asrv *ADCDebugServer) showResources(w http.ResponseWriter, r *http.Request
 				ID:   ssl.ID,
 				Name: ssl.ID,
 				Type: resourceType,
-				Link: fmt.Sprintf("/config?name=%s&type=%s&id=%s",
-					configNameEncoded, resourceType, url.QueryEscape(ssl.ID)),
+				Link: fmt.Sprintf("%s/config?name=%s&type=%s&id=%s",
+					asrv.pathPrefix, configNameEncoded, url.QueryEscape(resourceType), url.QueryEscape(ssl.ID)),
 			})
 		}
 	case "globalrules":
@@ -257,8 +217,8 @@ func (asrv *ADCDebugServer) showResources(w http.ResponseWriter, r *http.Request
 				ID:   key,
 				Name: key,
 				Type: resourceType,
-				Link: fmt.Sprintf("/config?name=%s&type=%s&id=%s",
-					configNameEncoded, resourceType, url.QueryEscape(key)),
+				Link: fmt.Sprintf("%s/config?name=%s&type=%s&id=%s",
+					asrv.pathPrefix, configNameEncoded, url.QueryEscape(resourceType), url.QueryEscape(key)),
 			})
 		}
 	case "pluginmetadata":
@@ -267,8 +227,8 @@ func (asrv *ADCDebugServer) showResources(w http.ResponseWriter, r *http.Request
 				ID:   "pluginmetadata",
 				Name: "Plugin Metadata",
 				Type: resourceType,
-				Link: fmt.Sprintf("/config?name=%s&type=%s&id=%s",
-					configNameEncoded, resourceType, "pluginmetadata"),
+				Link: fmt.Sprintf("%s/config?name=%s&type=%s&id=%s",
+					asrv.pathPrefix, configNameEncoded, url.QueryEscape(resourceType), "pluginmetadata"),
 			})
 		}
 	case "routes":
@@ -278,8 +238,8 @@ func (asrv *ADCDebugServer) showResources(w http.ResponseWriter, r *http.Request
 					ID:   route.ID,
 					Name: route.Name,
 					Type: resourceType,
-					Link: fmt.Sprintf("/config?name=%s&type=%s&id=%s",
-						configNameEncoded, resourceType, url.QueryEscape(route.ID)),
+					Link: fmt.Sprintf("%s/config?name=%s&type=%s&id=%s",
+						asrv.pathPrefix, configNameEncoded, url.QueryEscape(resourceType), url.QueryEscape(route.ID)),
 				})
 			}
 		}
@@ -288,7 +248,7 @@ func (asrv *ADCDebugServer) showResources(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	tmpl := template.Must(template.New("resourceList").Parse(`
+	tmpl := newTemplate("resourceList", `
 		<html>
 		<head><title>{{.ResourceType}} for {{.ConfigName}}</title></head>
 		<body>
@@ -300,12 +260,18 @@ func (asrv *ADCDebugServer) showResources(w http.ResponseWriter, r *http.Request
 			</ul>
 		</body>
 		</html>
-	`))
+	`)
 
-	_ = tmpl.Execute(w, ResourceListData{
+	_ = tmpl.Execute(w, struct {
+		ConfigName   string
+		ResourceType string
+		Resources    []ResourceInfo
+		Prefix       string
+	}{
 		ConfigName:   configName,
 		ResourceType: resourceType,
 		Resources:    resourceInfos,
+		Prefix:       asrv.pathPrefix,
 	})
 }
 
@@ -317,7 +283,6 @@ func (asrv *ADCDebugServer) showResourceDetail(w http.ResponseWriter, r *http.Re
 	}
 
 	var resource interface{}
-
 	switch resourceType {
 	case "services":
 		for _, svc := range resources.Services {
@@ -369,20 +334,28 @@ func (asrv *ADCDebugServer) showResourceDetail(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	tmpl := template.Must(template.New("resourceDetail").Parse(`
+	tmpl := newTemplate("resourceDetail", `
 		<html>
 		<head><title>Resource Detail</title></head>
 		<body>
 			<h1>Resource Details: {{.ResourceType}}/{{.ResourceID}}</h1>
 			<pre>{{.Resource}}</pre>
+			<a href="{{.Prefix}}/config?name={{.ConfigName | urlencode}}&type={{.ResourceType}}">Back</a>
 		</body>
 		</html>
-	`))
+	`)
 
-	_ = tmpl.Execute(w, ResourceDetailData{
+	_ = tmpl.Execute(w, struct {
+		ConfigName   string
+		Resource     string
+		ResourceID   string
+		ResourceType string
+		Prefix       string
+	}{
 		ConfigName:   configName,
 		Resource:     string(jsonData),
 		ResourceID:   resourceID,
 		ResourceType: resourceType,
+		Prefix:       asrv.pathPrefix,
 	})
 }
