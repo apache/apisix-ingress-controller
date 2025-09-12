@@ -581,6 +581,151 @@ spec:
 				Check:  scaffold.WithExpectedStatus(http.StatusOK),
 			})
 		})
+		It("Test ApisixRoute with secretRef", func() {
+			const secretYaml = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: echo-secret
+  namespace: %s
+data:
+  # content is "This is the replaced preface"
+  before_body: IlRoaXMgaXMgdGhlIHJlcGxhY2VkIHByZWZhY2Ui
+  # content is "my custom body"
+  body: Im15IGN1c3RvbSBib2R5Ig==
+`
+
+			const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: httpbin-route
+  namespace: %s
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+      - /ip
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+    plugins:
+    - name: echo
+      enable: true
+      config:
+        before_body: "This is the preface"
+        after_body: "This is the epilogue"
+        headers:
+          X-Foo: v1
+          X-Foo2: v2
+      secretRef: echo-secret
+`
+
+			By("create secret for ApisixRoute")
+			err := s.CreateResourceFromString(fmt.Sprintf(secretYaml, s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "creating echo secret for ApisixRoute")
+
+			By("apply ApisixRoute with secretRef")
+			var apisixRoute apiv2.ApisixRoute
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-route"},
+				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Namespace()))
+
+			By("verify ApisixRoute with secretRef works")
+			Eventually(func() *http.Response {
+				return s.NewAPISIXClient().GET("/ip").
+					WithHeader("Host", "httpbin.org").
+					Expect().
+					Raw()
+			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(And(
+				HaveHTTPStatus(http.StatusOK),
+				HaveHTTPHeaderWithValue("X-Foo", "v1"),
+				HaveHTTPHeaderWithValue("X-Foo2", "v2"),
+			))
+
+			// Verify the response body contains the secret values
+			resp := s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusOK)
+
+			resp.Body().Contains("This is the replaced preface") // From secret
+			resp.Body().Contains("This is the epilogue")         // From config
+			resp.Body().Contains("my custom body")               // From secret
+		})
+
+		It("Test ApisixRoute with secretRef - nested keys", func() {
+			const secretYaml = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: echo-secret-nested
+  namespace: %s
+data:
+  headers.X-Foo: djI=  # base64 for "v2"
+  body: Im15IGN1c3RvbSBib2R5Ig==  # base64 for "my custom body"
+`
+
+			const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: httpbin-route-nested
+  namespace: %s
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+      - /ip
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+    plugins:
+    - name: echo
+      enable: true
+      config:
+        before_body: "This is the preface"
+        after_body: "This is the epilogue"
+        headers:
+          X-Foo: v1
+      secretRef: echo-secret-nested
+`
+
+			By("create secret for ApisixRoute with nested keys")
+			err := s.CreateResourceFromString(fmt.Sprintf(secretYaml, s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "creating echo secret for ApisixRoute")
+
+			By("apply ApisixRoute with secretRef (nested keys)")
+			var apisixRoute apiv2.ApisixRoute
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-route-nested"},
+				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Namespace()))
+
+			By("verify ApisixRoute with secretRef (nested keys) works")
+			Eventually(func() *http.Response {
+				return s.NewAPISIXClient().GET("/ip").
+					WithHeader("Host", "httpbin.org").
+					Expect().
+					Raw()
+			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(And(
+				HaveHTTPStatus(http.StatusOK),
+				HaveHTTPHeaderWithValue("X-Foo", "v2"), // From secret, overriding config value "v1"
+			))
+
+			// Verify the response body contains the secret values
+			resp := s.NewAPISIXClient().GET("/ip").
+				WithHeader("Host", "httpbin.org").
+				Expect().
+				Status(http.StatusOK)
+
+			resp.Body().Contains("my custom body") // From secret
+		})
 	})
 
 	Context("Test ApisixRoute reference ApisixUpstream", func() {
