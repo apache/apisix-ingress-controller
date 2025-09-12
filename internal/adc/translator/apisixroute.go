@@ -29,6 +29,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
@@ -235,7 +236,7 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 			upstream.Labels["meta_weight"] = strconv.FormatInt(int64(*backend.Weight), 10)
 		}
 
-		upstreamName := adc.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, int32(backend.ServicePort.IntValue()), backend.ResolveGranularity)
+		upstreamName := adc.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort, backend.ResolveGranularity)
 		upstream.Name = upstreamName
 		upstream.ID = id.GenID(upstreamName)
 		upstreams = append(upstreams, upstream)
@@ -328,6 +329,26 @@ func (t *Translator) buildService(ar *apiv2.ApisixRoute, rule apiv2.ApisixRouteH
 	return service
 }
 
+func getPortFromService(svc *v1.Service, backendSvcPort intstr.IntOrString) (int32, error) {
+	var port int32
+	if backendSvcPort.Type == intstr.Int {
+		port = int32(backendSvcPort.IntValue())
+	} else {
+		found := false
+		for _, servicePort := range svc.Spec.Ports {
+			if servicePort.Name == backendSvcPort.StrVal {
+				port = servicePort.Port
+				found = true
+				break
+			}
+		}
+		if !found {
+			return 0, errors.Errorf("named port '%s' not found in service %s", backendSvcPort.StrVal, svc.Name)
+		}
+	}
+	return port, nil
+}
+
 func (t *Translator) translateApisixRouteBackendResolveGranularityService(tctx *provider.TranslateContext, arNN types.NamespacedName, backend apiv2.ApisixRouteHTTPBackend) (adc.UpstreamNodes, error) {
 	serviceNN := types.NamespacedName{
 		Namespace: arNN.Namespace,
@@ -340,10 +361,14 @@ func (t *Translator) translateApisixRouteBackendResolveGranularityService(tctx *
 	if svc.Spec.ClusterIP == "" {
 		return nil, errors.Errorf("conflict headless service and backend resolve granularity, ApisixRoute: %s, Service: %s", arNN, serviceNN)
 	}
+	port, err := getPortFromService(svc, backend.ServicePort)
+	if err != nil {
+		return nil, err
+	}
 	return adc.UpstreamNodes{
 		{
 			Host:   svc.Spec.ClusterIP,
-			Port:   backend.ServicePort.IntValue(),
+			Port:   int(port),
 			Weight: *cmp.Or(backend.Weight, ptr.To(apiv2.DefaultWeight)),
 		},
 	}, nil
@@ -364,6 +389,18 @@ func (t *Translator) translateApisixRouteStreamBackendResolveGranularity(tctx *p
 }
 
 func (t *Translator) translateApisixRouteBackendResolveGranularityEndpoint(tctx *provider.TranslateContext, arNN types.NamespacedName, backend apiv2.ApisixRouteHTTPBackend) (adc.UpstreamNodes, error) {
+	serviceNN := types.NamespacedName{
+		Namespace: arNN.Namespace,
+		Name:      backend.ServiceName,
+	}
+	svc, ok := tctx.Services[serviceNN]
+	if !ok {
+		return nil, errors.Errorf("service not found, ApisixRoute: %s, Service: %s", arNN, serviceNN)
+	}
+	port, err := getPortFromService(svc, backend.ServicePort)
+	if err != nil {
+		return nil, err
+	}
 	weight := int32(*cmp.Or(backend.Weight, ptr.To(apiv2.DefaultWeight)))
 	backendRef := gatewayv1.BackendRef{
 		BackendObjectReference: gatewayv1.BackendObjectReference{
@@ -371,7 +408,7 @@ func (t *Translator) translateApisixRouteBackendResolveGranularityEndpoint(tctx 
 			Kind:      (*gatewayv1.Kind)(ptr.To("Service")),
 			Name:      gatewayv1.ObjectName(backend.ServiceName),
 			Namespace: (*gatewayv1.Namespace)(&arNN.Namespace),
-			Port:      (*gatewayv1.PortNumber)(&backend.ServicePort.IntVal),
+			Port:      (*gatewayv1.PortNumber)(&port),
 		},
 		Weight: &weight,
 	}
