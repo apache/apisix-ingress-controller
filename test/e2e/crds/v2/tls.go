@@ -245,6 +245,96 @@ spec:
 			assert.Equal(GinkgoT(), caCert, tls[0].Client.CA, "client CA should be test-ca-secret")
 			assert.Equal(GinkgoT(), int64(1), *tls[0].Client.Depth, "client depth should be 1")
 		})
+		It("ApisixTls with skip_mtls_uri_regex test", func() {
+			const host = "api6.com"
+			const skipMtlsUriRegex = "/ip.*"
+
+			By("generate mTLS certificates")
+			caCertBytes, serverCertBytes, serverKeyBytes, _, _ := s.GenerateMACert(GinkgoT(), []string{host})
+			caCert := caCertBytes.String()
+			serverCert := serverCertBytes.String()
+			serverKey := serverKeyBytes.String()
+
+			By("create server TLS secret")
+			err := s.NewKubeTlsSecret("test-mtls-server-secret", serverCert, serverKey)
+			Expect(err).NotTo(HaveOccurred(), "creating server TLS secret")
+
+			By("create client CA secret")
+			err = s.NewClientCASecret("test-client-ca-secret", caCert, "")
+			Expect(err).NotTo(HaveOccurred(), "creating client CA secret")
+
+			const apisixTlsSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixTls
+metadata:
+  name: test-mtls-skip-regex
+spec:
+  ingressClassName: %s
+  hosts:
+  - %s
+  secret:
+    name: test-mtls-server-secret
+    namespace: %s
+  client:
+    caSecret:
+      name: test-client-ca-secret
+      namespace: %s
+    depth: 10
+    skip_mtls_uri_regex:
+    - %s
+`
+
+			By("apply ApisixTls with mTLS and skip_mtls_uri_regex")
+			var apisixTls apiv2.ApisixTls
+			tlsSpec := fmt.Sprintf(apisixTlsSpec, s.Namespace(), host, s.Namespace(), s.Namespace(), skipMtlsUriRegex)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-mtls-skip-regex"}, &apisixTls, tlsSpec)
+
+			By("verify mTLS configuration with skip_mtls_uri_regex")
+			Eventually(func() bool {
+				tls, err := s.DefaultDataplaneResource().SSL().List(context.Background())
+				if err != nil {
+					return false
+				}
+				if len(tls) != 1 {
+					return false
+				}
+				return tls[0].Client != nil &&
+					tls[0].Client.CA != "" &&
+					len(tls[0].Client.SkipMtlsURIRegex) > 0 &&
+					tls[0].Client.SkipMtlsURIRegex[0] == skipMtlsUriRegex
+			}).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(BeTrue())
+
+			By("test HTTPS request to path matching skip_mtls_uri_regex without client cert")
+			Eventually(func() int {
+				return s.NewAPISIXHttpsClient(host).
+					GET("/ip").
+					WithHost(host).
+					Expect().
+					Raw().StatusCode
+			}).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(Equal(http.StatusOK))
+
+			By("test HTTPS request to non-matching path without client cert should fail")
+			Eventually(func() bool {
+				resp := s.NewAPISIXHttpsClient(host).
+					GET("/get").
+					WithHost(host).
+					Expect().
+					Raw()
+				return resp.StatusCode == http.StatusBadRequest ||
+					resp.StatusCode == http.StatusForbidden ||
+					resp.StatusCode >= 500
+			}).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(BeTrue())
+
+			// Verify the configuration details
+			tls, err := s.DefaultDataplaneResource().SSL().List(context.Background())
+			assert.Nil(GinkgoT(), err, "list tls error")
+			assert.Len(GinkgoT(), tls, 1, "tls number not expect")
+			assert.NotNil(GinkgoT(), tls[0].Client, "client configuration should not be nil")
+			assert.NotEmpty(GinkgoT(), tls[0].Client.CA, "client CA should not be empty")
+			assert.Equal(GinkgoT(), caCert, tls[0].Client.CA, "client CA should match")
+			assert.Equal(GinkgoT(), int64(10), *tls[0].Client.Depth, "client depth should be 10")
+			assert.Contains(GinkgoT(), tls[0].Client.SkipMtlsURIRegex, skipMtlsUriRegex, "skip_mtls_uri_regex should be set")
+		})
 
 	})
 })
