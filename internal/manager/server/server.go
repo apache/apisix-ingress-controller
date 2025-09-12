@@ -23,7 +23,6 @@ import (
 	"time"
 
 	"github.com/apache/apisix-ingress-controller/internal/provider"
-	"github.com/go-logr/logr"
 )
 
 type Server struct {
@@ -58,7 +57,7 @@ func (s *Server) Register(pathPrefix string, registrant provider.RegisterHandler
 	})
 }
 
-func NewServer(addr string, logr logr.Logger) *Server {
+func NewServer(addr string) *Server {
 	mux := http.NewServeMux()
 	return &Server{
 		server: &http.Server{

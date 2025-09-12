@@ -179,7 +179,7 @@ func Run(ctx context.Context, logger logr.Logger) error {
 		return err
 	}
 
-	srv := server.NewServer(config.ControllerConfig.ServerAddr, logger)
+	srv := server.NewServer(config.ControllerConfig.ServerAddr)
 	srv.Register("/debug", provider)
 	if err := mgr.Add(srv); err != nil {
 		setupLog.Error(err, "unable to add debug server to manager")
