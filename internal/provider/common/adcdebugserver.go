@@ -35,7 +35,7 @@ type ResourceInfo struct {
 	Link string
 }
 
-type ADCDebugServer struct {
+type ADCDebugProvider struct {
 	store         *cache.Store
 	configManager *ConfigManager[types.NamespacedNameKind, adctypes.Config]
 	pathPrefix    string
@@ -47,17 +47,17 @@ func newTemplate(name, body string) *template.Template {
 		Parse(body))
 }
 
-func (asrv *ADCDebugServer) SetupHandler(pathPrefix string, mux *http.ServeMux) {
+func (asrv *ADCDebugProvider) SetupHandler(pathPrefix string, mux *http.ServeMux) {
 	asrv.pathPrefix = pathPrefix
 	mux.HandleFunc("/config", asrv.handleConfig)
 	mux.HandleFunc("/", asrv.handleIndex)
 }
 
-func NewADCDebugServer(store *cache.Store, configManager *ConfigManager[types.NamespacedNameKind, adctypes.Config]) *ADCDebugServer {
-	return &ADCDebugServer{store: store, configManager: configManager}
+func NewADCDebugProvider(store *cache.Store, configManager *ConfigManager[types.NamespacedNameKind, adctypes.Config]) *ADCDebugProvider {
+	return &ADCDebugProvider{store: store, configManager: configManager}
 }
 
-func (asrv *ADCDebugServer) handleIndex(w http.ResponseWriter, r *http.Request) {
+func (asrv *ADCDebugProvider) handleIndex(w http.ResponseWriter, r *http.Request) {
 	configs := asrv.configManager.List()
 	configNames := make([]string, 0, len(configs))
 	for _, cfg := range configs {
@@ -84,7 +84,7 @@ func (asrv *ADCDebugServer) handleIndex(w http.ResponseWriter, r *http.Request) 
 	}{ConfigNames: configNames, Prefix: asrv.pathPrefix})
 }
 
-func (asrv *ADCDebugServer) handleConfig(w http.ResponseWriter, r *http.Request) {
+func (asrv *ADCDebugProvider) handleConfig(w http.ResponseWriter, r *http.Request) {
 	configNameEncoded := r.URL.Query().Get("name")
 	if configNameEncoded == "" {
 		http.Error(w, "Config name is required", http.StatusBadRequest)
@@ -122,7 +122,7 @@ func (asrv *ADCDebugServer) handleConfig(w http.ResponseWriter, r *http.Request)
 	asrv.showResourceDetail(w, r, configName, resourceType, resourceID)
 }
 
-func (asrv *ADCDebugServer) showResourceTypes(w http.ResponseWriter, configName, configNameEncoded string) {
+func (asrv *ADCDebugProvider) showResourceTypes(w http.ResponseWriter, configName, configNameEncoded string) {
 	resourceTypes := []string{"services", "routes", "consumers", "ssls", "globalrules", "pluginmetadata"}
 
 	tmpl := newTemplate("resources", `
@@ -152,7 +152,7 @@ func (asrv *ADCDebugServer) showResourceTypes(w http.ResponseWriter, configName,
 	})
 }
 
-func (asrv *ADCDebugServer) showResources(w http.ResponseWriter, r *http.Request, configName, configNameEncoded, resourceType string) {
+func (asrv *ADCDebugProvider) showResources(w http.ResponseWriter, r *http.Request, configName, configNameEncoded, resourceType string) {
 	resources, err := asrv.store.GetResources(configName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -255,7 +255,7 @@ func (asrv *ADCDebugServer) showResources(w http.ResponseWriter, r *http.Request
 	})
 }
 
-func (asrv *ADCDebugServer) showResourceDetail(w http.ResponseWriter, r *http.Request, configName, resourceType, resourceID string) {
+func (asrv *ADCDebugProvider) showResourceDetail(w http.ResponseWriter, r *http.Request, configName, resourceType, resourceID string) {
 	resources, err := asrv.store.GetResources(configName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

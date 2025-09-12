@@ -65,8 +65,8 @@ type apisixProvider struct {
 
 	syncCh chan struct{}
 
-	client         *adcclient.Client
-	adcdebugserver *common.ADCDebugServer
+	client           *adcclient.Client
+	adcDebugProvider *common.ADCDebugProvider
 }
 
 func New(updater status.Updater, readier readiness.ReadinessManager, opts ...provider.Option) (provider.Provider, error) {
@@ -82,18 +82,18 @@ func New(updater status.Updater, readier readiness.ReadinessManager, opts ...pro
 	}
 
 	return &apisixProvider{
-		client:         cli,
-		adcdebugserver: common.NewADCDebugServer(cli.Store, cli.ConfigManager),
-		Options:        o,
-		translator:     &translator.Translator{},
-		updater:        updater,
-		readier:        readier,
-		syncCh:         make(chan struct{}, 1),
+		client:           cli,
+		adcDebugProvider: common.NewADCDebugProvider(cli.Store, cli.ConfigManager),
+		Options:          o,
+		translator:       &translator.Translator{},
+		updater:          updater,
+		readier:          readier,
+		syncCh:           make(chan struct{}, 1),
 	}, nil
 }
 
 func (d *apisixProvider) Register(pathPrefix string, mux *http.ServeMux) {
-	d.adcdebugserver.SetupHandler(pathPrefix, mux)
+	d.adcDebugProvider.SetupHandler(pathPrefix, mux)
 }
 
 func (d *apisixProvider) Update(ctx context.Context, tctx *provider.TranslateContext, obj client.Object) error {
