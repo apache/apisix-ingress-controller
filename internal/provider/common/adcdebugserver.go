@@ -22,7 +22,6 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
-	"strings"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/adc/cache"
@@ -42,7 +41,6 @@ type ADCDebugServer struct {
 	pathPrefix    string
 }
 
-// helper to always provide urlencode in templates
 func newTemplate(name, body string) *template.Template {
 	return template.Must(template.New(name).
 		Funcs(template.FuncMap{"urlencode": url.QueryEscape}).
@@ -87,28 +85,18 @@ func (asrv *ADCDebugServer) handleIndex(w http.ResponseWriter, r *http.Request) 
 }
 
 func (asrv *ADCDebugServer) handleConfig(w http.ResponseWriter, r *http.Request) {
-	// Get the raw query parameter
 	configNameEncoded := r.URL.Query().Get("name")
 	if configNameEncoded == "" {
 		http.Error(w, "Config name is required", http.StatusBadRequest)
 		return
 	}
 
-	// URL decode potentially multiple times until we get the original value
 	configName, err := url.QueryUnescape(configNameEncoded)
 	if err != nil {
 		http.Error(w, "Invalid config name encoding", http.StatusBadRequest)
 		return
 	}
 
-	// Check if we need to decode again (handles double-encoding)
-	if strings.Contains(configName, "%") {
-		if decodedAgain, err := url.QueryUnescape(configName); err == nil {
-			configName = decodedAgain
-		}
-	}
-
-	// Similarly handle resourceID
 	resourceIDEncoded := r.URL.Query().Get("id")
 	resourceID := ""
 	if resourceIDEncoded != "" {
@@ -117,18 +105,10 @@ func (asrv *ADCDebugServer) handleConfig(w http.ResponseWriter, r *http.Request)
 			http.Error(w, "Invalid resource ID encoding", http.StatusBadRequest)
 			return
 		}
-
-		// Check if we need to decode again
-		if strings.Contains(resourceID, "%") {
-			if decodedAgain, err := url.QueryUnescape(resourceID); err == nil {
-				resourceID = decodedAgain
-			}
-		}
 	}
 
 	resourceType := r.URL.Query().Get("type")
 
-	// Rest of the function remains the same
 	if resourceType == "" {
 		asrv.showResourceTypes(w, configName, url.QueryEscape(configName))
 		return
