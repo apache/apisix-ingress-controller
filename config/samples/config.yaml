@@ -18,6 +18,7 @@ leader_election:
 
 metrics_addr: ":8080"                   # The address the metrics endpoint binds to.
                                         # The default value is ":8080".
+server_addr: ":9092"
 
 enable_http2: false                     # Whether to enable HTTP/2 for the server.
                                         # The default value is false.
