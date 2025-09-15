@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/incubator4/go-resty-expr/expr"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
@@ -823,8 +824,8 @@ var (
 // the upstream name.
 // the resolveGranularity is not composited in the upstream name when it is endpoint.
 // ref: https://github.com/apache/apisix-ingress-controller/blob/10059afe3e84b693cc61e6df7a0040890a9d16eb/pkg/types/apisix/v1/types.go#L595-L598
-func ComposeUpstreamName(namespace, name, subset string, port int32, resolveGranularity string) string {
-	pstr := strconv.Itoa(int(port))
+func ComposeUpstreamName(namespace, name, subset string, port intstr.IntOrString, resolveGranularity string) string {
+	pstr := port.String()
 	// FIXME Use sync.Pool to reuse this buffer if the upstream
 	// name composing code path is hot.
 	var p []byte
