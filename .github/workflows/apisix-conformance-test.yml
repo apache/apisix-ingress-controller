@@ -35,27 +35,10 @@ permissions:
   pull-requests: write
 
 jobs:
-  prepare:
-    name: Prepare
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Go Env
-        id: go
-        uses: actions/setup-go@v4
-        with:
-          go-version: "1.24"
-
-      - name: Install kind
-        run: |
-          go install sigs.k8s.io/kind@v0.23.0
-
   conformance-test:
+    env:
+      CONFORMANCE_TEST_REPORT_OUTPUT: /tmp/apisix-ingress-controller-conformance-report.yaml
     timeout-minutes: 60
-    needs: 
-      - prepare
     strategy:
       matrix:
         provider_type:
@@ -72,6 +55,10 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: "1.24"
+
+      - name: Install kind
+        run: |
+          go install sigs.k8s.io/kind@v0.23.0
 
       - name: Build images
         env:
@@ -107,24 +94,20 @@ jobs:
         env:
           PROVIDER_TYPE: ${{ matrix.provider_type }}
         run: |
-          make conformance-test-standalone
+          make conformance-test
       
+      - name: Show Conformance Report
+        shell: bash
+        run: |
+          cat ${CONFORMANCE_TEST_REPORT_OUTPUT}
+
       - name: Get Logs from apisix-ingress-controller
         shell: bash
         run: |
           kubectl logs -n apisix-conformance-test -l app=apisix-ingress-controller
 
       - name: Upload Gateway API Conformance Report
-        if: ${{ github.event_name == 'push' }}
         uses: actions/upload-artifact@v4
         with:
           name: apisix-ingress-controller-conformance-report-${{ matrix.provider_type }}.yaml
-          path: apisix-ingress-controller-conformance-report.yaml
-
-      - name: Format Conformance Test Report
-        if: ${{ github.event_name == 'pull_request' }}
-        run: |
-          echo '# conformance test report - ${{ matrix.provider_type }} mode' > report.md
-          echo '```yaml' >> report.md
-          cat apisix-ingress-controller-conformance-report.yaml >> report.md
-          echo '```' >> report.md
+          path: ${{ env.CONFORMANCE_TEST_REPORT_OUTPUT }}

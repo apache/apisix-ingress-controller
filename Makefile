@@ -27,8 +27,9 @@ IMG ?= apache/apisix-ingress-controller:$(IMAGE_TAG)
 ENVTEST_K8S_VERSION = 1.30.0
 KIND_NAME ?= apisix-ingress-cluster
 
-GATEAY_API_VERSION ?= v1.3.0
 ADC_VERSION ?= 0.21.0
+
+DIR := $(shell pwd)
 
 GINKGO_VERSION ?= 2.20.0
 TEST_TIMEOUT ?= 80m
@@ -47,6 +48,14 @@ VERSYM="github.com/apache/apisix-ingress-controller/internal/version._buildVersi
 GITSHASYM="github.com/apache/apisix-ingress-controller/internal/version._buildGitRevision"
 BUILDOSSYM="github.com/apache/apisix-ingress-controller/internal/version._buildOS"
 GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM)=$(OSNAME)/$(OSARCH)"
+
+# gateway-api
+GATEAY_API_VERSION ?= v1.3.0
+## https://github.com/kubernetes-sigs/gateway-api/blob/v1.3.0/pkg/features/httproute.go
+SUPPORTED_EXTENDED_FEATURES = "HTTPRouteDestinationPortMatching,HTTPRouteMethodMatching,HTTPRoutePortRedirect,HTTPRouteRequestMirror,HTTPRouteSchemeRedirect,GatewayAddressEmpty,HTTPRouteResponseHeaderModification,GatewayPort8080"
+CONFORMANCE_TEST_REPORT_OUTPUT ?= $(DIR)/apisix-ingress-controller-conformance-report.yaml
+## https://github.com/kubernetes-sigs/gateway-api/blob/v1.3.0/conformance/utils/suite/profiles.go
+CONFORMANCE_PROFILES ?= GATEWAY-HTTP
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -139,11 +148,10 @@ install-ginkgo:
 
 .PHONY: conformance-test
 conformance-test:
-	go test -v ./test/conformance -tags=conformance -timeout 60m
-
-.PHONY: conformance-test-standalone
-conformance-test-standalone:
-	go test -v ./test/conformance/apisix -tags=conformance -timeout 60m
+	go test -v ./test/conformance -tags conformance,experimental -timeout 60m \
+		--supported-features=$(SUPPORTED_EXTENDED_FEATURES) \
+		--conformance-profiles=$(CONFORMANCE_PROFILES) \
+		--report-output=$(CONFORMANCE_TEST_REPORT_OUTPUT)
 
 .PHONY: lint
 lint: sort-import golangci-lint ## Run golangci-lint linter
