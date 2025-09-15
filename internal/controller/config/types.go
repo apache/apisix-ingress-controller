@@ -54,6 +54,7 @@ type Config struct {
 	LeaderElectionID string             `json:"leader_election_id" yaml:"leader_election_id"`
 	MetricsAddr      string             `json:"metrics_addr" yaml:"metrics_addr"`
 	ServerAddr       string             `json:"server_addr" yaml:"server_addr"`
+	EnableServer     bool               `json:"enable_server" yaml:"enable_server"`
 	EnableHTTP2      bool               `json:"enable_http2" yaml:"enable_http2"`
 	ProbeAddr        string             `json:"probe_addr" yaml:"probe_addr"`
 	SecureMetrics    bool               `json:"secure_metrics" yaml:"secure_metrics"`
