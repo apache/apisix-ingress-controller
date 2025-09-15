@@ -53,7 +53,6 @@ If you are using Gateway API, you should first configure the GatewayClass and Ga
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
 metadata:
-  namespace: ingress-apisix
   name: apisix
 spec:
   controllerName: apisix.apache.org/apisix-ingress-controller
