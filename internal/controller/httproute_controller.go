@@ -544,7 +544,7 @@ func (r *HTTPRouteReconciler) processHTTPRoute(tctx *provider.TranslateContext, 
 			if filter.Type != gatewayv1.HTTPRouteFilterExtensionRef || filter.ExtensionRef == nil {
 				continue
 			}
-			if filter.ExtensionRef.Kind == "PluginConfig" {
+			if filter.ExtensionRef.Kind == types.KindPluginConfig {
 				pluginconfig := new(v1alpha1.PluginConfig)
 				if err := r.Get(context.Background(), client.ObjectKey{
 					Namespace: httpRoute.GetNamespace(),
