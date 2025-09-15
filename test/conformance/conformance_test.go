@@ -30,8 +30,8 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
+// https://github.com/kubernetes-sigs/gateway-api/blob/5c5fc388829d24e8071071b01e8313ada8f15d9f/conformance/utils/suite/suite.go#L358.  SAN includes '*'
 var skippedTestsForSSL = []string{
-	// Reason: https://github.com/kubernetes-sigs/gateway-api/blob/5c5fc388829d24e8071071b01e8313ada8f15d9f/conformance/utils/suite/suite.go#L358.  SAN includes '*'
 	tests.HTTPRouteHTTPSListener.ShortName,
 	tests.HTTPRouteRedirectPortAndScheme.ShortName,
 }
@@ -72,7 +72,7 @@ func TestGatewayAPIConformance(t *testing.T) {
 	}
 	f, err := os.Create(*flags.ReportOutput)
 	require.NoError(t, err)
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	_, err = f.Write(rawReport)
 	require.NoError(t, err)

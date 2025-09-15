@@ -39,8 +39,6 @@ jobs:
     env:
       CONFORMANCE_TEST_REPORT_OUTPUT: /tmp/apisix-ingress-controller-conformance-report.yaml
     timeout-minutes: 60
-    needs: 
-      - prepare
     strategy:
       matrix:
         provider_type:
