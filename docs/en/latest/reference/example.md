@@ -73,7 +73,7 @@ kind: GatewayClass
 metadata:
   name: apisix
 spec:
-  controllerName: "apisix.apache.org/apisix-ingress-controller"
+  controllerName: "apisix.apache.org/apisix-ingress-controller"    # 1
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
@@ -84,13 +84,23 @@ spec:
   listeners:
   - name: http
     protocol: HTTP
-    port: 80
+    port: 80                    # 2
   infrastructure:
     parametersRef:
-      group: apisix.apache.org
-      kind: GatewayProxy
-      name: apisix-config
+      group: apisix.apache.org  # 3
+      kind: GatewayProxy        # 4
+      name: apisix-config       # 5
 ```
+
+❶ The controllerName field in GatewayClass needs to be customized if you are running multiple distinct instances of the APISIX Ingress Controller in the same cluster (not a single instance with multiple replicas). Each ingress controller instance must use a unique controllerName in their [configuration file](configuration-file.md), and the corresponding GatewayClass should reference that value.
+
+❷ The `port` in the Gateway listener is required but ignored. This is due to limitations in the data plane: it cannot dynamically open new ports. Since the Ingress Controller does not manage the data plane deployment, it cannot automatically update the configuration or restart the data plane to apply port changes.
+
+❸ API group of the referenced resource.
+
+❹ Kind of the referenced resource.
+
+❺ Name of the referenced resource. Should match the `metadata.name` of the GatewayProxy resource.
 
 </TabItem>
 
