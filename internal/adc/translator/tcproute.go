@@ -91,7 +91,6 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 			upstreams = append(upstreams, upstream)
 		}
 
-		// Handle multiple backends with traffic-split plugin
 		if len(upstreams) == 0 {
 			// Create a default upstream if no valid backends
 			upstream := newDefaultUpstreamWithoutScheme()
