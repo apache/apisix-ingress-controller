@@ -34,23 +34,6 @@ var _ = Describe("Test Consumer", Label("apisix.apache.org", "v1alpha1", "consum
 		err error
 	)
 
-	var defaultGatewayProxy = `
-apiVersion: apisix.apache.org/v1alpha1
-kind: GatewayProxy
-metadata:
-  name: apisix-proxy-config
-spec:
-  provider:
-    type: ControlPlane
-    controlPlane:
-      endpoints:
-      - %s
-      auth:
-        type: AdminKey
-        adminKey:
-          value: "%s"
-`
-
 	var defaultHTTPRoute = `
 apiVersion: apisix.apache.org/v1alpha1
 kind: PluginConfig
@@ -93,7 +76,7 @@ spec:
 
 	BeforeEach(func() {
 		By("create GatewayProxy, control plane using endpoints")
-		err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayProxy, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
+		err = s.CreateResourceFromString(s.GetGatewayProxySpec())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 		time.Sleep(time.Second)
 
@@ -490,7 +473,7 @@ spec:
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  name: %s
+  name: apisix-proxy-config
 spec:
   provider:
     type: ControlPlane
@@ -543,7 +526,7 @@ spec:
 			})
 
 			By("update GatewayProxy with new admin key")
-			updatedProxy := fmt.Sprintf(updatedGatewayProxy, s.Namespace(), s.Deployer.GetAdminEndpoint(resources.DataplaneService), resources.AdminAPIKey)
+			updatedProxy := fmt.Sprintf(updatedGatewayProxy, s.Deployer.GetAdminEndpoint(resources.DataplaneService), resources.AdminAPIKey)
 			err = s.CreateResourceFromStringWithNamespace(updatedProxy, s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "updating GatewayProxy")
 
