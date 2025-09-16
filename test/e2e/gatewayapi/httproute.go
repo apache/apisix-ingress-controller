@@ -49,27 +49,6 @@ func applyHTTPRouteAndAssert(s *scaffold.Scaffold, route string, asserts []scaff
 var _ = Describe("Test HTTPRoute", Label("networking.k8s.io", "httproute"), func() {
 	s := scaffold.NewDefaultScaffold()
 
-	var gatewayProxyYaml = `
-apiVersion: apisix.apache.org/v1alpha1
-kind: GatewayProxy
-metadata:
-  name: %s
-spec:
-  provider:
-    type: ControlPlane
-    controlPlane:
-      service:
-        name: %s
-        port: 9180
-      auth:
-        type: AdminKey
-        adminKey:
-          value: "%s"
-`
-	getGatewayProxySpec := func() string {
-		return fmt.Sprintf(gatewayProxyYaml, s.Namespace(), framework.ProviderType, s.AdminKey())
-	}
-
 	var gatewayClassYaml = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: GatewayClass
@@ -79,23 +58,6 @@ spec:
   controllerName: %s
 `
 
-	var defaultGateway = `
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: %s
-spec:
-  gatewayClassName: %s
-  listeners:
-    - name: http1
-      protocol: HTTP
-      port: 80
-  infrastructure:
-    parametersRef:
-      group: apisix.apache.org
-      kind: GatewayProxy
-      name: %s
-`
 	var defaultGatewayHTTPS = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
@@ -117,19 +79,18 @@ spec:
     parametersRef:
       group: apisix.apache.org
       kind: GatewayProxy
-      name: %s
+      name: apisix-proxy-config
 `
 
 	var beforeEachHTTP = func() {
-		Expect(s.CreateResourceFromStringWithNamespace(getGatewayProxySpec(), s.Namespace())).
-			NotTo(HaveOccurred(), "creating GatewayProxy")
+		By("create GatewayProxy")
+		Expect(s.CreateResourceFromString(s.GetGatewayProxySpec())).NotTo(HaveOccurred(), "creating GatewayProxy")
 
-		gatewayClassName := s.Namespace()
-		Expect(s.CreateResourceFromStringWithNamespace(fmt.Sprintf(gatewayClassYaml, gatewayClassName, s.GetControllerName()), "")).
-			NotTo(HaveOccurred(), "creating GatewayClass")
+		By("create GatewayClass")
+		Expect(s.CreateResourceFromString(s.GetGatewayClassYaml())).NotTo(HaveOccurred(), "creating GatewayClass")
 
 		s.RetryAssertion(func() string {
-			gcyaml, _ := s.GetResourceYaml("GatewayClass", gatewayClassName)
+			gcyaml, _ := s.GetResourceYaml("GatewayClass", s.Namespace())
 			return gcyaml
 		}).Should(
 			And(
@@ -138,12 +99,12 @@ spec:
 			),
 			"check GatewayClass condition",
 		)
-		gatewayName := s.Namespace()
-		Expect(s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName, s.Namespace()), s.Namespace())).
-			NotTo(HaveOccurred(), "creating Gateway")
+
+		By("create Gateway")
+		Expect(s.CreateResourceFromString(s.GetGatewayYaml())).NotTo(HaveOccurred(), "creating Gateway")
 
 		s.RetryAssertion(func() string {
-			gcyaml, _ := s.GetResourceYaml("Gateway", gatewayName)
+			gcyaml, _ := s.GetResourceYaml("Gateway", s.Namespace())
 			return gcyaml
 		}).Should(
 			And(
@@ -156,19 +117,17 @@ spec:
 
 	var beforeEachHTTPS = func() {
 		By("create GatewayProxy")
-		err := s.CreateResourceFromStringWithNamespace(getGatewayProxySpec(), s.Namespace())
+		err := s.CreateResourceFromString(s.GetGatewayProxySpec())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 
 		secretName := _secretName
 		createSecret(s, secretName)
 
 		By("create GatewayClass")
-		gatewayClassName := s.Namespace()
-		Expect(s.CreateResourceFromStringWithNamespace(fmt.Sprintf(gatewayClassYaml, gatewayClassName, s.GetControllerName()), "")).
-			NotTo(HaveOccurred(), "creating GatewayClass")
+		Expect(s.CreateResourceFromString(s.GetGatewayClassYaml())).NotTo(HaveOccurred(), "creating GatewayClass")
 
 		s.RetryAssertion(func() string {
-			gcyaml, _ := s.GetResourceYaml("GatewayClass", gatewayClassName)
+			gcyaml, _ := s.GetResourceYaml("GatewayClass", s.Namespace())
 			return gcyaml
 		}).Should(
 			And(
@@ -179,12 +138,11 @@ spec:
 		)
 
 		By("create Gateway")
-		gatewayName := s.Namespace()
-		err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayHTTPS, gatewayName, gatewayClassName, s.Namespace()), s.Namespace())
+		err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayHTTPS, s.Namespace(), s.Namespace()))
 		Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 
 		s.RetryAssertion(func() string {
-			gcyaml, _ := s.GetResourceYaml("Gateway", gatewayName)
+			gcyaml, _ := s.GetResourceYaml("Gateway", s.Namespace())
 			return gcyaml
 		}).Should(
 			And(
@@ -2228,7 +2186,7 @@ spec:
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  name: %s
+  name: apisix-proxy-config
 spec:
   provider:
     type: ControlPlane
@@ -2280,8 +2238,8 @@ spec:
 			})
 
 			By("update GatewayProxy with new admin key")
-			updatedProxy := fmt.Sprintf(updatedGatewayProxy, s.Namespace(), s.Deployer.GetAdminEndpoint(resources.DataplaneService), resources.AdminAPIKey)
-			err = s.CreateResourceFromStringWithNamespace(updatedProxy, s.Namespace())
+			updatedProxy := fmt.Sprintf(updatedGatewayProxy, s.Deployer.GetAdminEndpoint(resources.DataplaneService), resources.AdminAPIKey)
+			err = s.CreateResourceFromString(updatedProxy)
 			Expect(err).NotTo(HaveOccurred(), "updating GatewayProxy")
 
 			By("verify HTTPRoute works for additional gateway group")
