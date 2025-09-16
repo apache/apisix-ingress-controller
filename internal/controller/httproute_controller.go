@@ -397,7 +397,7 @@ func (r *HTTPRouteReconciler) listHTTPRouteByHTTPRoutePolicy(ctx context.Context
 
 	var keys = make(map[k8stypes.NamespacedName]struct{})
 	for _, ref := range httpRoutePolicy.Spec.TargetRefs {
-		if ref.Kind != "HTTPRoute" {
+		if ref.Kind != types.KindHTTPRoute {
 			continue
 		}
 		key := k8stypes.NamespacedName{

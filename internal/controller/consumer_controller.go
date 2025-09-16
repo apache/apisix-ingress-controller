@@ -43,6 +43,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
+	k8sTypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
 
 // ConsumerReconciler  reconciles a Gateway object.
@@ -193,7 +194,7 @@ func (r *ConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			consumer.Name = req.Name
 
 			consumer.TypeMeta = metav1.TypeMeta{
-				Kind:       "Consumer",
+				Kind:       k8sTypes.KindConsumer,
 				APIVersion: v1alpha1.GroupVersion.String(),
 			}
 
