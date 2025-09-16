@@ -254,7 +254,7 @@ func (e *HTTPADCExecutor) runHTTPSync(ctx context.Context, mode string, config a
 		}
 		return config.ServerAddrs
 	}()
-	log.Errorw("running http sync", zap.Strings("serverAddrs", serverAddrs), zap.String("mode", mode))
+	log.Debugw("running http sync", zap.Strings("serverAddrs", serverAddrs), zap.String("mode", mode))
 
 	for _, addr := range serverAddrs {
 		if err := e.runHTTPSyncForSingleServer(ctx, addr, mode, config, args); err != nil {

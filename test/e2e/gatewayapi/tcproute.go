@@ -134,7 +134,7 @@ spec:
 			)
 		})
 
-		FIt("should route TCP traffic to backend service", func() {
+		It("should route TCP traffic to backend service", func() {
 			gatewayName := s.Namespace()
 			By("creating TCPRoute")
 			Expect(s.CreateResourceFromString(fmt.Sprintf(tcpRoute, gatewayName))).
