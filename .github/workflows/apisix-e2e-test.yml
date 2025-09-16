@@ -21,11 +21,9 @@ on:
   push:
     branches:
       - master
-      - next
   pull_request:
     branches:
       - master
-      - next
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

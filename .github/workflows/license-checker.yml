@@ -25,7 +25,6 @@ on:
   pull_request:
     branches:
       - master
-      - next
       - 1.8.0
 
 jobs:

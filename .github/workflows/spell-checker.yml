@@ -21,11 +21,9 @@ on:
   push:
     branches:
       - master
-      - next
   pull_request:
     branches:
       - master
-      - next
 jobs:
   misspell:
     name: runner / misspell
