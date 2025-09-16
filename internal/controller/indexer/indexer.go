@@ -20,7 +20,6 @@ package indexer
 import (
 	"cmp"
 	"context"
-	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -70,7 +69,6 @@ func SetupIndexer(mgr ctrl.Manager) error {
 		setupGatewayClassIndexer,
 	} {
 		if err := setup(mgr); err != nil {
-			fmt.Println("RETURNING ERR: FROMM HERE ", err)
 			return err
 		}
 	}
@@ -239,7 +237,6 @@ func setupTCPRouteIndexer(mgr ctrl.Manager) error {
 		ParentRefs,
 		TCPRouteParentRefsIndexFunc,
 	); err != nil {
-		fmt.Println("ERROR IN TCPRouteParentRefsIndexFunc", err)
 		return err
 	}
 
@@ -249,7 +246,6 @@ func setupTCPRouteIndexer(mgr ctrl.Manager) error {
 		ServiceIndexRef,
 		TCPPRouteServiceIndexFunc,
 	); err != nil {
-		fmt.Println("ERROR IN TCPPRouteServiceIndexFunc", err)
 		return err
 	}
 	return nil

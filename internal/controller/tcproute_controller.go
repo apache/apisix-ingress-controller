@@ -164,7 +164,7 @@ func (r *TCPRouteReconciler) listTCPRoutesForGateway(ctx context.Context, obj cl
 		r.Log.Error(err, "failed to list tcproutes by gateway", "gateway", gateway.Name)
 		return nil
 	}
-	fmt.Println("TCPRLIST FOR GATEWAY: ", gateway.Name, " is ", tcprList.Items)
+
 	requests := make([]reconcile.Request, 0, len(tcprList.Items))
 	for _, tcr := range tcprList.Items {
 		requests = append(requests, reconcile.Request{
@@ -223,7 +223,6 @@ func (r *TCPRouteReconciler) listTCPRoutesForGatewayProxy(ctx context.Context, o
 }
 
 func (r *TCPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	fmt.Println("ADITI: RECONCILE CALLED FOR TCPRoute: ", req.NamespacedName)
 	defer r.Readier.Done(&gatewayv1alpha2.TCPRoute{}, req.NamespacedName)
 	tr := new(gatewayv1alpha2.TCPRoute)
 	if err := r.Get(ctx, req.NamespacedName, tr); err != nil {
@@ -259,7 +258,7 @@ func (r *TCPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	fmt.Println("ADITI: GATEWAYS FOR TCPRoute: ", tr.Name, " are ", gateways)
+
 	if len(gateways) == 0 {
 		return ctrl.Result{}, nil
 	}
@@ -270,7 +269,6 @@ func (r *TCPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	rk := utils.NamespacedNameKind(tr)
 	for _, gateway := range gateways {
 		if err := ProcessGatewayProxy(r.Client, r.Log, tctx, gateway.Gateway, rk); err != nil {
-			fmt.Println("PROBLEM PROCESSING GATEWAY PROXY FOR TCPRoute: ", tr.Name)
 			acceptStatus.status = false
 			acceptStatus.msg = err.Error()
 		}
@@ -282,7 +280,6 @@ func (r *TCPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		if types.IsSomeReasonError(err, gatewayv1.RouteReasonInvalidKind) {
 			backendRefErr = err
 		} else {
-			fmt.Println("PROBLEM PROCESSING BACKEND REFS FOR TCPRoute: ", tr.Name)
 			acceptStatus.status = false
 			acceptStatus.msg = err.Error()
 		}
@@ -323,10 +320,8 @@ func (r *TCPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		}),
 	})
 	UpdateStatus(r.Updater, r.Log, tctx)
-	fmt.Println("ADITI: Updated Status for TCPRoute: ", tr.Name, " Status: ", tr.Status)
 	if isRouteAccepted(gateways) {
 		routeToUpdate := tr
-		fmt.Println("ADITI: Calling Provider Update for TCPRoute: ", tr.Name)
 		if err := r.Provider.Update(ctx, tctx, routeToUpdate); err != nil {
 			return ctrl.Result{}, err
 		}

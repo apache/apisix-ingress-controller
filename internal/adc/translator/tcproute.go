@@ -29,7 +29,6 @@ import (
 )
 
 func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute *gatewayv1alpha2.TCPRoute) (*TranslateResult, error) {
-	fmt.Println("ADITI: Translating TCPRoute: ", tcpRoute.Name)
 	result := &TranslateResult{}
 
 	rules := tcpRoute.Spec.Rules
@@ -104,8 +103,6 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 		//TODO: support remote_addr, server_adrr, sni, server_port
 		service.StreamRoutes = append(service.StreamRoutes, streamRoute)
 		result.Services = append(result.Services, service)
-		fmt.Println("Service: ", *service)
-		fmt.Println("StreamRoute: ", *streamRoute)
 	}
 	return result, nil
 }
