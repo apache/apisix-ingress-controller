@@ -18,13 +18,13 @@
 package types
 
 import (
+	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	v2 "github.com/apache/apisix-ingress-controller/api/v2"
 	corev1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-
-	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
-	v2 "github.com/apache/apisix-ingress-controller/api/v2"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 const DefaultIngressClassAnnotation = "ingressclass.kubernetes.io/is-default-class"
@@ -56,6 +56,8 @@ func KindOf(obj any) string {
 	switch obj.(type) {
 	case *gatewayv1.Gateway:
 		return KindGateway
+	case *gatewayv1alpha2.TCPRoute:
+		return KindTCPRoute
 	case *gatewayv1.HTTPRoute:
 		return KindHTTPRoute
 	case *gatewayv1.GatewayClass:
@@ -100,6 +102,8 @@ func GvkOf(obj any) schema.GroupVersionKind {
 	switch obj.(type) {
 	case *gatewayv1.Gateway, *gatewayv1.HTTPRoute, *gatewayv1.GatewayClass:
 		return gatewayv1.SchemeGroupVersion.WithKind(kind)
+	case *gatewayv1alpha2.TCPRoute:
+		return gatewayv1alpha2.SchemeGroupVersion.WithKind(kind)
 	case *netv1.Ingress, *netv1.IngressClass:
 		return netv1.SchemeGroupVersion.WithKind(kind)
 	case *corev1.Secret, *corev1.Service:

@@ -357,7 +357,7 @@ func ParseRouteParentRefs(
 		matched := false
 		reason := gatewayv1.RouteReasonNoMatchingParent
 		var listenerName string
-
+		fmt.Println("HERE: Checking listeners for gateway: ", gateway.Name, " for route: ", route.GetName())
 		for _, listener := range gateway.Spec.Listeners {
 			if parentRef.SectionName != nil {
 				if *parentRef.SectionName != "" && *parentRef.SectionName != listener.Name {
@@ -370,16 +370,6 @@ func ParseRouteParentRefs(
 					continue
 				}
 			}
-
-			if !routeMatchesListenerType(route, listener) {
-				continue
-			}
-
-			if !routeHostnamesIntersectsWithListenerHostname(route, listener) {
-				reason = gatewayv1.RouteReasonNoMatchingListenerHostname
-				continue
-			}
-
 			listenerName = string(listener.Name)
 			ok, err := routeMatchesListenerAllowedRoutes(ctx, mgrc, route, listener.AllowedRoutes, gateway.Namespace, parentRef.Namespace)
 			if err != nil {
@@ -390,6 +380,7 @@ func ParseRouteParentRefs(
 					zap.Error(err),
 				)
 			}
+			fmt.Println("OK VALUE FOR listener: ", listener.Name, " is ", ok, " for route: ", route.GetName())
 			if !ok {
 				reason = gatewayv1.RouteReasonNotAllowedByListeners
 				continue

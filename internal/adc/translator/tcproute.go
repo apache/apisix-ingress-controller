@@ -50,7 +50,7 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 				namespace := gatewayv1.Namespace(tcpRoute.Namespace)
 				backend.Namespace = &namespace
 			}
-			upstream := adctypes.NewDefaultUpstream()
+			upstream := adctypes.NewDefaultUpstreamWithoutScheme()
 			upNodes, err := t.translateBackendRef(tctx, backend, DefaultEndpointFilter)
 			if err != nil {
 				continue
@@ -85,7 +85,7 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 		// Handle multiple backends with traffic-split plugin
 		if len(upstreams) == 0 {
 			// Create a default upstream if no valid backends
-			upstream := adctypes.NewDefaultUpstream()
+			upstream := adctypes.NewDefaultUpstreamWithoutScheme()
 			service.Upstream = upstream
 		} else if len(upstreams) == 1 {
 			// Single backend - use directly as service upstream
@@ -102,7 +102,7 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 		streamRoute.ID = id.GenID(streamRouteName)
 		streamRoute.Labels = labels
 		//TODO: support remote_addr, server_adrr, sni, server_port
-		result.StreamRoutes = append(result.StreamRoutes, streamRoute)
+		service.StreamRoutes = append(service.StreamRoutes, streamRoute)
 		result.Services = append(result.Services, service)
 		fmt.Println("Service: ", *service)
 		fmt.Println("StreamRoute: ", *streamRoute)
