@@ -197,11 +197,13 @@ func (s *Scaffold) HTTPOverTCPConnectAssert(shouldRespond bool, timeout time.Dur
 		if err != nil {
 			return fmt.Errorf("failed to connect: %v", err)
 		}
-		defer conn.Close()
-		fmt.Fprintf(conn, "GET /get HTTP/1.1\r\nHost: localhost\r\n\r\n")
+		defer func() {
+			_ = conn.Close()
+		}()
+		_, _ = fmt.Fprintf(conn, "GET /get HTTP/1.1\r\nHost: localhost\r\n\r\n")
 
 		// Read response
-		conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+		_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
 		buf := make([]byte, 1024)
 		n, err := conn.Read(buf)
 

@@ -28,6 +28,16 @@ import (
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
+func newDefaultUpstreamWithoutScheme() *adctypes.Upstream {
+	return &adctypes.Upstream{
+		Metadata: adctypes.Metadata{
+			Labels: map[string]string{
+				"managed-by": "apisix-ingress-controller",
+			},
+		},
+		Nodes: make(adctypes.UpstreamNodes, 0),
+	}
+}
 func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute *gatewayv1alpha2.TCPRoute) (*TranslateResult, error) {
 	result := &TranslateResult{}
 
@@ -49,7 +59,7 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 				namespace := gatewayv1.Namespace(tcpRoute.Namespace)
 				backend.Namespace = &namespace
 			}
-			upstream := adctypes.NewDefaultUpstreamWithoutScheme()
+			upstream := newDefaultUpstreamWithoutScheme()
 			upNodes, err := t.translateBackendRef(tctx, backend, DefaultEndpointFilter)
 			if err != nil {
 				continue
@@ -66,7 +76,7 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 				port int32
 			)
 			if backend.Kind == nil {
-				kind = "Service"
+				kind = KindService
 			} else {
 				kind = string(*backend.Kind)
 			}
@@ -84,7 +94,7 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 		// Handle multiple backends with traffic-split plugin
 		if len(upstreams) == 0 {
 			// Create a default upstream if no valid backends
-			upstream := adctypes.NewDefaultUpstreamWithoutScheme()
+			upstream := newDefaultUpstreamWithoutScheme()
 			service.Upstream = upstream
 		} else if len(upstreams) == 1 {
 			// Single backend - use directly as service upstream
@@ -100,7 +110,7 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 		streamRoute.Name = streamRouteName
 		streamRoute.ID = id.GenID(streamRouteName)
 		streamRoute.Labels = labels
-		//TODO: support remote_addr, server_adrr, sni, server_port
+		// TODO: support remote_addr, server_adrr, sni, server_port
 		service.StreamRoutes = append(service.StreamRoutes, streamRoute)
 		result.Services = append(result.Services, service)
 	}

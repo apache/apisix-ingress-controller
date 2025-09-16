@@ -627,18 +627,6 @@ func NewDefaultUpstream() *Upstream {
 	}
 }
 
-func NewDefaultUpstreamWithoutScheme() *Upstream {
-	return &Upstream{
-		Metadata: Metadata{
-			Labels: map[string]string{
-				"managed-by": "apisix-ingress-controller",
-			},
-		},
-		Nodes: make(UpstreamNodes, 0),
-		Type:  Roundrobin,
-	}
-}
-
 // NewDefaultRoute returns an empty Route with default values.
 func NewDefaultRoute() *Route {
 	return &Route{

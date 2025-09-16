@@ -456,7 +456,7 @@ func (r *HTTPRouteReconciler) processHTTPRouteBackendRefs(tctx *provider.Transla
 			targetNN.Namespace = string(*backend.Namespace)
 		}
 
-		if backend.Kind != nil && *backend.Kind != "Service" {
+		if backend.Kind != nil && *backend.Kind != KindService {
 			terr = types.NewInvalidKindError(*backend.Kind)
 			continue
 		}

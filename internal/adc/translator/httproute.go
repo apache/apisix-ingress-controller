@@ -39,6 +39,8 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 )
 
+const KindService = "Service"
+
 func (t *Translator) fillPluginsFromHTTPRouteFilters(
 	plugins adctypes.Plugins,
 	namespace string,
@@ -376,7 +378,7 @@ func (t *Translator) TranslateBackendRefWithFilter(tctx *provider.TranslateConte
 }
 
 func (t *Translator) translateBackendRef(tctx *provider.TranslateContext, ref gatewayv1.BackendRef, endpointFilter func(*discoveryv1.Endpoint) bool) (adctypes.UpstreamNodes, error) {
-	if ref.Kind != nil && *ref.Kind != "Service" {
+	if ref.Kind != nil && *ref.Kind != KindService {
 		return adctypes.UpstreamNodes{}, fmt.Errorf("kind %s is not supported", *ref.Kind)
 	}
 
@@ -549,7 +551,7 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 				port int32
 			)
 			if backend.Kind == nil {
-				kind = "Service"
+				kind = KindService
 			} else {
 				kind = string(*backend.Kind)
 			}
