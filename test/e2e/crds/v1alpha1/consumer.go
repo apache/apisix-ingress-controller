@@ -38,7 +38,7 @@ var _ = Describe("Test Consumer", Label("apisix.apache.org", "v1alpha1", "consum
 apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
-  name: %s
+  name: apisix-proxy-config
 spec:
   provider:
     type: ControlPlane
@@ -49,33 +49,6 @@ spec:
         type: AdminKey
         adminKey:
           value: "%s"
-`
-
-	var defaultGatewayClass = `
-apiVersion: gateway.networking.k8s.io/v1
-kind: GatewayClass
-metadata:
-  name: %s
-spec:
-  controllerName: %s
-`
-
-	var defaultGateway = `
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: %s
-spec:
-  gatewayClassName: %s
-  listeners:
-    - name: http1
-      protocol: HTTP
-      port: 80
-  infrastructure:
-    parametersRef:
-      group: apisix.apache.org
-      kind: GatewayProxy
-      name: %s
 `
 
 	var defaultHTTPRoute = `
@@ -119,26 +92,23 @@ spec:
 `
 
 	BeforeEach(func() {
-		gatewayName := s.Namespace()
-		By("create GatewayProxy")
-		gatewayProxyName := s.Namespace()
-		err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayProxy, gatewayProxyName, s.Deployer.GetAdminEndpoint(), s.AdminKey()), s.Namespace())
+		By("create GatewayProxy, control plane using endpoints")
+		err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayProxy, s.Deployer.GetAdminEndpoint(), s.AdminKey()))
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 		time.Sleep(time.Second)
 
 		By("create GatewayClass")
-		gatewayClassName := s.Namespace()
-		err = s.CreateResourceFromString(fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()))
+		err = s.CreateResourceFromString(s.GetGatewayClassYaml())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
 		time.Sleep(time.Second)
 
 		By("create Gateway")
-		err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName, gatewayProxyName), s.Namespace())
+		err = s.CreateResourceFromString(s.GetGatewayYaml())
 		Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 		time.Sleep(time.Second)
 
 		By("create HTTPRoute")
-		s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, fmt.Sprintf(defaultHTTPRoute, gatewayName))
+		s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, fmt.Sprintf(defaultHTTPRoute, s.Namespace()))
 	})
 
 	Context("Consumer plugins", func() {
