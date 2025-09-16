@@ -38,13 +38,11 @@ func newDefaultUpstreamWithoutScheme() *adctypes.Upstream {
 		Nodes: make(adctypes.UpstreamNodes, 0),
 	}
 }
+
 func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute *gatewayv1alpha2.TCPRoute) (*TranslateResult, error) {
 	result := &TranslateResult{}
-
 	rules := tcpRoute.Spec.Rules
-
 	labels := label.GenLabel(tcpRoute)
-
 	for ruleIndex, rule := range rules {
 		service := adctypes.NewDefaultService()
 		service.Labels = labels
@@ -53,7 +51,6 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 		var (
 			upstreams = make([]*adctypes.Upstream, 0)
 		)
-
 		for _, backend := range rule.BackendRefs {
 			if backend.Namespace == nil {
 				namespace := gatewayv1.Namespace(tcpRoute.Namespace)
@@ -67,10 +64,8 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 			if len(upNodes) == 0 {
 				continue
 			}
-
 			t.AttachBackendTrafficPolicyToUpstream(backend, tctx.BackendTrafficPolicies, upstream)
 			upstream.Nodes = upNodes
-
 			var (
 				kind string
 				port int32
