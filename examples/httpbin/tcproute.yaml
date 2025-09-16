@@ -48,12 +48,12 @@ metadata:
 spec:
   gatewayClassName: apisix
   listeners:
-  - name: foo
-    protocol: TCP
-    port: 80
-    allowedRoutes:
-      kinds:
-      - kind: TCPRoute
+    - name: foo
+      protocol: TCP
+      port: 80
+      allowedRoutes:
+        kinds:
+          - kind: TCPRoute
   infrastructure:
     parametersRef:
       group: apisix.apache.org
@@ -70,6 +70,6 @@ spec:
     - name: apisix
       sectionName: foo
   rules:
-  - backendRefs:
-    - name: httpbin
-      port: 80
+    - backendRefs:
+      - name: httpbin
+        port: 80
