@@ -71,5 +71,5 @@ spec:
       sectionName: foo
   rules:
     - backendRefs:
-      - name: httpbin
-        port: 80
+        - name: httpbin
+          port: 80
