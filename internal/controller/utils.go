@@ -357,6 +357,121 @@ func ParseRouteParentRefs(
 		matched := false
 		reason := gatewayv1.RouteReasonNoMatchingParent
 		var listenerName string
+
+		for _, listener := range gateway.Spec.Listeners {
+			if parentRef.SectionName != nil {
+				if *parentRef.SectionName != "" && *parentRef.SectionName != listener.Name {
+					continue
+				}
+			}
+
+			if parentRef.Port != nil {
+				if *parentRef.Port != listener.Port {
+					continue
+				}
+			}
+
+			if !routeMatchesListenerType(route, listener) {
+				continue
+			}
+
+			if !routeHostnamesIntersectsWithListenerHostname(route, listener) {
+				reason = gatewayv1.RouteReasonNoMatchingListenerHostname
+				continue
+			}
+
+			listenerName = string(listener.Name)
+			ok, err := routeMatchesListenerAllowedRoutes(ctx, mgrc, route, listener.AllowedRoutes, gateway.Namespace, parentRef.Namespace)
+			if err != nil {
+				log.Warnw("failed matching listener to a route for gateway",
+					zap.String("listener", string(listener.Name)),
+					zap.String("route", route.GetName()),
+					zap.String("gateway", gateway.Name),
+					zap.Error(err),
+				)
+			}
+			if !ok {
+				reason = gatewayv1.RouteReasonNotAllowedByListeners
+				continue
+			}
+
+			// TODO: check if the listener status is programmed
+
+			matched = true
+			break
+		}
+
+		if matched {
+			gateways = append(gateways, RouteParentRefContext{
+				Gateway:      &gateway,
+				ListenerName: listenerName,
+				Conditions: []metav1.Condition{{
+					Type:               string(gatewayv1.RouteConditionAccepted),
+					Status:             metav1.ConditionTrue,
+					Reason:             string(gatewayv1.RouteReasonAccepted),
+					ObservedGeneration: route.GetGeneration(),
+				}},
+			})
+		} else {
+			gateways = append(gateways, RouteParentRefContext{
+				Gateway:      &gateway,
+				ListenerName: listenerName,
+				Conditions: []metav1.Condition{{
+					Type:               string(gatewayv1.RouteConditionAccepted),
+					Status:             metav1.ConditionFalse,
+					Reason:             string(reason),
+					ObservedGeneration: route.GetGeneration(),
+				}},
+			})
+		}
+	}
+
+	return gateways, nil
+}
+
+func ParseTCPRouteParentRefs(
+	ctx context.Context, mgrc client.Client, route client.Object, parentRefs []gatewayv1.ParentReference,
+) ([]RouteParentRefContext, error) {
+	gateways := make([]RouteParentRefContext, 0)
+	for _, parentRef := range parentRefs {
+		namespace := route.GetNamespace()
+		if parentRef.Namespace != nil {
+			namespace = string(*parentRef.Namespace)
+		}
+		name := string(parentRef.Name)
+
+		if parentRef.Kind != nil && *parentRef.Kind != KindGateway {
+			continue
+		}
+
+		gateway := gatewayv1.Gateway{}
+		if err := mgrc.Get(ctx, client.ObjectKey{
+			Namespace: namespace,
+			Name:      name,
+		}, &gateway); err != nil {
+			if client.IgnoreNotFound(err) == nil {
+				continue
+			}
+			return nil, fmt.Errorf("failed to retrieve gateway for route: %w", err)
+		}
+
+		gatewayClass := gatewayv1.GatewayClass{}
+		if err := mgrc.Get(ctx, client.ObjectKey{
+			Name: string(gateway.Spec.GatewayClassName),
+		}, &gatewayClass); err != nil {
+			if client.IgnoreNotFound(err) == nil {
+				continue
+			}
+			return nil, fmt.Errorf("failed to retrieve gatewayclass for gateway: %w", err)
+		}
+
+		if string(gatewayClass.Spec.ControllerName) != config.ControllerConfig.ControllerName {
+			continue
+		}
+
+		matched := false
+		reason := gatewayv1.RouteReasonNoMatchingParent
+		var listenerName string
 		for _, listener := range gateway.Spec.Listeners {
 			if parentRef.SectionName != nil {
 				if *parentRef.SectionName != "" && *parentRef.SectionName != listener.Name {

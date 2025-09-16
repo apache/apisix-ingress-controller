@@ -254,7 +254,7 @@ func (r *TCPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		msg:    "Route is accepted",
 	}
 
-	gateways, err := ParseRouteParentRefs(ctx, r.Client, tr, tr.Spec.ParentRefs)
+	gateways, err := ParseTCPRouteParentRefs(ctx, r.Client, tr, tr.Spec.ParentRefs)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
