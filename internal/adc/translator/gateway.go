@@ -37,6 +37,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/id"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
+	k8sTypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
 
 func (t *Translator) TranslateGateway(tctx *provider.TranslateContext, obj *gatewayv1.Gateway) (*TranslateResult, error) {
@@ -86,7 +87,7 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 			if ref.Namespace != nil {
 				ns = string(*ref.Namespace)
 			}
-			if listener.TLS.CertificateRefs[0].Kind != nil && *listener.TLS.CertificateRefs[0].Kind == "Secret" {
+			if listener.TLS.CertificateRefs[0].Kind != nil && *listener.TLS.CertificateRefs[0].Kind == k8sTypes.KindSecret {
 				sslObj := &adctypes.SSL{
 					Snis: []string{},
 				}

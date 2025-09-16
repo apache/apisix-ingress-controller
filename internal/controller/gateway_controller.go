@@ -42,6 +42,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
+	k8sTypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
 
 // GatewayReconciler reconciles a Gateway object.
@@ -316,7 +317,7 @@ func (r *GatewayReconciler) listGatewaysForHTTPRoute(ctx context.Context, obj cl
 		if parentRef.Group != nil && *parentRef.Group != gatewayv1.GroupName {
 			continue
 		}
-		if parentRef.Kind != nil && *parentRef.Kind != "Gateway" {
+		if parentRef.Kind != nil && *parentRef.Kind != k8sTypes.KindGateway {
 			continue
 		}
 		if parentRef.Namespace != nil {

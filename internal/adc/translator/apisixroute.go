@@ -40,6 +40,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 	"github.com/apache/apisix-ingress-controller/pkg/id"
 	pkgutils "github.com/apache/apisix-ingress-controller/pkg/utils"
+	k8sTypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
 
 func (t *Translator) TranslateApisixRoute(tctx *provider.TranslateContext, ar *apiv2.ApisixRoute) (result *TranslateResult, err error) {
@@ -405,7 +406,7 @@ func (t *Translator) translateApisixRouteBackendResolveGranularityEndpoint(tctx 
 	backendRef := gatewayv1.BackendRef{
 		BackendObjectReference: gatewayv1.BackendObjectReference{
 			Group:     (*gatewayv1.Group)(&apiv2.GroupVersion.Group),
-			Kind:      (*gatewayv1.Kind)(ptr.To("Service")),
+			Kind:      (*gatewayv1.Kind)(ptr.To(k8sTypes.KindService)),
 			Name:      gatewayv1.ObjectName(backend.ServiceName),
 			Namespace: (*gatewayv1.Namespace)(&arNN.Namespace),
 			Port:      (*gatewayv1.PortNumber)(&port),
