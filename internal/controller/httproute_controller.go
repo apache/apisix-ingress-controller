@@ -560,7 +560,7 @@ func (r *HTTPRouteReconciler) processHTTPRoute(tctx *provider.TranslateContext, 
 			}
 		}
 		for _, backend := range rule.BackendRefs {
-			if backend.Kind != nil && *backend.Kind != "Service" {
+			if backend.Kind != nil && *backend.Kind != KindService {
 				terror = types.NewInvalidKindError(*backend.Kind)
 				continue
 			}

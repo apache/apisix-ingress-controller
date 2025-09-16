@@ -333,7 +333,7 @@ func (r *TCPRouteReconciler) processTCPRoute(tctx *provider.TranslateContext, tc
 	var terror error
 	for _, rule := range tcpRoute.Spec.Rules {
 		for _, backend := range rule.BackendRefs {
-			if backend.Kind != nil && *backend.Kind != "Service" {
+			if backend.Kind != nil && *backend.Kind != KindService {
 				terror = types.NewInvalidKindError(*backend.Kind)
 				continue
 			}
@@ -361,7 +361,7 @@ func (r *TCPRouteReconciler) processTCPRouteBackendRefs(tctx *provider.Translate
 			targetNN.Namespace = string(*backend.Namespace)
 		}
 
-		if backend.Kind != nil && *backend.Kind != "Service" {
+		if backend.Kind != nil && *backend.Kind != KindService {
 			terr = types.NewInvalidKindError(*backend.Kind)
 			continue
 		}
