@@ -40,11 +40,11 @@ type ErrorReporter struct {
 	err error
 }
 
-func (r *ErrorReporter) Errorf(message string, args ...any) {
+func (r *ErrorReporter) Errorf(message string, args ...interface{}) {
 	r.err = fmt.Errorf(message, args...)
 }
 
-func (r *ErrorReporter) Fatalf(message string, args ...any) {
+func (r *ErrorReporter) Fatalf(message string, args ...interface{}) {
 	r.err = fmt.Errorf(message, args...)
 }
 
