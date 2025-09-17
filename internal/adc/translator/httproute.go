@@ -377,7 +377,7 @@ func (t *Translator) TranslateBackendRefWithFilter(tctx *provider.TranslateConte
 }
 
 func (t *Translator) translateBackendRef(tctx *provider.TranslateContext, ref gatewayv1.BackendRef, endpointFilter func(*discoveryv1.Endpoint) bool) (adctypes.UpstreamNodes, error) {
-	if ref.Kind != nil && *ref.Kind != k8sTypes.KindSecret {
+	if ref.Kind != nil && *ref.Kind != k8sTypes.KindService {
 		return adctypes.UpstreamNodes{}, fmt.Errorf("kind %s is not supported", *ref.Kind)
 	}
 
