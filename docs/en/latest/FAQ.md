@@ -30,7 +30,6 @@ description: This document provides answers to frequently asked questions (FAQ) 
 
 This document provides answers to frequently asked questions (FAQ) when using APISIX Ingress Controller.
 
-
 ### How does Ingress Controller handle route priority across multiple resources?
 
 In APISIX, a higher value indicates a higher route priority.
