@@ -2,7 +2,6 @@
 # This file is used to track the info used to scaffold your project
 # and allow the plugins properly work.
 # More info: https://book.kubebuilder.io/reference/project-config.html
-domain: github.com
 layout:
 - go.kubebuilder.io/v4
 projectName: apisix-ingress-controller
@@ -70,20 +69,11 @@ resources:
   kind: ApisixPluginConfig
   path: github.com/apache/apisix-ingress-controller/api/v2
   version: v2
-- api:
-    crdVersion: v1
-    namespaced: true
-  controller: true
-  group: networking.k8s.io
+- group: networking.k8s.io
   kind: Ingress
   path: k8s.io/api/networking/v1
   version: v1
-- api:
-    crdVersion: v1
-    namespaced: false
-  controller: true
-  group: networking.k8s.io
-  kind: IngressClass
-  path: k8s.io/api/networking/v1
-  version: v1
+  webhooks:
+    validation: true
+    webhookVersion: v1
 version: "3"
