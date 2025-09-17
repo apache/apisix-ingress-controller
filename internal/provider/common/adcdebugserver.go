@@ -28,15 +28,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/types"
 )
 
-const (
-	consumers      = "consumers"
-	services       = "services"
-	routes         = "routes"
-	ssls           = "ssls"
-	globalrules    = "globalrules"
-	pluginmetadata = "pluginmetadata"
-)
-
 type ResourceInfo struct {
 	ID   string
 	Name string
@@ -132,7 +123,7 @@ func (asrv *ADCDebugProvider) handleConfig(w http.ResponseWriter, r *http.Reques
 }
 
 func (asrv *ADCDebugProvider) showResourceTypes(w http.ResponseWriter, configName, configNameEncoded string) {
-	resourceTypes := []string{"services", "routes", "consumers", "ssls", "globalrules", "pluginmetadata"}
+	resourceTypes := []string{adctypes.TypeService, adctypes.TypeRoute, adctypes.TypeConsumer, adctypes.TypeSSL, adctypes.TypeGlobalRule, adctypes.TypePluginMetadata}
 
 	tmpl := newTemplate("resources", `
         <html>
@@ -170,7 +161,7 @@ func (asrv *ADCDebugProvider) showResources(w http.ResponseWriter, r *http.Reque
 
 	var resourceInfos []ResourceInfo
 	switch resourceType {
-	case services:
+	case adctypes.TypeService:
 		for _, svc := range resources.Services {
 			resourceInfos = append(resourceInfos, ResourceInfo{
 				ID:   svc.ID,
@@ -180,7 +171,7 @@ func (asrv *ADCDebugProvider) showResources(w http.ResponseWriter, r *http.Reque
 					asrv.pathPrefix, configNameEncoded, url.QueryEscape(resourceType), url.QueryEscape(svc.ID)),
 			})
 		}
-	case consumers:
+	case adctypes.TypeConsumer:
 		for _, consumer := range resources.Consumers {
 			resourceInfos = append(resourceInfos, ResourceInfo{
 				ID:   consumer.Username,
@@ -190,7 +181,7 @@ func (asrv *ADCDebugProvider) showResources(w http.ResponseWriter, r *http.Reque
 					asrv.pathPrefix, configNameEncoded, url.QueryEscape(resourceType), url.QueryEscape(consumer.Username)),
 			})
 		}
-	case ssls:
+	case adctypes.TypeSSL:
 		for _, ssl := range resources.SSLs {
 			resourceInfos = append(resourceInfos, ResourceInfo{
 				ID:   ssl.ID,
@@ -200,7 +191,7 @@ func (asrv *ADCDebugProvider) showResources(w http.ResponseWriter, r *http.Reque
 					asrv.pathPrefix, configNameEncoded, url.QueryEscape(resourceType), url.QueryEscape(ssl.ID)),
 			})
 		}
-	case globalrules:
+	case adctypes.TypeGlobalRule:
 		for key := range resources.GlobalRules {
 			resourceInfos = append(resourceInfos, ResourceInfo{
 				ID:   key,
@@ -210,7 +201,7 @@ func (asrv *ADCDebugProvider) showResources(w http.ResponseWriter, r *http.Reque
 					asrv.pathPrefix, configNameEncoded, url.QueryEscape(resourceType), url.QueryEscape(key)),
 			})
 		}
-	case pluginmetadata:
+	case adctypes.TypePluginMetadata:
 		if resources.PluginMetadata != nil {
 			resourceInfos = append(resourceInfos, ResourceInfo{
 				ID:   "pluginmetadata",
@@ -220,7 +211,7 @@ func (asrv *ADCDebugProvider) showResources(w http.ResponseWriter, r *http.Reque
 					asrv.pathPrefix, configNameEncoded, url.QueryEscape(resourceType), "pluginmetadata"),
 			})
 		}
-	case routes:
+	case adctypes.TypeRoute:
 		for _, svc := range resources.Services {
 			for _, route := range svc.Routes {
 				resourceInfos = append(resourceInfos, ResourceInfo{
@@ -273,32 +264,32 @@ func (asrv *ADCDebugProvider) showResourceDetail(w http.ResponseWriter, r *http.
 
 	var resource interface{}
 	switch resourceType {
-	case services:
+	case adctypes.TypeService:
 		for _, svc := range resources.Services {
 			if svc.ID == resourceID {
 				resource = svc
 				break
 			}
 		}
-	case consumers:
+	case adctypes.TypeConsumer:
 		for _, consumer := range resources.Consumers {
 			if consumer.Username == resourceID {
 				resource = consumer
 				break
 			}
 		}
-	case ssls:
+	case adctypes.TypeSSL:
 		for _, ssl := range resources.SSLs {
 			if ssl.ID == resourceID {
 				resource = ssl
 				break
 			}
 		}
-	case globalrules:
+	case adctypes.TypeGlobalRule:
 		resource = resources.GlobalRules
-	case pluginmetadata:
+	case adctypes.TypePluginMetadata:
 		resource = resources.PluginMetadata
-	case routes:
+	case adctypes.TypeRoute:
 		for _, svc := range resources.Services {
 			for _, route := range svc.Routes {
 				if route.ID == resourceID {
