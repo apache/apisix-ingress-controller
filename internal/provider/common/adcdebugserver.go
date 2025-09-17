@@ -28,6 +28,15 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/types"
 )
 
+const (
+	consumers      = "consumers"
+	services       = "services"
+	routes         = "routes"
+	ssls           = "ssls"
+	globalrules    = "globalrules"
+	pluginmetadata = "pluginmetadata"
+)
+
 type ResourceInfo struct {
 	ID   string
 	Name string
@@ -161,7 +170,7 @@ func (asrv *ADCDebugProvider) showResources(w http.ResponseWriter, r *http.Reque
 
 	var resourceInfos []ResourceInfo
 	switch resourceType {
-	case "services":
+	case services:
 		for _, svc := range resources.Services {
 			resourceInfos = append(resourceInfos, ResourceInfo{
 				ID:   svc.ID,
@@ -171,7 +180,7 @@ func (asrv *ADCDebugProvider) showResources(w http.ResponseWriter, r *http.Reque
 					asrv.pathPrefix, configNameEncoded, url.QueryEscape(resourceType), url.QueryEscape(svc.ID)),
 			})
 		}
-	case "consumers":
+	case consumers:
 		for _, consumer := range resources.Consumers {
 			resourceInfos = append(resourceInfos, ResourceInfo{
 				ID:   consumer.Username,
@@ -181,7 +190,7 @@ func (asrv *ADCDebugProvider) showResources(w http.ResponseWriter, r *http.Reque
 					asrv.pathPrefix, configNameEncoded, url.QueryEscape(resourceType), url.QueryEscape(consumer.Username)),
 			})
 		}
-	case "ssls":
+	case ssls:
 		for _, ssl := range resources.SSLs {
 			resourceInfos = append(resourceInfos, ResourceInfo{
 				ID:   ssl.ID,
@@ -191,7 +200,7 @@ func (asrv *ADCDebugProvider) showResources(w http.ResponseWriter, r *http.Reque
 					asrv.pathPrefix, configNameEncoded, url.QueryEscape(resourceType), url.QueryEscape(ssl.ID)),
 			})
 		}
-	case "globalrules":
+	case globalrules:
 		for key := range resources.GlobalRules {
 			resourceInfos = append(resourceInfos, ResourceInfo{
 				ID:   key,
@@ -201,7 +210,7 @@ func (asrv *ADCDebugProvider) showResources(w http.ResponseWriter, r *http.Reque
 					asrv.pathPrefix, configNameEncoded, url.QueryEscape(resourceType), url.QueryEscape(key)),
 			})
 		}
-	case "pluginmetadata":
+	case pluginmetadata:
 		if resources.PluginMetadata != nil {
 			resourceInfos = append(resourceInfos, ResourceInfo{
 				ID:   "pluginmetadata",
@@ -211,7 +220,7 @@ func (asrv *ADCDebugProvider) showResources(w http.ResponseWriter, r *http.Reque
 					asrv.pathPrefix, configNameEncoded, url.QueryEscape(resourceType), "pluginmetadata"),
 			})
 		}
-	case "routes":
+	case routes:
 		for _, svc := range resources.Services {
 			for _, route := range svc.Routes {
 				resourceInfos = append(resourceInfos, ResourceInfo{
@@ -264,32 +273,32 @@ func (asrv *ADCDebugProvider) showResourceDetail(w http.ResponseWriter, r *http.
 
 	var resource interface{}
 	switch resourceType {
-	case "services":
+	case services:
 		for _, svc := range resources.Services {
 			if svc.ID == resourceID {
 				resource = svc
 				break
 			}
 		}
-	case "consumers":
+	case consumers:
 		for _, consumer := range resources.Consumers {
 			if consumer.Username == resourceID {
 				resource = consumer
 				break
 			}
 		}
-	case "ssls":
+	case ssls:
 		for _, ssl := range resources.SSLs {
 			if ssl.ID == resourceID {
 				resource = ssl
 				break
 			}
 		}
-	case "globalrules":
+	case globalrules:
 		resource = resources.GlobalRules
-	case "pluginmetadata":
+	case pluginmetadata:
 		resource = resources.PluginMetadata
-	case "routes":
+	case routes:
 		for _, svc := range resources.Services {
 			for _, route := range svc.Routes {
 				if route.ID == resourceID {
