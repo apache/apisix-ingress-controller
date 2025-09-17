@@ -42,7 +42,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
-	k8sTypes "github.com/apache/apisix-ingress-controller/internal/types"
+	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
@@ -194,7 +194,7 @@ func (r *ConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			consumer.Name = req.Name
 
 			consumer.TypeMeta = metav1.TypeMeta{
-				Kind:       k8sTypes.KindConsumer,
+				Kind:       internaltypes.KindConsumer,
 				APIVersion: v1alpha1.GroupVersion.String(),
 			}
 

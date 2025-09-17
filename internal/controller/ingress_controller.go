@@ -47,7 +47,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
-	k8sTypes "github.com/apache/apisix-ingress-controller/internal/types"
+	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
@@ -428,7 +428,7 @@ func (r *IngressReconciler) listIngressesByHTTPRoutePolicy(ctx context.Context, 
 
 	var keys = make(map[types.NamespacedName]struct{})
 	for _, ref := range httpRoutePolicy.Spec.TargetRefs {
-		if ref.Kind != k8sTypes.KindIngress {
+		if ref.Kind != internaltypes.KindIngress {
 			continue
 		}
 		key := types.NamespacedName{

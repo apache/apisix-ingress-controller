@@ -30,7 +30,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/id"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
-	k8sTypes "github.com/apache/apisix-ingress-controller/internal/types"
+	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
 
 func (t *Translator) translateIngressTLS(ingressTLS *networkingv1.IngressTLS, secret *corev1.Secret, labels map[string]string) (*adctypes.SSL, error) {
@@ -124,7 +124,7 @@ func (t *Translator) TranslateIngress(tctx *provider.TranslateContext, obj *netw
 			// get the EndpointSlice of the backend service
 			backendService := path.Backend.Service
 			if backendService != nil {
-				backendRef := convertBackendRef(obj.Namespace, backendService.Name, k8sTypes.KindService)
+				backendRef := convertBackendRef(obj.Namespace, backendService.Name, internaltypes.KindService)
 				t.AttachBackendTrafficPolicyToUpstream(backendRef, tctx.BackendTrafficPolicies, upstream)
 			}
 

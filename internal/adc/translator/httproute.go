@@ -37,7 +37,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/id"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
-	k8sTypes "github.com/apache/apisix-ingress-controller/internal/types"
+	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
 
 func (t *Translator) fillPluginsFromHTTPRouteFilters(
@@ -71,7 +71,7 @@ func (t *Translator) fillPluginFromExtensionRef(plugins adctypes.Plugins, namesp
 	if extensionRef == nil {
 		return
 	}
-	if extensionRef.Kind == k8sTypes.KindPluginConfig {
+	if extensionRef.Kind == internaltypes.KindPluginConfig {
 		pluginconfig := tctx.PluginConfigs[types.NamespacedName{
 			Namespace: namespace,
 			Name:      string(extensionRef.Name),
@@ -301,7 +301,7 @@ func (t *Translator) fillHTTPRoutePoliciesForHTTPRoute(tctx *provider.TranslateC
 	var policies []v1alpha1.HTTPRoutePolicy
 	for _, policy := range tctx.HTTPRoutePolicies {
 		for _, ref := range policy.Spec.TargetRefs {
-			if string(ref.Kind) == k8sTypes.KindHTTPRoute && (ref.SectionName == nil || *ref.SectionName == "" || ptr.Equal(ref.SectionName, rule.Name)) {
+			if string(ref.Kind) == internaltypes.KindHTTPRoute && (ref.SectionName == nil || *ref.SectionName == "" || ptr.Equal(ref.SectionName, rule.Name)) {
 				policies = append(policies, policy)
 				break
 			}
@@ -377,7 +377,7 @@ func (t *Translator) TranslateBackendRefWithFilter(tctx *provider.TranslateConte
 }
 
 func (t *Translator) translateBackendRef(tctx *provider.TranslateContext, ref gatewayv1.BackendRef, endpointFilter func(*discoveryv1.Endpoint) bool) (adctypes.UpstreamNodes, error) {
-	if ref.Kind != nil && *ref.Kind != k8sTypes.KindService {
+	if ref.Kind != nil && *ref.Kind != internaltypes.KindService {
 		return adctypes.UpstreamNodes{}, fmt.Errorf("kind %s is not supported", *ref.Kind)
 	}
 
@@ -550,7 +550,7 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 				port int32
 			)
 			if backend.Kind == nil {
-				kind = k8sTypes.KindService
+				kind = internaltypes.KindService
 			} else {
 				kind = string(*backend.Kind)
 			}

@@ -34,7 +34,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
-	k8sTypes "github.com/apache/apisix-ingress-controller/internal/types"
+	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
@@ -42,7 +42,7 @@ func (r *HTTPRouteReconciler) processHTTPRoutePolicies(tctx *provider.TranslateC
 	// list HTTPRoutePolicies, which sectionName is not specified
 	var (
 		list v1alpha1.HTTPRoutePolicyList
-		key  = indexer.GenIndexKeyWithGK(gatewayv1.GroupName, k8sTypes.KindHTTPRoute, httpRoute.GetNamespace(), httpRoute.GetName())
+		key  = indexer.GenIndexKeyWithGK(gatewayv1.GroupName, internaltypes.KindHTTPRoute, httpRoute.GetNamespace(), httpRoute.GetName())
 	)
 	if err := r.List(context.Background(), &list, client.MatchingFields{indexer.PolicyTargetRefs: key}); err != nil {
 		return err
@@ -64,7 +64,7 @@ func (r *HTTPRouteReconciler) processHTTPRoutePolicies(tctx *provider.TranslateC
 
 	var conflicts = make(map[types.NamespacedName]v1alpha1.HTTPRoutePolicy)
 	for _, rule := range httpRoute.Spec.Rules {
-		var policies = findPoliciesWhichTargetRefTheRule(rule.Name, k8sTypes.KindHTTPRoute, list)
+		var policies = findPoliciesWhichTargetRefTheRule(rule.Name, internaltypes.KindHTTPRoute, list)
 		if conflict := checkPoliciesConflict(policies); conflict {
 			for _, policy := range policies {
 				namespacedName := types.NamespacedName{Namespace: policy.GetNamespace(), Name: policy.GetName()}
@@ -106,7 +106,7 @@ func (r *HTTPRouteReconciler) processHTTPRoutePolicies(tctx *provider.TranslateC
 func (r *HTTPRouteReconciler) updateHTTPRoutePolicyStatusOnDeleting(ctx context.Context, nn types.NamespacedName) error {
 	var (
 		list v1alpha1.HTTPRoutePolicyList
-		key  = indexer.GenIndexKeyWithGK(gatewayv1.GroupName, k8sTypes.KindHTTPRoute, nn.Namespace, nn.Name)
+		key  = indexer.GenIndexKeyWithGK(gatewayv1.GroupName, internaltypes.KindHTTPRoute, nn.Namespace, nn.Name)
 	)
 	if err := r.List(ctx, &list, client.MatchingFields{indexer.PolicyTargetRefs: key}); err != nil {
 		return err
@@ -138,7 +138,7 @@ func (r *HTTPRouteReconciler) updateHTTPRoutePolicyStatusOnDeleting(ctx context.
 func (r *IngressReconciler) processHTTPRoutePolicies(tctx *provider.TranslateContext, ingress *networkingv1.Ingress) error {
 	var (
 		list v1alpha1.HTTPRoutePolicyList
-		key  = indexer.GenIndexKeyWithGK(networkingv1.GroupName, k8sTypes.KindIngress, ingress.GetNamespace(), ingress.GetName())
+		key  = indexer.GenIndexKeyWithGK(networkingv1.GroupName, internaltypes.KindIngress, ingress.GetNamespace(), ingress.GetName())
 	)
 	if err := r.List(context.Background(), &list, client.MatchingFields{indexer.PolicyTargetRefs: key}); err != nil {
 		return err
@@ -180,7 +180,7 @@ func (r *IngressReconciler) processHTTPRoutePolicies(tctx *provider.TranslateCon
 func (r *IngressReconciler) updateHTTPRoutePolicyStatusOnDeleting(ctx context.Context, nn types.NamespacedName) error {
 	var (
 		list v1alpha1.HTTPRoutePolicyList
-		key  = indexer.GenIndexKeyWithGK(networkingv1.GroupName, k8sTypes.KindIngress, nn.Namespace, nn.Name)
+		key  = indexer.GenIndexKeyWithGK(networkingv1.GroupName, internaltypes.KindIngress, nn.Namespace, nn.Name)
 	)
 	if err := r.List(ctx, &list, client.MatchingFields{indexer.PolicyTargetRefs: key}); err != nil {
 		return err
