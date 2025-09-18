@@ -46,6 +46,10 @@
             "id": "upgrade-guide"
         },
         {
+            "type": "doc",
+            "id": "FAQ"
+        },
+        {
             "type": "link",
             "label": "CHANGELOG",
             "href": "https://github.com/apache/apisix-ingress-controller/blob/master/CHANGELOG.md"
