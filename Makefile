@@ -135,11 +135,11 @@ kind-e2e-test: kind-up build-image kind-load-images e2e-test
 
 # Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
 .PHONY: e2e-test
-e2e-test: adc e2e-ldap
+e2e-test: adc
 	go test $(TEST_DIR) -test.timeout=$(TEST_TIMEOUT) -v -ginkgo.v -ginkgo.focus="$(TEST_FOCUS)" -ginkgo.label-filter="$(TEST_LABEL)"
 
 .PHONY: ginkgo-e2e-test
-ginkgo-e2e-test: adc e2e-ldap
+ginkgo-e2e-test: adc
 	@ginkgo -cover -coverprofile=coverage.txt -r --randomize-all --randomize-suites --trace --focus=$(E2E_FOCUS) --nodes=$(E2E_NODES) --label-filter="$(TEST_LABEL)" $(TEST_DIR)
 
 .PHONY: install-ginkgo
