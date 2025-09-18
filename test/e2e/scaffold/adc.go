@@ -31,7 +31,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
-	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator"
 )
 
@@ -45,7 +44,7 @@ func init() {
 	if adc == "" {
 		return
 	}
-	if strings.Contains(adc, apiv2.PassHostNode) {
+	if strings.Contains(adc, "node") {
 		parts := strings.Fields(adc)
 		adcExec = parts[0]
 		adcArgs = parts[1:]
