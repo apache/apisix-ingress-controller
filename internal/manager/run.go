@@ -42,6 +42,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
+	"github.com/apache/apisix-ingress-controller/internal/manager/server"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	_ "github.com/apache/apisix-ingress-controller/internal/provider/init"
 	_ "github.com/apache/apisix-ingress-controller/pkg/metrics"
@@ -178,6 +179,14 @@ func Run(ctx context.Context, logger logr.Logger) error {
 		return err
 	}
 
+	if cfg.EnableServer {
+		srv := server.NewServer(config.ControllerConfig.ServerAddr)
+		srv.Register("/debug", provider)
+		if err := mgr.Add(srv); err != nil {
+			setupLog.Error(err, "unable to add debug server to manager")
+			return err
+		}
+	}
 	if err := mgr.Add(provider); err != nil {
 		setupLog.Error(err, "unable to add provider to manager")
 		return err
