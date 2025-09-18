@@ -17,109 +17,127 @@ package v1
 
 import (
 	"context"
+	"strings"
+	"testing"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
 	networkingk8siov1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var _ = Describe("Ingress Webhook", func() {
-	var (
-		obj       *networkingk8siov1.Ingress
-		oldObj    *networkingk8siov1.Ingress
-		validator IngressCustomValidator
-	)
+func TestIngressCustomValidator_ValidateCreate_UnsupportedAnnotations(t *testing.T) {
+	validator := IngressCustomValidator{}
+	obj := &networkingk8siov1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-ingress",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"k8s.apisix.apache.org/use-regex":        "true",
+				"k8s.apisix.apache.org/enable-websocket": "true",
+				"nginx.ingress.kubernetes.io/rewrite":    "/new-path",
+			},
+		},
+	}
 
-	BeforeEach(func() {
-		obj = &networkingk8siov1.Ingress{}
-		oldObj = &networkingk8siov1.Ingress{}
-		validator = IngressCustomValidator{}
-		Expect(validator).NotTo(BeNil(), "Expected validator to be initialized")
-		Expect(oldObj).NotTo(BeNil(), "Expected oldObj to be initialized")
-		Expect(obj).NotTo(BeNil(), "Expected obj to be initialized")
-	})
+	warnings, err := validator.ValidateCreate(context.TODO(), obj)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if len(warnings) != 2 {
+		t.Errorf("Expected 2 warnings, got %d", len(warnings))
+	}
+	if !strings.Contains(warnings[0], "k8s.apisix.apache.org/use-regex") {
+		t.Errorf("Expected warning to contain 'k8s.apisix.apache.org/use-regex', got %s", warnings[0])
+	}
+	if !strings.Contains(warnings[1], "k8s.apisix.apache.org/enable-websocket") {
+		t.Errorf("Expected warning to contain 'k8s.apisix.apache.org/enable-websocket', got %s", warnings[1])
+	}
+}
 
-	Context("When creating or updating Ingress under Validating Webhook", func() {
-		It("Should return warnings for unsupported annotations on create", func() {
-			By("Creating an Ingress with unsupported annotations")
-			obj.ObjectMeta = metav1.ObjectMeta{
-				Name:      "test-ingress",
-				Namespace: "default",
-				Annotations: map[string]string{
-					"k8s.apisix.apache.org/use-regex":        "true",
-					"k8s.apisix.apache.org/enable-websocket": "true",
-					"nginx.ingress.kubernetes.io/rewrite":    "/new-path",
-				},
-			}
+func TestIngressCustomValidator_ValidateCreate_SupportedAnnotations(t *testing.T) {
+	validator := IngressCustomValidator{}
+	obj := &networkingk8siov1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-ingress",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"ingressclass.kubernetes.io/is-default-class": "true",
+			},
+		},
+	}
 
-			warnings, err := validator.ValidateCreate(context.TODO(), obj)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(warnings).To(HaveLen(2))
-			Expect(warnings[0]).To(ContainSubstring("k8s.apisix.apache.org/use-regex"))
-			Expect(warnings[1]).To(ContainSubstring("k8s.apisix.apache.org/enable-websocket"))
-		})
+	warnings, err := validator.ValidateCreate(context.TODO(), obj)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if len(warnings) != 0 {
+		t.Errorf("Expected 0 warnings, got %d", len(warnings))
+	}
+}
 
-		It("Should return no warnings for supported annotations on create", func() {
-			By("Creating an Ingress with only supported annotations")
-			obj.ObjectMeta = metav1.ObjectMeta{
-				Name:      "test-ingress",
-				Namespace: "default",
-				Annotations: map[string]string{
-					"nginx.ingress.kubernetes.io/rewrite": "/new-path",
-					"kubernetes.io/ingress.class":         "apisix",
-				},
-			}
+func TestIngressCustomValidator_ValidateUpdate_UnsupportedAnnotations(t *testing.T) {
+	validator := IngressCustomValidator{}
+	oldObj := &networkingk8siov1.Ingress{}
+	obj := &networkingk8siov1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-ingress",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"k8s.apisix.apache.org/enable-cors":       "true",
+				"k8s.apisix.apache.org/cors-allow-origin": "*",
+			},
+		},
+	}
 
-			warnings, err := validator.ValidateCreate(context.TODO(), obj)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(warnings).To(BeEmpty())
-		})
+	warnings, err := validator.ValidateUpdate(context.TODO(), oldObj, obj)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if len(warnings) != 2 {
+		t.Errorf("Expected 2 warnings, got %d", len(warnings))
+	}
+	if !strings.Contains(warnings[0], "k8s.apisix.apache.org/enable-cors") {
+		t.Errorf("Expected warning to contain 'k8s.apisix.apache.org/enable-cors', got %s", warnings[0])
+	}
+	if !strings.Contains(warnings[1], "k8s.apisix.apache.org/cors-allow-origin") {
+		t.Errorf("Expected warning to contain 'k8s.apisix.apache.org/cors-allow-origin', got %s", warnings[1])
+	}
+}
 
-		It("Should return warnings for unsupported annotations on update", func() {
-			By("Updating an Ingress with unsupported annotations")
-			obj.ObjectMeta = metav1.ObjectMeta{
-				Name:      "test-ingress",
-				Namespace: "default",
-				Annotations: map[string]string{
-					"k8s.apisix.apache.org/enable-cors":       "true",
-					"k8s.apisix.apache.org/cors-allow-origin": "*",
-				},
-			}
+func TestIngressCustomValidator_ValidateDelete_NoWarnings(t *testing.T) {
+	validator := IngressCustomValidator{}
+	obj := &networkingk8siov1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-ingress",
+			Namespace: "default",
+			Annotations: map[string]string{
+				"k8s.apisix.apache.org/use-regex": "true",
+			},
+		},
+	}
 
-			warnings, err := validator.ValidateUpdate(context.TODO(), oldObj, obj)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(warnings).To(HaveLen(2))
-			Expect(warnings[0]).To(ContainSubstring("k8s.apisix.apache.org/enable-cors"))
-			Expect(warnings[1]).To(ContainSubstring("k8s.apisix.apache.org/cors-allow-origin"))
-		})
+	warnings, err := validator.ValidateDelete(context.TODO(), obj)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if len(warnings) != 0 {
+		t.Errorf("Expected 0 warnings, got %d", len(warnings))
+	}
+}
 
-		It("Should not return warnings for deletion", func() {
-			By("Deleting an Ingress with unsupported annotations")
-			obj.ObjectMeta = metav1.ObjectMeta{
-				Name:      "test-ingress",
-				Namespace: "default",
-				Annotations: map[string]string{
-					"k8s.apisix.apache.org/use-regex": "true",
-				},
-			}
+func TestIngressCustomValidator_ValidateCreate_NoAnnotations(t *testing.T) {
+	validator := IngressCustomValidator{}
+	obj := &networkingk8siov1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-ingress",
+			Namespace: "default",
+		},
+	}
 
-			warnings, err := validator.ValidateDelete(context.TODO(), obj)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(warnings).To(BeEmpty())
-		})
-
-		It("Should handle Ingress without annotations", func() {
-			By("Creating an Ingress without any annotations")
-			obj.ObjectMeta = metav1.ObjectMeta{
-				Name:      "test-ingress",
-				Namespace: "default",
-			}
-
-			warnings, err := validator.ValidateCreate(context.TODO(), obj)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(warnings).To(BeEmpty())
-		})
-	})
-
-})
+	warnings, err := validator.ValidateCreate(context.TODO(), obj)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	if len(warnings) != 0 {
+		t.Errorf("Expected 0 warnings, got %d", len(warnings))
+	}
+}
