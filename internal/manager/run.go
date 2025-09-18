@@ -209,6 +209,12 @@ func Run(ctx context.Context, logger logr.Logger) error {
 
 	// +kubebuilder:scaffold:builder
 
+	setupLog.Info("setting up webhooks")
+	if err := setupWebhooks(ctx, mgr); err != nil {
+		setupLog.Error(err, "unable to create webhook", "webhook", "Ingress")
+		return err
+	}
+
 	setupLog.Info("setting up health checks")
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")

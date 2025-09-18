@@ -69,7 +69,9 @@ resources:
   kind: ApisixPluginConfig
   path: github.com/apache/apisix-ingress-controller/api/v2
   version: v2
-- group: networking.k8s.io
+- core: true
+  domain: k8s.io
+  group: networking
   kind: Ingress
   path: k8s.io/api/networking/v1
   version: v1
