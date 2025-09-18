@@ -81,23 +81,23 @@ func (c *dbCache) Delete(obj any) error {
 
 func (c *dbCache) InsertRoute(r *types.Route) error {
 	route := r.DeepCopy()
-	return c.insert("route", route)
+	return c.insert(types.TypeRoute, route)
 }
 
 func (c *dbCache) InsertSSL(ssl *types.SSL) error {
-	return c.insert("ssl", ssl.DeepCopy())
+	return c.insert(types.TypeSSL, ssl.DeepCopy())
 }
 
 func (c *dbCache) InsertService(u *types.Service) error {
-	return c.insert("service", u.DeepCopy())
+	return c.insert(types.TypeService, u.DeepCopy())
 }
 
 func (c *dbCache) InsertConsumer(consumer *types.Consumer) error {
-	return c.insert("consumer", consumer.DeepCopy())
+	return c.insert(types.TypeConsumer, consumer.DeepCopy())
 }
 
 func (c *dbCache) InsertGlobalRule(globalRule *types.GlobalRuleItem) error {
-	return c.insert("global_rule", globalRule.DeepCopy())
+	return c.insert(types.TypeGlobalRule, globalRule.DeepCopy())
 }
 
 func (c *dbCache) insert(table string, obj any) error {
@@ -111,7 +111,7 @@ func (c *dbCache) insert(table string, obj any) error {
 }
 
 func (c *dbCache) GetRoute(id string) (*types.Route, error) {
-	obj, err := c.get("route", id)
+	obj, err := c.get(types.TypeRoute, id)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func (c *dbCache) GetRoute(id string) (*types.Route, error) {
 }
 
 func (c *dbCache) GetSSL(id string) (*types.SSL, error) {
-	obj, err := c.get("ssl", id)
+	obj, err := c.get(types.TypeSSL, id)
 	if err != nil {
 		return nil, err
 	}
@@ -127,7 +127,7 @@ func (c *dbCache) GetSSL(id string) (*types.SSL, error) {
 }
 
 func (c *dbCache) GetService(id string) (*types.Service, error) {
-	obj, err := c.get("service", id)
+	obj, err := c.get(types.TypeService, id)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func (c *dbCache) GetService(id string) (*types.Service, error) {
 }
 
 func (c *dbCache) GetConsumer(username string) (*types.Consumer, error) {
-	obj, err := c.get("consumer", username)
+	obj, err := c.get(types.TypeConsumer, username)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func (c *dbCache) GetConsumer(username string) (*types.Consumer, error) {
 }
 
 func (c *dbCache) GetGlobalRule(id string) (*types.GlobalRuleItem, error) {
-	obj, err := c.get("global_rule", id)
+	obj, err := c.get(types.TypeGlobalRule, id)
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func (c *dbCache) get(table, id string) (any, error) {
 }
 
 func (c *dbCache) ListRoutes(opts ...ListOption) ([]*types.Route, error) {
-	raws, err := c.list("route", opts...)
+	raws, err := c.list(types.TypeRoute, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +187,7 @@ func (c *dbCache) ListRoutes(opts ...ListOption) ([]*types.Route, error) {
 }
 
 func (c *dbCache) ListSSL(opts ...ListOption) ([]*types.SSL, error) {
-	raws, err := c.list("ssl", opts...)
+	raws, err := c.list(types.TypeSSL, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -199,7 +199,7 @@ func (c *dbCache) ListSSL(opts ...ListOption) ([]*types.SSL, error) {
 }
 
 func (c *dbCache) ListServices(opts ...ListOption) ([]*types.Service, error) {
-	raws, err := c.list("service", opts...)
+	raws, err := c.list(types.TypeService, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +211,7 @@ func (c *dbCache) ListServices(opts ...ListOption) ([]*types.Service, error) {
 }
 
 func (c *dbCache) ListConsumers(opts ...ListOption) ([]*types.Consumer, error) {
-	raws, err := c.list("consumer", opts...)
+	raws, err := c.list(types.TypeConsumer, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +223,7 @@ func (c *dbCache) ListConsumers(opts ...ListOption) ([]*types.Consumer, error) {
 }
 
 func (c *dbCache) ListGlobalRules(opts ...ListOption) ([]*types.GlobalRuleItem, error) {
-	raws, err := c.list("global_rule", opts...)
+	raws, err := c.list(types.TypeGlobalRule, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -257,23 +257,23 @@ func (c *dbCache) list(table string, opts ...ListOption) ([]any, error) {
 }
 
 func (c *dbCache) DeleteRoute(r *types.Route) error {
-	return c.delete("route", r)
+	return c.delete(types.TypeRoute, r)
 }
 
 func (c *dbCache) DeleteSSL(ssl *types.SSL) error {
-	return c.delete("ssl", ssl)
+	return c.delete(types.TypeSSL, ssl)
 }
 
 func (c *dbCache) DeleteService(u *types.Service) error {
-	return c.delete("service", u)
+	return c.delete(types.TypeService, u)
 }
 
 func (c *dbCache) DeleteConsumer(consumer *types.Consumer) error {
-	return c.delete("consumer", consumer)
+	return c.delete(types.TypeConsumer, consumer)
 }
 
 func (c *dbCache) DeleteGlobalRule(globalRule *types.GlobalRuleItem) error {
-	return c.delete("global_rule", globalRule)
+	return c.delete(types.TypeGlobalRule, globalRule)
 }
 
 func (c *dbCache) delete(table string, obj any) error {

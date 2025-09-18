@@ -233,7 +233,7 @@ func (c *Client) sync(ctx context.Context, task Task) error {
 		pkgmetrics.RecordFileIODuration("prepare_sync_file", "failure", time.Since(fileIOStart).Seconds())
 		return err
 	}
-	pkgmetrics.RecordFileIODuration("prepare_sync_file", "success", time.Since(fileIOStart).Seconds())
+	pkgmetrics.RecordFileIODuration("prepare_sync_file", adctypes.StatusSuccess, time.Since(fileIOStart).Seconds())
 	defer cleanup()
 
 	args := BuildADCExecuteArgs(syncFilePath, task.Labels, task.ResourceTypes)
@@ -249,7 +249,7 @@ func (c *Client) sync(ctx context.Context, task Task) error {
 		err := c.executor.Execute(ctx, c.BackendMode, config, args)
 		duration := time.Since(startTime).Seconds()
 
-		status := "success"
+		status := adctypes.StatusSuccess
 		if err != nil {
 			status = "failure"
 			log.Errorw("failed to execute adc command", zap.Error(err), zap.Any("config", config))

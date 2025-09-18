@@ -427,7 +427,7 @@ func (r *ApisixRouteReconciler) validateHTTPBackend(tctx *provider.TranslateCont
 		return nil
 	}
 
-	if backend.ResolveGranularity == "service" && service.Spec.ClusterIP == "" {
+	if backend.ResolveGranularity == apiv2.ResolveGranularityService && service.Spec.ClusterIP == "" {
 		r.Log.Error(errors.New("service has no ClusterIP"), "Service", serviceNN, "ResolveGranularity", backend.ResolveGranularity)
 		return nil
 	}
