@@ -32,6 +32,7 @@ const DefaultIngressClassAnnotation = "ingressclass.kubernetes.io/is-default-cla
 const (
 	KindGateway              = "Gateway"
 	KindHTTPRoute            = "HTTPRoute"
+	KindGRPCRoute            = "GRPCRoute"
 	KindGatewayClass         = "GatewayClass"
 	KindIngress              = "Ingress"
 	KindIngressClass         = "IngressClass"

@@ -60,6 +60,7 @@ import (
 const (
 	KindGateway            = "Gateway"
 	KindHTTPRoute          = "HTTPRoute"
+	KindGRPCRoute          = "GRPCRoute"
 	KindGatewayClass       = "GatewayClass"
 	KindIngress            = "Ingress"
 	KindIngressClass       = "IngressClass"

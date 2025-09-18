@@ -722,36 +722,10 @@ func (t *Translator) translateGatewayHTTPRouteMatch(match *gatewayv1.HTTPRouteMa
 
 	if len(match.Headers) > 0 {
 		for _, header := range match.Headers {
-			name := strings.ToLower(string(header.Name))
-			name = strings.ReplaceAll(name, "-", "_")
-
-			var this []adctypes.StringOrSlice
-			this = append(this, adctypes.StringOrSlice{
-				StrVal: "http_" + name,
-			})
-
-			matchType := gatewayv1.HeaderMatchExact
-			if header.Type != nil {
-				matchType = *header.Type
+			this, err := t.translateHTTPRouteHeaderMatchToVars(header)
+			if err != nil {
+				return nil, err
 			}
-
-			switch matchType {
-			case gatewayv1.HeaderMatchExact:
-				this = append(this, adctypes.StringOrSlice{
-					StrVal: "==",
-				})
-			case gatewayv1.HeaderMatchRegularExpression:
-				this = append(this, adctypes.StringOrSlice{
-					StrVal: "~~",
-				})
-			default:
-				return nil, errors.New("unknown header match type " + string(matchType))
-			}
-
-			this = append(this, adctypes.StringOrSlice{
-				StrVal: header.Value,
-			})
-
 			route.Vars = append(route.Vars, this)
 		}
 	}
@@ -796,4 +770,48 @@ func (t *Translator) translateGatewayHTTPRouteMatch(match *gatewayv1.HTTPRouteMa
 	}
 
 	return route, nil
+}
+
+func HeaderMatchToVars(matchType, name, value string) ([]adctypes.StringOrSlice, error) {
+	name = strings.ToLower(name)
+	name = strings.ReplaceAll(name, "-", "_")
+
+	var this []adctypes.StringOrSlice
+	this = append(this, adctypes.StringOrSlice{
+		StrVal: "http_" + name,
+	})
+
+	switch matchType {
+	case string(gatewayv1.HeaderMatchExact):
+		this = append(this, adctypes.StringOrSlice{
+			StrVal: "==",
+		})
+	case string(gatewayv1.HeaderMatchRegularExpression):
+		this = append(this, adctypes.StringOrSlice{
+			StrVal: "~~",
+		})
+	default:
+		return nil, errors.New("unknown header match type " + string(matchType))
+	}
+
+	this = append(this, adctypes.StringOrSlice{
+		StrVal: value,
+	})
+	return this, nil
+}
+
+func (t *Translator) translateHTTPRouteHeaderMatchToVars(header gatewayv1.HTTPHeaderMatch) ([]adctypes.StringOrSlice, error) {
+	var matchType string
+	if header.Type != nil {
+		matchType = string(*header.Type)
+	}
+	return HeaderMatchToVars(matchType, string(header.Name), header.Value)
+}
+
+func (t *Translator) translateGRPCRouteHeaderMatchToVars(header gatewayv1.GRPCHeaderMatch) ([]adctypes.StringOrSlice, error) {
+	var matchType string
+	if header.Type != nil {
+		matchType = string(*header.Type)
+	}
+	return HeaderMatchToVars(matchType, string(header.Name), header.Value)
 }
