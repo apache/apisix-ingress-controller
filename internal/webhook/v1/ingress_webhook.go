@@ -78,7 +78,7 @@ var unsupportedAnnotations = []string{
 func checkUnsupportedAnnotations(ingress *networkingk8siov1.Ingress) admission.Warnings {
 	var warnings admission.Warnings
 
-	if ingress.Annotations == nil {
+	if len(ingress.Annotations) == 0 {
 		return warnings
 	}
 
