@@ -19,10 +19,15 @@ package provider
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
 )
+
+type RegisterHandler interface {
+	Register(pathPrefix string, mux *http.ServeMux)
+}
 
 type RegisterFunc func(status.Updater, readiness.ReadinessManager, ...Option) (Provider, error)
 

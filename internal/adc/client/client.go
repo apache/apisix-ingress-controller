@@ -45,7 +45,8 @@ type Client struct {
 	executor    ADCExecutor
 	BackendMode string
 
-	ConfigManager *common.ConfigManager[types.NamespacedNameKind, adctypes.Config]
+	ConfigManager    *common.ConfigManager[types.NamespacedNameKind, adctypes.Config]
+	ADCDebugProvider *common.ADCDebugProvider
 }
 
 func New(mode string, timeout time.Duration) (*Client, error) {
@@ -53,13 +54,15 @@ func New(mode string, timeout time.Duration) (*Client, error) {
 	if serverURL == "" {
 		serverURL = defaultHTTPADCExecutorAddr
 	}
-
+	store := cache.NewStore()
+	configManager := common.NewConfigManager[types.NamespacedNameKind, adctypes.Config]()
 	log.Infow("using HTTP ADC Executor", zap.String("server_url", serverURL))
 	return &Client{
-		Store:         cache.NewStore(),
-		executor:      NewHTTPADCExecutor(serverURL, timeout),
-		BackendMode:   mode,
-		ConfigManager: common.NewConfigManager[types.NamespacedNameKind, adctypes.Config](),
+		Store:            store,
+		executor:         NewHTTPADCExecutor(serverURL, timeout),
+		BackendMode:      mode,
+		ConfigManager:    configManager,
+		ADCDebugProvider: common.NewADCDebugProvider(store, configManager),
 	}, nil
 }
 
@@ -233,7 +236,7 @@ func (c *Client) sync(ctx context.Context, task Task) error {
 		pkgmetrics.RecordFileIODuration("prepare_sync_file", "failure", time.Since(fileIOStart).Seconds())
 		return err
 	}
-	pkgmetrics.RecordFileIODuration("prepare_sync_file", "success", time.Since(fileIOStart).Seconds())
+	pkgmetrics.RecordFileIODuration("prepare_sync_file", adctypes.StatusSuccess, time.Since(fileIOStart).Seconds())
 	defer cleanup()
 
 	args := BuildADCExecuteArgs(syncFilePath, task.Labels, task.ResourceTypes)
@@ -249,7 +252,7 @@ func (c *Client) sync(ctx context.Context, task Task) error {
 		err := c.executor.Execute(ctx, c.BackendMode, config, args)
 		duration := time.Since(startTime).Seconds()
 
-		status := "success"
+		status := adctypes.StatusSuccess
 		if err != nil {
 			status = "failure"
 			log.Errorw("failed to execute adc command", zap.Error(err), zap.Any("config", config))

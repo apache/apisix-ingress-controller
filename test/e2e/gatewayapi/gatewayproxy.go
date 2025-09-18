@@ -24,6 +24,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
@@ -135,7 +136,7 @@ spec:
 		time.Sleep(5 * time.Second)
 
 		By("Check GatewayClass condition")
-		gcYaml, err := s.GetResourceYaml("GatewayClass", gatewayClassName)
+		gcYaml, err := s.GetResourceYaml(types.KindGatewayClass, gatewayClassName)
 		Expect(err).NotTo(HaveOccurred(), "getting GatewayClass yaml")
 		Expect(gcYaml).To(ContainSubstring(`status: "True"`), "checking GatewayClass condition status")
 		Expect(gcYaml).To(ContainSubstring("message: the gatewayclass has been accepted by the apisix-ingress-controller"), "checking GatewayClass condition message")
@@ -151,7 +152,7 @@ spec:
 		time.Sleep(5 * time.Second)
 
 		By("check Gateway condition")
-		gwyaml, err := s.GetResourceYaml("Gateway", s.Namespace())
+		gwyaml, err := s.GetResourceYaml(types.KindGateway, s.Namespace())
 		Expect(err).NotTo(HaveOccurred(), "getting Gateway yaml")
 		Expect(gwyaml).To(ContainSubstring(`status: "True"`), "checking Gateway condition status")
 		Expect(gwyaml).To(ContainSubstring("message: the gateway has been accepted by the apisix-ingress-controller"), "checking Gateway condition message")
@@ -160,7 +161,7 @@ spec:
 	Context("Test Gateway with enabled GatewayProxy plugin", func() {
 		It("Should apply plugin configuration when enabled", func() {
 			By("Create HTTPRoute for Gateway with GatewayProxy")
-			s.ResourceApplied("HTTPRoute", "test-route", fmt.Sprintf(httpRouteForTest, s.Namespace()), 1)
+			s.ResourceApplied(types.KindHTTPRoute, "test-route", fmt.Sprintf(httpRouteForTest, s.Namespace()), 1)
 
 			By("Check if the plugin is applied")
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -178,7 +179,7 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "updating GatewayProxy with disabled plugin")
 
 			By("Create HTTPRoute for Gateway with GatewayProxy")
-			s.ResourceApplied("HTTPRoute", "test-route", fmt.Sprintf(httpRouteForTest, s.Namespace()), 1)
+			s.ResourceApplied(types.KindHTTPRoute, "test-route", fmt.Sprintf(httpRouteForTest, s.Namespace()), 1)
 
 			By("Check if the plugin is not applied")
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -215,7 +216,7 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy with enabled plugin")
 
 			By("Create HTTPRoute")
-			s.ResourceApplied("HTTPRoute", "test-route", fmt.Sprintf(httpRouteForTest, s.Namespace()), 1)
+			s.ResourceApplied(types.KindHTTPRoute, "test-route", fmt.Sprintf(httpRouteForTest, s.Namespace()), 1)
 
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
@@ -286,7 +287,7 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy with valid provider")
 
 			s.RetryAssertion(func() string {
-				gpYaml, _ := s.GetResourceYaml("GatewayProxy", s.Namespace())
+				gpYaml, _ := s.GetResourceYaml(types.KindGatewayProxy, s.Namespace())
 				return gpYaml
 			}).Should(ContainSubstring(`"type":"ControlPlane"`), "checking GatewayProxy is applied")
 		})

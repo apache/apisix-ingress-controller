@@ -37,6 +37,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
@@ -137,7 +138,7 @@ func ProcessBackendTrafficPolicy(
 			sectionName := targetRef.SectionName
 			key := PolicyTargetKey{
 				NsName:    types.NamespacedName{Namespace: p.GetNamespace(), Name: string(targetRef.Name)},
-				GroupKind: schema.GroupKind{Group: "", Kind: "Service"},
+				GroupKind: schema.GroupKind{Group: "", Kind: internaltypes.KindService},
 			}
 			condition := NewPolicyCondition(policy.Generation, true, "Policy has been accepted")
 			if sectionName != nil && !servicePortNameMap[fmt.Sprintf("%s/%s/%s", policy.Namespace, string(targetRef.Name), *sectionName)] {

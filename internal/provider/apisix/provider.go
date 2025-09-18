@@ -19,6 +19,7 @@ package apisix
 
 import (
 	"context"
+	"net/http"
 	"sync"
 	"time"
 
@@ -89,6 +90,10 @@ func New(updater status.Updater, readier readiness.ReadinessManager, opts ...pro
 	}, nil
 }
 
+func (d *apisixProvider) Register(pathPrefix string, mux *http.ServeMux) {
+	d.client.ADCDebugProvider.SetupHandler(pathPrefix, mux)
+}
+
 func (d *apisixProvider) Update(ctx context.Context, tctx *provider.TranslateContext, obj client.Object) error {
 	log.Debugw("updating object", zap.Any("object", obj))
 	var (
@@ -102,31 +107,31 @@ func (d *apisixProvider) Update(ctx context.Context, tctx *provider.TranslateCon
 	switch t := obj.(type) {
 	case *gatewayv1.HTTPRoute:
 		result, err = d.translator.TranslateHTTPRoute(tctx, t.DeepCopy())
-		resourceTypes = append(resourceTypes, "service")
+		resourceTypes = append(resourceTypes, adctypes.TypeService)
 	case *gatewayv1.Gateway:
 		result, err = d.translator.TranslateGateway(tctx, t.DeepCopy())
-		resourceTypes = append(resourceTypes, "global_rule", "ssl", "plugin_metadata")
+		resourceTypes = append(resourceTypes, adctypes.TypeGlobalRule, adctypes.TypeSSL, adctypes.TypePluginMetadata)
 	case *networkingv1.Ingress:
 		result, err = d.translator.TranslateIngress(tctx, t.DeepCopy())
-		resourceTypes = append(resourceTypes, "service", "ssl")
+		resourceTypes = append(resourceTypes, adctypes.TypeService, adctypes.TypeSSL)
 	case *v1alpha1.Consumer:
 		result, err = d.translator.TranslateConsumerV1alpha1(tctx, t.DeepCopy())
-		resourceTypes = append(resourceTypes, "consumer")
+		resourceTypes = append(resourceTypes, adctypes.TypeConsumer)
 	case *networkingv1.IngressClass:
 		result, err = d.translator.TranslateIngressClass(tctx, t.DeepCopy())
-		resourceTypes = append(resourceTypes, "global_rule", "plugin_metadata")
+		resourceTypes = append(resourceTypes, adctypes.TypeGlobalRule, adctypes.TypePluginMetadata)
 	case *apiv2.ApisixRoute:
 		result, err = d.translator.TranslateApisixRoute(tctx, t.DeepCopy())
-		resourceTypes = append(resourceTypes, "service")
+		resourceTypes = append(resourceTypes, adctypes.TypeService)
 	case *apiv2.ApisixGlobalRule:
 		result, err = d.translator.TranslateApisixGlobalRule(tctx, t.DeepCopy())
-		resourceTypes = append(resourceTypes, "global_rule")
+		resourceTypes = append(resourceTypes, adctypes.TypeGlobalRule)
 	case *apiv2.ApisixTls:
 		result, err = d.translator.TranslateApisixTls(tctx, t.DeepCopy())
-		resourceTypes = append(resourceTypes, "ssl")
+		resourceTypes = append(resourceTypes, adctypes.TypeSSL)
 	case *apiv2.ApisixConsumer:
 		result, err = d.translator.TranslateApisixConsumer(tctx, t.DeepCopy())
-		resourceTypes = append(resourceTypes, "consumer")
+		resourceTypes = append(resourceTypes, adctypes.TypeConsumer)
 	case *v1alpha1.GatewayProxy:
 		return d.updateConfigForGatewayProxy(tctx, t)
 	}
@@ -174,26 +179,26 @@ func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 	var labels map[string]string
 	switch obj.(type) {
 	case *gatewayv1.HTTPRoute, *apiv2.ApisixRoute:
-		resourceTypes = append(resourceTypes, "service")
+		resourceTypes = append(resourceTypes, adctypes.TypeService)
 		labels = label.GenLabel(obj)
 	case *gatewayv1.Gateway:
 		// delete all resources
 	case *networkingv1.Ingress:
-		resourceTypes = append(resourceTypes, "service", "ssl")
+		resourceTypes = append(resourceTypes, adctypes.TypeService, adctypes.TypeSSL)
 		labels = label.GenLabel(obj)
 	case *v1alpha1.Consumer:
-		resourceTypes = append(resourceTypes, "consumer")
+		resourceTypes = append(resourceTypes, adctypes.TypeConsumer)
 		labels = label.GenLabel(obj)
 	case *networkingv1.IngressClass:
 		// delete all resources
 	case *apiv2.ApisixGlobalRule:
-		resourceTypes = append(resourceTypes, "global_rule")
+		resourceTypes = append(resourceTypes, adctypes.TypeGlobalRule)
 		labels = label.GenLabel(obj)
 	case *apiv2.ApisixTls:
-		resourceTypes = append(resourceTypes, "ssl")
+		resourceTypes = append(resourceTypes, adctypes.TypeSSL)
 		labels = label.GenLabel(obj)
 	case *apiv2.ApisixConsumer:
-		resourceTypes = append(resourceTypes, "consumer")
+		resourceTypes = append(resourceTypes, adctypes.TypeConsumer)
 		labels = label.GenLabel(obj)
 	}
 	nnk := utils.NamespacedNameKind(obj)
@@ -231,7 +236,6 @@ func (d *apisixProvider) buildConfig(tctx *provider.TranslateContext, nnk types.
 
 func (d *apisixProvider) Start(ctx context.Context) error {
 	d.readier.WaitReady(ctx, 5*time.Minute)
-
 	initalSyncDelay := d.InitSyncDelay
 	if initalSyncDelay > 0 {
 		time.AfterFunc(initalSyncDelay, d.syncNotify)

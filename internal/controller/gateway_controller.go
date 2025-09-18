@@ -41,6 +41,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
@@ -316,7 +317,7 @@ func (r *GatewayReconciler) listGatewaysForHTTPRoute(ctx context.Context, obj cl
 		if parentRef.Group != nil && *parentRef.Group != gatewayv1.GroupName {
 			continue
 		}
-		if parentRef.Kind != nil && *parentRef.Kind != "Gateway" {
+		if parentRef.Kind != nil && *parentRef.Kind != internaltypes.KindGateway {
 			continue
 		}
 		if parentRef.Namespace != nil {

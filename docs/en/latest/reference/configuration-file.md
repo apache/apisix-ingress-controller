@@ -1,3 +1,35 @@
+---
+title: Configuration File
+slug: /reference/apisix-ingress-controller/configuration-file
+description: Configure the APISIX Ingress Controller using the config.yaml file, including configurations such as log settings, leader election, metrics, and sync behavior.
+---
+
+<!--
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+-->
+
+The APISIX Ingress Controller uses a configuration file `config.yaml` to define core settings such as log level, leader election behavior, metrics endpoints, and sync intervals.
+
+Configurations are defined in a Kubernetes ConfigMap and mounted into the controller pod as a file at runtime. To apply changes, you can update the ConfigMap and restart the controller Deployment to reload the configurations.
+
+Below are all available configuration options, including their default values and usage:
+
+```yaml
 log_level: "info"                               # The log level of the APISIX Ingress Controller.
                                                 # The default value is "info".
 
@@ -18,8 +50,6 @@ leader_election:
 
 metrics_addr: ":8080"                   # The address the metrics endpoint binds to.
                                         # The default value is ":8080".
-enable_server: false                    # The debug API is behind this server which is disabled by default for security reasons.
-server_addr: "127.0.0.1:9092"           # Available endpoints: /debug can be used to debug in-memory state of translated adc configs to be synced with data plane.
 
 enable_http2: false                     # Whether to enable HTTP/2 for the server.
                                         # The default value is false.
@@ -42,3 +72,4 @@ provider:
                                         # If you want to enable the sync, set it to a positive value.
   init_sync_delay: 20m                  # The initial delay before the first sync, only used when the controller is started.
                                         # The default value is 20 minutes.
+```

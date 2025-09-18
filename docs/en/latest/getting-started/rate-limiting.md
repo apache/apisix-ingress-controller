@@ -76,9 +76,34 @@ spec:
       name: apisix-config
 ```
 
+Note that the `port` in the Gateway listener is required but ignored. This is due to limitations in the data plane: it cannot dynamically open new ports. Since the Ingress Controller does not manage the data plane deployment, it cannot automatically update the configuration or restart the data plane to apply port changes.
+
 </details>
 
-If you are using Ingress or APISIX custom resources, you can proceed without additional configuration.
+If you are using Ingress or APISIX custom resources, you can proceed without additional configuration, as the IngressClass resource below is already applied with installation:
+
+<details>
+
+<summary>Show configuration</summary>
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: apisix
+spec:
+  controller: apisix.apache.org/apisix-ingress-controller
+  parameters:
+    apiGroup: apisix.apache.org
+    kind: GatewayProxy
+    name: apisix-config
+    namespace: ingress-apisix
+    scope: Namespace
+```
+
+</details>
+
+See [Define Controller and Gateway](../reference/example.md#define-controller-and-gateway) for more information on parameters.
 
 :::
 
