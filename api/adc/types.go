@@ -345,11 +345,6 @@ const (
 type Scheme string
 
 const (
-	Grpc       Scheme = "grpc"
-	Grpcs      Scheme = "grpcs"
-	Kafka      Scheme = "kafka"
-	TLS        Scheme = "tls"
-	UDP        Scheme = "udp"
 	SchemeHTTP        = "http"
 )
 
