@@ -54,23 +54,3 @@ When both filters and a PluginConfig CRD are applied:
 
 * If filters are applied first, PluginConfig overrides any overlapping plugin settings.
 * If PluginConfig is applied first, filters merge with PluginConfig settings, and overlapping fields from filters take precedence.
-
-### How does APISIX handle TLS certificates from multiple resources?
-
-APISIX supports TLS configuration via Gateway API, Ingress, and ApisixTls resources. Certificates are identified differently:
-
-* Gateway API and Ingress use the certificate itself as the identifier.
-* ApisixTls uses the namespace/name as the identifier.
-
-**Certificate conflicts and merging:**
-
-* Gateway API only: Certificates are merged based on their ID.
-* Ingress only: Multiple Ingress resources referencing the same certificate may overwrite each other.
-* ApisixTls only: Resources do not conflict.
-* Mixed Ingress/Gateway API: Conflicts can occur because both use the certificate as ID.
-
-**Host and certificate matching:**
-
-* For the same SNI, selection depends on the data plane’s matching strategy.
-* For different SNIs using the same certificate, Ingress or Gateway API SSL resources may be overwritten by the last applied resource.
-* Multiple entries for the same SNI using the same type of resource may overwrite each other depending on creation order.
