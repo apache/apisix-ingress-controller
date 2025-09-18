@@ -23,10 +23,13 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"os"
+	"os/exec"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/types"
 
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
@@ -583,6 +586,89 @@ spec:
 
 			err = s.DeleteResource("Secret", "hmac")
 			Expect(err).ShouldNot(HaveOccurred(), "deleting Secret")
+		})
+	})
+	Context("Test LDAPAuth", func() {
+		getLDAPServerURL := func() (string, error) {
+			wd, _ := os.Getwd()
+			cmd := exec.Command("sh", "../testdata/ldap/cmd.sh", "ip")
+			ip, err := cmd.Output()
+			errr := fmt.Sprintf("cd %s/testdata/ldap && sh cmd.sh ip failed", wd)
+			if err != nil {
+				return "", fmt.Errorf(errr+" : %v", err)
+			}
+			if len(ip) == 0 {
+				return "", fmt.Errorf("ldap-server start failed")
+			}
+			return fmt.Sprintf("%s:1389", string(ip)), nil
+		}
+		request := func(path string, username, password string) int {
+			return s.NewAPISIXClient().GET(path).WithBasicAuth(username, password).WithHost("httpbin").Expect().Raw().StatusCode
+		}
+		It("ApisixRoute with ldapAuth consumer using secret", func() {
+			secret := `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ldap
+data:
+  user_dn: Y249amFjayxvdT11c2VycyxkYz1sZGFwLGRjPWV4YW1wbGUsZGM9b3Jn
+`
+			assert.Nil(GinkgoT(), s.CreateResourceFromString(secret), "creating ldapAuth secret for ApisixConsumer")
+
+			ac := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: jack
+spec:
+  ingressClassName: %s
+  authParameter:
+    ldapAuth:
+      secretRef:
+        name: ldap
+`
+
+			By("apply ApisixConsumer")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "jack"},
+				&apiv2.ApisixConsumer{}, fmt.Sprintf(ac, s.Namespace()))
+
+			ldapSvr, err := getLDAPServerURL()
+			assert.Nil(GinkgoT(), err, "check ldap server")
+			ar := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+ name: httpbin-route
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin
+      paths:
+        - /get
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+    authentication:
+      enable: true
+      type: ldapAuth
+      ldapAuth: 
+        ldap_uri: %s
+        base_dn: "ou=users,dc=ldap,dc=example,dc=org"
+        use_tls: false
+        uid: "cn"
+`, s.Namespace(), ldapSvr)
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-route"},
+				&apiv2.ApisixRoute{}, ar)
+
+			By("verify ApisixRoute with ApisixConsumer")
+			Eventually(request).WithArguments("/get", "", "").WithTimeout(5 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusUnauthorized))
+
+			By("verify ApisixRoute with ApisixConsumer")
+			Eventually(request).WithArguments("/get", "jack", "jackPassword").WithTimeout(5 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 		})
 	})
 })
