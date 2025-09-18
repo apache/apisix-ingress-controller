@@ -345,7 +345,7 @@ const (
 type Scheme string
 
 const (
-	SchemeHTTP        = "http"
+	SchemeHTTP = "http"
 )
 
 type UpstreamType string
