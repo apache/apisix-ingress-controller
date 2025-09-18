@@ -4,6 +4,25 @@ slug: /reference/apisix-ingress-controller/examples
 description: Explore a variety of APISIX Ingress Controller configuration examples to help you customize settings to suit your environment effectively.
 ---
 
+<!--
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+-->
+
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
@@ -56,7 +75,7 @@ metadata:
   namespace: ingress-apisix
   name: apisix
 spec:
-  controllerName: "apisix.apache.org/apisix-ingress-controller"
+  controllerName: "apisix.apache.org/apisix-ingress-controller"    # 1
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
@@ -68,13 +87,23 @@ spec:
   listeners:
   - name: http
     protocol: HTTP
-    port: 80
+    port: 80                    # 2
   infrastructure:
     parametersRef:
-      group: apisix.apache.org
-      kind: GatewayProxy
-      name: apisix-config
+      group: apisix.apache.org  # 3
+      kind: GatewayProxy        # 4
+      name: apisix-config       # 5
 ```
+
+❶ The controllerName field in GatewayClass needs to be customized if you are running multiple distinct instances of the APISIX Ingress Controller in the same cluster (not a single instance with multiple replicas). Each ingress controller instance must use a unique controllerName in its [configuration file](configuration-file.md), and the corresponding GatewayClass should reference that value.
+
+❷ The `port` in the Gateway listener is required but ignored. This is due to limitations in the data plane: it cannot dynamically open new ports. Since the Ingress Controller does not manage the data plane deployment, it cannot automatically update the configuration or restart the data plane to apply port changes.
+
+❸ API group of the referenced resource.
+
+❹ Kind of the referenced resource.
+
+❺ Name of the referenced resource. Should match the `metadata.name` of the GatewayProxy resource.
 
 </TabItem>
 
