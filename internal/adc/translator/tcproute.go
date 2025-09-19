@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
+	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/id"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
@@ -49,7 +50,8 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 		service.Name = adctypes.ComposeServiceNameWithStream(tcpRoute.Namespace, tcpRoute.Name, fmt.Sprintf("%d", ruleIndex))
 		service.ID = id.GenID(service.Name)
 		var (
-			upstreams = make([]*adctypes.Upstream, 0)
+			upstreams         = make([]*adctypes.Upstream, 0)
+			weightedUpstreams = make([]adctypes.TrafficSplitConfigRuleWeightedUpstream, 0)
 		)
 		for _, backend := range rule.BackendRefs {
 			if backend.Namespace == nil {
@@ -86,9 +88,10 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 			upstreams = append(upstreams, upstream)
 		}
 
+		// Handle multiple backends with traffic-split plugin
 		if len(upstreams) == 0 {
 			// Create a default upstream if no valid backends
-			upstream := newDefaultUpstreamWithoutScheme()
+			upstream := adctypes.NewDefaultUpstream()
 			service.Upstream = upstream
 		} else if len(upstreams) == 1 {
 			// Single backend - use directly as service upstream
@@ -97,7 +100,52 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 			service.Upstream.ID = ""
 			service.Upstream.Name = ""
 		} else {
-			service.Upstreams = upstreams
+			// Multiple backends - use traffic-split plugin
+			service.Upstream = upstreams[0]
+			// remove the id and name of the service.upstream, adc schema does not need id and name for it
+			service.Upstream.ID = ""
+			service.Upstream.Name = ""
+
+			upstreams = upstreams[1:]
+
+			if len(upstreams) > 0 {
+				service.Upstreams = upstreams
+			}
+
+			// Set weight in traffic-split for the default upstream
+			weight := apiv2.DefaultWeight
+			if rule.BackendRefs[0].Weight != nil {
+				weight = int(*rule.BackendRefs[0].Weight)
+			}
+			weightedUpstreams = append(weightedUpstreams, adctypes.TrafficSplitConfigRuleWeightedUpstream{
+				Weight: weight,
+			})
+
+			// Set other upstreams in traffic-split using upstream_id
+			for i, upstream := range upstreams {
+				weight := apiv2.DefaultWeight
+				// get weight from the backend refs starting from the second backend
+				if i+1 < len(rule.BackendRefs) && rule.BackendRefs[i+1].Weight != nil {
+					weight = int(*rule.BackendRefs[i+1].Weight)
+				}
+				weightedUpstreams = append(weightedUpstreams, adctypes.TrafficSplitConfigRuleWeightedUpstream{
+					UpstreamID: upstream.ID,
+					Weight:     weight,
+				})
+			}
+
+			if len(weightedUpstreams) > 0 {
+				if service.Plugins == nil {
+					service.Plugins = make(map[string]any)
+				}
+				service.Plugins["traffic-split"] = &adctypes.TrafficSplitConfig{
+					Rules: []adctypes.TrafficSplitConfigRule{
+						{
+							WeightedUpstreams: weightedUpstreams,
+						},
+					},
+				}
+			}
 		}
 		streamRoute := adctypes.NewDefaultStreamRoute()
 		streamRouteName := adctypes.ComposeStreamRouteName(tcpRoute.Namespace, tcpRoute.Name, fmt.Sprintf("%d", ruleIndex))
