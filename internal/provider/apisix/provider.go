@@ -107,10 +107,10 @@ func (d *apisixProvider) Update(ctx context.Context, tctx *provider.TranslateCon
 	switch t := obj.(type) {
 	case *gatewayv1.HTTPRoute:
 		result, err = d.translator.TranslateHTTPRoute(tctx, t.DeepCopy())
-		resourceTypes = append(resourceTypes, "service")
+		resourceTypes = append(resourceTypes, adctypes.TypeService)
 	case *gatewayv1alpha2.TCPRoute:
 		result, err = d.translator.TranslateTCPRoute(tctx, t.DeepCopy())
-		resourceTypes = append(resourceTypes, "service")
+		resourceTypes = append(resourceTypes, adctypes.TypeService)
 	case *gatewayv1.Gateway:
 		result, err = d.translator.TranslateGateway(tctx, t.DeepCopy())
 		resourceTypes = append(resourceTypes, adctypes.TypeGlobalRule, adctypes.TypeSSL, adctypes.TypePluginMetadata)
