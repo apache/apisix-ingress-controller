@@ -344,10 +344,6 @@ const (
 
 type Scheme string
 
-const (
-	SchemeHTTP = "http"
-)
-
 type UpstreamType string
 
 const (
@@ -576,9 +572,8 @@ func NewDefaultUpstream() *Upstream {
 				"managed-by": "apisix-ingress-controller",
 			},
 		},
-		Nodes:  make(UpstreamNodes, 0),
-		Scheme: SchemeHTTP,
-		Type:   Roundrobin,
+		Nodes: make(UpstreamNodes, 0),
+		Type:  Roundrobin,
 	}
 }
 

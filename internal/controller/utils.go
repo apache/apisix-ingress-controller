@@ -357,6 +357,7 @@ func ParseRouteParentRefs(
 		matched := false
 		reason := gatewayv1.RouteReasonNoMatchingParent
 		var listenerName string
+		var matchedListener gatewayv1.Listener
 
 		for _, listener := range gateway.Spec.Listeners {
 			if parentRef.SectionName != nil {
@@ -398,6 +399,7 @@ func ParseRouteParentRefs(
 			// TODO: check if the listener status is programmed
 
 			matched = true
+			matchedListener = listener
 			break
 		}
 
@@ -405,6 +407,7 @@ func ParseRouteParentRefs(
 			gateways = append(gateways, RouteParentRefContext{
 				Gateway:      &gateway,
 				ListenerName: listenerName,
+				Listener:     &matchedListener,
 				Conditions: []metav1.Condition{{
 					Type:               string(gatewayv1.RouteConditionAccepted),
 					Status:             metav1.ConditionTrue,
@@ -416,6 +419,7 @@ func ParseRouteParentRefs(
 			gateways = append(gateways, RouteParentRefContext{
 				Gateway:      &gateway,
 				ListenerName: listenerName,
+				Listener:     &matchedListener,
 				Conditions: []metav1.Condition{{
 					Type:               string(gatewayv1.RouteConditionAccepted),
 					Status:             metav1.ConditionFalse,
@@ -488,6 +492,8 @@ func checkRouteAcceptedByListener(
 func routeHostnamesIntersectsWithListenerHostname(route client.Object, listener gatewayv1.Listener) bool {
 	switch r := route.(type) {
 	case *gatewayv1.HTTPRoute:
+		return listenerHostnameIntersectWithRouteHostnames(listener, r.Spec.Hostnames)
+	case *gatewayv1.GRPCRoute:
 		return listenerHostnameIntersectWithRouteHostnames(listener, r.Spec.Hostnames)
 	default:
 		return false
@@ -639,7 +645,7 @@ func isRouteNamespaceAllowed(
 
 func routeMatchesListenerType(route client.Object, listener gatewayv1.Listener) bool {
 	switch route.(type) {
-	case *gatewayv1.HTTPRoute:
+	case *gatewayv1.HTTPRoute, *gatewayv1.GRPCRoute:
 		if listener.Protocol != gatewayv1.HTTPProtocolType && listener.Protocol != gatewayv1.HTTPSProtocolType {
 			return false
 		}

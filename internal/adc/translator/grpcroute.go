@@ -37,7 +37,6 @@ func (t *Translator) fillPluginsFromGRPCRouteFilters(
 	plugins adctypes.Plugins,
 	namespace string,
 	filters []gatewayv1.GRPCRouteFilter,
-	matches []gatewayv1.GRPCRouteMatch,
 	tctx *provider.TranslateContext,
 ) {
 	for _, filter := range filters {
@@ -45,7 +44,7 @@ func (t *Translator) fillPluginsFromGRPCRouteFilters(
 		case gatewayv1.GRPCRouteFilterRequestHeaderModifier:
 			t.fillPluginFromHTTPRequestHeaderFilter(plugins, filter.RequestHeaderModifier)
 		case gatewayv1.GRPCRouteFilterRequestMirror:
-			t.fillPluginFromHTTPRequestMirrorFilter(plugins, namespace, filter.RequestMirror)
+			t.fillPluginFromHTTPRequestMirrorFilter(plugins, namespace, filter.RequestMirror, apiv2.SchemeGRPC)
 		case gatewayv1.GRPCRouteFilterResponseHeaderModifier:
 			t.fillPluginFromHTTPResponseHeaderFilter(plugins, filter.ResponseHeaderModifier)
 		case gatewayv1.GRPCRouteFilterExtensionRef:
@@ -152,6 +151,12 @@ func (t *Translator) TranslateGRPCRoute(tctx *provider.TranslateContext, grpcRou
 	hosts := make([]string, 0, len(grpcRoute.Spec.Hostnames))
 	for _, hostname := range grpcRoute.Spec.Hostnames {
 		hosts = append(hosts, string(hostname))
+	}
+
+	for _, listener := range tctx.Listeners {
+		if listener.Hostname != nil {
+			hosts = append(hosts, string(*listener.Hostname))
+		}
 	}
 
 	rules := grpcRoute.Spec.Rules
@@ -278,15 +283,11 @@ func (t *Translator) TranslateGRPCRoute(tctx *provider.TranslateContext, grpcRou
 			}
 		}
 
-		t.fillPluginsFromGRPCRouteFilters(service.Plugins, grpcRoute.GetNamespace(), rule.Filters, rule.Matches, tctx)
+		t.fillPluginsFromGRPCRouteFilters(service.Plugins, grpcRoute.GetNamespace(), rule.Filters, tctx)
 
 		matches := rule.Matches
 		if len(matches) == 0 {
-			matches = []gatewayv1.GRPCRouteMatch{{
-				Method: &gatewayv1.GRPCMethodMatch{
-					Type: ptr.To(gatewayv1.GRPCMethodMatchRegularExpression),
-				},
-			}}
+			matches = []gatewayv1.GRPCRouteMatch{{}}
 		}
 
 		routes := []*adctypes.Route{}
@@ -300,7 +301,6 @@ func (t *Translator) TranslateGRPCRoute(tctx *provider.TranslateContext, grpcRou
 			route.Name = name
 			route.ID = id.GenID(name)
 			route.Labels = labels
-			route.EnableWebsocket = ptr.To(true)
 
 			// Set the route priority
 			priority := calculateGRPCRoutePriority(&match, ruleIndex, hosts)
@@ -335,6 +335,7 @@ func (t *Translator) translateGatewayGRPCRouteMatch(match *gatewayv1.GRPCRouteMa
 
 	uri := t.translateGRPCURI(service, method)
 	route.Uris = append(route.Uris, uri)
+	//route.Methods = []string{"GET", "POST"}
 
 	if match.Headers != nil {
 		for _, header := range match.Headers {

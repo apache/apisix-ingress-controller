@@ -169,6 +169,9 @@ func (r *GRPCRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			acceptStatus.status = false
 			acceptStatus.msg = err.Error()
 		}
+		if gateway.Listener != nil {
+			tctx.Listeners = append(tctx.Listeners, *gateway.Listener)
+		}
 	}
 
 	var backendRefErr error

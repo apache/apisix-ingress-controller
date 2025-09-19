@@ -54,7 +54,7 @@ func (t *Translator) fillPluginsFromHTTPRouteFilters(
 		case gatewayv1.HTTPRouteFilterRequestRedirect:
 			t.fillPluginFromHTTPRequestRedirectFilter(plugins, filter.RequestRedirect)
 		case gatewayv1.HTTPRouteFilterRequestMirror:
-			t.fillPluginFromHTTPRequestMirrorFilter(plugins, namespace, filter.RequestMirror)
+			t.fillPluginFromHTTPRequestMirrorFilter(plugins, namespace, filter.RequestMirror, apiv2.SchemeHTTP)
 		case gatewayv1.HTTPRouteFilterURLRewrite:
 			t.fillPluginFromURLRewriteFilter(plugins, filter.URLRewrite, matches)
 		case gatewayv1.HTTPRouteFilterResponseHeaderModifier:
@@ -232,7 +232,7 @@ func (t *Translator) fillPluginFromHTTPResponseHeaderFilter(plugins adctypes.Plu
 	plugin.Headers.Remove = append(plugin.Headers.Remove, respHeaderModifier.Remove...)
 }
 
-func (t *Translator) fillPluginFromHTTPRequestMirrorFilter(plugins adctypes.Plugins, namespace string, reqMirror *gatewayv1.HTTPRequestMirrorFilter) {
+func (t *Translator) fillPluginFromHTTPRequestMirrorFilter(plugins adctypes.Plugins, namespace string, reqMirror *gatewayv1.HTTPRequestMirrorFilter, scheme string) {
 	pluginName := adctypes.PluginProxyMirror
 	obj := plugins[pluginName]
 
@@ -255,7 +255,7 @@ func (t *Translator) fillPluginFromHTTPRequestMirrorFilter(plugins adctypes.Plug
 		ns = string(*reqMirror.BackendRef.Namespace)
 	}
 
-	host := fmt.Sprintf("http://%s.%s.svc.cluster.local:%d", reqMirror.BackendRef.Name, ns, port)
+	host := fmt.Sprintf("%s://%s.%s.svc.cluster.local:%d", scheme, reqMirror.BackendRef.Name, ns, port)
 
 	plugin.Host = host
 }
