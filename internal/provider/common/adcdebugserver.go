@@ -262,7 +262,7 @@ func (asrv *ADCDebugProvider) showResourceDetail(w http.ResponseWriter, r *http.
 		return
 	}
 
-	var resource interface{}
+	var resource any
 	switch resourceType {
 	case adctypes.TypeService:
 		for _, svc := range resources.Services {

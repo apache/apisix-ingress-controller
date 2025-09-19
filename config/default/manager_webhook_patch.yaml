@@ -1,0 +1,26 @@
+# This patch ensures the webhook certificates are properly mounted in the manager container.
+# It configures the necessary arguments, volumes, volume mounts, and container ports.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: controller-manager
+  namespace: system
+spec:
+  template:
+    spec:
+      containers:
+      - name: manager
+        args:
+        - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
+        ports:
+        - containerPort: 9443
+          name: webhook-server
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: webhook-certs
+          readOnly: true
+      volumes:
+      - name: webhook-certs
+        secret:
+          secretName: webhook-server-cert

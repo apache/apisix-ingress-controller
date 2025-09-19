@@ -51,6 +51,8 @@ type IngressDeployOpts struct {
 	StatusAddress      string
 	Replicas           *int
 	InitSyncDelay      time.Duration
+	WebhookEnable      bool
+	WebhookPort        int
 }
 
 func (f *Framework) DeployIngress(opts IngressDeployOpts) {

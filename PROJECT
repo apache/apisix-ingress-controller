@@ -2,7 +2,6 @@
 # This file is used to track the info used to scaffold your project
 # and allow the plugins properly work.
 # More info: https://book.kubebuilder.io/reference/project-config.html
-domain: github.com
 layout:
 - go.kubebuilder.io/v4
 projectName: apisix-ingress-controller
@@ -12,16 +11,6 @@ resources:
     crdVersion: v1
     namespaced: true
   controller: true
-  domain: github.com
-  group: apisix.apache.org
-  kind: Guestbook
-  path: github.com/apache/apisix-ingress-controller/api/v1alpha1
-  version: v1alpha1
-- api:
-    crdVersion: v1
-    namespaced: true
-  controller: true
-  domain: github.com
   group: apisix.apache.org
   kind: GatewayProxy
   path: github.com/apache/apisix-ingress-controller/api/v1alpha1
@@ -29,7 +18,6 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: github.com
   group: apisix.apache.org
   kind: HTTPRoutePolicy
   path: github.com/apache/apisix-ingress-controller/api/v1alpha1
@@ -38,7 +26,6 @@ resources:
     crdVersion: v1
     namespaced: true
   controller: true
-  domain: github.com
   group: apisix.apache.org
   kind: ApisixRoute
   path: github.com/apache/apisix-ingress-controller/api/v2
@@ -47,7 +34,6 @@ resources:
     crdVersion: v1
     namespaced: true
   controller: true
-  domain: github.com
   group: apisix.apache.org
   kind: ApisixConsumer
   path: github.com/apache/apisix-ingress-controller/api/v2
@@ -56,7 +42,6 @@ resources:
     crdVersion: v1
     namespaced: true
   controller: true
-  domain: github.com
   group: apisix.apache.org
   kind: ApisixGlobalRule
   path: github.com/apache/apisix-ingress-controller/api/v2
@@ -65,7 +50,6 @@ resources:
     crdVersion: v1
     namespaced: true
   controller: true
-  domain: github.com
   group: apisix.apache.org
   kind: ApisixTls
   path: github.com/apache/apisix-ingress-controller/api/v2
@@ -74,7 +58,6 @@ resources:
     crdVersion: v1
     namespaced: true
   controller: true
-  domain: github.com
   group: apisix.apache.org
   kind: ApisixUpstream
   path: github.com/apache/apisix-ingress-controller/api/v2
@@ -82,9 +65,17 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
-  domain: github.com
   group: apisix.apache.org
   kind: ApisixPluginConfig
   path: github.com/apache/apisix-ingress-controller/api/v2
   version: v2
+- core: true
+  domain: k8s.io
+  group: networking
+  kind: Ingress
+  path: k8s.io/api/networking/v1
+  version: v1
+  webhooks:
+    validation: true
+    webhookVersion: v1
 version: "3"

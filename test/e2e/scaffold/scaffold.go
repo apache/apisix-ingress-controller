@@ -50,6 +50,8 @@ type Options struct {
 	ControllerName    string
 
 	SkipHooks bool
+
+	EnableWebhook bool
 }
 
 type Scaffold struct {

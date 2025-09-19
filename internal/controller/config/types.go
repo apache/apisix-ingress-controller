@@ -44,6 +44,12 @@ const (
 	DefaultMetricsAddr = ":8080"
 	DefaultProbeAddr   = ":8081"
 	DefaultServerAddr  = ":9092"
+
+	// Webhook configuration defaults
+	DefaultWebhookTLSCert    = "tls.crt"
+	DefaultWebhookTLSKey     = "tls.key"
+	DefaultWebhookTLSCertDir = "/certs"
+	DefaultWebhookPort       = 9443
 )
 
 // Config contains all config items which are necessary for
@@ -61,6 +67,7 @@ type Config struct {
 	LeaderElection   *LeaderElection    `json:"leader_election" yaml:"leader_election"`
 	ExecADCTimeout   types.TimeDuration `json:"exec_adc_timeout" yaml:"exec_adc_timeout"`
 	ProviderConfig   ProviderConfig     `json:"provider" yaml:"provider"`
+	Webhook          *WebhookConfig     `json:"webhook" yaml:"webhook"`
 }
 
 type GatewayConfig struct {
@@ -86,4 +93,12 @@ type ProviderConfig struct {
 	Type          ProviderType       `json:"type" yaml:"type"`
 	SyncPeriod    types.TimeDuration `json:"sync_period" yaml:"sync_period"`
 	InitSyncDelay types.TimeDuration `json:"init_sync_delay" yaml:"init_sync_delay"`
+}
+
+type WebhookConfig struct {
+	Enable      bool   `json:"enable" yaml:"enable"`
+	TLSCertFile string `json:"tls_cert_file" yaml:"tls_cert_file"`
+	TLSKeyFile  string `json:"tls_key_file" yaml:"tls_key_file"`
+	TLSCertDir  string `json:"tls_cert_dir" yaml:"tls_cert_dir"`
+	Port        int    `json:"port" yaml:"port"`
 }
