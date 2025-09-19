@@ -55,7 +55,9 @@ func (s *Scaffold) CreateResourceFromStringAndGetOutput(yaml string) (string, er
 	if err != nil {
 		return "", err
 	}
-	defer os.Remove(tmpfile)
+	defer func() {
+		_ = os.Remove(tmpfile)
+	}()
 	return k8s.RunKubectlAndGetOutputE(s.t, s.kubectlOptions, "apply", "-f", tmpfile)
 }
 

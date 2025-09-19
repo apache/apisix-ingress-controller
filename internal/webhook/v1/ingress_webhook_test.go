@@ -20,6 +20,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	networkingk8siov1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -38,18 +39,13 @@ func TestIngressCustomValidator_ValidateCreate_UnsupportedAnnotations(t *testing
 	}
 
 	warnings, err := validator.ValidateCreate(context.TODO(), obj)
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
-	if len(warnings) != 2 {
-		t.Errorf("Expected 2 warnings, got %d", len(warnings))
-	}
-	if !strings.Contains(warnings[0], "k8s.apisix.apache.org/use-regex") {
-		t.Errorf("Expected warning to contain 'k8s.apisix.apache.org/use-regex', got %s", warnings[0])
-	}
-	if !strings.Contains(warnings[1], "k8s.apisix.apache.org/enable-websocket") {
-		t.Errorf("Expected warning to contain 'k8s.apisix.apache.org/enable-websocket', got %s", warnings[1])
-	}
+	assert.NoError(t, err)
+	assert.Len(t, warnings, 2)
+
+	// Check that warnings contain the expected unsupported annotations
+	warningsStr := strings.Join(warnings, " ")
+	assert.Contains(t, warningsStr, "k8s.apisix.apache.org/use-regex")
+	assert.Contains(t, warningsStr, "k8s.apisix.apache.org/enable-websocket")
 }
 
 func TestIngressCustomValidator_ValidateCreate_SupportedAnnotations(t *testing.T) {
@@ -65,12 +61,8 @@ func TestIngressCustomValidator_ValidateCreate_SupportedAnnotations(t *testing.T
 	}
 
 	warnings, err := validator.ValidateCreate(context.TODO(), obj)
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
-	if len(warnings) != 0 {
-		t.Errorf("Expected 0 warnings, got %d", len(warnings))
-	}
+	assert.NoError(t, err)
+	assert.Empty(t, warnings)
 }
 
 func TestIngressCustomValidator_ValidateUpdate_UnsupportedAnnotations(t *testing.T) {
@@ -88,18 +80,13 @@ func TestIngressCustomValidator_ValidateUpdate_UnsupportedAnnotations(t *testing
 	}
 
 	warnings, err := validator.ValidateUpdate(context.TODO(), oldObj, obj)
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
-	if len(warnings) != 2 {
-		t.Errorf("Expected 2 warnings, got %d", len(warnings))
-	}
-	if !strings.Contains(warnings[0], "k8s.apisix.apache.org/enable-cors") {
-		t.Errorf("Expected warning to contain 'k8s.apisix.apache.org/enable-cors', got %s", warnings[0])
-	}
-	if !strings.Contains(warnings[1], "k8s.apisix.apache.org/cors-allow-origin") {
-		t.Errorf("Expected warning to contain 'k8s.apisix.apache.org/cors-allow-origin', got %s", warnings[1])
-	}
+	assert.NoError(t, err)
+	assert.Len(t, warnings, 2)
+
+	// Check that warnings contain the expected unsupported annotations
+	warningsStr := strings.Join(warnings, " ")
+	assert.Contains(t, warningsStr, "k8s.apisix.apache.org/enable-cors")
+	assert.Contains(t, warningsStr, "k8s.apisix.apache.org/cors-allow-origin")
 }
 
 func TestIngressCustomValidator_ValidateDelete_NoWarnings(t *testing.T) {
@@ -115,12 +102,8 @@ func TestIngressCustomValidator_ValidateDelete_NoWarnings(t *testing.T) {
 	}
 
 	warnings, err := validator.ValidateDelete(context.TODO(), obj)
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
-	if len(warnings) != 0 {
-		t.Errorf("Expected 0 warnings, got %d", len(warnings))
-	}
+	assert.NoError(t, err)
+	assert.Empty(t, warnings)
 }
 
 func TestIngressCustomValidator_ValidateCreate_NoAnnotations(t *testing.T) {
@@ -133,10 +116,6 @@ func TestIngressCustomValidator_ValidateCreate_NoAnnotations(t *testing.T) {
 	}
 
 	warnings, err := validator.ValidateCreate(context.TODO(), obj)
-	if err != nil {
-		t.Errorf("Expected no error, got %v", err)
-	}
-	if len(warnings) != 0 {
-		t.Errorf("Expected 0 warnings, got %d", len(warnings))
-	}
+	assert.NoError(t, err)
+	assert.Empty(t, warnings)
 }

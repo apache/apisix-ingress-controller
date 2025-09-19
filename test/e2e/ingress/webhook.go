@@ -75,7 +75,7 @@ spec:
 `, s.Namespace(), s.Namespace())
 
 			output, err := s.CreateResourceFromStringAndGetOutput(ingressYAML)
-			Expect(err).Should(BeNil())
+			Expect(err).ShouldNot(HaveOccurred())
 			Expect(output).To(ContainSubstring(`Warning: Annotation 'k8s.apisix.apache.org/enable-websocket' is not supported`))
 			Expect(output).To(ContainSubstring(`Warning: Annotation 'k8s.apisix.apache.org/use-regex' is not supported`))
 
@@ -111,7 +111,7 @@ spec:
 `, s.Namespace(), s.Namespace())
 
 			output, err := s.CreateResourceFromStringAndGetOutput(initialIngressYAML)
-			Expect(err).Should(BeNil())
+			Expect(err).ShouldNot(HaveOccurred())
 			Expect(output).ShouldNot(ContainSubstring(`Warning`))
 
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -146,7 +146,7 @@ spec:
 `, s.Namespace(), s.Namespace())
 
 			output, err = s.CreateResourceFromStringAndGetOutput(updatedIngressYAML)
-			Expect(err).Should(BeNil())
+			Expect(err).ShouldNot(HaveOccurred())
 			Expect(output).To(ContainSubstring(`Warning: Annotation 'k8s.apisix.apache.org/enable-cors' is not supported`))
 
 			s.RequestAssert(&scaffold.RequestAssert{

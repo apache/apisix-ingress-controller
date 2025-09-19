@@ -113,25 +113,23 @@ func (s *APISIXDeployer) AfterEach() {
 		}
 	}
 
-	return
+	// Delete all additional gateways
+	for identifier := range s.additionalGateways {
+		err := s.CleanupAdditionalGateway(identifier)
+		Expect(err).NotTo(HaveOccurred(), "cleaning up additional gateway")
+	}
 
-	// // Delete all additional gateways
-	// for identifier := range s.additionalGateways {
-	// 	err := s.CleanupAdditionalGateway(identifier)
-	// 	Expect(err).NotTo(HaveOccurred(), "cleaning up additional gateway")
-	// }
+	for i := len(s.finalizers) - 1; i >= 0; i-- {
+		runWithRecover(s.finalizers[i])
+	}
 
-	// for i := len(s.finalizers) - 1; i >= 0; i-- {
-	// 	runWithRecover(s.finalizers[i])
-	// }
+	// if the test case is successful, just delete namespace
+	err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
+	Expect(err).NotTo(HaveOccurred(), "deleting namespace "+s.namespace)
 
-	// // if the test case is successful, just delete namespace
-	// err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
-	// Expect(err).NotTo(HaveOccurred(), "deleting namespace "+s.namespace)
-
-	// // Wait for a while to prevent the worker node being overwhelming
-	// // (new cases will be run).
-	// time.Sleep(3 * time.Second)
+	// Wait for a while to prevent the worker node being overwhelming
+	// (new cases will be run).
+	time.Sleep(3 * time.Second)
 }
 
 func (s *APISIXDeployer) DeployDataplane(deployOpts DeployDataplaneOptions) {
