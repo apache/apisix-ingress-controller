@@ -25,7 +25,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
@@ -33,9 +32,6 @@ var _ = Describe("Test ApisixRoute With StreamRoute", Label("apisix.apache.org",
 	s := scaffold.NewDefaultScaffold()
 
 	BeforeEach(func() {
-		if framework.ProviderType != framework.ProviderTypeAPISIX {
-			Skip("only support APISIX provider")
-		}
 		By("create GatewayProxy")
 		err := s.CreateResourceFromString(s.GetGatewayProxySpec())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
