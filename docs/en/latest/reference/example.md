@@ -40,7 +40,6 @@ kind: GatewayProxy
 metadata:
   namespace: ingress-apisix
   name: apisix-config
-  namespace: ingress-apisix
 spec:
   provider:
     type: ControlPlane
