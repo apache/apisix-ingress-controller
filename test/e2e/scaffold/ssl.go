@@ -150,7 +150,6 @@ func (s *Scaffold) GenerateMACert(
 	caTemplate := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			CommonName:   dnsNames[0] + "-ca",
 			Organization: []string{"Acme Co"},
 		},
 		NotBefore: time.Now(),
@@ -179,7 +178,6 @@ func (s *Scaffold) GenerateMACert(
 	serverTemplate := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			CommonName:   dnsNames[0],
 			Organization: []string{"Acme Co"},
 		},
 		NotBefore: time.Now(),
@@ -188,6 +186,7 @@ func (s *Scaffold) GenerateMACert(
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment | x509.KeyUsageCertSign,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 		BasicConstraintsValid: true,
+		DNSNames:              dnsNames,
 	}
 
 	serverBytes, err := x509.CreateCertificate(rand.Reader, &serverTemplate, &caTemplate, &serverKey.PublicKey, caKey)

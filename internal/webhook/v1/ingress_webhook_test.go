@@ -33,7 +33,6 @@ func TestIngressCustomValidator_ValidateCreate_UnsupportedAnnotations(t *testing
 			Annotations: map[string]string{
 				"k8s.apisix.apache.org/use-regex":        "true",
 				"k8s.apisix.apache.org/enable-websocket": "true",
-				"nginx.ingress.kubernetes.io/rewrite":    "/new-path",
 			},
 		},
 	}

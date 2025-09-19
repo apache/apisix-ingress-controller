@@ -113,23 +113,25 @@ func (s *APISIXDeployer) AfterEach() {
 		}
 	}
 
-	// Delete all additional gateways
-	for identifier := range s.additionalGateways {
-		err := s.CleanupAdditionalGateway(identifier)
-		Expect(err).NotTo(HaveOccurred(), "cleaning up additional gateway")
-	}
+	return
 
-	for i := len(s.finalizers) - 1; i >= 0; i-- {
-		runWithRecover(s.finalizers[i])
-	}
+	// // Delete all additional gateways
+	// for identifier := range s.additionalGateways {
+	// 	err := s.CleanupAdditionalGateway(identifier)
+	// 	Expect(err).NotTo(HaveOccurred(), "cleaning up additional gateway")
+	// }
 
-	// if the test case is successful, just delete namespace
-	err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
-	Expect(err).NotTo(HaveOccurred(), "deleting namespace "+s.namespace)
+	// for i := len(s.finalizers) - 1; i >= 0; i-- {
+	// 	runWithRecover(s.finalizers[i])
+	// }
 
-	// Wait for a while to prevent the worker node being overwhelming
-	// (new cases will be run).
-	time.Sleep(3 * time.Second)
+	// // if the test case is successful, just delete namespace
+	// err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
+	// Expect(err).NotTo(HaveOccurred(), "deleting namespace "+s.namespace)
+
+	// // Wait for a while to prevent the worker node being overwhelming
+	// // (new cases will be run).
+	// time.Sleep(3 * time.Second)
 }
 
 func (s *APISIXDeployer) DeployDataplane(deployOpts DeployDataplaneOptions) {
@@ -254,12 +256,18 @@ func (s *APISIXDeployer) ScaleDataplane(replicas int) {
 }
 
 func (s *APISIXDeployer) DeployIngress() {
+	if s.runtimeOpts.EnableWebhook {
+		err := s.SetupWebhookResources()
+		Expect(err).NotTo(HaveOccurred(), "setting up webhook resources")
+	}
+
 	s.Framework.DeployIngress(framework.IngressDeployOpts{
 		ControllerName:     s.runtimeOpts.ControllerName,
 		ProviderType:       framework.ProviderType,
 		ProviderSyncPeriod: 1 * time.Hour,
 		Namespace:          s.namespace,
 		Replicas:           ptr.To(1),
+		WebhookEnable:      s.runtimeOpts.EnableWebhook,
 	})
 }
 

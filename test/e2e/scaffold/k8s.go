@@ -20,7 +20,9 @@ package scaffold
 import (
 	"cmp"
 	"context"
+	"encoding/base64"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -45,6 +47,16 @@ import (
 // CreateResourceFromString creates resource from a loaded yaml string.
 func (s *Scaffold) CreateResourceFromString(yaml string) error {
 	return k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
+}
+
+// CreateResourceFromStringAndGetOutput creates resource from a loaded yaml string and returns the output of the command.
+func (s *Scaffold) CreateResourceFromStringAndGetOutput(yaml string) (string, error) {
+	tmpfile, err := k8s.StoreConfigToTempFileE(s.t, yaml)
+	if err != nil {
+		return "", err
+	}
+	defer os.Remove(tmpfile)
+	return k8s.RunKubectlAndGetOutputE(s.t, s.kubectlOptions, "apply", "-f", tmpfile)
 }
 
 func (s *Scaffold) DeleteResourceFromString(yaml string) error {
@@ -322,4 +334,39 @@ spec:
 
 func (s *Scaffold) GetGatewayYaml() string {
 	return fmt.Sprintf(gatewayYaml, s.Namespace(), s.Namespace())
+}
+
+func (s *Scaffold) SetupWebhookResources() error {
+	// Generate TLS certificates
+	caCert, serverCert, serverKey, _, _ := s.GenerateMACert(s.GinkgoT, []string{fmt.Sprintf("webhook-service.%s.svc", s.Namespace())})
+
+	err := s.NewKubeTlsSecret("webhook-server-certs", serverCert.String(), serverKey.String())
+	if err != nil {
+		return err
+	}
+
+	webhookConfigYAML := fmt.Sprintf(`
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: test-webhook-%s
+webhooks:
+- name: vingress-v1.kb.io
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: %s
+      path: /validate-networking-k8s-io-v1-ingress
+    caBundle: %s
+  rules:
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: ["networking.k8s.io"]
+    apiVersions: ["v1"]
+    resources: ["ingresses"]
+  failurePolicy: Fail
+  sideEffects: None
+  admissionReviewVersions: ["v1"]
+`, s.Namespace(), s.Namespace(), base64.StdEncoding.EncodeToString(caCert.Bytes()))
+
+	return s.CreateResourceFromStringWithNamespace(webhookConfigYAML, "")
 }
