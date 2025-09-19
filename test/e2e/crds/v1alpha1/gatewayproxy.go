@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/ptr"
 
+	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
@@ -167,7 +168,7 @@ spec:
 				Expect(err).NotTo(HaveOccurred(), "forward pod: %s", pod.Name)
 
 				err = wait.PollUntilContextTimeout(context.Background(), time.Second, 30*time.Second, true, func(ctx context.Context) (done bool, err error) {
-					resp := scaffold.NewClient("http", tunnel.Endpoint()).
+					resp := scaffold.NewClient(apiv2.SchemeHTTP, tunnel.Endpoint()).
 						GET("/get").WithHost("httpbin.org").Expect().Raw()
 					return resp.StatusCode == http.StatusOK && resp.Header.Get("X-Pod-Hostname") == pod.GetName(), nil
 				})

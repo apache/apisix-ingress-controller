@@ -21,11 +21,9 @@ on:
   push:
     branches:
       - master
-      - next
   pull_request:
     branches:
       - master
-      - next
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -100,6 +98,9 @@ jobs:
           docker rm adc-temp
           node $(pwd)/adc.js -v
           echo "ADC_BIN=node $(pwd)/adc.js" >> $GITHUB_ENV
+
+      - name: Start OpenLDAP server
+        run: make e2e-ldap
 
       - name: Run E2E test suite
         shell: bash

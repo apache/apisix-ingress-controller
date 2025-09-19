@@ -48,8 +48,7 @@ var _ = Describe("Test ApisixRoute", Label("apisix.apache.org", "v2", "apisixrou
 
 	BeforeEach(func() {
 		By("create GatewayProxy")
-		gatewayProxy := s.GetGatewayProxyYaml()
-		err := s.CreateResourceFromString(gatewayProxy)
+		err := s.CreateResourceFromString(s.GetGatewayProxySpec())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 		time.Sleep(5 * time.Second)
 
@@ -172,9 +171,6 @@ spec:
 				Expect(bodyStr).Should(ContainSubstring("apisix_ingress_adc_sync_total"))
 				Expect(bodyStr).Should(ContainSubstring("apisix_ingress_status_update_queue_length"))
 				Expect(bodyStr).Should(ContainSubstring("apisix_ingress_file_io_duration_seconds"))
-
-				// Log metrics for debugging
-				fmt.Printf("Metrics endpoint response:\n%s\n", bodyStr)
 			}
 			It("Basic", func() {
 				test(apisixRouteSpec)

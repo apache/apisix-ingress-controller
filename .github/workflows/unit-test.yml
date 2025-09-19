@@ -22,11 +22,9 @@ on:
   push:
     branches:
       - master
-      - next
   pull_request:
     branches:
       - master
-      - next
       - 1.8.0
 jobs:
   run-test:

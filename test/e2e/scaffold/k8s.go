@@ -197,51 +197,6 @@ func (s *Scaffold) ResourceApplied(resourType, resourceName, resourceRaw string,
 	)
 }
 
-func (s *Scaffold) ApplyDefaultGatewayResource(
-	defaultGatewayProxy string,
-	defaultGatewayClass string,
-	defaultGateway string,
-	defaultHTTPRoute string,
-) {
-	By("create GatewayProxy")
-	gatewayProxy := fmt.Sprintf(defaultGatewayProxy, s.Deployer.GetAdminEndpoint(), s.AdminKey())
-	err := s.CreateResourceFromString(gatewayProxy)
-	Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-	time.Sleep(5 * time.Second)
-
-	By("create GatewayClass")
-	gatewayClassName := s.Namespace()
-	gatewayString := fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName())
-	err = s.CreateResourceFromStringWithNamespace(gatewayString, "")
-	Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
-	time.Sleep(5 * time.Second)
-
-	By("check GatewayClass condition")
-	gcyaml, err := s.GetResourceYaml("GatewayClass", gatewayClassName)
-	Expect(err).NotTo(HaveOccurred(), "getting GatewayClass yaml")
-	Expect(gcyaml).To(ContainSubstring(`status: "True"`), "checking GatewayClass condition status")
-	Expect(gcyaml).To(
-		ContainSubstring("message: the gatewayclass has been accepted by the apisix-ingress-controller"),
-		"checking GatewayClass condition message",
-	)
-
-	By("create Gateway")
-	err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGateway, gatewayClassName), s.Namespace())
-	Expect(err).NotTo(HaveOccurred(), "creating Gateway")
-	time.Sleep(5 * time.Second)
-
-	By("check Gateway condition")
-	gwyaml, err := s.GetResourceYaml("Gateway", "apisix")
-	Expect(err).NotTo(HaveOccurred(), "getting Gateway yaml")
-	Expect(gwyaml).To(ContainSubstring(`status: "True"`), "checking Gateway condition status")
-	Expect(gwyaml).To(
-		ContainSubstring("message: the gateway has been accepted by the apisix-ingress-controller"),
-		"checking Gateway condition message",
-	)
-
-	s.ResourceApplied("httproute", "httpbin", defaultHTTPRoute, 1)
-}
-
 func (s *Scaffold) ApplyHTTPRoute(hrNN types.NamespacedName, spec string, until ...wait.ConditionWithContextFunc) {
 	err := s.CreateResourceFromString(spec)
 	Expect(err).NotTo(HaveOccurred(), "creating HTTPRoute %s", hrNN)
@@ -275,6 +230,25 @@ func (s *Scaffold) ApplyHTTPRoutePolicy(refNN, hrpNN types.NamespacedName, spec 
 	}
 }
 
+func (s *Scaffold) WaitUntilDeploymentAvailable(name string) {
+	k8s.WaitUntilDeploymentAvailable(s.GinkgoT, s.kubectlOptions, name, 10, 10*time.Second)
+}
+
+func (s *Scaffold) RunDigDNSClientFromK8s(args ...string) (string, error) {
+	kubectlArgs := []string{
+		"run",
+		"dig",
+		"-i",
+		"--rm",
+		"--restart=Never",
+		"--image-pull-policy=IfNotPresent",
+		"--image=toolbelt/dig",
+		"--",
+	}
+	kubectlArgs = append(kubectlArgs, args...)
+	return s.RunKubectlAndGetOutput(kubectlArgs...)
+}
+
 func (s *Scaffold) GetGatewayProxySpec() string {
 	var gatewayProxyYaml = `
 apiVersion: apisix.apache.org/v1alpha1
@@ -296,21 +270,56 @@ spec:
 	return fmt.Sprintf(gatewayProxyYaml, framework.ProviderType, s.AdminKey())
 }
 
-func (s *Scaffold) WaitUntilDeploymentAvailable(name string) {
-	k8s.WaitUntilDeploymentAvailable(s.GinkgoT, s.kubectlOptions, name, 10, 10*time.Second)
+const ingressClassYaml = `
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: %s
+spec:
+  controller: %s
+  parameters:
+    apiGroup: "apisix.apache.org"
+    kind: "GatewayProxy"
+    name: "apisix-proxy-config"
+    namespace: %s
+    scope: Namespace
+`
+
+func (s *Scaffold) GetIngressClassYaml() string {
+	return fmt.Sprintf(ingressClassYaml, s.Namespace(), s.GetControllerName(), s.Namespace())
 }
 
-func (s *Scaffold) RunDigDNSClientFromK8s(args ...string) (string, error) {
-	kubectlArgs := []string{
-		"run",
-		"dig",
-		"-i",
-		"--rm",
-		"--restart=Never",
-		"--image-pull-policy=IfNotPresent",
-		"--image=toolbelt/dig",
-		"--",
-	}
-	kubectlArgs = append(kubectlArgs, args...)
-	return s.RunKubectlAndGetOutput(kubectlArgs...)
+const gatewayClassYaml = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: %s
+spec:
+  controllerName: %s
+`
+
+func (s *Scaffold) GetGatewayClassYaml() string {
+	return fmt.Sprintf(gatewayClassYaml, s.Namespace(), s.GetControllerName())
+}
+
+const gatewayYaml = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: %s
+spec:
+  gatewayClassName: %s
+  listeners:
+    - name: http1
+      protocol: HTTP
+      port: 80
+  infrastructure:
+    parametersRef:
+      group: apisix.apache.org
+      kind: GatewayProxy
+      name: apisix-proxy-config
+`
+
+func (s *Scaffold) GetGatewayYaml() string {
+	return fmt.Sprintf(gatewayYaml, s.Namespace(), s.Namespace())
 }

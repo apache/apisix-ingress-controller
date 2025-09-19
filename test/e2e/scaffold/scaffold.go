@@ -35,6 +35,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 )
 
@@ -175,7 +176,7 @@ func (s *Scaffold) DefaultHTTPBackend() (string, []int32) {
 // NewAPISIXClient creates the default HTTP client.
 func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 	u := url.URL{
-		Scheme: "http",
+		Scheme: apiv2.SchemeHTTP,
 		Host:   s.apisixTunnels.HTTP.Endpoint(),
 	}
 	return httpexpect.WithConfig(httpexpect.Config{
@@ -233,7 +234,7 @@ func (s *Scaffold) UpdateNamespace(ns string) {
 // NewAPISIXHttpsClient creates the default HTTPS client.
 func (s *Scaffold) NewAPISIXHttpsClient(host string) *httpexpect.Expect {
 	u := url.URL{
-		Scheme: "https",
+		Scheme: apiv2.SchemeHTTPS,
 		Host:   s.apisixTunnels.HTTPS.Endpoint(),
 	}
 	return httpexpect.WithConfig(httpexpect.Config{
@@ -256,7 +257,7 @@ func (s *Scaffold) NewAPISIXHttpsClient(host string) *httpexpect.Expect {
 // NewAPISIXClientWithTCPProxy creates the HTTP client but with the TCP proxy of APISIX.
 func (s *Scaffold) NewAPISIXClientWithTCPProxy() *httpexpect.Expect {
 	u := url.URL{
-		Scheme: "http",
+		Scheme: apiv2.SchemeHTTP,
 		Host:   s.apisixTunnels.TCP.Endpoint(),
 	}
 	return httpexpect.WithConfig(httpexpect.Config{
@@ -362,11 +363,11 @@ func (s *Scaffold) createDataplaneTunnels(
 
 	for _, port := range svc.Spec.Ports {
 		switch port.Name {
-		case "http":
+		case apiv2.SchemeHTTP:
 			httpPort = int(port.Port)
-		case "https":
+		case apiv2.SchemeHTTPS:
 			httpsPort = int(port.Port)
-		case "tcp":
+		case apiv2.SchemeTCP:
 			tcpPort = int(port.Port)
 		}
 	}
@@ -413,7 +414,7 @@ func (s *Scaffold) NewAPISIXClientForGateway(identifier string) (*httpexpect.Exp
 	}
 
 	u := url.URL{
-		Scheme: "http",
+		Scheme: apiv2.SchemeHTTP,
 		Host:   resources.Tunnels.HTTP.Endpoint(),
 	}
 	return httpexpect.WithConfig(httpexpect.Config{
@@ -438,7 +439,7 @@ func (s *Scaffold) NewAPISIXHttpsClientForGateway(identifier string, host string
 	}
 
 	u := url.URL{
-		Scheme: "https",
+		Scheme: apiv2.SchemeHTTPS,
 		Host:   resources.Tunnels.HTTPS.Endpoint(),
 	}
 	return httpexpect.WithConfig(httpexpect.Config{
@@ -512,68 +513,4 @@ func (s *Scaffold) GetMetricsEndpoint() string {
 	}
 	s.addFinalizers(tunnel.Close)
 	return fmt.Sprintf("http://%s/metrics", tunnel.Endpoint())
-}
-
-const gatewayProxyYaml = `
-apiVersion: apisix.apache.org/v1alpha1
-kind: GatewayProxy
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  provider:
-    type: ControlPlane
-    controlPlane:
-      endpoints:
-      - %s
-      auth:
-        type: AdminKey
-        adminKey:
-          value: "%s"
-`
-
-const gatewayProxyWithServiceYaml = `
-apiVersion: apisix.apache.org/v1alpha1
-kind: GatewayProxy
-metadata:
-  name: %s
-  namespace: %s
-spec:
-  provider:
-    type: ControlPlane
-    controlPlane:
-      service:
-        name: %s
-        port: 9180
-      auth:
-        type: AdminKey
-        adminKey:
-          value: "%s"
-`
-
-const ingressClassYaml = `
-apiVersion: networking.k8s.io/v1
-kind: IngressClass
-metadata:
-  name: %s
-spec:
-  controller: %s
-  parameters:
-    apiGroup: "apisix.apache.org"
-    kind: "GatewayProxy"
-    name: "%s"
-    namespace: "%s"
-    scope: "Namespace"
-`
-
-func (s *Scaffold) GetGatewayProxyYaml() string {
-	return fmt.Sprintf(gatewayProxyYaml, s.namespace, s.namespace, s.Deployer.GetAdminEndpoint(), s.AdminKey())
-}
-
-func (s *Scaffold) GetGatewayProxyWithServiceYaml() string {
-	return fmt.Sprintf(gatewayProxyWithServiceYaml, s.namespace, s.namespace, s.dataplaneService.Name, s.AdminKey())
-}
-
-func (s *Scaffold) GetIngressClassYaml() string {
-	return fmt.Sprintf(ingressClassYaml, s.namespace, s.GetControllerName(), s.namespace, s.namespace)
 }

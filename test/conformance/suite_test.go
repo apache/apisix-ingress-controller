@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
+	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
@@ -225,7 +226,7 @@ func patchGatewaysForConformanceTest(ctx context.Context, k8sClient client.Clien
 			gateway.Spec.Infrastructure = &gatewayv1.GatewayInfrastructure{
 				ParametersRef: &gatewayv1.LocalParametersReference{
 					Group: "apisix.apache.org",
-					Kind:  "GatewayProxy",
+					Kind:  types.KindGatewayProxy,
 					Name:  "conformance-gateway-proxy",
 				},
 			}

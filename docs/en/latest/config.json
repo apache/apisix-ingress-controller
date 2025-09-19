@@ -38,12 +38,17 @@
             "label": "Reference",
             "items": [
                 "reference/api-reference",
-                "reference/example"
+                "reference/example",
+                "reference/configuration-file"
             ]
         },
         {
             "type": "doc",
             "id": "upgrade-guide"
+        },
+        {
+            "type": "doc",
+            "id": "FAQ"
         },
         {
             "type": "link",

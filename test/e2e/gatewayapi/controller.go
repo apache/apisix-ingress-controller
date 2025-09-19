@@ -25,6 +25,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
@@ -111,7 +112,7 @@ spec:
 		time.Sleep(10 * time.Second)
 
 		By("check GatewayClass condition")
-		gcyaml, err := s.GetResourceYamlFromNamespace("GatewayClass", gatewayClassName, s.Namespace())
+		gcyaml, err := s.GetResourceYamlFromNamespace(types.KindGatewayClass, gatewayClassName, s.Namespace())
 		Expect(err).NotTo(HaveOccurred(), "getting GatewayClass yaml")
 		Expect(gcyaml).To(ContainSubstring(`status: "True"`), "checking GatewayClass condition status")
 		Expect(gcyaml).To(ContainSubstring("message: the gatewayclass has been accepted by the apisix-ingress-controller"), "checking GatewayClass condition message")
@@ -122,7 +123,7 @@ spec:
 		time.Sleep(10 * time.Second)
 
 		By("check Gateway condition")
-		gwyaml, err := s.GetResourceYamlFromNamespace("Gateway", gatewayName, gatewayName)
+		gwyaml, err := s.GetResourceYamlFromNamespace(types.KindGateway, gatewayName, gatewayName)
 		Expect(err).NotTo(HaveOccurred(), "getting Gateway yaml")
 		Expect(gwyaml).To(ContainSubstring(`status: "True"`), "checking Gateway condition status")
 		Expect(gwyaml).To(ContainSubstring("message: the gateway has been accepted by the apisix-ingress-controller"), "checking Gateway condition message")
@@ -163,7 +164,7 @@ spec:
 			beforeEach(s1)
 		})
 		It("Apply resource ", func() {
-			ResourceApplied(s1, "HTTPRoute", "httpbin", s1.Namespace(), fmt.Sprintf(route1, s1.Namespace()), 1)
+			ResourceApplied(s1, types.KindHTTPRoute, "httpbin", s1.Namespace(), fmt.Sprintf(route1, s1.Namespace()), 1)
 
 			s1.RetryAssertion(func() int {
 				routes, _ := s1.DefaultDataplaneResource().Route().List(s1.Context)
@@ -210,7 +211,7 @@ spec:
 			beforeEach(s2)
 		})
 		It("Apply resource ", func() {
-			ResourceApplied(s2, "HTTPRoute", "httpbin2", s2.Namespace(), fmt.Sprintf(route2, s2.Namespace(), s2.Namespace()), 1)
+			ResourceApplied(s2, types.KindHTTPRoute, "httpbin2", s2.Namespace(), fmt.Sprintf(route2, s2.Namespace(), s2.Namespace()), 1)
 			time.Sleep(5 * time.Second)
 			routes, err := s2.DefaultDataplaneResource().Route().List(s2.Context)
 			Expect(err).NotTo(HaveOccurred())
