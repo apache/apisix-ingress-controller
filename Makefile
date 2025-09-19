@@ -268,6 +268,17 @@ ifndef ignore-not-found
   ignore-not-found = false
 endif
 
+.PHONY: e2e-ldap
+e2e-ldap:
+ifeq ("$(E2E_FOCUS)", "")
+	chmod +x ./test/e2e/testdata/ldap/cmd.sh && ./test/e2e/testdata/ldap/cmd.sh start
+endif
+ifneq ("$(E2E_FOCUS)", "")
+	echo $(E2E_FOCUS) | grep -E 'suite-plugins-authentication|consumer|ldap' || exit 0 \
+	&& chmod +x ./test/e2e/testdata/ldap/cmd.sh \
+	&& ./test/e2e/testdata/ldap/cmd.sh start
+endif
+
 .PHONY: install-gateway-api
 install-gateway-api: ## Install Gateway API CRDs into the K8s cluster specified in ~/.kube/config.
 	kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEAY_API_VERSION)/experimental-install.yaml
