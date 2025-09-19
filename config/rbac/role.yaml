@@ -92,6 +92,7 @@ rules:
   - gateways/status
   - httproutes/status
   - referencegrants/status
+  - tcproutes/status
   verbs:
   - get
   - update
@@ -99,6 +100,7 @@ rules:
   - gateway.networking.k8s.io
   resources:
   - httproutes
+  - tcproutes
   verbs:
   - get
   - list

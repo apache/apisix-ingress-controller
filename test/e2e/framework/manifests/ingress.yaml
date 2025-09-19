@@ -191,6 +191,7 @@ rules:
   - gateway.networking.k8s.io
   resources:
   - httproutes
+  - tcproutes
   verbs:
   - get
   - list
@@ -199,6 +200,7 @@ rules:
   - gateway.networking.k8s.io
   resources:
   - httproutes/status
+  - tcproutes/status
   verbs:
   - get
   - update

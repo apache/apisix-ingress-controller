@@ -46,6 +46,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
@@ -60,6 +61,7 @@ import (
 const (
 	KindGateway            = "Gateway"
 	KindHTTPRoute          = "HTTPRoute"
+	KindTCPRoute           = "TCPRoute"
 	KindGatewayClass       = "GatewayClass"
 	KindIngress            = "Ingress"
 	KindIngressClass       = "IngressClass"
@@ -488,6 +490,8 @@ func routeHostnamesIntersectsWithListenerHostname(route client.Object, listener 
 	switch r := route.(type) {
 	case *gatewayv1.HTTPRoute:
 		return listenerHostnameIntersectWithRouteHostnames(listener, r.Spec.Hostnames)
+	case *gatewayv1alpha2.TCPRoute:
+		return true // TCPRoute doesn't have Hostnames to match
 	default:
 		return false
 	}
@@ -651,6 +655,10 @@ func routeMatchesListenerType(route client.Object, listener gatewayv1.Listener) 
 			if listener.TLS.Mode != nil && *listener.TLS.Mode != gatewayv1.TLSModeTerminate {
 				return false
 			}
+		}
+	case *gatewayv1alpha2.TCPRoute:
+		if listener.Protocol != gatewayv1.TCPProtocolType {
+			return false
 		}
 	default:
 		return false
