@@ -49,7 +49,29 @@ type Client struct {
 	ADCDebugProvider *common.ADCDebugProvider
 }
 
+func NewWithUnixSocket(socketPath string, mode string, timeout time.Duration) (*Client, error) {
+	if socketPath == "" {
+		socketPath = defaultUnixSocketPath
+	}
+	store := cache.NewStore()
+	configManager := common.NewConfigManager[types.NamespacedNameKind, adctypes.Config]()
+	log.Infow("using Unix Socket ADC Executor", zap.String("socket_path", socketPath))
+	return &Client{
+		Store:            store,
+		executor:         NewUnixSocketADCExecutor(socketPath, timeout),
+		BackendMode:      mode,
+		ConfigManager:    configManager,
+		ADCDebugProvider: common.NewADCDebugProvider(store, configManager),
+	}, nil
+}
+
 func New(mode string, timeout time.Duration) (*Client, error) {
+	useUnixSocket := os.Getenv("ADC_USE_UNIX_SOCKET") == "true"
+	if useUnixSocket {
+		socketPath := os.Getenv("ADC_SERVER_URL")
+		return NewWithUnixSocket(socketPath, mode, timeout)
+	}
+
 	serverURL := os.Getenv("ADC_SERVER_URL")
 	if serverURL == "" {
 		serverURL = defaultHTTPADCExecutorAddr

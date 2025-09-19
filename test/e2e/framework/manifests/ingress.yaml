@@ -397,10 +397,16 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
+        - name: ADC_USE_UNIX_SOCKET
+          value: "true"
+        - name: ADC_UNIX_SOCKET_PATH
+          value: "/tmp/adc.sock"
         volumeMounts:
         - name: ingress-config
           mountPath: /app/conf/config.yaml
           subPath: config.yaml
+        - name: adc-socket
+          mountPath: /tmp
         livenessProbe:
           httpGet:
             path: /healthz
@@ -431,11 +437,16 @@ spec:
           value: remote-state-file,parallel-backend-request
         - name: ADC_INGRESS_LOG_LEVEL
           value: debug
+        volumeMounts:
+        - name: adc-socket
+          mountPath: /tmp
         name: adc-server
         args:
         - "server"
         - "--listen"
         - "http://127.0.0.1:3000"
+        - "--listen-unix"
+        - "/tmp/adc.sock"
         - "--listen-status"
         - "3001"
         ports:
@@ -462,5 +473,7 @@ spec:
       - name: ingress-config
         configMap:
           name: ingress-config
+      - name: adc-socket
+        emptyDir: {}
       serviceAccountName: apisix-ingress-controller-manager
       terminationGracePeriodSeconds: 10

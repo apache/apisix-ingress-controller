@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -41,6 +42,7 @@ import (
 
 const (
 	defaultHTTPADCExecutorAddr = "http://127.0.0.1:3000"
+	defaultUnixSocketPath      = "/tmp/adc.sock"
 )
 
 type ADCExecutor interface {
@@ -455,4 +457,241 @@ func (e *HTTPADCExecutor) handleHTTPResponse(resp *http.Response, serverAddr str
 
 	log.Debugw("ADC Server sync success", zap.Any("result", result))
 	return nil
+}
+
+// UnixSocketADCExecutor creates a new UnixSocketADCExecutor with the specified ADC Server URL
+type UnixSocketADCExecutor struct {
+	httpClient *http.Client
+	socketPath string
+	timeout    time.Duration
+}
+
+// NewUnixSocketADCExecutor build new UnixSocketADCExecutor
+func NewUnixSocketADCExecutor(socketPath string, timeout time.Duration) *UnixSocketADCExecutor {
+	transport := &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return net.DialTimeout("unix", socketPath, timeout)
+		},
+	}
+
+	client := &http.Client{
+		Transport: transport,
+		Timeout:   timeout,
+	}
+
+	return &UnixSocketADCExecutor{
+		httpClient: client,
+		socketPath: socketPath,
+		timeout:    timeout,
+	}
+}
+
+// Execute Execute implements the ADCExecutor interface using HTTP calls
+func (e *UnixSocketADCExecutor) Execute(ctx context.Context, mode string, config adctypes.Config, args []string) error {
+	return e.runUnixSocketSync(ctx, mode, config, args)
+}
+
+// runUnixSocketSync
+func (e *UnixSocketADCExecutor) runUnixSocketSync(ctx context.Context, mode string, config adctypes.Config, args []string) error {
+	var execErrs = types.ADCExecutionError{
+		Name: config.Name,
+	}
+
+	// for Unix socket，we only have one socket file
+	if err := e.runUnixSocketSyncForEndpoint(ctx, mode, config, args); err != nil {
+		log.Errorw("failed to run Unix socket sync", zap.String("socket_path", e.socketPath), zap.Error(err))
+		var execErr types.ADCExecutionServerAddrError
+		if errors.As(err, &execErr) {
+			execErrs.FailedErrors = append(execErrs.FailedErrors, execErr)
+		} else {
+			execErrs.FailedErrors = append(execErrs.FailedErrors, types.ADCExecutionServerAddrError{
+				ServerAddr: "unix://" + e.socketPath,
+				Err:        err.Error(),
+			})
+		}
+	}
+
+	if len(execErrs.FailedErrors) > 0 {
+		return execErrs
+	}
+	return nil
+}
+
+// runUnixSocketSyncForEndpoint performs Unix socket sync to a single ADC Server
+func (e *UnixSocketADCExecutor) runUnixSocketSyncForEndpoint(ctx context.Context, mode string, config adctypes.Config, args []string) error {
+	ctx, cancel := context.WithTimeout(ctx, e.timeout)
+	defer cancel()
+
+	// Parse args to extract labels, types, and file path
+	labels, types, filePath, err := e.parseArgs(args)
+	if err != nil {
+		return fmt.Errorf("failed to parse args: %w", err)
+	}
+
+	// Load resources from file
+	resources, err := e.loadResourcesFromFile(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to load resources from file %s: %w", filePath, err)
+	}
+
+	// Build HTTP request（through unix socket）
+	req, err := e.buildUnixSocketRequest(ctx, mode, config, labels, types, resources)
+	if err != nil {
+		return fmt.Errorf("failed to build request: %w", err)
+	}
+
+	// 发送请求
+	resp, err := e.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send request via Unix socket: %w", err)
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			log.Warnw("failed to close response body", zap.Error(closeErr))
+		}
+	}()
+
+	// 处理响应
+	return e.handleUnixSocketResponse(resp)
+}
+
+// buildUnixSocketRequest 构建Unix socket请求
+func (e *UnixSocketADCExecutor) buildUnixSocketRequest(ctx context.Context, mode string, config adctypes.Config, labels map[string]string, types []string, resources *adctypes.Resources) (*http.Request, error) {
+	// Prepare request body
+	tlsVerify := config.TlsVerify
+	reqBody := ADCServerRequest{
+		Task: ADCServerTask{
+			Opts: ADCServerOpts{
+				Backend:             mode,
+				Server:              []string{"unix://" + e.socketPath},
+				Token:               config.Token,
+				LabelSelector:       labels,
+				IncludeResourceType: types,
+				TlsSkipVerify:       ptr.To(!tlsVerify),
+				CacheKey:            config.Name,
+			},
+			Config: *resources,
+		},
+	}
+
+	jsonData, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request body: %w", err)
+	}
+
+	log.Debugw("Unix socket request body", zap.String("body", string(jsonData)))
+	log.Debugw("sending request to ADC via Unix socket",
+		zap.String("socket_path", e.socketPath),
+		zap.String("mode", mode),
+		zap.String("cacheKey", config.Name),
+		zap.Any("labelSelector", labels),
+		zap.Strings("includeResourceType", types),
+		zap.Bool("tlsSkipVerify", !tlsVerify),
+	)
+
+	// Create HTTP request - for Unix socket，URL use http://localhost
+	req, err := http.NewRequestWithContext(ctx, "PUT", "http://localhost/sync", bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	return req, nil
+}
+
+// handleUnixSocketResponse 处理Unix socket响应
+func (e *UnixSocketADCExecutor) handleUnixSocketResponse(resp *http.Response) error {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	log.Debugw("received response from ADC via Unix socket",
+		zap.String("socket_path", e.socketPath),
+		zap.Int("status", resp.StatusCode),
+		zap.String("response", string(body)),
+	)
+
+	// not only 200, HTTP 202 is also accepted
+	if resp.StatusCode/100 != 2 {
+		return types.ADCExecutionServerAddrError{
+			ServerAddr: "unix://" + e.socketPath,
+			Err:        fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(body)),
+		}
+	}
+
+	// Parse response body
+	var result adctypes.SyncResult
+	if err := json.Unmarshal(body, &result); err != nil {
+		log.Errorw("failed to unmarshal ADC response",
+			zap.Error(err),
+			zap.String("response", string(body)),
+		)
+		return fmt.Errorf("failed to parse ADC response: %w", err)
+	}
+
+	// Check for sync failures
+	if result.FailedCount > 0 && len(result.Failed) > 0 {
+		log.Errorw("ADC sync failed via Unix socket", zap.Any("result", result))
+		return types.ADCExecutionServerAddrError{
+			ServerAddr:     "unix://" + e.socketPath,
+			Err:            result.Failed[0].Reason,
+			FailedStatuses: result.Failed,
+		}
+	}
+
+	log.Debugw("ADC sync success via Unix socket", zap.Any("result", result))
+	return nil
+}
+
+// parseArgs parses the command line arguments to extract labels, types, and file path
+func (e *UnixSocketADCExecutor) parseArgs(args []string) (map[string]string, []string, string, error) {
+	labels := make(map[string]string)
+	var types []string
+	var filePath string
+
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "-f":
+			if i+1 < len(args) {
+				filePath = args[i+1]
+				i++
+			}
+		case "--label-selector":
+			if i+1 < len(args) {
+				labelPair := args[i+1]
+				parts := strings.SplitN(labelPair, "=", 2)
+				if len(parts) == 2 {
+					labels[parts[0]] = parts[1]
+				}
+				i++
+			}
+		case "--include-resource-type":
+			if i+1 < len(args) {
+				types = append(types, args[i+1])
+				i++
+			}
+		}
+	}
+
+	if filePath == "" {
+		return nil, nil, "", errors.New("file path not found in args")
+	}
+
+	return labels, types, filePath, nil
+}
+
+// loadResourcesFromFile loads ADC resources from the specified file
+func (e *UnixSocketADCExecutor) loadResourcesFromFile(filePath string) (*adctypes.Resources, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+
+	var resources adctypes.Resources
+	if err := json.Unmarshal(data, &resources); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal resources: %w", err)
+	}
+
+	return &resources, nil
 }
