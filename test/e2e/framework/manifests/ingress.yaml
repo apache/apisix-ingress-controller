@@ -81,43 +81,9 @@ rules:
   - ""
   resources:
   - namespaces
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - services
   - pods
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - coordination.k8s.io
-  resources:
-  - leases
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - discovery.k8s.io
-  resources:
-  - endpointslices
+  - secrets
+  - services
   verbs:
   - get
   - list
@@ -156,6 +122,26 @@ rules:
   - get
   - update
 - apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - gateway.networking.k8s.io
   resources:
   - gatewayclasses
@@ -168,6 +154,10 @@ rules:
   - gateway.networking.k8s.io
   resources:
   - gatewayclasses/status
+  - gateways/status
+  - grpcroutes/status
+  - httproutes/status
+  - referencegrants/status
   verbs:
   - get
   - update
@@ -175,63 +165,21 @@ rules:
   - gateway.networking.k8s.io
   resources:
   - gateways
-  verbs:
-  - get
-  - list
-  - update
-  - watch
-- apiGroups:
-  - gateway.networking.k8s.io
-  resources:
-  - gateways/status
-  verbs:
-  - get
-  - update
-- apiGroups:
-  - gateway.networking.k8s.io
-  resources:
+  - grpcroutes
   - httproutes
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - gateway.networking.k8s.io
-  resources:
-  - httproutes/status
-  verbs:
-  - get
-  - update
-- apiGroups:
-  - gateway.networking.k8s.io
-  resources:
   - referencegrants
   verbs:
   - get
   - list
   - watch
 - apiGroups:
-  - gateway.networking.k8s.io
-  resources:
-  - referencegrants/status
-  verbs:
-  - get
-- apiGroups:
   - networking.k8s.io
   resources:
   - ingressclasses
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - networking.k8s.io
-  resources:
   - ingresses
   verbs:
   - get
   - list
-  - update
   - watch
 - apiGroups:
   - networking.k8s.io
