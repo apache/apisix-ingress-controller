@@ -47,7 +47,7 @@ spec:
     parametersRef:
       group: apisix.apache.org
       kind: GatewayProxy
-      name: %s
+      name: apisix-proxy-config
 `
 
 		var tcpRoute = `
