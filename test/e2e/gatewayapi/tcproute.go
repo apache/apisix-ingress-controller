@@ -26,7 +26,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("TCPRoute E2E Test", func() {
+var _ = Describe("TCPRoute E2E Test", Label("networking.k8s.io", "tcproute"), func() {
 	s := scaffold.NewDefaultScaffold()
 	Context("TCPRoute Base", func() {
 		var tcpGateway = `
