@@ -153,7 +153,7 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 		streamRoute.Name = streamRouteName
 		streamRoute.ID = id.GenID(streamRouteName)
 		streamRoute.Labels = labels
-		// TODO: support remote_addr, server_adrr, sni, server_port
+		// TODO: support remote_addr, server_addr, sni, server_port
 		service.StreamRoutes = append(service.StreamRoutes, streamRoute)
 		result.Services = append(result.Services, service)
 	}
