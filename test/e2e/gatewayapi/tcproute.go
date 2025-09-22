@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -29,36 +28,6 @@ import (
 
 var _ = Describe("TCPRoute E2E Test", func() {
 	s := scaffold.NewDefaultScaffold()
-
-	var gatewayProxyYaml = `
-apiVersion: apisix.apache.org/v1alpha1
-kind: GatewayProxy
-metadata:
-  name: %s
-spec:
-  provider:
-    type: ControlPlane
-    controlPlane:
-      service:
-        name: %s
-        port: 9180
-      auth:
-        type: AdminKey
-        adminKey:
-          value: "%s"
-`
-	getGatewayProxySpec := func() string {
-		return fmt.Sprintf(gatewayProxyYaml, s.Namespace(), framework.ProviderType, s.AdminKey())
-	}
-
-	var gatewayClassYaml = `
-apiVersion: gateway.networking.k8s.io/v1
-kind: GatewayClass
-metadata:
-  name: %s
-spec:
-  controllerName: %s
-`
 	Context("TCPRoute Base", func() {
 		var tcpGateway = `
 apiVersion: gateway.networking.k8s.io/v1
@@ -98,12 +67,12 @@ spec:
 
 		BeforeEach(func() {
 			// Create GatewayProxy
-			Expect(s.CreateResourceFromStringWithNamespace(getGatewayProxySpec(), s.Namespace())).
+			Expect(s.CreateResourceFromStringWithNamespace(s.GetGatewayProxySpec(), s.Namespace())).
 				NotTo(HaveOccurred(), "creating GatewayProxy")
 
 			// Create GatewayClass
 			gatewayClassName := s.Namespace()
-			Expect(s.CreateResourceFromStringWithNamespace(fmt.Sprintf(gatewayClassYaml, gatewayClassName, s.GetControllerName()), "")).
+			Expect(s.CreateResourceFromStringWithNamespace(fmt.Sprintf(s.GetGatewayClassYaml(), gatewayClassName, s.GetControllerName()), "")).
 				NotTo(HaveOccurred(), "creating GatewayClass")
 			gcyaml, _ := s.GetResourceYaml("GatewayClass", gatewayClassName)
 			s.ResourceApplied("GatewayClass", gatewayClassName, gcyaml, 1)

@@ -66,7 +66,7 @@ func (r *TCPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&gatewayv1alpha2.TCPRoute{}).
 		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Watches(&discoveryv1.EndpointSlice{},
-			handler.EnqueueRequestsFromMapFunc(r.listTCPRoutesByServiceBef),
+			handler.EnqueueRequestsFromMapFunc(r.listTCPRoutesByServiceRef),
 		).
 		Watches(&gatewayv1.Gateway{},
 			handler.EnqueueRequestsFromMapFunc(r.listTCPRoutesForGateway),
@@ -475,7 +475,7 @@ func (r *TCPRouteReconciler) listTCPRoutesForReferenceGrant(ctx context.Context,
 	return requests
 }
 
-func (r *TCPRouteReconciler) listTCPRoutesByServiceBef(ctx context.Context, obj client.Object) []reconcile.Request {
+func (r *TCPRouteReconciler) listTCPRoutesByServiceRef(ctx context.Context, obj client.Object) []reconcile.Request {
 	endpointSlice, ok := obj.(*discoveryv1.EndpointSlice)
 	if !ok {
 		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to EndpointSlice")
