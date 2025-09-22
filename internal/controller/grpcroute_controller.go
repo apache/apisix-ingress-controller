@@ -73,6 +73,9 @@ func (r *GRPCRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&discoveryv1.EndpointSlice{},
 			handler.EnqueueRequestsFromMapFunc(r.listGRPCRoutesByServiceBef),
 		).
+		Watches(&v1alpha1.PluginConfig{},
+			handler.EnqueueRequestsFromMapFunc(r.listGRPCRoutesByExtensionRef),
+		).
 		Watches(&gatewayv1.Gateway{},
 			handler.EnqueueRequestsFromMapFunc(r.listGRPCRoutesForGateway),
 			builder.WithPredicates(
@@ -116,6 +119,34 @@ func (r *GRPCRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	return bdr.Complete(r)
+}
+
+func (r *GRPCRouteReconciler) listGRPCRoutesByExtensionRef(ctx context.Context, obj client.Object) []reconcile.Request {
+	pluginconfig, ok := obj.(*v1alpha1.PluginConfig)
+	if !ok {
+		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to EndpointSlice")
+		return nil
+	}
+	namespace := pluginconfig.GetNamespace()
+	name := pluginconfig.GetName()
+
+	grList := &gatewayv1.GRPCRouteList{}
+	if err := r.List(ctx, grList, client.MatchingFields{
+		indexer.ExtensionRef: indexer.GenIndexKey(namespace, name),
+	}); err != nil {
+		r.Log.Error(err, "failed to list grpcroutes by extension reference", "extension", name)
+		return nil
+	}
+	requests := make([]reconcile.Request, 0, len(grList.Items))
+	for _, gr := range grList.Items {
+		requests = append(requests, reconcile.Request{
+			NamespacedName: client.ObjectKey{
+				Namespace: gr.Namespace,
+				Name:      gr.Name,
+			},
+		})
+	}
+	return requests
 }
 
 func (r *GRPCRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
