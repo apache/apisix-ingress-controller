@@ -291,7 +291,7 @@ func (r *HTTPRouteReconciler) listHTTPRoutesByServiceBef(ctx context.Context, ob
 func (r *HTTPRouteReconciler) listHTTPRoutesByExtensionRef(ctx context.Context, obj client.Object) []reconcile.Request {
 	pluginconfig, ok := obj.(*v1alpha1.PluginConfig)
 	if !ok {
-		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to EndpointSlice")
+		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to PluginConfig")
 		return nil
 	}
 	namespace := pluginconfig.GetNamespace()
