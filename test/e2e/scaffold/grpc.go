@@ -143,9 +143,14 @@ func expectEchoResponses(expected *ExpectedResponse, actual *EchoResponse) error
 			kv[header.GetKey()] = header.GetValue()
 		}
 		for key, value := range expected.Headers {
-			if actualValue, ok := kv[strings.ToLower(key)]; !ok && value != "" {
-				return fmt.Errorf("expected header %q to be present, but not found", key)
-			} else if actualValue != value {
+			actualValue, ok := kv[strings.ToLower(key)]
+			if !ok {
+				if value != "" {
+					return fmt.Errorf("expected header %q to be present, but not found", key)
+				}
+				continue
+			}
+			if actualValue != value {
 				return fmt.Errorf("expected header %q to be %q, but got %q", key, value, actualValue)
 			}
 		}
