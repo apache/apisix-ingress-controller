@@ -92,10 +92,6 @@ func Run(ctx context.Context, logger logr.Logger) error {
 		tlsOpts = append(tlsOpts, disableHTTP2)
 	}
 
-	webhookServer := webhook.NewServer(webhook.Options{
-		TLSOpts: tlsOpts,
-	})
-
 	// Metrics endpoint is enabled in 'config/default/kustomization.yaml'. The Metrics options configure the server.
 	// More info:
 	// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.18.4/pkg/metrics/server
@@ -125,10 +121,9 @@ func Run(ctx context.Context, logger logr.Logger) error {
 		namespace = "default"
 	}
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	mgrOptions := ctrl.Options{
 		Scheme:                  scheme,
 		Metrics:                 metricsServerOptions,
-		WebhookServer:           webhookServer,
 		HealthProbeBindAddress:  cfg.ProbeAddr,
 		LeaderElection:          !config.ControllerConfig.LeaderElection.Disable,
 		LeaderElectionID:        cfg.LeaderElectionID,
@@ -147,7 +142,19 @@ func Run(ctx context.Context, logger logr.Logger) error {
 		// if you are doing or is intended to do any operation such as perform cleanups
 		// after the manager stops then its usage might be unsafe.
 		// LeaderElectionReleaseOnCancel: true,
-	})
+	}
+
+	if cfg.Webhook != nil && cfg.Webhook.Enable {
+		webhookServer := webhook.NewServer(webhook.Options{
+			Port:     cfg.Webhook.Port,
+			CertDir:  cfg.Webhook.TLSCertDir,
+			CertName: cfg.Webhook.TLSCertFile,
+			KeyName:  cfg.Webhook.TLSKeyFile,
+		})
+		mgrOptions.WebhookServer = webhookServer
+	}
+
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), mgrOptions)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		return err
@@ -217,6 +224,16 @@ func Run(ctx context.Context, logger logr.Logger) error {
 	}
 
 	// +kubebuilder:scaffold:builder
+
+	if cfg.Webhook != nil && cfg.Webhook.Enable {
+		setupLog.Info("setting up webhooks")
+		if err := setupWebhooks(ctx, mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "Ingress")
+			return err
+		}
+	} else {
+		setupLog.Info("webhooks disabled, skipping webhook setup")
+	}
 
 	setupLog.Info("setting up health checks")
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

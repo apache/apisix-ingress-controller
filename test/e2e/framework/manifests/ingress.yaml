@@ -343,6 +343,10 @@ data:
                                         # The default value is 0 seconds, which means the controller will not sync.
                                         # If you want to enable the sync, set it to a positive value.
       init_sync_delay: {{ .InitSyncDelay | default "20m" }}
+    webhook:
+      enable: {{ .WebhookEnable | default false }}
+      port: {{ .WebhookPort | default 9443 }}
+      tls_cert_dir: "/tmp/certs"
 ---
 apiVersion: v1
 kind: Service
@@ -401,6 +405,11 @@ spec:
         - name: ingress-config
           mountPath: /app/conf/config.yaml
           subPath: config.yaml
+        {{ if .WebhookEnable -}}
+        - name: webhook-certs
+          mountPath: /tmp/certs
+          readOnly: true
+        {{ end -}}
         livenessProbe:
           httpGet:
             path: /healthz
@@ -411,6 +420,9 @@ spec:
         ports:
         - name: metrics
           containerPort: 8080
+          protocol: TCP
+        - name: webhook-server
+          containerPort: 9443
           protocol: TCP
         readinessProbe:
           httpGet:
@@ -462,5 +474,30 @@ spec:
       - name: ingress-config
         configMap:
           name: ingress-config
+      {{ if .WebhookEnable -}}
+      - name: webhook-certs
+        secret:
+          secretName: webhook-server-certs
+          optional: true
+      {{ end -}}
       serviceAccountName: apisix-ingress-controller-manager
       terminationGracePeriodSeconds: 10
+{{ if .WebhookEnable -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: apisix-ingress-controller
+    app.kubernetes.io/managed-by: kustomize
+  name: webhook-service
+  namespace: {{ .Namespace }}
+spec:
+  ports:
+    - port: 443
+      protocol: TCP
+      targetPort: 9443
+  selector:
+    control-plane: controller-manager
+    app: apisix-ingress-controller
+{{ end -}}

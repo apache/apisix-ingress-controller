@@ -254,12 +254,18 @@ func (s *APISIXDeployer) ScaleDataplane(replicas int) {
 }
 
 func (s *APISIXDeployer) DeployIngress() {
+	if s.runtimeOpts.EnableWebhook {
+		err := s.SetupWebhookResources()
+		Expect(err).NotTo(HaveOccurred(), "setting up webhook resources")
+	}
+
 	s.Framework.DeployIngress(framework.IngressDeployOpts{
 		ControllerName:     s.runtimeOpts.ControllerName,
 		ProviderType:       framework.ProviderType,
 		ProviderSyncPeriod: 1 * time.Hour,
 		Namespace:          s.namespace,
 		Replicas:           ptr.To(1),
+		WebhookEnable:      s.runtimeOpts.EnableWebhook,
 	})
 }
 
