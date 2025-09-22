@@ -540,7 +540,7 @@ func TCPPRouteServiceIndexFunc(rawObj client.Object) []string {
 	for _, rule := range hr.Spec.Rules {
 		for _, backend := range rule.BackendRefs {
 			namespace := hr.GetNamespace()
-			if backend.Kind != nil && *backend.Kind != "Service" {
+			if backend.Kind != nil && *backend.Kind != internaltypes.KindService {
 				continue
 			}
 			if backend.Namespace != nil {
