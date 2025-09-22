@@ -40,8 +40,6 @@ import (
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
 
-const KindService = "Service"
-
 func (t *Translator) fillPluginsFromHTTPRouteFilters(
 	plugins adctypes.Plugins,
 	namespace string,

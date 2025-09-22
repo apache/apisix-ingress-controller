@@ -198,8 +198,6 @@ func (s *Scaffold) NewAPISIXClientOnTCPPort() *httpexpect.Expect {
 		Scheme: "http",
 		Host:   s.apisixTunnels.TCP.Endpoint(),
 	}
-	fmt.Println("tcp endpoint:", u.String())
-	fmt.Println("http endpoint", s.apisixTunnels.HTTP.Endpoint())
 	return httpexpect.WithConfig(httpexpect.Config{
 		BaseURL: u.String(),
 		Client: &http.Client{

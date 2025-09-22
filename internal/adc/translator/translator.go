@@ -40,5 +40,4 @@ type TranslateResult struct {
 	GlobalRules    adctypes.GlobalRule
 	PluginMetadata adctypes.PluginMetadata
 	Consumers      []*adctypes.Consumer
-	StreamRoutes   []*adctypes.StreamRoute
 }

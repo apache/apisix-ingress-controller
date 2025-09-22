@@ -232,7 +232,7 @@ func (r *TCPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 			tr.TypeMeta = metav1.TypeMeta{
 				Kind:       KindTCPRoute,
-				APIVersion: gatewayv1.GroupVersion.String(),
+				APIVersion: gatewayv1alpha2.GroupVersion.String(),
 			}
 
 			if err := r.Provider.Delete(ctx, tr); err != nil {

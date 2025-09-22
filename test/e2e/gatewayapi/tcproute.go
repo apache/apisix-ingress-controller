@@ -105,33 +105,16 @@ spec:
 			gatewayClassName := s.Namespace()
 			Expect(s.CreateResourceFromStringWithNamespace(fmt.Sprintf(gatewayClassYaml, gatewayClassName, s.GetControllerName()), "")).
 				NotTo(HaveOccurred(), "creating GatewayClass")
-
-			s.RetryAssertion(func() string {
-				gcyaml, _ := s.GetResourceYaml("GatewayClass", gatewayClassName)
-				return gcyaml
-			}).Should(
-				And(
-					ContainSubstring(`status: "True"`),
-					ContainSubstring("message: the gatewayclass has been accepted by the apisix-ingress-controller"),
-				),
-				"check GatewayClass condition",
-			)
+			gcyaml, _ := s.GetResourceYaml("GatewayClass", gatewayClassName)
+			s.ResourceApplied("GatewayClass", gatewayClassName, gcyaml, 1)
 
 			// Create Gateway with TCP listener
 			gatewayName := s.Namespace()
 			Expect(s.CreateResourceFromStringWithNamespace(fmt.Sprintf(tcpGateway, gatewayName, gatewayClassName, s.Namespace()), s.Namespace())).
 				NotTo(HaveOccurred(), "creating Gateway")
 
-			s.RetryAssertion(func() string {
-				gwyaml, _ := s.GetResourceYaml("Gateway", gatewayName)
-				return gwyaml
-			}).Should(
-				And(
-					ContainSubstring(`status: "True"`),
-					ContainSubstring("message: the gateway has been accepted by the apisix-ingress-controlle"),
-				),
-				"check Gateway condition status",
-			)
+			gwyaml, _ := s.GetResourceYaml("Gateway", gatewayName)
+			s.ResourceApplied("Gateway", gatewayName, gwyaml, 1)
 		})
 
 		It("should route TCP traffic to backend service", func() {
@@ -141,13 +124,8 @@ spec:
 				NotTo(HaveOccurred(), "creating TCPRoute")
 
 			// Verify TCPRoute status becomes programmed
-			s.RetryAssertion(func() string {
-				routeYaml, _ := s.GetResourceYaml("TCPRoute", "tcp-app-1")
-				return routeYaml
-			}).Should(
-				ContainSubstring(`status: "True"`),
-				"check TCPRoute status",
-			)
+			routeYaml, _ := s.GetResourceYaml("TCPRoute", "tcp-app-1")
+			s.ResourceApplied("TCPRoute", "tcp-app-1", routeYaml, 1)
 
 			By("verifying TCPRoute is functional")
 			s.HTTPOverTCPConnectAssert(true, time.Second*10) // should be able to connect
@@ -157,7 +135,7 @@ spec:
 				Method:   "GET",
 				Path:     "/get",
 				Check:    scaffold.WithExpectedStatus(200),
-				Timeout:  time.Minute * 30,
+				Timeout:  time.Second * 60,
 				Interval: time.Second * 2,
 			})
 
