@@ -18,6 +18,7 @@
 package scaffold
 
 import (
+	"bytes"
 	"cmp"
 	"context"
 	"encoding/base64"
@@ -338,6 +339,11 @@ func (s *Scaffold) GetGatewayYaml() string {
 	return fmt.Sprintf(gatewayYaml, s.Namespace(), s.Namespace())
 }
 
+type WebhookData struct {
+	Namespace string
+	CABundle  string
+}
+
 func (s *Scaffold) SetupWebhookResources() error {
 	// Generate TLS certificates
 	caCert, serverCert, serverKey, _, _ := s.GenerateMACert(s.GinkgoT, []string{fmt.Sprintf("webhook-service.%s.svc", s.Namespace())})
@@ -347,28 +353,16 @@ func (s *Scaffold) SetupWebhookResources() error {
 		return err
 	}
 
-	webhookConfigYAML := fmt.Sprintf(`
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingWebhookConfiguration
-metadata:
-  name: test-webhook-%s
-webhooks:
-- name: vingress-v1.kb.io
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: %s
-      path: /validate-networking-k8s-io-v1-ingress
-    caBundle: %s
-  rules:
-  - operations: ["CREATE", "UPDATE"]
-    apiGroups: ["networking.k8s.io"]
-    apiVersions: ["v1"]
-    resources: ["ingresses"]
-  failurePolicy: Fail
-  sideEffects: None
-  admissionReviewVersions: ["v1"]
-`, s.Namespace(), s.Namespace(), base64.StdEncoding.EncodeToString(caCert.Bytes()))
+	data := WebhookData{
+		Namespace: s.Namespace(),
+		CABundle:  base64.StdEncoding.EncodeToString(caCert.Bytes()),
+	}
 
-	return s.CreateResourceFromStringWithNamespace(webhookConfigYAML, "")
+	var buf bytes.Buffer
+	err = framework.ValidatingWebhookTpl.Execute(&buf, data)
+	if err != nil {
+		return err
+	}
+
+	return s.CreateResourceFromStringWithNamespace(buf.String(), "")
 }
