@@ -71,7 +71,7 @@ func (r *GRPCRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&gatewayv1.GRPCRoute{}).
 		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Watches(&discoveryv1.EndpointSlice{},
-			handler.EnqueueRequestsFromMapFunc(r.listGRPCRoutesByServiceBef),
+			handler.EnqueueRequestsFromMapFunc(r.listGRPCRoutesByServiceRef),
 		).
 		Watches(&v1alpha1.PluginConfig{},
 			handler.EnqueueRequestsFromMapFunc(r.listGRPCRoutesByExtensionRef),
@@ -263,7 +263,7 @@ func (r *GRPCRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	return ctrl.Result{}, nil
 }
 
-func (r *GRPCRouteReconciler) listGRPCRoutesByServiceBef(ctx context.Context, obj client.Object) []reconcile.Request {
+func (r *GRPCRouteReconciler) listGRPCRoutesByServiceRef(ctx context.Context, obj client.Object) []reconcile.Request {
 	endpointSlice, ok := obj.(*discoveryv1.EndpointSlice)
 	if !ok {
 		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to EndpointSlice")

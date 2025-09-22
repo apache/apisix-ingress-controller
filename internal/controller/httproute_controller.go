@@ -77,7 +77,7 @@ func (r *HTTPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&gatewayv1.HTTPRoute{}).
 		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Watches(&discoveryv1.EndpointSlice{},
-			handler.EnqueueRequestsFromMapFunc(r.listHTTPRoutesByServiceBef),
+			handler.EnqueueRequestsFromMapFunc(r.listHTTPRoutesByServiceRef),
 		).
 		Watches(&v1alpha1.PluginConfig{},
 			handler.EnqueueRequestsFromMapFunc(r.listHTTPRoutesByExtensionRef),
@@ -260,7 +260,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	return ctrl.Result{}, nil
 }
 
-func (r *HTTPRouteReconciler) listHTTPRoutesByServiceBef(ctx context.Context, obj client.Object) []reconcile.Request {
+func (r *HTTPRouteReconciler) listHTTPRoutesByServiceRef(ctx context.Context, obj client.Object) []reconcile.Request {
 	endpointSlice, ok := obj.(*discoveryv1.EndpointSlice)
 	if !ok {
 		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to EndpointSlice")
