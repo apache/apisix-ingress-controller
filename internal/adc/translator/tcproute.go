@@ -67,7 +67,7 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 			if len(upNodes) == 0 {
 				continue
 			}
-			//TODO: Confirm BackendTrafficPolicy attachment with e2e test case.
+			// TODO: Confirm BackendTrafficPolicy attachment with e2e test case.
 			t.AttachBackendTrafficPolicyToUpstream(backend, tctx.BackendTrafficPolicies, upstream)
 			upstream.Nodes = upNodes
 			var (
