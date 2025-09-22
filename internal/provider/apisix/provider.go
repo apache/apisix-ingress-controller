@@ -184,6 +184,9 @@ func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 	case *gatewayv1.HTTPRoute, *apiv2.ApisixRoute:
 		resourceTypes = append(resourceTypes, adctypes.TypeService)
 		labels = label.GenLabel(obj)
+	case *gatewayv1alpha2.TCPRoute:
+		resourceTypes = append(resourceTypes, adctypes.TypeService)
+		labels = label.GenLabel(obj)
 	case *gatewayv1.Gateway:
 		// delete all resources
 	case *networkingv1.Ingress:
