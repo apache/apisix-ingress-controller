@@ -791,7 +791,7 @@ func HeaderMatchToVars(matchType, name, value string) ([]adctypes.StringOrSlice,
 			StrVal: "~~",
 		})
 	default:
-		return nil, errors.New("unknown header match type " + string(matchType))
+		return nil, errors.New("unknown header match type " + matchType)
 	}
 
 	this = append(this, adctypes.StringOrSlice{

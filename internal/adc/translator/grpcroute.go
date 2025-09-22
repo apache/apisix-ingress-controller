@@ -335,7 +335,6 @@ func (t *Translator) translateGatewayGRPCRouteMatch(match *gatewayv1.GRPCRouteMa
 
 	uri := t.translateGRPCURI(service, method)
 	route.Uris = append(route.Uris, uri)
-	//route.Methods = []string{"GET", "POST"}
 
 	if match.Headers != nil {
 		for _, header := range match.Headers {
