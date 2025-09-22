@@ -329,7 +329,7 @@ func (t *Translator) translateGatewayGRPCRouteMatch(match *gatewayv1.GRPCRouteMa
 		matchType := ptr.Deref(match.Method.Type, gatewayv1.GRPCMethodMatchExact)
 		if matchType == gatewayv1.GRPCMethodMatchExact &&
 			service == "" && method == "" {
-			return nil, fmt.Errorf("service and method cannot both be empty")
+			return nil, fmt.Errorf("service and method cannot both be empty for exact match type")
 		}
 	}
 

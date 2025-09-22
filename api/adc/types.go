@@ -521,7 +521,7 @@ func ComposeGRPCServiceNameWithRule(namespace, name string, rule string) string 
 
 func ComposeServicesNameWithScheme(namespace, name string, rule string, scheme string) string {
 	var p []byte
-	plen := len(namespace) + len(name) + len(scheme) + 3
+	plen := len(namespace) + len(name) + len(rule) + len(scheme) + 3
 
 	p = make([]byte, 0, plen)
 	buf := bytes.NewBuffer(p)
