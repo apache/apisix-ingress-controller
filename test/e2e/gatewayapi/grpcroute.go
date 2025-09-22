@@ -275,5 +275,15 @@ spec:
 				}).ShouldNot(HaveOccurred(), "request grpc backend")
 			}
 		})
+
+		// TODO: add GRPCRoute RequestMirror test
+		/*
+			It("GRPCRoute RequestMirror", func() {})
+		*/
 	})
+
+	// TODO: add BackendTrafficPolicy test
+	/*
+		Context("GRPCRoute With BackendTrafficPolicy", func() {})
+	*/
 })

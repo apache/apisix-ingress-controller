@@ -276,7 +276,7 @@ func (r *GRPCRouteReconciler) listGRPCRoutesByServiceBef(ctx context.Context, ob
 	if err := r.List(ctx, gList, client.MatchingFields{
 		indexer.ServiceIndexRef: indexer.GenIndexKey(namespace, serviceName),
 	}); err != nil {
-		r.Log.Error(err, "failed to list grocroutes by service", "service", serviceName)
+		r.Log.Error(err, "failed to list grpcroutes by service", "service", serviceName)
 		return nil
 	}
 	requests := make([]reconcile.Request, 0, len(gList.Items))
@@ -314,7 +314,7 @@ func (r *GRPCRouteReconciler) listGRPCRoutesForBackendTrafficPolicy(ctx context.
 		if err := r.List(ctx, grList, client.MatchingFields{
 			indexer.ServiceIndexRef: indexer.GenIndexKey(policy.Namespace, string(targetRef.Name)),
 		}); err != nil {
-			r.Log.Error(err, "failed to list grocroutes by service reference", "service", targetRef.Name)
+			r.Log.Error(err, "failed to list grpcroutes by service reference", "service", targetRef.Name)
 			return nil
 		}
 		grpcRouteList = append(grpcRouteList, grList.Items...)
@@ -348,7 +348,7 @@ func (r *GRPCRouteReconciler) listGRPCRoutesForGateway(ctx context.Context, obj 
 	if err := r.List(ctx, grList, client.MatchingFields{
 		indexer.ParentRefs: indexer.GenIndexKey(gateway.Namespace, gateway.Name),
 	}); err != nil {
-		r.Log.Error(err, "failed to list grocroutes by gateway", "gateway", gateway.Name)
+		r.Log.Error(err, "failed to list grpcroutes by gateway", "gateway", gateway.Name)
 		return nil
 	}
 	requests := make([]reconcile.Request, 0, len(grList.Items))
@@ -533,7 +533,7 @@ func (r *GRPCRouteReconciler) listGRPCRoutesForGatewayProxy(ctx context.Context,
 		if err := r.List(ctx, grpcRouteList, client.MatchingFields{
 			indexer.ParentRefs: indexer.GenIndexKey(gateway.Namespace, gateway.Name),
 		}); err != nil {
-			r.Log.Error(err, "failed to list grocroutes for gateway", "gateway", gateway.Name)
+			r.Log.Error(err, "failed to list grpcroutes for gateway", "gateway", gateway.Name)
 			continue
 		}
 
@@ -559,7 +559,7 @@ func (r *GRPCRouteReconciler) listGRPCRoutesForReferenceGrant(ctx context.Contex
 
 	var grpcRouteList gatewayv1.GRPCRouteList
 	if err := r.List(ctx, &grpcRouteList); err != nil {
-		r.Log.Error(err, "failed to list grocroutes for reference ReferenceGrant", "ReferenceGrant", k8stypes.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()})
+		r.Log.Error(err, "failed to list grpcroutes for reference ReferenceGrant", "ReferenceGrant", k8stypes.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()})
 		return nil
 	}
 
