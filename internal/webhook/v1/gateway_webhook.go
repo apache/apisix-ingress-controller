@@ -29,7 +29,8 @@ import (
 	gatewaynetworkingk8siov1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	v1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
-	"github.com/apache/apisix-ingress-controller/internal/controller"
+	"github.com/apache/apisix-ingress-controller/internal/controller/config"
+	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
 
 // nolint:unused
@@ -92,12 +93,23 @@ func (v *GatewayCustomValidator) ValidateDelete(_ context.Context, obj runtime.O
 func (v *GatewayCustomValidator) warnIfMissingGatewayProxyForGateway(ctx context.Context, gateway *gatewaynetworkingk8siov1.Gateway) admission.Warnings {
 	var warnings admission.Warnings
 
+	// get gateway class
+	gatewayClass := &gatewaynetworkingk8siov1.GatewayClass{}
+	if err := v.Client.Get(ctx, client.ObjectKey{Name: string(gateway.Spec.GatewayClassName)}, gatewayClass); err != nil {
+		gatewaylog.Error(err, "failed to get gateway class", "gateway", gateway.GetName(), "gatewayclass", gateway.Spec.GatewayClassName)
+		return nil
+	}
+	// match controller
+	if string(gatewayClass.Spec.ControllerName) != config.ControllerConfig.ControllerName {
+		return nil
+	}
+
 	infra := gateway.Spec.Infrastructure
 	if infra == nil || infra.ParametersRef == nil {
 		return nil
 	}
 	ref := infra.ParametersRef
-	if string(ref.Group) != v1alpha1.GroupVersion.Group || string(ref.Kind) != controller.KindGatewayProxy {
+	if string(ref.Group) != v1alpha1.GroupVersion.Group || string(ref.Kind) != internaltypes.KindGatewayProxy {
 		return nil
 	}
 

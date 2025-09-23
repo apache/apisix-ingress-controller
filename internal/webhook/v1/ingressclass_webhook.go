@@ -29,7 +29,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	v1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
-	"github.com/apache/apisix-ingress-controller/internal/controller"
+	"github.com/apache/apisix-ingress-controller/internal/controller/config"
+	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
 
 // nolint:unused
@@ -92,11 +93,16 @@ func (v *IngressClassCustomValidator) ValidateDelete(_ context.Context, obj runt
 func (v *IngressClassCustomValidator) warnIfMissingGatewayProxyForIngressClass(ctx context.Context, ingressClass *networkingv1.IngressClass) admission.Warnings {
 	var warnings admission.Warnings
 
+	// match controller
+	if ingressClass.Spec.Controller != config.ControllerConfig.ControllerName {
+		return nil
+	}
+
 	params := ingressClass.Spec.Parameters
 	if params == nil || params.APIGroup == nil {
 		return nil
 	}
-	if *params.APIGroup != v1alpha1.GroupVersion.Group || params.Kind != controller.KindGatewayProxy {
+	if *params.APIGroup != v1alpha1.GroupVersion.Group || params.Kind != internaltypes.KindGatewayProxy {
 		return nil
 	}
 
