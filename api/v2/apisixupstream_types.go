@@ -118,7 +118,6 @@ type ApisixUpstreamConfig struct {
 	Timeout *UpstreamTimeout `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 
 	// HealthCheck defines the active and passive health check configuration for the upstream.
-	// Deprecated: no longer supported in standalone mode.
 	// +kubebuilder:validation:Optional
 	HealthCheck *HealthCheck `json:"healthCheck,omitempty" yaml:"healthCheck,omitempty"`
 
@@ -221,9 +220,11 @@ type Discovery struct {
 
 // ActiveHealthCheck defines the active upstream health check configuration.
 type ActiveHealthCheck struct {
+	// Type is the health check type. Can be `http`, `https`, or `tcp`.
+	//
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Enum=http;https;tcp;
-	// Type is the health check type. Can be `http`, `https`, or `tcp`.
+	// +kubebuilder:default=http
 	Type string `json:"type,omitempty" yaml:"type,omitempty"`
 	// Timeout sets health check timeout in seconds.
 	Timeout time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
@@ -254,6 +255,10 @@ type ActiveHealthCheck struct {
 type PassiveHealthCheck struct {
 	// Type specifies the type of passive health check.
 	// Can be `http`, `https`, or `tcp`.
+	//
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum=http;https;tcp;
+	// +kubebuilder:default=http
 	Type string `json:"type,omitempty" yaml:"type,omitempty"`
 	// Healthy defines the conditions under which an upstream node is considered healthy.
 	Healthy *PassiveHealthCheckHealthy `json:"healthy,omitempty" yaml:"healthy,omitempty"`

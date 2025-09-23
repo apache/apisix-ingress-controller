@@ -1320,7 +1320,7 @@ ApisixUpstreamConfig defines configuration for upstream services.
 | `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. Can be `http`, `https`, `grpc`, or `grpcs`. |
 | `retries` _integer_ | Retries defines the number of retry attempts APISIX should make when a failure occurs. Failures include timeouts, network errors, or 5xx status codes. |
 | `timeout` _[UpstreamTimeout](#upstreamtimeout)_ | Timeout specifies the connection, send, and read timeouts for upstream requests. |
-| `healthCheck` _[HealthCheck](#healthcheck)_ | HealthCheck defines the active and passive health check configuration for the upstream. Deprecated: no longer supported in standalone mode. |
+| `healthCheck` _[HealthCheck](#healthcheck)_ | HealthCheck defines the active and passive health check configuration for the upstream. |
 | `tlsSecret` _[ApisixSecret](#apisixsecret)_ | TLSSecret references a Kubernetes Secret that contains the client certificate and key for mutual TLS when connecting to the upstream. |
 | `subsets` _[ApisixUpstreamSubset](#apisixupstreamsubset) array_ | Subsets defines labeled subsets of service endpoints, typically used for service versioning or canary deployments. |
 | `passHost` _string_ | PassHost configures how the host header should be determined when a request is forwarded to the upstream. Default is `pass`. Can be `pass`, `node` or `rewrite`:<br /> • `pass`: preserve the original Host header<br /> • `node`: use the upstream node’s host<br /> • `rewrite`: set to a custom host via upstreamHost |
@@ -1380,7 +1380,7 @@ definitions and custom configuration.
 | `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. Can be `http`, `https`, `grpc`, or `grpcs`. |
 | `retries` _integer_ | Retries defines the number of retry attempts APISIX should make when a failure occurs. Failures include timeouts, network errors, or 5xx status codes. |
 | `timeout` _[UpstreamTimeout](#upstreamtimeout)_ | Timeout specifies the connection, send, and read timeouts for upstream requests. |
-| `healthCheck` _[HealthCheck](#healthcheck)_ | HealthCheck defines the active and passive health check configuration for the upstream. Deprecated: no longer supported in standalone mode. |
+| `healthCheck` _[HealthCheck](#healthcheck)_ | HealthCheck defines the active and passive health check configuration for the upstream. |
 | `tlsSecret` _[ApisixSecret](#apisixsecret)_ | TLSSecret references a Kubernetes Secret that contains the client certificate and key for mutual TLS when connecting to the upstream. |
 | `subsets` _[ApisixUpstreamSubset](#apisixupstreamsubset) array_ | Subsets defines labeled subsets of service endpoints, typically used for service versioning or canary deployments. |
 | `passHost` _string_ | PassHost configures how the host header should be determined when a request is forwarded to the upstream. Default is `pass`. Can be `pass`, `node` or `rewrite`:<br /> • `pass`: preserve the original Host header<br /> • `node`: use the upstream node’s host<br /> • `rewrite`: set to a custom host via upstreamHost |
@@ -1550,7 +1550,7 @@ them if they are set on the port level.
 | `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. Can be `http`, `https`, `grpc`, or `grpcs`. |
 | `retries` _integer_ | Retries defines the number of retry attempts APISIX should make when a failure occurs. Failures include timeouts, network errors, or 5xx status codes. |
 | `timeout` _[UpstreamTimeout](#upstreamtimeout)_ | Timeout specifies the connection, send, and read timeouts for upstream requests. |
-| `healthCheck` _[HealthCheck](#healthcheck)_ | HealthCheck defines the active and passive health check configuration for the upstream. Deprecated: no longer supported in standalone mode. |
+| `healthCheck` _[HealthCheck](#healthcheck)_ | HealthCheck defines the active and passive health check configuration for the upstream. |
 | `tlsSecret` _[ApisixSecret](#apisixsecret)_ | TLSSecret references a Kubernetes Secret that contains the client certificate and key for mutual TLS when connecting to the upstream. |
 | `subsets` _[ApisixUpstreamSubset](#apisixupstreamsubset) array_ | Subsets defines labeled subsets of service endpoints, typically used for service versioning or canary deployments. |
 | `passHost` _string_ | PassHost configures how the host header should be determined when a request is forwarded to the upstream. Default is `pass`. Can be `pass`, `node` or `rewrite`:<br /> • `pass`: preserve the original Host header<br /> • `node`: use the upstream node’s host<br /> • `rewrite`: set to a custom host via upstreamHost |

@@ -39,6 +39,7 @@ func (t *Translator) translateApisixUpstream(tctx *provider.TranslateContext, au
 		translateApisixUpstreamLoadBalancer,
 		translateApisixUpstreamRetriesAndTimeout,
 		translateApisixUpstreamPassHost,
+		translateUpstreamHealthCheck,
 	} {
 		if err = f(au, ups); err != nil {
 			return
@@ -251,4 +252,119 @@ func translateApisixUpstreamExternalNodesService(tctx *provider.TranslateContext
 	ups.Nodes = append(ups.Nodes, n)
 
 	return nil
+}
+
+func translateUpstreamHealthCheck(au *apiv2.ApisixUpstream, ups *adc.Upstream) error {
+	if au == nil {
+		return nil
+	}
+	healcheck := au.Spec.HealthCheck
+	if healcheck == nil || (healcheck.Passive == nil && healcheck.Active == nil) {
+		return nil
+	}
+	var hc adc.UpstreamHealthCheck
+	if healcheck.Passive != nil {
+		passive, err := translateUpstreamPassiveHealthCheck(healcheck.Passive)
+		if err != nil {
+			return err
+		}
+		hc.Passive = passive
+	}
+
+	if healcheck.Active != nil {
+		active, err := translateUpstreamActiveHealthCheck(healcheck.Active)
+		if err != nil {
+			return err
+		}
+		hc.Active = active
+	}
+
+	ups.Checks = &hc
+	return nil
+}
+
+func translateUpstreamActiveHealthCheck(config *apiv2.ActiveHealthCheck) (*adc.UpstreamActiveHealthCheck, error) {
+	var active adc.UpstreamActiveHealthCheck
+	switch config.Type {
+	case apiv2.HealthCheckHTTP, apiv2.HealthCheckHTTPS, apiv2.HealthCheckTCP:
+		active.Type = config.Type
+	case "":
+		active.Type = apiv2.HealthCheckHTTP
+	default:
+		return nil, fmt.Errorf(`"healthCheck.active.Type" has invalid value`)
+	}
+
+	active.Timeout = int(config.Timeout.Seconds())
+	active.Port = config.Port
+	active.Concurrency = config.Concurrency
+	active.Host = config.Host
+	active.HTTPPath = config.HTTPPath
+	active.HTTPRequestHeaders = config.RequestHeaders
+
+	if config.StrictTLS == nil || *config.StrictTLS {
+		active.HTTPSVerifyCert = true
+	}
+
+	if config.Healthy != nil {
+		active.Healthy.Successes = config.Healthy.Successes
+		active.Healthy.HTTPStatuses = config.Healthy.HTTPCodes
+
+		if config.Healthy.Interval.Duration < apiv2.ActiveHealthCheckMinInterval {
+			return nil, fmt.Errorf(`"healthCheck.active.healthy.interval" has invalid value`)
+		}
+		active.Healthy.Interval = int(config.Healthy.Interval.Seconds())
+	}
+
+	if config.Unhealthy != nil {
+		if config.Unhealthy.HTTPFailures < 0 || config.Unhealthy.HTTPFailures > apiv2.HealthCheckMaxConsecutiveNumber {
+			return nil, fmt.Errorf(`"healthCheck.active.unhealthy.httpFailures" has invalid value`)
+		}
+		active.Unhealthy.HTTPFailures = config.Unhealthy.HTTPFailures
+
+		if config.Unhealthy.TCPFailures < 0 || config.Unhealthy.TCPFailures > apiv2.HealthCheckMaxConsecutiveNumber {
+			return nil, fmt.Errorf(`"healthCheck.active.unhealthy.tcpFailures" has invalid value`)
+		}
+		active.Unhealthy.TCPFailures = config.Unhealthy.TCPFailures
+		active.Unhealthy.Timeouts = config.Unhealthy.Timeouts
+
+		if config.Unhealthy.HTTPCodes != nil && len(config.Unhealthy.HTTPCodes) < 1 {
+			return nil, fmt.Errorf(`"healthCheck.active.unhealthy.httpCodes" is empty`)
+		}
+		active.Unhealthy.HTTPStatuses = config.Unhealthy.HTTPCodes
+
+		if config.Unhealthy.Interval.Duration < apiv2.ActiveHealthCheckMinInterval {
+			return nil, fmt.Errorf(`"healthCheck.active.unhealthy.interval" has invalid value`)
+		}
+		active.Unhealthy.Interval = int(config.Unhealthy.Interval.Seconds())
+	}
+
+	if config.Unhealthy.Timeouts < 0 {
+		return nil, fmt.Errorf(`"healthCheck.active.unhealthy.timeouts" has invalid value`)
+	}
+
+	return &active, nil
+}
+
+func translateUpstreamPassiveHealthCheck(config *apiv2.PassiveHealthCheck) (*adc.UpstreamPassiveHealthCheck, error) {
+	var passive adc.UpstreamPassiveHealthCheck
+	switch config.Type {
+	case apiv2.HealthCheckHTTP, apiv2.HealthCheckHTTPS, apiv2.HealthCheckTCP:
+		passive.Type = config.Type
+	case "":
+		passive.Type = apiv2.HealthCheckHTTP
+	default:
+		return nil, fmt.Errorf(`"healthCheck.passive.Type" has invalid value`)
+	}
+	if config.Healthy != nil {
+		passive.Healthy.Successes = config.Healthy.Successes
+		passive.Healthy.HTTPStatuses = config.Healthy.HTTPCodes
+	}
+
+	if config.Unhealthy != nil {
+		passive.Unhealthy.HTTPFailures = config.Unhealthy.HTTPFailures
+		passive.Unhealthy.TCPFailures = config.Unhealthy.TCPFailures
+		passive.Unhealthy.Timeouts = config.Unhealthy.Timeouts
+		passive.Unhealthy.HTTPStatuses = config.Unhealthy.HTTPCodes
+	}
+	return &passive, nil
 }
