@@ -144,6 +144,41 @@ func (d *apisixProvider) updateStatus(nnk types.NamespacedNameKind, condition me
 				return cp
 			}),
 		})
+	case types.KindGRPCRoute:
+		parentRefs := d.client.ConfigManager.GetConfigRefsByResourceKey(nnk)
+		log.Debugw("updating GRPCRoute status", zap.Any("parentRefs", parentRefs))
+		gatewayRefs := map[types.NamespacedNameKind]struct{}{}
+		for _, parentRef := range parentRefs {
+			if parentRef.Kind == types.KindGateway {
+				gatewayRefs[parentRef] = struct{}{}
+			}
+		}
+		d.updater.Update(status.Update{
+			NamespacedName: nnk.NamespacedName(),
+			Resource:       &gatewayv1.GRPCRoute{},
+			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
+				cp := obj.(*gatewayv1.GRPCRoute).DeepCopy()
+				gatewayNs := cp.GetNamespace()
+				for i, ref := range cp.Status.Parents {
+					ns := gatewayNs
+					if ref.ParentRef.Namespace != nil {
+						ns = string(*ref.ParentRef.Namespace)
+					}
+					if ref.ParentRef.Kind == nil || *ref.ParentRef.Kind == types.KindGateway {
+						nnk := types.NamespacedNameKind{
+							Name:      string(ref.ParentRef.Name),
+							Namespace: ns,
+							Kind:      types.KindGateway,
+						}
+						if _, ok := gatewayRefs[nnk]; ok {
+							ref.Conditions = cutils.MergeCondition(ref.Conditions, condition)
+							cp.Status.Parents[i] = ref
+						}
+					}
+				}
+				return cp
+			}),
+		})
 	}
 }
 

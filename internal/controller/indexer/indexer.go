@@ -55,6 +55,7 @@ func SetupIndexer(mgr ctrl.Manager) error {
 	for _, setup := range []func(ctrl.Manager) error{
 		setupGatewayIndexer,
 		setupHTTPRouteIndexer,
+		setupGRPCRouteIndexer,
 		setupIngressIndexer,
 		setupConsumerIndexer,
 		setupBackendTrafficPolicyIndexer,
