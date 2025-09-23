@@ -362,3 +362,11 @@ func (t *Translator) translateGRPCURI(service, method string) string {
 	}
 	return uri
 }
+
+func (t *Translator) translateGRPCRouteHeaderMatchToVars(header gatewayv1.GRPCHeaderMatch) ([]adctypes.StringOrSlice, error) {
+	var matchType string
+	if header.Type != nil {
+		matchType = string(*header.Type)
+	}
+	return HeaderMatchToVars(matchType, string(header.Name), header.Value)
+}

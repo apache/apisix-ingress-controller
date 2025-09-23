@@ -807,11 +807,3 @@ func (t *Translator) translateHTTPRouteHeaderMatchToVars(header gatewayv1.HTTPHe
 	}
 	return HeaderMatchToVars(matchType, string(header.Name), header.Value)
 }
-
-func (t *Translator) translateGRPCRouteHeaderMatchToVars(header gatewayv1.GRPCHeaderMatch) ([]adctypes.StringOrSlice, error) {
-	var matchType string
-	if header.Type != nil {
-		matchType = string(*header.Type)
-	}
-	return HeaderMatchToVars(matchType, string(header.Name), header.Value)
-}
