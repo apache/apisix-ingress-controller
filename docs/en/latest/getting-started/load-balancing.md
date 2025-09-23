@@ -187,6 +187,7 @@ metadata:
   namespace: ingress-apisix
   name: httpbin-external-domain
 spec:
+  ingressClassName: apisix
   scheme: https
   passHost: node
   externalNodes:
@@ -201,6 +202,7 @@ metadata:
   namespace: ingress-apisix
   name: mockapi7-external-domain
 spec:
+  ingressClassName: apisix
   scheme: https
   passHost: node
   externalNodes:
