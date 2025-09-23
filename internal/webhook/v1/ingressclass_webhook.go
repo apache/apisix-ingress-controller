@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	v1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	"github.com/apache/apisix-ingress-controller/internal/controller"
 )
 
 // nolint:unused
@@ -42,9 +43,6 @@ func SetupIngressClassWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// TODO(user): EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-
-// TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
 // NOTE: The 'path' attribute must follow a specific pattern and should not be modified directly here.
 // Modifying the path for an invalid path can cause API server errors; failing to locate the webhook.
 // +kubebuilder:webhook:path=/validate-networking-k8s-io-v1-ingressclass,mutating=false,failurePolicy=fail,sideEffects=None,groups=networking.k8s.io,resources=ingressclasses,verbs=create;update,versions=v1,name=vingressclass-v1.kb.io,admissionReviewVersions=v1
@@ -88,14 +86,6 @@ func (v *IngressClassCustomValidator) ValidateUpdate(ctx context.Context, oldObj
 
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type IngressClass.
 func (v *IngressClassCustomValidator) ValidateDelete(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-	ingressclass, ok := obj.(*networkingv1.IngressClass)
-	if !ok {
-		return nil, fmt.Errorf("expected a IngressClass object but got %T", obj)
-	}
-	ingressclasslog.Info("Validation for IngressClass upon deletion", "name", ingressclass.GetName())
-
-	// TODO(user): fill in your validation logic upon object deletion.
-
 	return nil, nil
 }
 
@@ -106,7 +96,7 @@ func (v *IngressClassCustomValidator) warnIfMissingGatewayProxyForIngressClass(c
 	if params == nil || params.APIGroup == nil {
 		return nil
 	}
-	if *params.APIGroup != v1alpha1.GroupVersion.Group || params.Kind != "GatewayProxy" {
+	if *params.APIGroup != v1alpha1.GroupVersion.Group || params.Kind != controller.KindGatewayProxy {
 		return nil
 	}
 

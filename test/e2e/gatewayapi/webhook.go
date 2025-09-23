@@ -82,5 +82,13 @@ spec:
 		output, err = s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(gwYAML, s.Namespace(), s.Namespace(), existingName))
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced GatewayProxy '%s/%s' not found.", s.Namespace(), existingName)))
+
+		By("delete Gateway")
+		err = s.DeleteResource("Gateway", s.Namespace())
+		Expect(err).ShouldNot(HaveOccurred())
+
+		By("delete GatewayClass")
+		err = s.DeleteResource("GatewayClass", s.Namespace())
+		Expect(err).ShouldNot(HaveOccurred())
 	})
 })
