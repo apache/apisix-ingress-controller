@@ -113,7 +113,7 @@ func (v *GatewayCustomValidator) warnIfMissingGatewayProxyForGateway(ctx context
 
 	// GatewayProxy is namespaced; Gateway doesn't carry namespace in ParametersRef, use Gateway's namespace
 	ns := gateway.GetNamespace()
-	name := string(ref.Name)
+	name := ref.Name
 
 	var gp v1alpha1.GatewayProxy
 	if err := v.Client.Get(ctx, client.ObjectKey{Namespace: ns, Name: name}, &gp); err != nil {
