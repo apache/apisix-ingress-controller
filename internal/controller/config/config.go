@@ -56,6 +56,7 @@ func NewDefaultConfig() *Config {
 			SyncPeriod:    types.TimeDuration{Duration: 1 * time.Hour},
 			InitSyncDelay: types.TimeDuration{Duration: 20 * time.Minute},
 		},
+		Webhook: NewWebhookConfig(),
 	}
 }
 
@@ -65,6 +66,16 @@ func NewLeaderElection() *LeaderElection {
 		RenewDeadline: types.TimeDuration{Duration: 20 * time.Second},
 		RetryPeriod:   types.TimeDuration{Duration: 2 * time.Second},
 		Disable:       false,
+	}
+}
+
+func NewWebhookConfig() *WebhookConfig {
+	return &WebhookConfig{
+		Enable:      false,
+		TLSCertFile: DefaultWebhookTLSCert,
+		TLSKeyFile:  DefaultWebhookTLSKey,
+		TLSCertDir:  DefaultWebhookTLSCertDir,
+		Port:        DefaultWebhookPort,
 	}
 }
 
@@ -114,6 +125,9 @@ func (c *Config) Validate() error {
 	if err := validateProvider(c.ProviderConfig); err != nil {
 		return err
 	}
+	if err := validateWebhook(c.Webhook); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -131,4 +145,26 @@ func validateProvider(config ProviderConfig) error {
 
 func GetControllerName() string {
 	return ControllerConfig.ControllerName
+}
+
+func validateWebhook(config *WebhookConfig) error {
+	if config == nil {
+		return nil
+	}
+	if config.Enable {
+		if config.Port <= 0 {
+			return fmt.Errorf("port must be greater than 0 for webhook")
+		}
+		if config.TLSCertFile == "" {
+			return fmt.Errorf("tls_cert_file is required for webhook")
+		}
+		if config.TLSKeyFile == "" {
+			return fmt.Errorf("tls_key_file is required for webhook")
+		}
+		if config.TLSCertDir == "" {
+			return fmt.Errorf("tls_cert_dir is required for webhook")
+		}
+	}
+
+	return nil
 }

@@ -81,43 +81,9 @@ rules:
   - ""
   resources:
   - namespaces
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - services
   - pods
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - coordination.k8s.io
-  resources:
-  - leases
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - discovery.k8s.io
-  resources:
-  - endpointslices
+  - secrets
+  - services
   verbs:
   - get
   - list
@@ -156,6 +122,26 @@ rules:
   - get
   - update
 - apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - discovery.k8s.io
+  resources:
+  - endpointslices
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - gateway.networking.k8s.io
   resources:
   - gatewayclasses
@@ -168,6 +154,10 @@ rules:
   - gateway.networking.k8s.io
   resources:
   - gatewayclasses/status
+  - gateways/status
+  - grpcroutes/status
+  - httproutes/status
+  - referencegrants/status
   verbs:
   - get
   - update
@@ -175,21 +165,7 @@ rules:
   - gateway.networking.k8s.io
   resources:
   - gateways
-  verbs:
-  - get
-  - list
-  - update
-  - watch
-- apiGroups:
-  - gateway.networking.k8s.io
-  resources:
-  - gateways/status
-  verbs:
-  - get
-  - update
-- apiGroups:
-  - gateway.networking.k8s.io
-  resources:
+  - grpcroutes
   - httproutes
   - tcproutes
   verbs:
@@ -213,27 +189,13 @@ rules:
   - list
   - watch
 - apiGroups:
-  - gateway.networking.k8s.io
-  resources:
-  - referencegrants/status
-  verbs:
-  - get
-- apiGroups:
   - networking.k8s.io
   resources:
   - ingressclasses
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - networking.k8s.io
-  resources:
   - ingresses
   verbs:
   - get
   - list
-  - update
   - watch
 - apiGroups:
   - networking.k8s.io
@@ -345,6 +307,10 @@ data:
                                         # The default value is 0 seconds, which means the controller will not sync.
                                         # If you want to enable the sync, set it to a positive value.
       init_sync_delay: {{ .InitSyncDelay | default "20m" }}
+    webhook:
+      enable: {{ .WebhookEnable | default false }}
+      port: {{ .WebhookPort | default 9443 }}
+      tls_cert_dir: "/tmp/certs"
 ---
 apiVersion: v1
 kind: Service
@@ -403,6 +369,11 @@ spec:
         - name: ingress-config
           mountPath: /app/conf/config.yaml
           subPath: config.yaml
+        {{ if .WebhookEnable -}}
+        - name: webhook-certs
+          mountPath: /tmp/certs
+          readOnly: true
+        {{ end -}}
         livenessProbe:
           httpGet:
             path: /healthz
@@ -413,6 +384,9 @@ spec:
         ports:
         - name: metrics
           containerPort: 8080
+          protocol: TCP
+        - name: webhook-server
+          containerPort: 9443
           protocol: TCP
         readinessProbe:
           httpGet:
@@ -464,5 +438,30 @@ spec:
       - name: ingress-config
         configMap:
           name: ingress-config
+      {{ if .WebhookEnable -}}
+      - name: webhook-certs
+        secret:
+          secretName: webhook-server-certs
+          optional: true
+      {{ end -}}
       serviceAccountName: apisix-ingress-controller-manager
       terminationGracePeriodSeconds: 10
+{{ if .WebhookEnable -}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: apisix-ingress-controller
+    app.kubernetes.io/managed-by: kustomize
+  name: webhook-service
+  namespace: {{ .Namespace }}
+spec:
+  ports:
+    - port: 443
+      protocol: TCP
+      targetPort: 9443
+  selector:
+    control-plane: controller-manager
+    app: apisix-ingress-controller
+{{ end -}}

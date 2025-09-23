@@ -42,3 +42,15 @@ provider:
                                         # If you want to enable the sync, set it to a positive value.
   init_sync_delay: 20m                  # The initial delay before the first sync, only used when the controller is started.
                                         # The default value is 20 minutes.
+
+webhook:
+  enable: false                         # Whether to enable the webhook server.
+                                        # The default value is false.
+  tls_cert_file: "tls.crt"              # The filename within tls_cert_dir containing the webhook server TLS certificate.
+                                        # The default value is "tls.crt".
+  tls_key_file: "tls.key"               # The filename within tls_cert_dir containing the webhook server TLS private key.
+                                        # The default value is "tls.key".
+  tls_cert_dir: "/certs"                # The directory containing the webhook server TLS certificate files.
+                                        # The default value is "/certs".
+  port: 9443                            # The port for the webhook server to listen on.
+                                        # The default value is 9443.

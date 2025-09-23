@@ -1,0 +1,14 @@
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: httpbin
+spec:
+  ingressClassName: apisix
+  http:
+  - name: httpbin
+    match:
+      paths:
+      - /ip
+    backends:
+    - serviceName: httpbin
+      servicePort: http

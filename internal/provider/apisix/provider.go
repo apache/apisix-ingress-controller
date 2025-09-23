@@ -110,6 +110,8 @@ func (d *apisixProvider) Update(ctx context.Context, tctx *provider.TranslateCon
 		resourceTypes = append(resourceTypes, adctypes.TypeService)
 	case *gatewayv1alpha2.TCPRoute:
 		result, err = d.translator.TranslateTCPRoute(tctx, t.DeepCopy())
+	case *gatewayv1.GRPCRoute:
+		result, err = d.translator.TranslateGRPCRoute(tctx, t.DeepCopy())
 		resourceTypes = append(resourceTypes, adctypes.TypeService)
 	case *gatewayv1.Gateway:
 		result, err = d.translator.TranslateGateway(tctx, t.DeepCopy())
@@ -181,7 +183,7 @@ func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 	var resourceTypes []string
 	var labels map[string]string
 	switch obj.(type) {
-	case *gatewayv1.HTTPRoute, *apiv2.ApisixRoute:
+	case *gatewayv1.HTTPRoute, *apiv2.ApisixRoute, *gatewayv1.GRPCRoute:
 		resourceTypes = append(resourceTypes, adctypes.TypeService)
 		labels = label.GenLabel(obj)
 	case *gatewayv1alpha2.TCPRoute:

@@ -18,9 +18,12 @@
 package scaffold
 
 import (
+	"bytes"
 	"cmp"
 	"context"
+	"encoding/base64"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -45,6 +48,18 @@ import (
 // CreateResourceFromString creates resource from a loaded yaml string.
 func (s *Scaffold) CreateResourceFromString(yaml string) error {
 	return k8s.KubectlApplyFromStringE(s.t, s.kubectlOptions, yaml)
+}
+
+// CreateResourceFromStringAndGetOutput creates resource from a loaded yaml string and returns the output of the command.
+func (s *Scaffold) CreateResourceFromStringAndGetOutput(yaml string) (string, error) {
+	tmpfile, err := k8s.StoreConfigToTempFileE(s.t, yaml)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		_ = os.Remove(tmpfile)
+	}()
+	return k8s.RunKubectlAndGetOutputE(s.t, s.kubectlOptions, "apply", "-f", tmpfile)
 }
 
 func (s *Scaffold) DeleteResourceFromString(yaml string) error {
@@ -322,4 +337,32 @@ spec:
 
 func (s *Scaffold) GetGatewayYaml() string {
 	return fmt.Sprintf(gatewayYaml, s.Namespace(), s.Namespace())
+}
+
+type WebhookData struct {
+	Namespace string
+	CABundle  string
+}
+
+func (s *Scaffold) SetupWebhookResources() error {
+	// Generate TLS certificates
+	caCert, serverCert, serverKey, _, _ := s.GenerateMACert(s.GinkgoT, []string{fmt.Sprintf("webhook-service.%s.svc", s.Namespace())})
+
+	err := s.NewKubeTlsSecret("webhook-server-certs", serverCert.String(), serverKey.String())
+	if err != nil {
+		return err
+	}
+
+	data := WebhookData{
+		Namespace: s.Namespace(),
+		CABundle:  base64.StdEncoding.EncodeToString(caCert.Bytes()),
+	}
+
+	var buf bytes.Buffer
+	err = framework.ValidatingWebhookTpl.Execute(&buf, data)
+	if err != nil {
+		return err
+	}
+
+	return s.CreateResourceFromStringWithNamespace(buf.String(), "")
 }

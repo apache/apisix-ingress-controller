@@ -57,6 +57,7 @@ func SetupIndexer(mgr ctrl.Manager) error {
 		setupGatewayIndexer,
 		setupHTTPRouteIndexer,
 		setupTCPRouteIndexer,
+		setupGRPCRouteIndexer,
 		setupIngressIndexer,
 		setupConsumerIndexer,
 		setupBackendTrafficPolicyIndexer,

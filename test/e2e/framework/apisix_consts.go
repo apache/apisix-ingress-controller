@@ -42,6 +42,10 @@ var (
 
 	//go:embed manifests/etcd.yaml
 	EtcdSpec string
+
+	//go:embed manifests/webhook.yaml
+	validatingWebhookTemplate string
+	ValidatingWebhookTpl      *template.Template
 )
 
 var (
@@ -106,4 +110,10 @@ func init() {
 		panic(err)
 	}
 	APISIXStandaloneTpl = tpl
+
+	webhookTpl, err := template.New("validating-webhook").Funcs(sprig.TxtFuncMap()).Parse(validatingWebhookTemplate)
+	if err != nil {
+		panic(err)
+	}
+	ValidatingWebhookTpl = webhookTpl
 }

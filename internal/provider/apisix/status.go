@@ -21,18 +21,17 @@ import (
 	"fmt"
 	"strings"
 
+	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
+	"github.com/apache/apisix-ingress-controller/internal/controller/label"
+	"github.com/apache/apisix-ingress-controller/internal/controller/status"
+	cutils "github.com/apache/apisix-ingress-controller/internal/controller/utils"
+	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/api7/gopkg/pkg/log"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-
-	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
-	"github.com/apache/apisix-ingress-controller/internal/controller/label"
-	"github.com/apache/apisix-ingress-controller/internal/controller/status"
-	cutils "github.com/apache/apisix-ingress-controller/internal/controller/utils"
-	"github.com/apache/apisix-ingress-controller/internal/types"
 )
 
 // handleStatusUpdate updates resource conditions based on the latest sync results.
@@ -159,6 +158,41 @@ func (d *apisixProvider) updateStatus(nnk types.NamespacedNameKind, condition me
 			Resource:       &gatewayv1alpha2.TCPRoute{},
 			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
 				cp := obj.(*gatewayv1alpha2.TCPRoute).DeepCopy()
+				gatewayNs := cp.GetNamespace()
+				for i, ref := range cp.Status.Parents {
+					ns := gatewayNs
+					if ref.ParentRef.Namespace != nil {
+						ns = string(*ref.ParentRef.Namespace)
+					}
+					if ref.ParentRef.Kind == nil || *ref.ParentRef.Kind == types.KindGateway {
+						nnk := types.NamespacedNameKind{
+							Name:      string(ref.ParentRef.Name),
+							Namespace: ns,
+							Kind:      types.KindGateway,
+						}
+						if _, ok := gatewayRefs[nnk]; ok {
+							ref.Conditions = cutils.MergeCondition(ref.Conditions, condition)
+							cp.Status.Parents[i] = ref
+						}
+					}
+				}
+				return cp
+			}),
+		})
+	case types.KindGRPCRoute:
+		parentRefs := d.client.ConfigManager.GetConfigRefsByResourceKey(nnk)
+		log.Debugw("updating GRPCRoute status", zap.Any("parentRefs", parentRefs))
+		gatewayRefs := map[types.NamespacedNameKind]struct{}{}
+		for _, parentRef := range parentRefs {
+			if parentRef.Kind == types.KindGateway {
+				gatewayRefs[parentRef] = struct{}{}
+			}
+		}
+		d.updater.Update(status.Update{
+			NamespacedName: nnk.NamespacedName(),
+			Resource:       &gatewayv1.GRPCRoute{},
+			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
+				cp := obj.(*gatewayv1.GRPCRoute).DeepCopy()
 				gatewayNs := cp.GetNamespace()
 				for i, ref := range cp.Status.Parents {
 					ns := gatewayNs

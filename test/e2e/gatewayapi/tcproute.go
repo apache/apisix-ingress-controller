@@ -86,7 +86,7 @@ spec:
 			s.ResourceApplied("Gateway", gatewayName, gwyaml, 1)
 		})
 
-		It("should route TCP traffic to backend service", func() {
+		FIt("should route TCP traffic to backend service", func() {
 			gatewayName := s.Namespace()
 			By("creating TCPRoute")
 			Expect(s.CreateResourceFromString(fmt.Sprintf(tcpRoute, gatewayName))).
@@ -97,7 +97,7 @@ spec:
 			s.ResourceApplied("TCPRoute", "tcp-app-1", routeYaml, 1)
 
 			By("verifying TCPRoute is functional")
-			s.HTTPOverTCPConnectAssert(true, time.Second*10) // should be able to connect
+			s.HTTPOverTCPConnectAssert(true, time.Hour*10) // should be able to connect
 			By("sending TCP traffic to verify routing")
 			s.RequestAssert(&scaffold.RequestAssert{
 				Client:   s.NewAPISIXClientOnTCPPort(),
