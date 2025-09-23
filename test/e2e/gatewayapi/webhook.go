@@ -27,7 +27,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = Describe("Test Gateway Webhook", Label("networking.k8s.io", "gateway"), func() {
+var _ = Describe("Test Gateway Webhook", Label("webhook"), func() {
 	s := scaffold.NewScaffold(scaffold.Options{
 		Name:          "gateway-webhook-test",
 		EnableWebhook: true,

@@ -39,7 +39,7 @@ webhooks:
       - v1
     resources:
       - ingresses
-  failurePolicy: Ignore
+  failurePolicy: Fail
   sideEffects: None
 - name: vingressclass-v1.kb.io
   clientConfig:
@@ -60,7 +60,7 @@ webhooks:
         - v1
       resources:
         - ingressclasses
-  failurePolicy: Ignore
+  failurePolicy: Fail
   sideEffects: None
 - name: vgateway-v1.kb.io
   clientConfig:
@@ -81,5 +81,5 @@ webhooks:
         - v1
       resources:
         - gateways
-  failurePolicy: Ignore
+  failurePolicy: Fail
   sideEffects: None
