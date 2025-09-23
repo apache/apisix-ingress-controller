@@ -10,6 +10,26 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-gateway-networking-k8s-io-v1-gateway
+  failurePolicy: Fail
+  name: vgateway-v1.kb.io
+  rules:
+  - apiGroups:
+    - gateway.networking.k8s.io
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - gateways
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-networking-k8s-io-v1-ingress
   failurePolicy: Fail
   name: vingress-v1.kb.io
@@ -23,4 +43,24 @@ webhooks:
     - UPDATE
     resources:
     - ingresses
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-networking-k8s-io-v1-ingressclass
+  failurePolicy: Fail
+  name: vingressclass-v1.kb.io
+  rules:
+  - apiGroups:
+    - networking.k8s.io
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - ingressclasses
   sideEffects: None

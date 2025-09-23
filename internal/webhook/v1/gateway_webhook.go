@@ -16,19 +16,19 @@
 package v1
 
 import (
-    "context"
-    "fmt"
+	"context"
+	"fmt"
 
-    k8serrors "k8s.io/apimachinery/pkg/api/errors"
-    "k8s.io/apimachinery/pkg/runtime"
-    ctrl "sigs.k8s.io/controller-runtime"
-    "sigs.k8s.io/controller-runtime/pkg/client"
-    logf "sigs.k8s.io/controller-runtime/pkg/log"
-    "sigs.k8s.io/controller-runtime/pkg/webhook"
-    "sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-    gatewaynetworkingk8siov1 "sigs.k8s.io/gateway-api/apis/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
+	gatewaynetworkingk8siov1 "sigs.k8s.io/gateway-api/apis/v1"
 
-    v1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	v1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
 )
 
 // nolint:unused
@@ -37,9 +37,9 @@ var gatewaylog = logf.Log.WithName("gateway-resource")
 
 // SetupGatewayWebhookWithManager registers the webhook for Gateway in the manager.
 func SetupGatewayWebhookWithManager(mgr ctrl.Manager) error {
-    return ctrl.NewWebhookManagedBy(mgr).For(&gatewaynetworkingk8siov1.Gateway{}).
-        WithValidator(&GatewayCustomValidator{Client: mgr.GetClient()}).
-        Complete()
+	return ctrl.NewWebhookManagedBy(mgr).For(&gatewaynetworkingk8siov1.Gateway{}).
+		WithValidator(&GatewayCustomValidator{Client: mgr.GetClient()}).
+		Complete()
 }
 
 // TODO(user): EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -55,75 +55,75 @@ func SetupGatewayWebhookWithManager(mgr ctrl.Manager) error {
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
 // as this struct is used only for temporary operations and does not need to be deeply copied.
 type GatewayCustomValidator struct {
-    Client client.Client
+	Client client.Client
 }
 
 var _ webhook.CustomValidator = &GatewayCustomValidator{}
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type Gateway.
 func (v *GatewayCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-    gateway, ok := obj.(*gatewaynetworkingk8siov1.Gateway)
-    if !ok {
-        return nil, fmt.Errorf("expected a Gateway object but got %T", obj)
-    }
-    gatewaylog.Info("Validation for Gateway upon creation", "name", gateway.GetName())
+	gateway, ok := obj.(*gatewaynetworkingk8siov1.Gateway)
+	if !ok {
+		return nil, fmt.Errorf("expected a Gateway object but got %T", obj)
+	}
+	gatewaylog.Info("Validation for Gateway upon creation", "name", gateway.GetName())
 
-    warnings := v.warnIfMissingGatewayProxyForGateway(ctx, gateway)
+	warnings := v.warnIfMissingGatewayProxyForGateway(ctx, gateway)
 
-    return warnings, nil
+	return warnings, nil
 }
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type Gateway.
 func (v *GatewayCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-    gateway, ok := newObj.(*gatewaynetworkingk8siov1.Gateway)
-    if !ok {
-        return nil, fmt.Errorf("expected a Gateway object for the newObj but got %T", newObj)
-    }
-    gatewaylog.Info("Validation for Gateway upon update", "name", gateway.GetName())
+	gateway, ok := newObj.(*gatewaynetworkingk8siov1.Gateway)
+	if !ok {
+		return nil, fmt.Errorf("expected a Gateway object for the newObj but got %T", newObj)
+	}
+	gatewaylog.Info("Validation for Gateway upon update", "name", gateway.GetName())
 
-    warnings := v.warnIfMissingGatewayProxyForGateway(ctx, gateway)
+	warnings := v.warnIfMissingGatewayProxyForGateway(ctx, gateway)
 
-    return warnings, nil
+	return warnings, nil
 }
 
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type Gateway.
 func (v *GatewayCustomValidator) ValidateDelete(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
-    gateway, ok := obj.(*gatewaynetworkingk8siov1.Gateway)
-    if !ok {
-        return nil, fmt.Errorf("expected a Gateway object but got %T", obj)
-    }
-    gatewaylog.Info("Validation for Gateway upon deletion", "name", gateway.GetName())
+	gateway, ok := obj.(*gatewaynetworkingk8siov1.Gateway)
+	if !ok {
+		return nil, fmt.Errorf("expected a Gateway object but got %T", obj)
+	}
+	gatewaylog.Info("Validation for Gateway upon deletion", "name", gateway.GetName())
 
 	// TODO(user): fill in your validation logic upon object deletion.
 
-    return nil, nil
+	return nil, nil
 }
 
 func (v *GatewayCustomValidator) warnIfMissingGatewayProxyForGateway(ctx context.Context, gateway *gatewaynetworkingk8siov1.Gateway) admission.Warnings {
-    var warnings admission.Warnings
+	var warnings admission.Warnings
 
-    infra := gateway.Spec.Infrastructure
-    if infra == nil || infra.ParametersRef == nil {
-        return nil
-    }
-    ref := infra.ParametersRef
-    if string(ref.Group) != v1alpha1.GroupVersion.Group || string(ref.Kind) != "GatewayProxy" {
-        return nil
-    }
+	infra := gateway.Spec.Infrastructure
+	if infra == nil || infra.ParametersRef == nil {
+		return nil
+	}
+	ref := infra.ParametersRef
+	if string(ref.Group) != v1alpha1.GroupVersion.Group || string(ref.Kind) != "GatewayProxy" {
+		return nil
+	}
 
-    // GatewayProxy is namespaced; Gateway doesn't carry namespace in ParametersRef, use Gateway's namespace
-    ns := gateway.GetNamespace()
-    name := string(ref.Name)
+	// GatewayProxy is namespaced; Gateway doesn't carry namespace in ParametersRef, use Gateway's namespace
+	ns := gateway.GetNamespace()
+	name := string(ref.Name)
 
-    var gp v1alpha1.GatewayProxy
-    if err := v.Client.Get(ctx, client.ObjectKey{Namespace: ns, Name: name}, &gp); err != nil {
-        if k8serrors.IsNotFound(err) {
-            msg := fmt.Sprintf("Referenced GatewayProxy '%s/%s' not found.", ns, name)
-            warnings = append(warnings, msg)
-            gatewaylog.Info("Gateway references missing GatewayProxy", "gateway", gateway.GetName(), "namespace", ns, "gatewayproxy", name)
-        } else {
-            gatewaylog.Error(err, "failed to resolve GatewayProxy for Gateway", "gateway", gateway.GetName(), "namespace", ns, "gatewayproxy", name)
-        }
-    }
-    return warnings
+	var gp v1alpha1.GatewayProxy
+	if err := v.Client.Get(ctx, client.ObjectKey{Namespace: ns, Name: name}, &gp); err != nil {
+		if k8serrors.IsNotFound(err) {
+			msg := fmt.Sprintf("Referenced GatewayProxy '%s/%s' not found.", ns, name)
+			warnings = append(warnings, msg)
+			gatewaylog.Info("Gateway references missing GatewayProxy", "gateway", gateway.GetName(), "namespace", ns, "gatewayproxy", name)
+		} else {
+			gatewaylog.Error(err, "failed to resolve GatewayProxy for Gateway", "gateway", gateway.GetName(), "namespace", ns, "gatewayproxy", name)
+		}
+	}
+	return warnings
 }
