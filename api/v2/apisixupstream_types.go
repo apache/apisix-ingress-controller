@@ -91,7 +91,10 @@ type ApisixUpstreamExternalNode struct {
 	Weight *int `json:"weight,omitempty" yaml:"weight"`
 
 	// Port specifies the port number on which the external node is accepting traffic.
+	//
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
 	Port *int `json:"port,omitempty" yaml:"port"`
 }
 
@@ -159,6 +162,8 @@ type PortLevelSettings struct {
 	ApisixUpstreamConfig `json:",inline" yaml:",inline"`
 
 	// Port is a Kubernetes Service port.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
 	Port int32 `json:"port" yaml:"port"`
 }
 
@@ -233,9 +238,10 @@ type ActiveHealthCheck struct {
 	Concurrency int `json:"concurrency,omitempty" yaml:"concurrency,omitempty"`
 	// Host sets the upstream host.
 	Host string `json:"host,omitempty" yaml:"host,omitempty"`
-	// +kubebuilder:validation:Minimum=0
-	// +kubebuilder:validation:Maximum=65535
 	// Port sets the upstream port.
+	//
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
 	Port int32 `json:"port,omitempty" yaml:"port,omitempty"`
 	// HTTPPath sets the HTTP probe request path.
 	HTTPPath string `json:"httpPath,omitempty" yaml:"httpPath,omitempty"`

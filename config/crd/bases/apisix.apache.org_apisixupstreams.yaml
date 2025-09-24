@@ -81,6 +81,8 @@ spec:
                     port:
                       description: Port specifies the port number on which the external
                         node is accepting traffic.
+                      maximum: 65535
+                      minimum: 1
                       type: integer
                     type:
                       description: Type indicates the kind of external node. Can be
@@ -139,7 +141,7 @@ spec:
                         description: Port sets the upstream port.
                         format: int32
                         maximum: 65535
-                        minimum: 0
+                        minimum: 1
                         type: integer
                       requestHeaders:
                         description: RequestHeaders sets the request headers.
@@ -401,7 +403,7 @@ spec:
                               description: Port sets the upstream port.
                               format: int32
                               maximum: 65535
-                              minimum: 0
+                              minimum: 1
                               type: integer
                             requestHeaders:
                               description: RequestHeaders sets the request headers.
@@ -583,6 +585,8 @@ spec:
                     port:
                       description: Port is a Kubernetes Service port.
                       format: int32
+                      maximum: 65535
+                      minimum: 1
                       type: integer
                     retries:
                       description: |-
