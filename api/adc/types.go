@@ -163,7 +163,7 @@ type Upstream struct {
 
 	HashOn       string        `json:"hash_on,omitempty" yaml:"hash_on,omitempty"`
 	Key          string        `json:"key,omitempty" yaml:"key,omitempty"`
-	Nodes        UpstreamNodes `json:"nodes,omitempty" yaml:"nodes,omitempty"`
+	Nodes        UpstreamNodes `json:"nodes" yaml:"nodes"`
 	PassHost     string        `json:"pass_host,omitempty" yaml:"pass_host,omitempty"`
 	Retries      *int64        `json:"retries,omitempty" yaml:"retries,omitempty"`
 	RetryTimeout *float64      `json:"retry_timeout,omitempty" yaml:"retry_timeout,omitempty"`
@@ -449,19 +449,28 @@ func (n *UpstreamNodes) UnmarshalJSON(p []byte) error {
 	return nil
 }
 
-func (n *Upstream) MarshalJSON() ([]byte, error) {
+func (n Upstream) MarshalJSON() ([]byte, error) {
+	type Alias Upstream
+	// APISIX does not allow discovery_type and nodes to exist at the same time.
+	// https://github.com/apache/apisix/blob/01b4b49eb2ba642b337f7a1fbe1894a77942910b/apisix/schema_def.lua#L501-L504
+	if n.DiscoveryType != "" {
+		aux := struct {
+			Alias
+			Nodes UpstreamNodes `json:"nodes,omitempty" yaml:"nodes,omitempty"`
+		}{
+			Alias: (Alias)(n),
+		}
+		aux.Nodes = nil
+		return json.Marshal(&aux)
+	}
+
 	// By default Go serializes a nil slice as JSON null.
 	// For APISIX compatibility, nil UpstreamNodes should be encoded as [] instead.
 	// https://github.com/apache/apisix/blob/77dacda31277a31d6014b4970e36bae2a5c30907/apisix/schema_def.lua#L295-L338
-	if n.Nodes == nil && n.DiscoveryType == "" {
+	if n.Nodes == nil {
 		n.Nodes = UpstreamNodes{}
-	} else if n.DiscoveryType != "" {
-		// APISIX does not allow discovery_type and nodes to exist at the same time.
-		// https://github.com/apache/apisix/blob/01b4b49eb2ba642b337f7a1fbe1894a77942910b/apisix/schema_def.lua#L501-L504
-		n.Nodes = nil
 	}
-	type Alias Upstream
-	return json.Marshal((*Alias)(n))
+	return json.Marshal((Alias)(n))
 }
 
 // ComposeRouteName uses namespace, name and rule name to compose
