@@ -29,5 +29,11 @@ func setupWebhooks(_ context.Context, mgr manager.Manager) error {
 	if err := webhookv1.SetupIngressWebhookWithManager(mgr); err != nil {
 		return err
 	}
+	if err := webhookv1.SetupIngressClassWebhookWithManager(mgr); err != nil {
+		return err
+	}
+	if err := webhookv1.SetupGatewayWebhookWithManager(mgr); err != nil {
+		return err
+	}
 	return nil
 }
