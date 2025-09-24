@@ -285,13 +285,8 @@ func translateUpstreamHealthCheck(au *apiv2.ApisixUpstream, ups *adc.Upstream) e
 
 func translateUpstreamActiveHealthCheck(config *apiv2.ActiveHealthCheck) (*adc.UpstreamActiveHealthCheck, error) {
 	var active adc.UpstreamActiveHealthCheck
-	switch config.Type {
-	case apiv2.HealthCheckHTTP, apiv2.HealthCheckHTTPS, apiv2.HealthCheckTCP:
-		active.Type = config.Type
-	case "":
-		active.Type = apiv2.HealthCheckHTTP
-	default:
-		return nil, fmt.Errorf(`"healthCheck.active.Type" has invalid value`)
+	if config.Type == "" {
+		config.Type = apiv2.HealthCheckHTTP
 	}
 
 	active.Timeout = int(config.Timeout.Seconds())
@@ -316,20 +311,9 @@ func translateUpstreamActiveHealthCheck(config *apiv2.ActiveHealthCheck) (*adc.U
 	}
 
 	if config.Unhealthy != nil {
-		if config.Unhealthy.HTTPFailures < 0 || config.Unhealthy.HTTPFailures > apiv2.HealthCheckMaxConsecutiveNumber {
-			return nil, fmt.Errorf(`"healthCheck.active.unhealthy.httpFailures" has invalid value`)
-		}
 		active.Unhealthy.HTTPFailures = config.Unhealthy.HTTPFailures
-
-		if config.Unhealthy.TCPFailures < 0 || config.Unhealthy.TCPFailures > apiv2.HealthCheckMaxConsecutiveNumber {
-			return nil, fmt.Errorf(`"healthCheck.active.unhealthy.tcpFailures" has invalid value`)
-		}
 		active.Unhealthy.TCPFailures = config.Unhealthy.TCPFailures
 		active.Unhealthy.Timeouts = config.Unhealthy.Timeouts
-
-		if config.Unhealthy.HTTPCodes != nil && len(config.Unhealthy.HTTPCodes) < 1 {
-			return nil, fmt.Errorf(`"healthCheck.active.unhealthy.httpCodes" is empty`)
-		}
 		active.Unhealthy.HTTPStatuses = config.Unhealthy.HTTPCodes
 
 		if config.Unhealthy.Interval.Duration < apiv2.ActiveHealthCheckMinInterval {
@@ -338,23 +322,15 @@ func translateUpstreamActiveHealthCheck(config *apiv2.ActiveHealthCheck) (*adc.U
 		active.Unhealthy.Interval = int(config.Unhealthy.Interval.Seconds())
 	}
 
-	if config.Unhealthy.Timeouts < 0 {
-		return nil, fmt.Errorf(`"healthCheck.active.unhealthy.timeouts" has invalid value`)
-	}
-
 	return &active, nil
 }
 
 func translateUpstreamPassiveHealthCheck(config *apiv2.PassiveHealthCheck) (*adc.UpstreamPassiveHealthCheck, error) {
 	var passive adc.UpstreamPassiveHealthCheck
-	switch config.Type {
-	case apiv2.HealthCheckHTTP, apiv2.HealthCheckHTTPS, apiv2.HealthCheckTCP:
-		passive.Type = config.Type
-	case "":
-		passive.Type = apiv2.HealthCheckHTTP
-	default:
-		return nil, fmt.Errorf(`"healthCheck.passive.Type" has invalid value`)
+	if config.Type == "" {
+		config.Type = apiv2.HealthCheckHTTP
 	}
+
 	if config.Healthy != nil {
 		passive.Healthy.Successes = config.Healthy.Successes
 		passive.Healthy.HTTPStatuses = config.Healthy.HTTPCodes
