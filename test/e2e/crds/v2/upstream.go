@@ -167,7 +167,7 @@ spec:
     serviceName: %s
 `
 
-		FIt("should be able to access through service discovery", func() {
+		It("should be able to access through service discovery", func() {
 			svcName := fmt.Sprintf("httpbin-service-e2e-test.%s.svc.cluster.local", s.Namespace())
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-dns"},
 				&apiv2.ApisixUpstream{}, fmt.Sprintf(au, s.Namespace(), svcName))
