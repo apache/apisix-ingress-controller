@@ -74,16 +74,11 @@ spec:
 			gatewayClassName := s.Namespace()
 			Expect(s.CreateResourceFromString(s.GetGatewayClassYaml())).
 				NotTo(HaveOccurred(), "creating GatewayClass")
-			gcyaml, _ := s.GetResourceYaml("GatewayClass", gatewayClassName)
-			s.ResourceApplied("GatewayClass", gatewayClassName, gcyaml, 1)
 
 			// Create Gateway with TCP listener
 			gatewayName := s.Namespace()
 			Expect(s.CreateResourceFromString(fmt.Sprintf(tcpGateway, gatewayName, gatewayClassName))).
 				NotTo(HaveOccurred(), "creating Gateway")
-
-			gwyaml, _ := s.GetResourceYaml("Gateway", gatewayName)
-			s.ResourceApplied("Gateway", gatewayName, gwyaml, 1)
 		})
 
 		It("should route TCP traffic to backend service", func() {
@@ -97,7 +92,7 @@ spec:
 			s.ResourceApplied("TCPRoute", "tcp-app-1", routeYaml, 1)
 
 			By("verifying TCPRoute is functional")
-			s.HTTPOverTCPConnectAssert(true, time.Hour*10) // should be able to connect
+			s.HTTPOverTCPConnectAssert(true, time.Second*10) // should be able to connect
 			By("sending TCP traffic to verify routing")
 			s.RequestAssert(&scaffold.RequestAssert{
 				Client:   s.NewAPISIXClientOnTCPPort(),

@@ -125,9 +125,12 @@ func setupControllers(ctx context.Context, mgr manager.Manager, pro provider.Pro
 			Readier:  readier,
 		},
 		&controller.TCPRouteReconciler{
-			Client: mgr.GetClient(),
-			Scheme: mgr.GetScheme(),
-			Log:    ctrl.LoggerFrom(ctx).WithName("controllers").WithName("TCPRoute"),
+			Client:   mgr.GetClient(),
+			Scheme:   mgr.GetScheme(),
+			Log:      ctrl.LoggerFrom(ctx).WithName("controllers").WithName("TCPRoute"),
+			Provider: pro,
+			Updater:  updater,
+			Readier:  readier,
 		},
 		&controller.GRPCRouteReconciler{
 			Client:   mgr.GetClient(),
