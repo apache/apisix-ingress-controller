@@ -163,7 +163,7 @@ Currently supports networking.k8s.io/v1 only. Support for other Ingress API vers
 
 ##### Limited Support for Ingress Annotations
 
-Ingress annotations used in version 1.x.x are not fully supported in 2.0.0. If your existing setup relies on any of the following annotations, validate compatibility or consider delaying the upgrade.
+The following Ingress annotations are not supported in the current version (2.0.0-rc*) but will be supported in the 2.0.0 final release. If your existing setup relies on any of the following annotations, validate compatibility or consider delaying the upgrade.
 
 | Ingress Annotations                                    |
 | ------------------------------------------------------ |
