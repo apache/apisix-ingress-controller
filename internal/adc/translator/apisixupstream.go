@@ -264,11 +264,7 @@ func translateUpstreamHealthCheck(au *apiv2.ApisixUpstream, ups *adc.Upstream) e
 	}
 	var hc adc.UpstreamHealthCheck
 	if healcheck.Passive != nil {
-		passive, err := translateUpstreamPassiveHealthCheck(healcheck.Passive)
-		if err != nil {
-			return err
-		}
-		hc.Passive = passive
+		hc.Passive = translateUpstreamPassiveHealthCheck(healcheck.Passive)
 	}
 
 	if healcheck.Active != nil {
@@ -325,7 +321,7 @@ func translateUpstreamActiveHealthCheck(config *apiv2.ActiveHealthCheck) (*adc.U
 	return &active, nil
 }
 
-func translateUpstreamPassiveHealthCheck(config *apiv2.PassiveHealthCheck) (*adc.UpstreamPassiveHealthCheck, error) {
+func translateUpstreamPassiveHealthCheck(config *apiv2.PassiveHealthCheck) *adc.UpstreamPassiveHealthCheck {
 	var passive adc.UpstreamPassiveHealthCheck
 	if config.Type == "" {
 		config.Type = apiv2.HealthCheckHTTP
@@ -342,5 +338,5 @@ func translateUpstreamPassiveHealthCheck(config *apiv2.PassiveHealthCheck) (*adc
 		passive.Unhealthy.Timeouts = config.Unhealthy.Timeouts
 		passive.Unhealthy.HTTPStatuses = config.Unhealthy.HTTPCodes
 	}
-	return &passive, nil
+	return &passive
 }
