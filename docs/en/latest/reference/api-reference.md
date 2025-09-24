@@ -1325,7 +1325,7 @@ ApisixUpstreamConfig defines configuration for upstream services.
 | `subsets` _[ApisixUpstreamSubset](#apisixupstreamsubset) array_ | Subsets defines labeled subsets of service endpoints, typically used for service versioning or canary deployments. |
 | `passHost` _string_ | PassHost configures how the host header should be determined when a request is forwarded to the upstream. Default is `pass`. Can be `pass`, `node` or `rewrite`:<br /> • `pass`: preserve the original Host header<br /> • `node`: use the upstream node’s host<br /> • `rewrite`: set to a custom host via upstreamHost |
 | `upstreamHost` _string_ | UpstreamHost sets a custom Host header when passHost is set to `rewrite`. |
-| `discovery` _[Discovery](#discovery)_ | Discovery configures service discovery for the upstream. Deprecated: no longer supported in standalone mode. |
+| `discovery` _[Discovery](#discovery)_ | Discovery configures service discovery for the upstream. |
 
 
 _Appears in:_
@@ -1385,7 +1385,7 @@ definitions and custom configuration.
 | `subsets` _[ApisixUpstreamSubset](#apisixupstreamsubset) array_ | Subsets defines labeled subsets of service endpoints, typically used for service versioning or canary deployments. |
 | `passHost` _string_ | PassHost configures how the host header should be determined when a request is forwarded to the upstream. Default is `pass`. Can be `pass`, `node` or `rewrite`:<br /> • `pass`: preserve the original Host header<br /> • `node`: use the upstream node’s host<br /> • `rewrite`: set to a custom host via upstreamHost |
 | `upstreamHost` _string_ | UpstreamHost sets a custom Host header when passHost is set to `rewrite`. |
-| `discovery` _[Discovery](#discovery)_ | Discovery configures service discovery for the upstream. Deprecated: no longer supported in standalone mode. |
+| `discovery` _[Discovery](#discovery)_ | Discovery configures service discovery for the upstream. |
 | `portLevelSettings` _[PortLevelSettings](#portlevelsettings) array_ | PortLevelSettings allows fine-grained upstream configuration for specific ports, useful when a backend service exposes multiple ports with different behaviors or protocols. |
 
 
@@ -1555,7 +1555,7 @@ them if they are set on the port level.
 | `subsets` _[ApisixUpstreamSubset](#apisixupstreamsubset) array_ | Subsets defines labeled subsets of service endpoints, typically used for service versioning or canary deployments. |
 | `passHost` _string_ | PassHost configures how the host header should be determined when a request is forwarded to the upstream. Default is `pass`. Can be `pass`, `node` or `rewrite`:<br /> • `pass`: preserve the original Host header<br /> • `node`: use the upstream node’s host<br /> • `rewrite`: set to a custom host via upstreamHost |
 | `upstreamHost` _string_ | UpstreamHost sets a custom Host header when passHost is set to `rewrite`. |
-| `discovery` _[Discovery](#discovery)_ | Discovery configures service discovery for the upstream. Deprecated: no longer supported in standalone mode. |
+| `discovery` _[Discovery](#discovery)_ | Discovery configures service discovery for the upstream. |
 | `port` _integer_ | Port is a Kubernetes Service port. |
 
 

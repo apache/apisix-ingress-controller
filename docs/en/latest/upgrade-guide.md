@@ -138,14 +138,6 @@ spec:
 
 ### API Changes
 
-#### `ApisixUpstream`
-
-Due to current limitations in the [ADC](https://github.com/api7/adc) component, the following fields are not yet supported:
-
-* `spec.discovery`: Service Discovery
-
-More details: [ADC Backend Differences](https://github.com/api7/adc/blob/2449ca81e3c61169f8c1e59efb4c1173a766bce2/libs/backend-apisix-standalone/README.md#differences-in-upstream)
-
 #### `ApisixClusterConfig`
 
 The `ApisixClusterConfig` CRD has been removed in 2.0.0. global rules and configurations should now be managed through the `ApisixGlobalRule` CRDs.

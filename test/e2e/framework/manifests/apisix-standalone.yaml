@@ -42,6 +42,11 @@ data:
           - 9100
         udp:                        # UDP proxy port list
           - 9200
+    discovery:
+      dns:
+        servers:
+        - "10.96.0.10:53"        # use the real address of your dns server.
+                                 # currently we use KIND as the standard test environment, so here we can hard-code the default DNS address first.
 ---
 apiVersion: apps/v1
 kind: Deployment

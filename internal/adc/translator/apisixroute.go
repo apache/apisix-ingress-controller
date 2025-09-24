@@ -269,7 +269,7 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 	}
 
 	// no valid upstream
-	if len(upstreams) == 0 || len(upstreams[0].Nodes) == 0 {
+	if len(upstreams) == 0 {
 		return
 	}
 
