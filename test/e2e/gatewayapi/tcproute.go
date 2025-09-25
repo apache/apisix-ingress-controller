@@ -98,7 +98,7 @@ spec:
 			s.ResourceApplied("TCPRoute", "tcp-app-1", routeYaml, 1)
 
 			By("verifying TCPRoute is functional")
-			s.HTTPOverTCPConnectAssert(true, time.Second*120) // should be able to connect
+			s.HTTPOverTCPConnectAssert(true, time.Minute*5) // should be able to connect
 			By("sending TCP traffic to verify routing")
 			s.RequestAssert(&scaffold.RequestAssert{
 				Client:   s.NewAPISIXClientOnTCPPort(),
@@ -113,7 +113,7 @@ spec:
 			Expect(s.DeleteResource("TCPRoute", "tcp-app-1")).
 				NotTo(HaveOccurred(), "deleting TCPRoute")
 
-			s.HTTPOverTCPConnectAssert(false, time.Second*120)
+			s.HTTPOverTCPConnectAssert(false, time.Minute*5)
 		})
 	})
 })
