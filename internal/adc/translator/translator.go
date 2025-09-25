@@ -34,7 +34,6 @@ func NewTranslator(log logr.Logger) *Translator {
 }
 
 type TranslateResult struct {
-	Routes         []*adctypes.Route
 	Services       []*adctypes.Service
 	SSL            []*adctypes.SSL
 	GlobalRules    adctypes.GlobalRule

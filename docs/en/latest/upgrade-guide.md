@@ -143,7 +143,6 @@ spec:
 Due to current limitations in the [ADC](https://github.com/api7/adc) component, the following fields are not yet supported:
 
 * `spec.discovery`: Service Discovery
-* `spec.healthCheck`: Health Checking
 
 More details: [ADC Backend Differences](https://github.com/api7/adc/blob/2449ca81e3c61169f8c1e59efb4c1173a766bce2/libs/backend-apisix-standalone/README.md#differences-in-upstream)
 

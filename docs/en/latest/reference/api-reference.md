@@ -661,7 +661,7 @@ UpstreamActiveHealthCheckHealthy defines the conditions used to actively determi
 | `httpCodes` _integer array_ | HTTPCodes define a list of HTTP status codes that are considered unhealthy. |
 | `httpFailures` _integer_ | HTTPFailures define the number of HTTP failures to define an unhealthy target. |
 | `tcpFailures` _integer_ | TCPFailures define the number of TCP failures to define an unhealthy target. |
-| `timeout` _integer_ | Timeout sets health check timeout in seconds. |
+| `timeout` _integer_ | Timeout sets health check timeout in seconds. https://github.com/apache/apisix/blob/0151d9e35bba63d7c316187272d88e19db0be634/apisix/schema_def.lua#L196 |
 | `interval` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#duration-v1-meta)_ | Interval defines the time interval for checking targets, in seconds. |
 
 
@@ -1320,7 +1320,7 @@ ApisixUpstreamConfig defines configuration for upstream services.
 | `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. Can be `http`, `https`, `grpc`, or `grpcs`. |
 | `retries` _integer_ | Retries defines the number of retry attempts APISIX should make when a failure occurs. Failures include timeouts, network errors, or 5xx status codes. |
 | `timeout` _[UpstreamTimeout](#upstreamtimeout)_ | Timeout specifies the connection, send, and read timeouts for upstream requests. |
-| `healthCheck` _[HealthCheck](#healthcheck)_ | HealthCheck defines the active and passive health check configuration for the upstream. Deprecated: no longer supported in standalone mode. |
+| `healthCheck` _[HealthCheck](#healthcheck)_ | HealthCheck defines the active and passive health check configuration for the upstream. |
 | `tlsSecret` _[ApisixSecret](#apisixsecret)_ | TLSSecret references a Kubernetes Secret that contains the client certificate and key for mutual TLS when connecting to the upstream. |
 | `subsets` _[ApisixUpstreamSubset](#apisixupstreamsubset) array_ | Subsets defines labeled subsets of service endpoints, typically used for service versioning or canary deployments. |
 | `passHost` _string_ | PassHost configures how the host header should be determined when a request is forwarded to the upstream. Default is `pass`. Can be `pass`, `node` or `rewrite`:<br /> • `pass`: preserve the original Host header<br /> • `node`: use the upstream node’s host<br /> • `rewrite`: set to a custom host via upstreamHost |
@@ -1380,7 +1380,7 @@ definitions and custom configuration.
 | `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. Can be `http`, `https`, `grpc`, or `grpcs`. |
 | `retries` _integer_ | Retries defines the number of retry attempts APISIX should make when a failure occurs. Failures include timeouts, network errors, or 5xx status codes. |
 | `timeout` _[UpstreamTimeout](#upstreamtimeout)_ | Timeout specifies the connection, send, and read timeouts for upstream requests. |
-| `healthCheck` _[HealthCheck](#healthcheck)_ | HealthCheck defines the active and passive health check configuration for the upstream. Deprecated: no longer supported in standalone mode. |
+| `healthCheck` _[HealthCheck](#healthcheck)_ | HealthCheck defines the active and passive health check configuration for the upstream. |
 | `tlsSecret` _[ApisixSecret](#apisixsecret)_ | TLSSecret references a Kubernetes Secret that contains the client certificate and key for mutual TLS when connecting to the upstream. |
 | `subsets` _[ApisixUpstreamSubset](#apisixupstreamsubset) array_ | Subsets defines labeled subsets of service endpoints, typically used for service versioning or canary deployments. |
 | `passHost` _string_ | PassHost configures how the host header should be determined when a request is forwarded to the upstream. Default is `pass`. Can be `pass`, `node` or `rewrite`:<br /> • `pass`: preserve the original Host header<br /> • `node`: use the upstream node’s host<br /> • `rewrite`: set to a custom host via upstreamHost |
@@ -1528,7 +1528,7 @@ UpstreamPassiveHealthCheckUnhealthy defines the conditions used to passively det
 | `httpCodes` _integer array_ | HTTPCodes define a list of HTTP status codes that are considered unhealthy. |
 | `httpFailures` _integer_ | HTTPFailures define the number of HTTP failures to define an unhealthy target. |
 | `tcpFailures` _integer_ | TCPFailures define the number of TCP failures to define an unhealthy target. |
-| `timeout` _integer_ | Timeout sets health check timeout in seconds. |
+| `timeout` _integer_ | Timeout sets health check timeout in seconds. https://github.com/apache/apisix/blob/0151d9e35bba63d7c316187272d88e19db0be634/apisix/schema_def.lua#L196 |
 
 
 _Appears in:_
@@ -1550,7 +1550,7 @@ them if they are set on the port level.
 | `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. Can be `http`, `https`, `grpc`, or `grpcs`. |
 | `retries` _integer_ | Retries defines the number of retry attempts APISIX should make when a failure occurs. Failures include timeouts, network errors, or 5xx status codes. |
 | `timeout` _[UpstreamTimeout](#upstreamtimeout)_ | Timeout specifies the connection, send, and read timeouts for upstream requests. |
-| `healthCheck` _[HealthCheck](#healthcheck)_ | HealthCheck defines the active and passive health check configuration for the upstream. Deprecated: no longer supported in standalone mode. |
+| `healthCheck` _[HealthCheck](#healthcheck)_ | HealthCheck defines the active and passive health check configuration for the upstream. |
 | `tlsSecret` _[ApisixSecret](#apisixsecret)_ | TLSSecret references a Kubernetes Secret that contains the client certificate and key for mutual TLS when connecting to the upstream. |
 | `subsets` _[ApisixUpstreamSubset](#apisixupstreamsubset) array_ | Subsets defines labeled subsets of service endpoints, typically used for service versioning or canary deployments. |
 | `passHost` _string_ | PassHost configures how the host header should be determined when a request is forwarded to the upstream. Default is `pass`. Can be `pass`, `node` or `rewrite`:<br /> • `pass`: preserve the original Host header<br /> • `node`: use the upstream node’s host<br /> • `rewrite`: set to a custom host via upstreamHost |

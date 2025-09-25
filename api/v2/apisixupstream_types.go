@@ -91,7 +91,10 @@ type ApisixUpstreamExternalNode struct {
 	Weight *int `json:"weight,omitempty" yaml:"weight"`
 
 	// Port specifies the port number on which the external node is accepting traffic.
+	//
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
 	Port *int `json:"port,omitempty" yaml:"port"`
 }
 
@@ -118,7 +121,6 @@ type ApisixUpstreamConfig struct {
 	Timeout *UpstreamTimeout `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 
 	// HealthCheck defines the active and passive health check configuration for the upstream.
-	// Deprecated: no longer supported in standalone mode.
 	// +kubebuilder:validation:Optional
 	HealthCheck *HealthCheck `json:"healthCheck,omitempty" yaml:"healthCheck,omitempty"`
 
@@ -160,6 +162,8 @@ type PortLevelSettings struct {
 	ApisixUpstreamConfig `json:",inline" yaml:",inline"`
 
 	// Port is a Kubernetes Service port.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
 	Port int32 `json:"port" yaml:"port"`
 }
 
@@ -221,9 +225,11 @@ type Discovery struct {
 
 // ActiveHealthCheck defines the active upstream health check configuration.
 type ActiveHealthCheck struct {
+	// Type is the health check type. Can be `http`, `https`, or `tcp`.
+	//
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Enum=http;https;tcp;
-	// Type is the health check type. Can be `http`, `https`, or `tcp`.
+	// +kubebuilder:default=http
 	Type string `json:"type,omitempty" yaml:"type,omitempty"`
 	// Timeout sets health check timeout in seconds.
 	Timeout time.Duration `json:"timeout,omitempty" yaml:"timeout,omitempty"`
@@ -232,9 +238,10 @@ type ActiveHealthCheck struct {
 	Concurrency int `json:"concurrency,omitempty" yaml:"concurrency,omitempty"`
 	// Host sets the upstream host.
 	Host string `json:"host,omitempty" yaml:"host,omitempty"`
-	// +kubebuilder:validation:Minimum=0
-	// +kubebuilder:validation:Maximum=65535
 	// Port sets the upstream port.
+	//
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
 	Port int32 `json:"port,omitempty" yaml:"port,omitempty"`
 	// HTTPPath sets the HTTP probe request path.
 	HTTPPath string `json:"httpPath,omitempty" yaml:"httpPath,omitempty"`
@@ -254,6 +261,10 @@ type ActiveHealthCheck struct {
 type PassiveHealthCheck struct {
 	// Type specifies the type of passive health check.
 	// Can be `http`, `https`, or `tcp`.
+	//
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum=http;https;tcp;
+	// +kubebuilder:default=http
 	Type string `json:"type,omitempty" yaml:"type,omitempty"`
 	// Healthy defines the conditions under which an upstream node is considered healthy.
 	Healthy *PassiveHealthCheckHealthy `json:"healthy,omitempty" yaml:"healthy,omitempty"`
@@ -304,6 +315,10 @@ type PassiveHealthCheckUnhealthy struct {
 	// TCPFailures define the number of TCP failures to define an unhealthy target.
 	TCPFailures int `json:"tcpFailures,omitempty" yaml:"tcpFailures,omitempty"`
 	// Timeout sets health check timeout in seconds.
+	// https://github.com/apache/apisix/blob/0151d9e35bba63d7c316187272d88e19db0be634/apisix/schema_def.lua#L196
+	//
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=254
 	Timeouts int `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 }
 

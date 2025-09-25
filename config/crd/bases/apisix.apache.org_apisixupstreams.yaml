@@ -81,6 +81,8 @@ spec:
                     port:
                       description: Port specifies the port number on which the external
                         node is accepting traffic.
+                      maximum: 65535
+                      minimum: 1
                       type: integer
                     type:
                       description: Type indicates the kind of external node. Can be
@@ -95,9 +97,8 @@ spec:
                 minItems: 1
                 type: array
               healthCheck:
-                description: |-
-                  HealthCheck defines the active and passive health check configuration for the upstream.
-                  Deprecated: no longer supported in standalone mode.
+                description: HealthCheck defines the active and passive health check
+                  configuration for the upstream.
                 properties:
                   active:
                     description: Active health checks proactively send requests to
@@ -140,7 +141,7 @@ spec:
                         description: Port sets the upstream port.
                         format: int32
                         maximum: 65535
-                        minimum: 0
+                        minimum: 1
                         type: integer
                       requestHeaders:
                         description: RequestHeaders sets the request headers.
@@ -155,6 +156,7 @@ spec:
                         format: int64
                         type: integer
                       type:
+                        default: http
                         description: Type is the health check type. Can be `http`,
                           `https`, or `tcp`.
                         enum:
@@ -190,7 +192,11 @@ spec:
                             minimum: 0
                             type: integer
                           timeout:
-                            description: Timeout sets health check timeout in seconds.
+                            description: |-
+                              Timeout sets health check timeout in seconds.
+                              https://github.com/apache/apisix/blob/0151d9e35bba63d7c316187272d88e19db0be634/apisix/schema_def.lua#L196
+                            maximum: 254
+                            minimum: 1
                             type: integer
                         type: object
                     type: object
@@ -217,9 +223,14 @@ spec:
                             type: integer
                         type: object
                       type:
+                        default: http
                         description: |-
                           Type specifies the type of passive health check.
                           Can be `http`, `https`, or `tcp`.
+                        enum:
+                        - http
+                        - https
+                        - tcp
                         type: string
                       unhealthy:
                         description: Unhealthy defines the conditions under which
@@ -245,7 +256,11 @@ spec:
                             minimum: 0
                             type: integer
                           timeout:
-                            description: Timeout sets health check timeout in seconds.
+                            description: |-
+                              Timeout sets health check timeout in seconds.
+                              https://github.com/apache/apisix/blob/0151d9e35bba63d7c316187272d88e19db0be634/apisix/schema_def.lua#L196
+                            maximum: 254
+                            minimum: 1
                             type: integer
                         type: object
                     type: object
@@ -344,9 +359,8 @@ spec:
                       - type
                       type: object
                     healthCheck:
-                      description: |-
-                        HealthCheck defines the active and passive health check configuration for the upstream.
-                        Deprecated: no longer supported in standalone mode.
+                      description: HealthCheck defines the active and passive health
+                        check configuration for the upstream.
                       properties:
                         active:
                           description: Active health checks proactively send requests
@@ -389,7 +403,7 @@ spec:
                               description: Port sets the upstream port.
                               format: int32
                               maximum: 65535
-                              minimum: 0
+                              minimum: 1
                               type: integer
                             requestHeaders:
                               description: RequestHeaders sets the request headers.
@@ -404,6 +418,7 @@ spec:
                               format: int64
                               type: integer
                             type:
+                              default: http
                               description: Type is the health check type. Can be `http`,
                                 `https`, or `tcp`.
                               enum:
@@ -439,8 +454,11 @@ spec:
                                   minimum: 0
                                   type: integer
                                 timeout:
-                                  description: Timeout sets health check timeout in
-                                    seconds.
+                                  description: |-
+                                    Timeout sets health check timeout in seconds.
+                                    https://github.com/apache/apisix/blob/0151d9e35bba63d7c316187272d88e19db0be634/apisix/schema_def.lua#L196
+                                  maximum: 254
+                                  minimum: 1
                                   type: integer
                               type: object
                           type: object
@@ -467,9 +485,14 @@ spec:
                                   type: integer
                               type: object
                             type:
+                              default: http
                               description: |-
                                 Type specifies the type of passive health check.
                                 Can be `http`, `https`, or `tcp`.
+                              enum:
+                              - http
+                              - https
+                              - tcp
                               type: string
                             unhealthy:
                               description: Unhealthy defines the conditions under
@@ -495,8 +518,11 @@ spec:
                                   minimum: 0
                                   type: integer
                                 timeout:
-                                  description: Timeout sets health check timeout in
-                                    seconds.
+                                  description: |-
+                                    Timeout sets health check timeout in seconds.
+                                    https://github.com/apache/apisix/blob/0151d9e35bba63d7c316187272d88e19db0be634/apisix/schema_def.lua#L196
+                                  maximum: 254
+                                  minimum: 1
                                   type: integer
                               type: object
                           type: object
@@ -559,6 +585,8 @@ spec:
                     port:
                       description: Port is a Kubernetes Service port.
                       format: int32
+                      maximum: 65535
+                      minimum: 1
                       type: integer
                     retries:
                       description: |-

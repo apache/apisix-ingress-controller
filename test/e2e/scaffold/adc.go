@@ -56,6 +56,7 @@ func init() {
 // DataplaneResource defines the interface for accessing dataplane resources
 type DataplaneResource interface {
 	Route() RouteResource
+	Upstream() UpstreamResource
 	Service() ServiceResource
 	SSL() SSLResource
 	Consumer() ConsumerResource
@@ -74,6 +75,11 @@ type ServiceResource interface {
 // SSLResource defines the interface for SSL resources
 type SSLResource interface {
 	List(ctx context.Context) ([]*adctypes.SSL, error)
+}
+
+// UpstreamResource defines the interface for upstream resources
+type UpstreamResource interface {
+	List(ctx context.Context) ([]*adctypes.Upstream, error)
 }
 
 // ConsumerResource defines the interface for consumer resources
@@ -115,6 +121,10 @@ func (a *adcDataplaneResource) SSL() SSLResource {
 
 func (a *adcDataplaneResource) Consumer() ConsumerResource {
 	return &adcConsumerResource{a}
+}
+
+func (a *adcDataplaneResource) Upstream() UpstreamResource {
+	return &adcUpstreamResource{a}
 }
 
 func init() {
@@ -191,14 +201,7 @@ func (a *adcDataplaneResource) dumpResources(ctx context.Context) (*translator.T
 		return nil, err
 	}
 
-	// Extract routes from services
-	var routes []*adctypes.Route
-	for _, service := range resources.Services {
-		routes = append(routes, service.Routes...)
-	}
-
 	result := &translator.TranslateResult{
-		Routes:         routes,
 		Services:       resources.Services,
 		SSL:            resources.SSLs,
 		GlobalRules:    resources.GlobalRules,
@@ -219,7 +222,11 @@ func (r *adcRouteResource) List(ctx context.Context) ([]*adctypes.Route, error) 
 	if err != nil {
 		return nil, err
 	}
-	return result.Routes, nil
+	var routes []*adctypes.Route
+	for _, service := range result.Services {
+		routes = append(routes, service.Routes...)
+	}
+	return routes, nil
 }
 
 // adcServiceResource implements ServiceResource
@@ -259,4 +266,26 @@ func (c *adcConsumerResource) List(ctx context.Context) ([]*adctypes.Consumer, e
 		return nil, err
 	}
 	return result.Consumers, nil
+}
+
+type adcUpstreamResource struct {
+	*adcDataplaneResource
+}
+
+func (r *adcUpstreamResource) List(ctx context.Context) ([]*adctypes.Upstream, error) {
+	result, err := r.dumpResources(ctx)
+	if err != nil {
+		return nil, err
+	}
+	upstreams := make([]*adctypes.Upstream, 0, len(result.Services))
+	for _, svc := range result.Services {
+		if svc.Upstream != nil {
+			upstreams = append(upstreams, svc.Upstream)
+		}
+		if svc.Upstreams != nil {
+			upstreams = append(upstreams, svc.Upstreams...)
+		}
+	}
+
+	return upstreams, nil
 }
