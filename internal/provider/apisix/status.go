@@ -21,17 +21,18 @@ import (
 	"fmt"
 	"strings"
 
-	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
-	"github.com/apache/apisix-ingress-controller/internal/controller/label"
-	"github.com/apache/apisix-ingress-controller/internal/controller/status"
-	cutils "github.com/apache/apisix-ingress-controller/internal/controller/utils"
-	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/api7/gopkg/pkg/log"
 	"go.uber.org/zap"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+
+	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
+	"github.com/apache/apisix-ingress-controller/internal/controller/label"
+	"github.com/apache/apisix-ingress-controller/internal/controller/status"
+	cutils "github.com/apache/apisix-ingress-controller/internal/controller/utils"
+	"github.com/apache/apisix-ingress-controller/internal/types"
 )
 
 // handleStatusUpdate updates resource conditions based on the latest sync results.

@@ -20,14 +20,6 @@ package manager
 import (
 	"context"
 
-	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
-	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
-	"github.com/apache/apisix-ingress-controller/internal/controller"
-	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
-	"github.com/apache/apisix-ingress-controller/internal/controller/status"
-	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
-	"github.com/apache/apisix-ingress-controller/internal/provider"
-	types "github.com/apache/apisix-ingress-controller/internal/types"
 	netv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -37,6 +29,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+
+	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
+	"github.com/apache/apisix-ingress-controller/internal/controller"
+	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
+	"github.com/apache/apisix-ingress-controller/internal/controller/status"
+	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
+	"github.com/apache/apisix-ingress-controller/internal/provider"
+	types "github.com/apache/apisix-ingress-controller/internal/types"
 )
 
 // K8s

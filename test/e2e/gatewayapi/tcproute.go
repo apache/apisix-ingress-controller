@@ -21,9 +21,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
 var _ = Describe("TCPRoute E2E Test", Label("networking.k8s.io", "tcproute"), func() {
