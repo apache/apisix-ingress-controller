@@ -42,10 +42,7 @@ func (t *Translator) translateApisixUpstream(tctx *provider.TranslateContext, au
 		translateApisixUpstreamRetriesAndTimeout,
 		translateApisixUpstreamPassHost,
 		translateUpstreamHealthCheck,
-<<<<<<< HEAD
 		translateUpstreamDiscovery,
-=======
->>>>>>> master
 	} {
 		if err = f(au, ups); err != nil {
 			return
