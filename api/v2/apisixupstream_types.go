@@ -91,7 +91,10 @@ type ApisixUpstreamExternalNode struct {
 	Weight *int `json:"weight,omitempty" yaml:"weight"`
 
 	// Port specifies the port number on which the external node is accepting traffic.
+	//
 	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
 	Port *int `json:"port,omitempty" yaml:"port"`
 }
 
@@ -158,6 +161,8 @@ type PortLevelSettings struct {
 	ApisixUpstreamConfig `json:",inline" yaml:",inline"`
 
 	// Port is a Kubernetes Service port.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
 	Port int32 `json:"port" yaml:"port"`
 }
 
@@ -232,9 +237,10 @@ type ActiveHealthCheck struct {
 	Concurrency int `json:"concurrency,omitempty" yaml:"concurrency,omitempty"`
 	// Host sets the upstream host.
 	Host string `json:"host,omitempty" yaml:"host,omitempty"`
-	// +kubebuilder:validation:Minimum=0
-	// +kubebuilder:validation:Maximum=65535
 	// Port sets the upstream port.
+	//
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=65535
 	Port int32 `json:"port,omitempty" yaml:"port,omitempty"`
 	// HTTPPath sets the HTTP probe request path.
 	HTTPPath string `json:"httpPath,omitempty" yaml:"httpPath,omitempty"`
@@ -308,6 +314,10 @@ type PassiveHealthCheckUnhealthy struct {
 	// TCPFailures define the number of TCP failures to define an unhealthy target.
 	TCPFailures int `json:"tcpFailures,omitempty" yaml:"tcpFailures,omitempty"`
 	// Timeout sets health check timeout in seconds.
+	// https://github.com/apache/apisix/blob/0151d9e35bba63d7c316187272d88e19db0be634/apisix/schema_def.lua#L196
+	//
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=254
 	Timeouts int `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 }
 

@@ -42,6 +42,7 @@ jobs:
         cases_subset:
         - apisix.apache.org
         - networking.k8s.io
+        - webhook
       fail-fast: false
     runs-on: ubuntu-latest
     steps:
@@ -110,4 +111,8 @@ jobs:
           TEST_LABEL: ${{ matrix.cases_subset }}
           TEST_ENV: CI
         run: |
-          make ginkgo-e2e-test
+          if [[ "${{ matrix.cases_subset }}" == "webhook" ]]; then
+            E2E_NODES=1 make ginkgo-e2e-test
+          else
+            make ginkgo-e2e-test
+          fi

@@ -295,6 +295,7 @@ metadata:
   namespace: ingress-apisix
   name: get-ip
 spec:
+  ingressClassName: apisix
   rules:
   - http:
       paths:
@@ -318,6 +319,7 @@ metadata:
   namespace: ingress-apisix
   name: httpbin-external-domain
 spec:
+  ingressClassName: apisix
   externalNodes:
   - type: Domain
     name: httpbin.org

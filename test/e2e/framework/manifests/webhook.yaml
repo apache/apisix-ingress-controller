@@ -27,17 +27,59 @@ webhooks:
       namespace: {{ .Namespace }}
       path: /validate-networking-k8s-io-v1-ingress
     caBundle: {{ .CABundle }}
-  admissionReviewVersions: 
+  admissionReviewVersions:
     - v1
   rules:
-  - operations: 
+  - operations:
       - CREATE
       - UPDATE
-    apiGroups: 
+    apiGroups:
       - networking.k8s.io
-    apiVersions: 
+    apiVersions:
       - v1
-    resources: 
+    resources:
       - ingresses
+  failurePolicy: Fail
+  sideEffects: None
+- name: vingressclass-v1.kb.io
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: {{ .Namespace }}
+      path: /validate-networking-k8s-io-v1-ingressclass
+    caBundle: {{ .CABundle }}
+  admissionReviewVersions:
+    - v1
+  rules:
+    - operations:
+        - CREATE
+        - UPDATE
+      apiGroups:
+        - networking.k8s.io
+      apiVersions:
+        - v1
+      resources:
+        - ingressclasses
+  failurePolicy: Fail
+  sideEffects: None
+- name: vgateway-v1.kb.io
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: {{ .Namespace }}
+      path: /validate-gateway-networking-k8s-io-v1-gateway
+    caBundle: {{ .CABundle }}
+  admissionReviewVersions:
+    - v1
+  rules:
+    - operations:
+        - CREATE
+        - UPDATE
+      apiGroups:
+        - gateway.networking.k8s.io
+      apiVersions:
+        - v1
+      resources:
+        - gateways
   failurePolicy: Fail
   sideEffects: None
