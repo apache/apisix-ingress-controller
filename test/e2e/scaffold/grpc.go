@@ -21,13 +21,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	pb "sigs.k8s.io/gateway-api/conformance/echo-basic/grpcechoserver"
+
+	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 )
 
 type RequestMetadata struct {
