@@ -505,10 +505,10 @@ func HTTPRouteParentRefsIndexFunc(rawObj client.Object) []string {
 }
 
 func TCPRouteParentRefsIndexFunc(rawObj client.Object) []string {
-	hr := rawObj.(*gatewayv1alpha2.TCPRoute)
-	keys := make([]string, 0, len(hr.Spec.ParentRefs))
-	for _, ref := range hr.Spec.ParentRefs {
-		ns := hr.GetNamespace()
+	tr := rawObj.(*gatewayv1alpha2.TCPRoute)
+	keys := make([]string, 0, len(tr.Spec.ParentRefs))
+	for _, ref := range tr.Spec.ParentRefs {
+		ns := tr.GetNamespace()
 		if ref.Namespace != nil {
 			ns = string(*ref.Namespace)
 		}
@@ -536,11 +536,11 @@ func HTTPRouteServiceIndexFunc(rawObj client.Object) []string {
 }
 
 func TCPPRouteServiceIndexFunc(rawObj client.Object) []string {
-	hr := rawObj.(*gatewayv1alpha2.TCPRoute)
-	keys := make([]string, 0, len(hr.Spec.Rules))
-	for _, rule := range hr.Spec.Rules {
+	tr := rawObj.(*gatewayv1alpha2.TCPRoute)
+	keys := make([]string, 0, len(tr.Spec.Rules))
+	for _, rule := range tr.Spec.Rules {
 		for _, backend := range rule.BackendRefs {
-			namespace := hr.GetNamespace()
+			namespace := tr.GetNamespace()
 			if backend.Kind != nil && *backend.Kind != internaltypes.KindService {
 				continue
 			}

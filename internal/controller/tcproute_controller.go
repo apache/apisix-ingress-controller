@@ -456,13 +456,13 @@ func (r *TCPRouteReconciler) listTCPRoutesForReferenceGrant(ctx context.Context,
 	}
 
 	for _, tcpRoute := range tcpRouteList.Items {
-		hr := v1beta1.ReferenceGrantFrom{
+		tr := v1beta1.ReferenceGrantFrom{
 			Group:     gatewayv1.GroupName,
 			Kind:      KindTCPRoute,
 			Namespace: v1beta1.Namespace(tcpRoute.GetNamespace()),
 		}
 		for _, from := range grant.Spec.From {
-			if from == hr {
+			if from == tr {
 				requests = append(requests, reconcile.Request{
 					NamespacedName: client.ObjectKey{
 						Namespace: tcpRoute.GetNamespace(),
