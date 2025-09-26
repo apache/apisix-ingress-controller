@@ -21,10 +21,12 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/api7/gopkg/pkg/log"
 	"github.com/gavv/httpexpect/v2"
@@ -80,6 +82,7 @@ type Tunnels struct {
 	HTTP  *k8s.Tunnel
 	HTTPS *k8s.Tunnel
 	TCP   *k8s.Tunnel
+	UDP   *k8s.Tunnel
 }
 
 func (t *Tunnels) Close() {
@@ -94,6 +97,10 @@ func (t *Tunnels) Close() {
 	if t.TCP != nil {
 		t.safeClose(t.TCP.Close)
 		t.TCP = nil
+	}
+	if t.UDP != nil {
+		t.safeClose(t.UDP.Close)
+		t.UDP = nil
 	}
 }
 
@@ -214,6 +221,63 @@ func (s *Scaffold) NewAPISIXClientOnTCPPort() *httpexpect.Expect {
 	})
 }
 
+func (s *Scaffold) UDPConnectAssert(shouldRespond bool, timeout time.Duration) {
+	EventuallyWithOffset(1, func() error {
+		// Parse the UDP endpoint
+		udpAddr, err := net.ResolveUDPAddr("udp", s.GetAPISIXUDPEndpoint())
+		if err != nil {
+			return fmt.Errorf("failed to resolve UDP address: %v", err)
+		}
+
+		// Create UDP connection
+		conn, err := net.DialUDP("udp", nil, udpAddr)
+		if err != nil {
+			return fmt.Errorf("failed to connect via UDP: %v", err)
+		}
+		defer conn.Close()
+
+		// Set deadline for the connection
+		conn.SetDeadline(time.Now().Add(3 * time.Second))
+
+		// Send a test message - socat will echo this back via /bin/cat
+		testMessage := []byte("TEST-UDP-REQUEST\n") // Adding newline for better handling
+		_, err = conn.Write(testMessage)
+		if err != nil {
+			return fmt.Errorf("failed to write UDP data: %v", err)
+		}
+
+		// Read response
+		buffer := make([]byte, 1024)
+		n, err := conn.Read(buffer)
+
+		if shouldRespond {
+			// Should get a response (echo back from socat)
+			if err != nil {
+				return fmt.Errorf("expected UDP response but got error: %v", err)
+			}
+			if n == 0 {
+				return fmt.Errorf("expected UDP response but got empty response")
+			}
+
+			// Verify we got our message echoed back
+			response := strings.TrimSpace(string(buffer[:n]))
+			expected := strings.TrimSpace(string(testMessage))
+			if response != expected {
+				return fmt.Errorf("expected echo response '%s' but got '%s'", expected, response)
+			}
+		} else {
+			// Should get no response or timeout
+			if err == nil && n > 0 {
+				return fmt.Errorf("expected no UDP response but got: %s", string(buffer[:n]))
+			}
+			// Timeout is expected when no route is configured
+			if err != nil && !os.IsTimeout(err) {
+				return fmt.Errorf("expected timeout but got: %v", err)
+			}
+		}
+		return nil
+	}).WithTimeout(timeout).WithPolling(2 * time.Second).Should(Succeed())
+}
 func (s *Scaffold) ApisixHTTPEndpoint() string {
 	return s.apisixTunnels.HTTP.Endpoint()
 }
@@ -225,6 +289,10 @@ func (s *Scaffold) GetAPISIXHTTPSEndpoint() string {
 
 func (s *Scaffold) GetAPISIXTCPEndpoint() string {
 	return s.apisixTunnels.TCP.Endpoint()
+}
+
+func (s *Scaffold) GetAPISIXUDPEndpoint() string {
+	return s.apisixTunnels.UDP.Endpoint()
 }
 
 func (s *Scaffold) UpdateNamespace(ns string) {
@@ -359,6 +427,7 @@ func (s *Scaffold) createDataplaneTunnels(
 		httpPort  int
 		httpsPort int
 		tcpPort   int
+		udpPort   int
 	)
 
 	for _, port := range svc.Spec.Ports {
@@ -369,6 +438,8 @@ func (s *Scaffold) createDataplaneTunnels(
 			httpsPort = int(port.Port)
 		case apiv2.SchemeTCP:
 			tcpPort = int(port.Port)
+		case apiv2.SchemeUDP:
+			udpPort = int(port.Port)
 		}
 	}
 
@@ -381,6 +452,8 @@ func (s *Scaffold) createDataplaneTunnels(
 		0, httpsPort)
 	tcpTunnel := k8s.NewTunnel(kubectlOpts, k8s.ResourceTypeService, serviceName,
 		0, tcpPort)
+	udpTunnel := k8s.NewTunnel(kubectlOpts, k8s.ResourceTypeService, serviceName,
+		0, udpPort)
 
 	if err := httpTunnel.ForwardPortE(s.t); err != nil {
 		return nil, err
@@ -396,6 +469,11 @@ func (s *Scaffold) createDataplaneTunnels(
 		return nil, err
 	}
 	tunnels.TCP = tcpTunnel
+
+	if err := udpTunnel.ForwardPortE(s.t); err != nil {
+		return nil, err
+	}
+	tunnels.UDP = udpTunnel
 
 	return tunnels, nil
 }
