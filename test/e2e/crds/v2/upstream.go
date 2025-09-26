@@ -135,4 +135,51 @@ spec:
 			}
 		})
 	})
+
+	Context("external service discovery", func() {
+		ar := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: httpbin-route
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule1
+    match:
+      hosts:
+      - httpbin.org
+      paths:
+        - /*
+    upstreams:
+    - name: httpbin-dns
+`
+
+		au := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: httpbin-dns
+spec:
+  ingressClassName: %s
+  discovery:
+    type: dns
+    serviceName: %s
+`
+
+		It("should be able to access through service discovery", func() {
+			svcName := fmt.Sprintf("httpbin-service-e2e-test.%s.svc.cluster.local", s.Namespace())
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-dns"},
+				&apiv2.ApisixUpstream{}, fmt.Sprintf(au, s.Namespace(), svcName))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-route"},
+				&apiv2.ApisixRoute{}, fmt.Sprintf(ar, s.Namespace()))
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/ip",
+				Host:   "httpbin.org",
+				Check:  scaffold.WithExpectedStatus(200),
+			})
+		})
+	})
 })

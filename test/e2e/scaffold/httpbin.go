@@ -28,6 +28,8 @@ import (
 )
 
 var (
+	HTTPBinServiceName = "httpbin-service-e2e-test"
+
 	_httpbinDeploymentTemplate = `
 apiVersion: apps/v1
 kind: Deployment

@@ -42,9 +42,7 @@ spec:
             description: ApisixUpstreamSpec defines the upstream configuration.
             properties:
               discovery:
-                description: |-
-                  Discovery configures service discovery for the upstream.
-                  Deprecated: no longer supported in standalone mode.
+                description: Discovery configures service discovery for the upstream.
                 properties:
                   args:
                     additionalProperties:
@@ -337,9 +335,8 @@ spec:
                     them if they are set on the port level.
                   properties:
                     discovery:
-                      description: |-
-                        Discovery configures service discovery for the upstream.
-                        Deprecated: no longer supported in standalone mode.
+                      description: Discovery configures service discovery for the
+                        upstream.
                       properties:
                         args:
                           additionalProperties:

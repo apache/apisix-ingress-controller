@@ -21,7 +21,9 @@ import (
 	"cmp"
 	"fmt"
 
+	"github.com/api7/gopkg/pkg/log"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -40,6 +42,7 @@ func (t *Translator) translateApisixUpstream(tctx *provider.TranslateContext, au
 		translateApisixUpstreamRetriesAndTimeout,
 		translateApisixUpstreamPassHost,
 		translateUpstreamHealthCheck,
+		translateUpstreamDiscovery,
 	} {
 		if err = f(au, ups); err != nil {
 			return
@@ -54,6 +57,8 @@ func (t *Translator) translateApisixUpstream(tctx *provider.TranslateContext, au
 		}
 	}
 
+	log.Debugw("translated ApisixUpstream", zap.Any("upstream", ups),
+		zap.String("namespace", au.Namespace), zap.String("name", au.Name))
 	return
 }
 
@@ -339,4 +344,15 @@ func translateUpstreamPassiveHealthCheck(config *apiv2.PassiveHealthCheck) *adc.
 		passive.Unhealthy.HTTPStatuses = config.Unhealthy.HTTPCodes
 	}
 	return &passive
+}
+
+func translateUpstreamDiscovery(au *apiv2.ApisixUpstream, ups *adc.Upstream) error {
+	discovery := au.Spec.Discovery
+	if discovery == nil {
+		return nil
+	}
+	ups.ServiceName = discovery.ServiceName
+	ups.DiscoveryType = discovery.Type
+	ups.DiscoveryArgs = discovery.Args
+	return nil
 }

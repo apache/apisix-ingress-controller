@@ -150,7 +150,6 @@ type ApisixUpstreamConfig struct {
 	UpstreamHost string `json:"upstreamHost,omitempty" yaml:"upstreamHost,omitempty"`
 
 	// Discovery configures service discovery for the upstream.
-	// Deprecated: no longer supported in standalone mode.
 	// +kubebuilder:validation:Optional
 	Discovery *Discovery `json:"discovery,omitempty" yaml:"discovery,omitempty"`
 }
