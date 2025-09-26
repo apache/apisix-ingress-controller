@@ -19,6 +19,8 @@ package scaffold
 
 import (
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -187,6 +189,46 @@ func WithExpectedNotHeaders(unexpectedHeaders []string) ResponseCheckFunc {
 		}
 		return nil
 	}
+}
+
+func (s *Scaffold) HTTPOverTCPConnectAssert(shouldRespond bool, timeout time.Duration) {
+	EventuallyWithOffset(1, func() error {
+		conn, err := net.DialTimeout("tcp", s.GetAPISIXTCPEndpoint(), 3*time.Second)
+		if err != nil {
+			return fmt.Errorf("failed to connect: %v", err)
+		}
+		defer func() {
+			_ = conn.Close()
+		}()
+		_, _ = fmt.Fprintf(conn, "GET /get HTTP/1.1\r\nHost: localhost\r\n\r\n")
+
+		// Read response
+		_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
+		buf := make([]byte, 1024)
+		n, err := conn.Read(buf)
+
+		if shouldRespond {
+			// Should get a response (HTTP 200 from httpbin)
+			if err != nil || n == 0 {
+				return fmt.Errorf("expected response but got error: %v or empty response", err)
+			}
+			// Check if we got a valid HTTP response
+			response := string(buf[:n])
+			if !strings.Contains(response, "HTTP/1.1") {
+				return fmt.Errorf("expected HTTP response but got: %s", response)
+			}
+		} else {
+			// Should get no response or connection reset
+			if err == nil && n > 0 {
+				return fmt.Errorf("expected no response but got: %s", string(buf[:n]))
+			}
+			// EOF or timeout is expected when no route is configured
+			if err != io.EOF && !strings.Contains(err.Error(), "timeout") {
+				return fmt.Errorf("expected EOF or timeout but got: %v", err)
+			}
+		}
+		return nil
+	}).WithTimeout(timeout).WithPolling(2 * time.Second).Should(Succeed())
 }
 
 func (s *Scaffold) RequestAssert(r *RequestAssert) bool {

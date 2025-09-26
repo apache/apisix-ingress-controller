@@ -167,6 +167,22 @@ rules:
   - gateways
   - grpcroutes
   - httproutes
+  - tcproutes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
+  - httproutes/status
+  - tcproutes/status
+  verbs:
+  - get
+  - update
+- apiGroups:
+  - gateway.networking.k8s.io
+  resources:
   - referencegrants
   verbs:
   - get

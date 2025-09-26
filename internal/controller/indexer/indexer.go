@@ -28,6 +28,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
@@ -55,6 +56,7 @@ func SetupIndexer(mgr ctrl.Manager) error {
 	for _, setup := range []func(ctrl.Manager) error{
 		setupGatewayIndexer,
 		setupHTTPRouteIndexer,
+		setupTCPRouteIndexer,
 		setupGRPCRouteIndexer,
 		setupIngressIndexer,
 		setupConsumerIndexer,
@@ -230,6 +232,26 @@ func setupHTTPRouteIndexer(mgr ctrl.Manager) error {
 	return nil
 }
 
+func setupTCPRouteIndexer(mgr ctrl.Manager) error {
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&gatewayv1alpha2.TCPRoute{},
+		ParentRefs,
+		TCPRouteParentRefsIndexFunc,
+	); err != nil {
+		return err
+	}
+
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&gatewayv1alpha2.TCPRoute{},
+		ServiceIndexRef,
+		TCPPRouteServiceIndexFunc,
+	); err != nil {
+		return err
+	}
+	return nil
+}
 func setupIngressClassIndexer(mgr ctrl.Manager) error {
 	// create IngressClass index
 	if err := mgr.GetFieldIndexer().IndexField(
@@ -482,12 +504,43 @@ func HTTPRouteParentRefsIndexFunc(rawObj client.Object) []string {
 	return keys
 }
 
+func TCPRouteParentRefsIndexFunc(rawObj client.Object) []string {
+	tr := rawObj.(*gatewayv1alpha2.TCPRoute)
+	keys := make([]string, 0, len(tr.Spec.ParentRefs))
+	for _, ref := range tr.Spec.ParentRefs {
+		ns := tr.GetNamespace()
+		if ref.Namespace != nil {
+			ns = string(*ref.Namespace)
+		}
+		keys = append(keys, GenIndexKey(ns, string(ref.Name)))
+	}
+	return keys
+}
+
 func HTTPRouteServiceIndexFunc(rawObj client.Object) []string {
 	hr := rawObj.(*gatewayv1.HTTPRoute)
 	keys := make([]string, 0, len(hr.Spec.Rules))
 	for _, rule := range hr.Spec.Rules {
 		for _, backend := range rule.BackendRefs {
 			namespace := hr.GetNamespace()
+			if backend.Kind != nil && *backend.Kind != internaltypes.KindService {
+				continue
+			}
+			if backend.Namespace != nil {
+				namespace = string(*backend.Namespace)
+			}
+			keys = append(keys, GenIndexKey(namespace, string(backend.Name)))
+		}
+	}
+	return keys
+}
+
+func TCPPRouteServiceIndexFunc(rawObj client.Object) []string {
+	tr := rawObj.(*gatewayv1alpha2.TCPRoute)
+	keys := make([]string, 0, len(tr.Spec.Rules))
+	for _, rule := range tr.Spec.Rules {
+		for _, backend := range rule.BackendRefs {
+			namespace := tr.GetNamespace()
 			if backend.Kind != nil && *backend.Kind != internaltypes.KindService {
 				continue
 			}
