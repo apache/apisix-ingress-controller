@@ -68,6 +68,7 @@ func (d *apisixProvider) handleStatusUpdate(statusUpdateMap map[types.Namespaced
 	d.statusUpdateMap = statusUpdateMap
 }
 
+//nolint:gocyclo
 func (d *apisixProvider) updateStatus(nnk types.NamespacedNameKind, condition metav1.Condition) {
 	switch nnk.Kind {
 	case types.KindApisixRoute:
