@@ -30,6 +30,26 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-apisix-apache-org-v2-apisixroute
+  failurePolicy: Fail
+  name: vapisixroute-v2.kb.io
+  rules:
+  - apiGroups:
+    - apisix.apache.org
+    apiVersions:
+    - v2
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - apisixroutes
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-apisix-apache-org-v2-apisixtls
   failurePolicy: Fail
   name: vapisixtls-v2.kb.io
@@ -43,6 +63,26 @@ webhooks:
     - UPDATE
     resources:
     - apisixtlses
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-apisix-apache-org-v1alpha1-consumer
+  failurePolicy: Fail
+  name: vconsumer-v1alpha1.kb.io
+  rules:
+  - apiGroups:
+    - apisix.apache.org
+    apiVersions:
+    - v1alpha1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - consumers
   sideEffects: None
 - admissionReviewVersions:
   - v1
