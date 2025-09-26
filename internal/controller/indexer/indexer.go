@@ -590,11 +590,11 @@ func TCPPRouteServiceIndexFunc(rawObj client.Object) []string {
 }
 
 func UDPRouteServiceIndexFunc(rawObj client.Object) []string {
-	tr := rawObj.(*gatewayv1alpha2.UDPRoute)
-	keys := make([]string, 0, len(tr.Spec.Rules))
-	for _, rule := range tr.Spec.Rules {
+	ur := rawObj.(*gatewayv1alpha2.UDPRoute)
+	keys := make([]string, 0, len(ur.Spec.Rules))
+	for _, rule := range ur.Spec.Rules {
 		for _, backend := range rule.BackendRefs {
-			namespace := tr.GetNamespace()
+			namespace := ur.GetNamespace()
 			if backend.Kind != nil && *backend.Kind != internaltypes.KindService {
 				continue
 			}
