@@ -109,7 +109,7 @@ spec:
 		}).Should(
 			And(
 				ContainSubstring(`status: "True"`),
-				ContainSubstring("message: the gateway has been accepted by the apisix-ingress-controlle"),
+				ContainSubstring("message: the gateway has been accepted by the apisix-ingress-controller"),
 			),
 			"check Gateway condition status",
 		)
@@ -147,7 +147,7 @@ spec:
 		}).Should(
 			And(
 				ContainSubstring(`status: "True"`),
-				ContainSubstring("message: the gateway has been accepted by the apisix-ingress-controlle"),
+				ContainSubstring("message: the gateway has been accepted by the apisix-ingress-controller"),
 			),
 			"check Gateway condition status",
 		)
