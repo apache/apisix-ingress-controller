@@ -19,9 +19,8 @@ import (
 	"context"
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -29,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	v1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	"github.com/apache/apisix-ingress-controller/internal/webhook/v1/reference"
 )
 
 var gatewayProxyLog = logf.Log.WithName("gatewayproxy-resource")
@@ -73,61 +73,35 @@ func (v *GatewayProxyCustomValidator) ValidateDelete(context.Context, runtime.Ob
 }
 
 func (v *GatewayProxyCustomValidator) collectWarnings(ctx context.Context, gp *v1alpha1.GatewayProxy) admission.Warnings {
+	checker := reference.NewChecker(v.Client, gatewayProxyLog)
+
 	var warnings admission.Warnings
 
-	warnings = append(warnings, v.warnIfProviderServiceMissing(ctx, gp)...)
-	warnings = append(warnings, v.warnIfAdminKeySecretMissing(ctx, gp)...)
+	if gp.Spec.Provider != nil && gp.Spec.Provider.ControlPlane != nil {
+		if svc := gp.Spec.Provider.ControlPlane.Service; svc != nil {
+			warnings = append(warnings, checker.Service(ctx, reference.ServiceRef{
+				Object: gp,
+				NamespacedName: types.NamespacedName{
+					Namespace: gp.GetNamespace(),
+					Name:      svc.Name,
+				},
+			})...)
+		}
+
+		auth := gp.Spec.Provider.ControlPlane.Auth
+		if auth.Type == v1alpha1.AuthTypeAdminKey && auth.AdminKey != nil && auth.AdminKey.ValueFrom != nil && auth.AdminKey.ValueFrom.SecretKeyRef != nil {
+			secretRef := auth.AdminKey.ValueFrom.SecretKeyRef
+			key := secretRef.Key
+			warnings = append(warnings, checker.Secret(ctx, reference.SecretRef{
+				Object: gp,
+				NamespacedName: types.NamespacedName{
+					Namespace: gp.GetNamespace(),
+					Name:      secretRef.Name,
+				},
+				Key: &key,
+			})...)
+		}
+	}
 
 	return warnings
-}
-
-func (v *GatewayProxyCustomValidator) warnIfProviderServiceMissing(ctx context.Context, gp *v1alpha1.GatewayProxy) admission.Warnings {
-	if gp.Spec.Provider == nil || gp.Spec.Provider.ControlPlane == nil || gp.Spec.Provider.ControlPlane.Service == nil {
-		return nil
-	}
-
-	svcRef := gp.Spec.Provider.ControlPlane.Service
-	key := client.ObjectKey{Namespace: gp.GetNamespace(), Name: svcRef.Name}
-	var svc corev1.Service
-	if err := v.Client.Get(ctx, key, &svc); err != nil {
-		if k8serrors.IsNotFound(err) {
-			msg := fmt.Sprintf("Referenced Service '%s/%s' not found at spec.provider.controlPlane.service", key.Namespace, key.Name)
-			gatewayProxyLog.Info("GatewayProxy references missing Service", "gatewayproxy", gp.GetName(), "namespace", key.Namespace, "service", key.Name)
-			return admission.Warnings{msg}
-		}
-		gatewayProxyLog.Error(err, "failed to resolve Service for GatewayProxy", "gatewayproxy", gp.GetName(), "namespace", key.Namespace, "service", key.Name)
-	}
-	return nil
-}
-
-func (v *GatewayProxyCustomValidator) warnIfAdminKeySecretMissing(ctx context.Context, gp *v1alpha1.GatewayProxy) admission.Warnings {
-	if gp.Spec.Provider == nil || gp.Spec.Provider.ControlPlane == nil {
-		return nil
-	}
-
-	auth := gp.Spec.Provider.ControlPlane.Auth
-	if auth.Type != v1alpha1.AuthTypeAdminKey || auth.AdminKey == nil || auth.AdminKey.ValueFrom == nil || auth.AdminKey.ValueFrom.SecretKeyRef == nil {
-		return nil
-	}
-
-	ref := auth.AdminKey.ValueFrom.SecretKeyRef
-	key := client.ObjectKey{Namespace: gp.GetNamespace(), Name: ref.Name}
-	var secret corev1.Secret
-	if err := v.Client.Get(ctx, key, &secret); err != nil {
-		if k8serrors.IsNotFound(err) {
-			msg := fmt.Sprintf("Referenced Secret '%s/%s' not found at spec.provider.controlPlane.auth.adminKey.valueFrom.secretKeyRef", key.Namespace, key.Name)
-			gatewayProxyLog.Info("GatewayProxy references missing Secret", "gatewayproxy", gp.GetName(), "namespace", key.Namespace, "secret", key.Name)
-			return admission.Warnings{msg}
-		}
-		gatewayProxyLog.Error(err, "failed to resolve Secret for GatewayProxy", "gatewayproxy", gp.GetName(), "namespace", key.Namespace, "secret", key.Name)
-		return nil
-	}
-
-	if _, ok := secret.Data[ref.Key]; !ok {
-		msg := fmt.Sprintf("Secret key '%s' not found in Secret '%s/%s' at spec.provider.controlPlane.auth.adminKey.valueFrom.secretKeyRef", ref.Key, key.Namespace, key.Name)
-		gatewayProxyLog.Info("GatewayProxy references Secret without required key", "gatewayproxy", gp.GetName(), "namespace", key.Namespace, "secret", key.Name, "key", ref.Key)
-		return admission.Warnings{msg}
-	}
-
-	return nil
 }
