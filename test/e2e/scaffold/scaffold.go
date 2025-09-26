@@ -234,10 +234,12 @@ func (s *Scaffold) UDPConnectAssert(shouldRespond bool, timeout time.Duration) {
 		if err != nil {
 			return fmt.Errorf("failed to connect via UDP: %v", err)
 		}
-		defer conn.Close()
+		defer func() {
+			_ = conn.Close()
+		}()
 
 		// Set deadline for the connection
-		conn.SetDeadline(time.Now().Add(3 * time.Second))
+		_ = conn.SetDeadline(time.Now().Add(3 * time.Second))
 
 		// Send a test message - socat will echo this back via /bin/cat
 		testMessage := []byte("TEST-UDP-REQUEST\n") // Adding newline for better handling
