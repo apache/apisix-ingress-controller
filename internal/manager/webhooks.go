@@ -35,5 +35,20 @@ func setupWebhooks(_ context.Context, mgr manager.Manager) error {
 	if err := webhookv1.SetupGatewayWebhookWithManager(mgr); err != nil {
 		return err
 	}
+	if err := webhookv1.SetupGatewayProxyWebhookWithManager(mgr); err != nil {
+		return err
+	}
+	if err := webhookv1.SetupApisixConsumerWebhookWithManager(mgr); err != nil {
+		return err
+	}
+	if err := webhookv1.SetupApisixTlsWebhookWithManager(mgr); err != nil {
+		return err
+	}
+	if err := webhookv1.SetupApisixRouteWebhookWithManager(mgr); err != nil {
+		return err
+	}
+	if err := webhookv1.SetupConsumerWebhookWithManager(mgr); err != nil {
+		return err
+	}
 	return nil
 }
