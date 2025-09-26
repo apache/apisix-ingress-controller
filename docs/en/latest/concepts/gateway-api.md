@@ -52,7 +52,7 @@ By supporting Gateway API, the APISIX Ingress controller can realize richer func
 | ReferenceGrant   | Supported           | Not supported          | Not supported                         | v1beta1     |
 | TLSRoute         | Not supported       | Not supported          | Not supported                         | v1alpha2    |
 | TCPRoute         | Supported           | Supported              | Not supported                         | v1alpha2    |
-| UDPRoute         | Not supported       | Not supported          | Not supported                         | v1alpha2    |
+| UDPRoute         | Supported           | Supported              | Not supported                         | v1alpha2    |
 | BackendTLSPolicy | Not supported       | Not supported          | Not supported                         | v1alpha3    |
 
 ## Examples

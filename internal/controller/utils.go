@@ -62,6 +62,7 @@ const (
 	KindGateway            = "Gateway"
 	KindHTTPRoute          = "HTTPRoute"
 	KindTCPRoute           = "TCPRoute"
+	KindUDPRoute           = "UDPRoute"
 	KindGRPCRoute          = "GRPCRoute"
 	KindGatewayClass       = "GatewayClass"
 	KindIngress            = "Ingress"
@@ -495,8 +496,8 @@ func routeHostnamesIntersectsWithListenerHostname(route client.Object, listener 
 	switch r := route.(type) {
 	case *gatewayv1.HTTPRoute:
 		return listenerHostnameIntersectWithRouteHostnames(listener, r.Spec.Hostnames)
-	case *gatewayv1alpha2.TCPRoute:
-		return true // TCPRoute doesn't have Hostnames to match
+	case *gatewayv1alpha2.TCPRoute, *gatewayv1alpha2.UDPRoute:
+		return true // TCPRoute and UDPRoute don't have Hostnames to match
 	case *gatewayv1.GRPCRoute:
 		return listenerHostnameIntersectWithRouteHostnames(listener, r.Spec.Hostnames)
 	default:
@@ -665,6 +666,10 @@ func routeMatchesListenerType(route client.Object, listener gatewayv1.Listener) 
 		}
 	case *gatewayv1alpha2.TCPRoute:
 		if listener.Protocol != gatewayv1.TCPProtocolType {
+			return false
+		}
+	case *gatewayv1alpha2.UDPRoute:
+		if listener.Protocol != gatewayv1.UDPProtocolType {
 			return false
 		}
 	default:

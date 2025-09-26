@@ -68,6 +68,7 @@ func (d *apisixProvider) handleStatusUpdate(statusUpdateMap map[types.Namespaced
 	d.statusUpdateMap = statusUpdateMap
 }
 
+//nolint:gocyclo
 func (d *apisixProvider) updateStatus(nnk types.NamespacedNameKind, condition metav1.Condition) {
 	switch nnk.Kind {
 	case types.KindApisixRoute:
@@ -124,6 +125,41 @@ func (d *apisixProvider) updateStatus(nnk types.NamespacedNameKind, condition me
 			Resource:       &gatewayv1.HTTPRoute{},
 			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
 				cp := obj.(*gatewayv1.HTTPRoute).DeepCopy()
+				gatewayNs := cp.GetNamespace()
+				for i, ref := range cp.Status.Parents {
+					ns := gatewayNs
+					if ref.ParentRef.Namespace != nil {
+						ns = string(*ref.ParentRef.Namespace)
+					}
+					if ref.ParentRef.Kind == nil || *ref.ParentRef.Kind == types.KindGateway {
+						nnk := types.NamespacedNameKind{
+							Name:      string(ref.ParentRef.Name),
+							Namespace: ns,
+							Kind:      types.KindGateway,
+						}
+						if _, ok := gatewayRefs[nnk]; ok {
+							ref.Conditions = cutils.MergeCondition(ref.Conditions, condition)
+							cp.Status.Parents[i] = ref
+						}
+					}
+				}
+				return cp
+			}),
+		})
+	case types.KindUDPRoute:
+		parentRefs := d.client.ConfigManager.GetConfigRefsByResourceKey(nnk)
+		log.Debugw("updating UDPRoute status", zap.Any("parentRefs", parentRefs))
+		gatewayRefs := map[types.NamespacedNameKind]struct{}{}
+		for _, parentRef := range parentRefs {
+			if parentRef.Kind == types.KindGateway {
+				gatewayRefs[parentRef] = struct{}{}
+			}
+		}
+		d.updater.Update(status.Update{
+			NamespacedName: nnk.NamespacedName(),
+			Resource:       &gatewayv1alpha2.UDPRoute{},
+			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
+				cp := obj.(*gatewayv1alpha2.UDPRoute).DeepCopy()
 				gatewayNs := cp.GetNamespace()
 				for i, ref := range cp.Status.Parents {
 					ns := gatewayNs
