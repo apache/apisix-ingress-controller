@@ -536,8 +536,8 @@ func ComposeServicesNameWithScheme(namespace, name string, rule string, scheme s
 	return buf.String()
 }
 
-func ComposeServiceNameWithStream(namespace, name string, rule string) string {
-	return ComposeServicesNameWithScheme(namespace, name, rule, "stream")
+func ComposeServiceNameWithStream(namespace, name string, rule, typ string) string {
+	return ComposeServicesNameWithScheme(namespace, name, rule, typ)
 }
 
 func ComposeConsumerName(namespace, name string) string {

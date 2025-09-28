@@ -49,7 +49,7 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 	for ruleIndex, rule := range rules {
 		service := adctypes.NewDefaultService()
 		service.Labels = labels
-		service.Name = adctypes.ComposeServiceNameWithStream(tcpRoute.Namespace, tcpRoute.Name, fmt.Sprintf("%d", ruleIndex))
+		service.Name = adctypes.ComposeServiceNameWithStream(tcpRoute.Namespace, tcpRoute.Name, fmt.Sprintf("%d", ruleIndex), "TCP")
 		service.ID = id.GenID(service.Name)
 		var (
 			upstreams         = make([]*adctypes.Upstream, 0)

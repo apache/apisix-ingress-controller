@@ -429,7 +429,7 @@ func (t *Translator) translateStreamRule(tctx *provider.TranslateContext, ar *ap
 	sr.Plugins = plugins
 
 	svc := adc.NewDefaultService()
-	svc.Name = adc.ComposeServiceNameWithStream(ar.Namespace, ar.Name, part.Name)
+	svc.Name = adc.ComposeServiceNameWithStream(ar.Namespace, ar.Name, part.Name, part.Protocol)
 	svc.ID = id.GenID(svc.Name)
 	svc.StreamRoutes = append(svc.StreamRoutes, sr)
 
