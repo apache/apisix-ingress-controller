@@ -25,6 +25,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
@@ -180,6 +181,129 @@ spec:
 				Host:   "httpbin.org",
 				Check:  scaffold.WithExpectedStatus(200),
 			})
+		})
+	})
+
+	Context("portLevelSettings", func() {
+		var (
+			auNginx = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: nginx
+spec:
+  ingressClassName: %s
+  portLevelSettings:
+    - port: 80
+      passHost: rewrite
+      upstreamHost: upstream.nginx.com
+`
+			auNginx2 = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: nginx2
+spec:
+  ingressClassName: %s
+  portLevelSettings:
+    - port: 443
+      scheme: https
+    - port: 80
+      passHost: rewrite
+      upstreamHost: upstream.nginx.com
+`
+			ar = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: nginx-route
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - www.server.example.com
+      paths:
+      - /http-and-https
+    backends:
+    - serviceName: nginx
+      servicePort: 80
+      weight: 50
+    - serviceName: nginx2
+      servicePort: 443
+      weight: 50
+  - name: rule1
+    match:
+      hosts:
+      - www.server.example.com
+      paths:
+      - /http
+    backends:
+    - serviceName: nginx
+      servicePort: 80
+      weight: 50
+    - serviceName: nginx2
+      servicePort: 80
+      weight: 50
+`
+		)
+
+		BeforeEach(func() {
+			s.DeployNginx(framework.NginxOptions{
+				Namespace: s.Namespace(),
+				Replicas:  ptr.To(int32(1)),
+			})
+		})
+		It("should handle port level settings correctly", func() {
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "nginx"},
+				&apiv2.ApisixUpstream{}, fmt.Sprintf(auNginx, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "nginx2"},
+				&apiv2.ApisixUpstream{}, fmt.Sprintf(auNginx2, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "nginx-route"},
+				&apiv2.ApisixRoute{}, fmt.Sprintf(ar, s.Namespace()))
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/http",
+				Host:   "www.server.example.com",
+				Check:  scaffold.WithExpectedStatus(200),
+			})
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/http-and-https",
+				Host:   "www.server.example.com",
+				Check:  scaffold.WithExpectedStatus(200),
+			})
+
+			By("testing http only")
+			for range 10 {
+				exp := s.NewAPISIXClient().GET("/http").WithHost("www.server.example.com").Expect()
+				exp.Status(200)
+				port := exp.Header("X-Port").Raw()
+				host := exp.Header("X-Host").Raw()
+				Expect(host).Should(Equal("upstream.nginx.com"), "the host should be upstream.nginx.com")
+				Expect(port).To(Equal("80"), "the port should be 80")
+			}
+
+			By("testing both http and https")
+			port80 := false
+			port443 := false
+			for range 10 {
+				exp := s.NewAPISIXClient().GET("/http-and-https").WithHost("www.server.example.com").Expect()
+				exp.Status(200)
+				port := exp.Header("X-Port").Raw()
+				Expect(port == "80" || port == "443").To(BeTrue(), "the port should be 80 or 443")
+				switch port {
+				case "80":
+					port80 = true
+				case "443":
+					port443 = true
+				}
+			}
+			Expect(port80).To(BeTrue(), "should hit port 80")
+			Expect(port443).To(BeTrue(), "should hit port 443")
 		})
 	})
 })
