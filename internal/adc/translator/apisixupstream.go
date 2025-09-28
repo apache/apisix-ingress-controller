@@ -45,6 +45,11 @@ func (t *Translator) translateApisixUpstreamForPort(tctx *provider.TranslateCont
 	ups.Name = composeExternalUpstreamName(au)
 	maps.Copy(ups.Labels, au.Labels)
 
+	// translateApisixUpstreamConfig translates the core upstream configuration fields
+	// from au.Spec.ApisixUpstreamConfig into the ADC upstream.
+	//
+	// Note: ExternalNodes is not part of ApisixUpstreamConfig but a separate field
+	// on ApisixUpstreamSpec, so it is handled separately in translateApisixUpstreamExternalNodes.
 	if err := translateApisixUpstreamConfig(tctx, &au.Spec.ApisixUpstreamConfig, ups); err != nil {
 		return nil, err
 	}
