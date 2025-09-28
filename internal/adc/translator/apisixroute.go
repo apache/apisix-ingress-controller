@@ -422,7 +422,7 @@ func (t *Translator) translateStreamRule(tctx *provider.TranslateContext, ar *ap
 	t.loadRoutePlugins(tctx, ar, part.Plugins, plugins)
 
 	sr := adc.NewDefaultStreamRoute()
-	sr.Name = adc.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name)
+	sr.Name = adc.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name, part.Protocol)
 	sr.ID = id.GenID(sr.Name)
 	sr.ServerPort = part.Match.IngressPort
 	sr.SNI = part.Match.Host

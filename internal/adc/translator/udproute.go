@@ -140,7 +140,7 @@ func (t *Translator) TranslateUDPRoute(tctx *provider.TranslateContext, udpRoute
 			}
 		}
 		streamRoute := adctypes.NewDefaultStreamRoute()
-		streamRouteName := adctypes.ComposeStreamRouteName(udpRoute.Namespace, udpRoute.Name, fmt.Sprintf("%d", ruleIndex))
+		streamRouteName := adctypes.ComposeStreamRouteName(udpRoute.Namespace, udpRoute.Name, fmt.Sprintf("%d", ruleIndex), "UDP")
 		streamRoute.Name = streamRouteName
 		streamRoute.ID = id.GenID(streamRouteName)
 		streamRoute.Labels = labels

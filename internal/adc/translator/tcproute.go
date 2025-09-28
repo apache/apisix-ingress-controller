@@ -151,7 +151,7 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 			}
 		}
 		streamRoute := adctypes.NewDefaultStreamRoute()
-		streamRouteName := adctypes.ComposeStreamRouteName(tcpRoute.Namespace, tcpRoute.Name, fmt.Sprintf("%d", ruleIndex))
+		streamRouteName := adctypes.ComposeStreamRouteName(tcpRoute.Namespace, tcpRoute.Name, fmt.Sprintf("%d", ruleIndex), "TCP")
 		streamRoute.Name = streamRouteName
 		streamRoute.ID = id.GenID(streamRouteName)
 		streamRoute.Labels = labels

@@ -482,10 +482,13 @@ func ComposeRouteName(namespace, name string, rule string) string {
 
 // ComposeStreamRouteName uses namespace, name and rule name to compose
 // the stream_route name.
-func ComposeStreamRouteName(namespace, name string, rule string) string {
+func ComposeStreamRouteName(namespace, name string, rule string, typ string) string {
+	if typ == "" {
+		typ = "TCP"
+	}
 	// FIXME Use sync.Pool to reuse this buffer if the upstream
 	// name composing code path is hot.
-	p := make([]byte, 0, len(namespace)+len(name)+len(rule)+6)
+	p := make([]byte, 0, len(namespace)+len(name)+len(rule)+len(typ)+6)
 	buf := bytes.NewBuffer(p)
 
 	buf.WriteString(namespace)
@@ -493,7 +496,7 @@ func ComposeStreamRouteName(namespace, name string, rule string) string {
 	buf.WriteString(name)
 	buf.WriteByte('_')
 	buf.WriteString(rule)
-	buf.WriteString("_tcp")
+	buf.WriteString(typ)
 
 	return buf.String()
 }
