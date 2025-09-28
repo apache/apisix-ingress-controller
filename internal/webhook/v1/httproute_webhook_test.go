@@ -26,7 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	gatewaynetworkingk8siov1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func buildHTTPRouteValidator(t *testing.T, objects ...runtime.Object) *HTTPRouteCustomValidator {
@@ -34,7 +34,7 @@ func buildHTTPRouteValidator(t *testing.T, objects ...runtime.Object) *HTTPRoute
 
 	scheme := runtime.NewScheme()
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
-	require.NoError(t, gatewaynetworkingk8siov1.Install(scheme))
+	require.NoError(t, gatewayv1.Install(scheme))
 
 	builder := fake.NewClientBuilder().WithScheme(scheme)
 	if len(objects) > 0 {
@@ -45,22 +45,22 @@ func buildHTTPRouteValidator(t *testing.T, objects ...runtime.Object) *HTTPRoute
 }
 
 func TestHTTPRouteCustomValidator_WarnsForMissingReferences(t *testing.T) {
-	route := &gatewaynetworkingk8siov1.HTTPRoute{
+	route := &gatewayv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
-		Spec: gatewaynetworkingk8siov1.HTTPRouteSpec{
-			Rules: []gatewaynetworkingk8siov1.HTTPRouteRule{{
-				BackendRefs: []gatewaynetworkingk8siov1.HTTPBackendRef{{
-					BackendRef: gatewaynetworkingk8siov1.BackendRef{
-						BackendObjectReference: gatewaynetworkingk8siov1.BackendObjectReference{
-							Name: gatewaynetworkingk8siov1.ObjectName("missing-svc"),
+		Spec: gatewayv1.HTTPRouteSpec{
+			Rules: []gatewayv1.HTTPRouteRule{{
+				BackendRefs: []gatewayv1.HTTPBackendRef{{
+					BackendRef: gatewayv1.BackendRef{
+						BackendObjectReference: gatewayv1.BackendObjectReference{
+							Name: gatewayv1.ObjectName("missing-svc"),
 						},
 					},
 				}},
-				Filters: []gatewaynetworkingk8siov1.HTTPRouteFilter{{
-					Type: gatewaynetworkingk8siov1.HTTPRouteFilterRequestMirror,
-					RequestMirror: &gatewaynetworkingk8siov1.HTTPRequestMirrorFilter{
-						BackendRef: gatewaynetworkingk8siov1.BackendObjectReference{
-							Name: gatewaynetworkingk8siov1.ObjectName("mirror-svc"),
+				Filters: []gatewayv1.HTTPRouteFilter{{
+					Type: gatewayv1.HTTPRouteFilterRequestMirror,
+					RequestMirror: &gatewayv1.HTTPRequestMirrorFilter{
+						BackendRef: gatewayv1.BackendObjectReference{
+							Name: gatewayv1.ObjectName("mirror-svc"),
 						},
 					},
 				}},
@@ -85,22 +85,22 @@ func TestHTTPRouteCustomValidator_NoWarningsWhenResourcesExist(t *testing.T) {
 
 	validator := buildHTTPRouteValidator(t, objects...)
 
-	route := &gatewaynetworkingk8siov1.HTTPRoute{
+	route := &gatewayv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
-		Spec: gatewaynetworkingk8siov1.HTTPRouteSpec{
-			Rules: []gatewaynetworkingk8siov1.HTTPRouteRule{{
-				BackendRefs: []gatewaynetworkingk8siov1.HTTPBackendRef{{
-					BackendRef: gatewaynetworkingk8siov1.BackendRef{
-						BackendObjectReference: gatewaynetworkingk8siov1.BackendObjectReference{
-							Name: gatewaynetworkingk8siov1.ObjectName("primary"),
+		Spec: gatewayv1.HTTPRouteSpec{
+			Rules: []gatewayv1.HTTPRouteRule{{
+				BackendRefs: []gatewayv1.HTTPBackendRef{{
+					BackendRef: gatewayv1.BackendRef{
+						BackendObjectReference: gatewayv1.BackendObjectReference{
+							Name: gatewayv1.ObjectName("primary"),
 						},
 					},
 				}},
-				Filters: []gatewaynetworkingk8siov1.HTTPRouteFilter{{
-					Type: gatewaynetworkingk8siov1.HTTPRouteFilterRequestMirror,
-					RequestMirror: &gatewaynetworkingk8siov1.HTTPRequestMirrorFilter{
-						BackendRef: gatewaynetworkingk8siov1.BackendObjectReference{
-							Name: gatewaynetworkingk8siov1.ObjectName("mirror"),
+				Filters: []gatewayv1.HTTPRouteFilter{{
+					Type: gatewayv1.HTTPRouteFilterRequestMirror,
+					RequestMirror: &gatewayv1.HTTPRequestMirrorFilter{
+						BackendRef: gatewayv1.BackendObjectReference{
+							Name: gatewayv1.ObjectName("mirror"),
 						},
 					},
 				}},

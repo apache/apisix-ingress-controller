@@ -26,62 +26,66 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
-func buildGRPCRouteValidator(t *testing.T, objects ...runtime.Object) *GRPCRouteCustomValidator {
+func buildTCPRouteValidator(t *testing.T, objects ...runtime.Object) *TCPRouteCustomValidator {
 	t.Helper()
 
 	scheme := runtime.NewScheme()
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
-	require.NoError(t, gatewayv1.Install(scheme))
+	require.NoError(t, gatewayv1alpha2.Install(scheme))
 
 	builder := fake.NewClientBuilder().WithScheme(scheme)
 	if len(objects) > 0 {
 		builder = builder.WithRuntimeObjects(objects...)
 	}
 
-	return NewGRPCRouteCustomValidator(builder.Build())
+	return NewTCPRouteCustomValidator(builder.Build())
 }
 
-func TestGRPCRouteCustomValidator_WarnsForMissingService(t *testing.T) {
-	route := &gatewayv1.GRPCRoute{
+func TestTCPRouteCustomValidator_WarnsForMissingReferences(t *testing.T) {
+	route := &gatewayv1alpha2.TCPRoute{
 		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
-		Spec: gatewayv1.GRPCRouteSpec{
-			Rules: []gatewayv1.GRPCRouteRule{{
-				BackendRefs: []gatewayv1.GRPCBackendRef{{
-					BackendRef: gatewayv1.BackendRef{
-						BackendObjectReference: gatewayv1.BackendObjectReference{
-							Name: gatewayv1.ObjectName("missing"),
+		Spec: gatewayv1alpha2.TCPRouteSpec{
+			Rules: []gatewayv1alpha2.TCPRouteRule{{
+				BackendRefs: []gatewayv1alpha2.BackendRef{
+					{
+						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+							Name: gatewayv1alpha2.ObjectName("missing-svc"),
 						},
 					},
-				}},
+				},
 			}},
 		},
 	}
 
-	validator := buildGRPCRouteValidator(t)
+	validator := buildTCPRouteValidator(t)
 	warnings, err := validator.ValidateCreate(context.Background(), route)
 	require.NoError(t, err)
-	require.Len(t, warnings, 1)
-	assert.Equal(t, warnings[0], "Referenced Service 'default/missing' not found")
+	assert.ElementsMatch(t, []string{
+		"Referenced Service 'default/missing-svc' not found",
+	}, warnings)
 }
 
-func TestGRPCRouteCustomValidator_NoWarningsWhenServiceExists(t *testing.T) {
-	service := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "backend", Namespace: "default"}}
-	validator := buildGRPCRouteValidator(t, service)
+func TestTCPRouteCustomValidator_NoWarningsWhenResourcesExist(t *testing.T) {
+	objs := []runtime.Object{
+		&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "backend", Namespace: "default"}},
+	}
 
-	route := &gatewayv1.GRPCRoute{
+	validator := buildTCPRouteValidator(t, objs...)
+
+	route := &gatewayv1alpha2.TCPRoute{
 		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
-		Spec: gatewayv1.GRPCRouteSpec{
-			Rules: []gatewayv1.GRPCRouteRule{{
-				BackendRefs: []gatewayv1.GRPCBackendRef{{
-					BackendRef: gatewayv1.BackendRef{
-						BackendObjectReference: gatewayv1.BackendObjectReference{
-							Name: gatewayv1.ObjectName("backend"),
+		Spec: gatewayv1alpha2.TCPRouteSpec{
+			Rules: []gatewayv1alpha2.TCPRouteRule{{
+				BackendRefs: []gatewayv1alpha2.BackendRef{
+					{
+						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
+							Name: gatewayv1alpha2.ObjectName("backend"),
 						},
 					},
-				}},
+				},
 			}},
 		},
 	}

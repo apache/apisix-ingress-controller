@@ -26,7 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	gatewaynetworkingk8siov1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 )
@@ -36,7 +36,7 @@ func buildGatewayValidator(t *testing.T, objects ...runtime.Object) *GatewayCust
 
 	scheme := runtime.NewScheme()
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
-	require.NoError(t, gatewaynetworkingk8siov1.Install(scheme))
+	require.NoError(t, gatewayv1.Install(scheme))
 
 	builder := fake.NewClientBuilder().WithScheme(scheme)
 	if len(objects) > 0 {
@@ -47,25 +47,25 @@ func buildGatewayValidator(t *testing.T, objects ...runtime.Object) *GatewayCust
 }
 
 func TestGatewayCustomValidator_WarnsWhenTLSSecretMissing(t *testing.T) {
-	className := gatewaynetworkingk8siov1.ObjectName("apisix")
-	gatewayClass := &gatewaynetworkingk8siov1.GatewayClass{
+	className := gatewayv1.ObjectName("apisix")
+	gatewayClass := &gatewayv1.GatewayClass{
 		ObjectMeta: metav1.ObjectMeta{Name: string(className)},
-		Spec: gatewaynetworkingk8siov1.GatewayClassSpec{
-			ControllerName: gatewaynetworkingk8siov1.GatewayController(config.ControllerConfig.ControllerName),
+		Spec: gatewayv1.GatewayClassSpec{
+			ControllerName: gatewayv1.GatewayController(config.ControllerConfig.ControllerName),
 		},
 	}
 	validator := buildGatewayValidator(t, gatewayClass)
 
-	gateway := &gatewaynetworkingk8siov1.Gateway{
+	gateway := &gatewayv1.Gateway{
 		ObjectMeta: metav1.ObjectMeta{Name: "example", Namespace: "default"},
-		Spec: gatewaynetworkingk8siov1.GatewaySpec{
+		Spec: gatewayv1.GatewaySpec{
 			GatewayClassName: className,
-			Listeners: []gatewaynetworkingk8siov1.Listener{{
+			Listeners: []gatewayv1.Listener{{
 				Name:     "https",
 				Port:     443,
-				Protocol: gatewaynetworkingk8siov1.HTTPSProtocolType,
-				TLS: &gatewaynetworkingk8siov1.GatewayTLSConfig{
-					CertificateRefs: []gatewaynetworkingk8siov1.SecretObjectReference{{
+				Protocol: gatewayv1.HTTPSProtocolType,
+				TLS: &gatewayv1.GatewayTLSConfig{
+					CertificateRefs: []gatewayv1.SecretObjectReference{{
 						Name: "missing-cert",
 					}},
 				},
@@ -80,26 +80,26 @@ func TestGatewayCustomValidator_WarnsWhenTLSSecretMissing(t *testing.T) {
 }
 
 func TestGatewayCustomValidator_NoWarningsWhenSecretExists(t *testing.T) {
-	className := gatewaynetworkingk8siov1.ObjectName("apisix")
-	gatewayClass := &gatewaynetworkingk8siov1.GatewayClass{
+	className := gatewayv1.ObjectName("apisix")
+	gatewayClass := &gatewayv1.GatewayClass{
 		ObjectMeta: metav1.ObjectMeta{Name: string(className)},
-		Spec: gatewaynetworkingk8siov1.GatewayClassSpec{
-			ControllerName: gatewaynetworkingk8siov1.GatewayController(config.ControllerConfig.ControllerName),
+		Spec: gatewayv1.GatewayClassSpec{
+			ControllerName: gatewayv1.GatewayController(config.ControllerConfig.ControllerName),
 		},
 	}
 	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "tls-cert", Namespace: "default"}}
 	validator := buildGatewayValidator(t, gatewayClass, secret)
 
-	gateway := &gatewaynetworkingk8siov1.Gateway{
+	gateway := &gatewayv1.Gateway{
 		ObjectMeta: metav1.ObjectMeta{Name: "example", Namespace: "default"},
-		Spec: gatewaynetworkingk8siov1.GatewaySpec{
+		Spec: gatewayv1.GatewaySpec{
 			GatewayClassName: className,
-			Listeners: []gatewaynetworkingk8siov1.Listener{{
+			Listeners: []gatewayv1.Listener{{
 				Name:     "https",
 				Port:     443,
-				Protocol: gatewaynetworkingk8siov1.HTTPSProtocolType,
-				TLS: &gatewaynetworkingk8siov1.GatewayTLSConfig{
-					CertificateRefs: []gatewaynetworkingk8siov1.SecretObjectReference{{
+				Protocol: gatewayv1.HTTPSProtocolType,
+				TLS: &gatewayv1.GatewayTLSConfig{
+					CertificateRefs: []gatewayv1.SecretObjectReference{{
 						Name: "tls-cert",
 					}},
 				},

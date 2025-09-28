@@ -44,6 +44,9 @@ func setupWebhooks(_ context.Context, mgr manager.Manager) error {
 	if err := webhookv1.SetupGRPCRouteWebhookWithManager(mgr); err != nil {
 		return err
 	}
+	if err := webhookv1.SetupTCPRouteWebhookWithManager(mgr); err != nil {
+		return err
+	}
 	if err := webhookv1.SetupApisixConsumerWebhookWithManager(mgr); err != nil {
 		return err
 	}

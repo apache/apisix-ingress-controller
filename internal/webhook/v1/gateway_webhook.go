@@ -28,7 +28,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-	gatewaynetworkingk8siov1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	v1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
@@ -42,7 +42,7 @@ var gatewaylog = logf.Log.WithName("gateway-resource")
 
 // SetupGatewayWebhookWithManager registers the webhook for Gateway in the manager.
 func SetupGatewayWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).For(&gatewaynetworkingk8siov1.Gateway{}).
+	return ctrl.NewWebhookManagedBy(mgr).For(&gatewayv1.Gateway{}).
 		WithValidator(NewGatewayCustomValidator(mgr.GetClient())).
 		Complete()
 }
@@ -72,7 +72,7 @@ func NewGatewayCustomValidator(c client.Client) *GatewayCustomValidator {
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type Gateway.
 func (v *GatewayCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	gateway, ok := obj.(*gatewaynetworkingk8siov1.Gateway)
+	gateway, ok := obj.(*gatewayv1.Gateway)
 	if !ok {
 		return nil, fmt.Errorf("expected a Gateway object but got %T", obj)
 	}
@@ -86,7 +86,7 @@ func (v *GatewayCustomValidator) ValidateCreate(ctx context.Context, obj runtime
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type Gateway.
 func (v *GatewayCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	gateway, ok := newObj.(*gatewaynetworkingk8siov1.Gateway)
+	gateway, ok := newObj.(*gatewayv1.Gateway)
 	if !ok {
 		return nil, fmt.Errorf("expected a Gateway object for the newObj but got %T", newObj)
 	}
@@ -103,7 +103,7 @@ func (v *GatewayCustomValidator) ValidateDelete(_ context.Context, obj runtime.O
 	return nil, nil
 }
 
-func (v *GatewayCustomValidator) collectReferenceWarnings(ctx context.Context, gateway *gatewaynetworkingk8siov1.Gateway) admission.Warnings {
+func (v *GatewayCustomValidator) collectReferenceWarnings(ctx context.Context, gateway *gatewayv1.Gateway) admission.Warnings {
 	if gateway == nil {
 		return nil
 	}
@@ -150,11 +150,11 @@ func (v *GatewayCustomValidator) collectReferenceWarnings(ctx context.Context, g
 	return warnings
 }
 
-func (v *GatewayCustomValidator) warnIfMissingGatewayProxyForGateway(ctx context.Context, gateway *gatewaynetworkingk8siov1.Gateway) admission.Warnings {
+func (v *GatewayCustomValidator) warnIfMissingGatewayProxyForGateway(ctx context.Context, gateway *gatewayv1.Gateway) admission.Warnings {
 	var warnings admission.Warnings
 
 	// get gateway class
-	gatewayClass := &gatewaynetworkingk8siov1.GatewayClass{}
+	gatewayClass := &gatewayv1.GatewayClass{}
 	if err := v.Client.Get(ctx, client.ObjectKey{Name: string(gateway.Spec.GatewayClassName)}, gatewayClass); err != nil {
 		gatewaylog.Error(err, "failed to get gateway class", "gateway", gateway.GetName(), "gatewayclass", gateway.Spec.GatewayClassName)
 		return nil

@@ -27,7 +27,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-	gatewaynetworkingk8siov1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/webhook/v1/reference"
@@ -37,7 +37,7 @@ var grpcRouteLog = logf.Log.WithName("grpcroute-resource")
 
 func SetupGRPCRouteWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
-		For(&gatewaynetworkingk8siov1.GRPCRoute{}).
+		For(&gatewayv1.GRPCRoute{}).
 		WithValidator(NewGRPCRouteCustomValidator(mgr.GetClient())).
 		Complete()
 }
@@ -59,7 +59,7 @@ func NewGRPCRouteCustomValidator(c client.Client) *GRPCRouteCustomValidator {
 }
 
 func (v *GRPCRouteCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	route, ok := obj.(*gatewaynetworkingk8siov1.GRPCRoute)
+	route, ok := obj.(*gatewayv1.GRPCRoute)
 	if !ok {
 		return nil, fmt.Errorf("expected a GRPCRoute object but got %T", obj)
 	}
@@ -69,7 +69,7 @@ func (v *GRPCRouteCustomValidator) ValidateCreate(ctx context.Context, obj runti
 }
 
 func (v *GRPCRouteCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	route, ok := newObj.(*gatewaynetworkingk8siov1.GRPCRoute)
+	route, ok := newObj.(*gatewayv1.GRPCRoute)
 	if !ok {
 		return nil, fmt.Errorf("expected a GRPCRoute object for the newObj but got %T", newObj)
 	}
@@ -82,7 +82,7 @@ func (*GRPCRouteCustomValidator) ValidateDelete(context.Context, runtime.Object)
 	return nil, nil
 }
 
-func (v *GRPCRouteCustomValidator) collectWarnings(ctx context.Context, route *gatewaynetworkingk8siov1.GRPCRoute) admission.Warnings {
+func (v *GRPCRouteCustomValidator) collectWarnings(ctx context.Context, route *gatewayv1.GRPCRoute) admission.Warnings {
 	serviceVisited := make(map[types.NamespacedName]struct{})
 	namespace := route.GetNamespace()
 
@@ -102,7 +102,7 @@ func (v *GRPCRouteCustomValidator) collectWarnings(ctx context.Context, route *g
 		})...)
 	}
 
-	addBackendRef := func(ns string, name string, group *gatewaynetworkingk8siov1.Group, kind *gatewaynetworkingk8siov1.Kind) {
+	addBackendRef := func(ns string, name string, group *gatewayv1.Group, kind *gatewayv1.Kind) {
 		if name == "" {
 			return
 		}
@@ -116,7 +116,7 @@ func (v *GRPCRouteCustomValidator) collectWarnings(ctx context.Context, route *g
 		addServiceWarning(nn)
 	}
 
-	processFilters := func(filters []gatewaynetworkingk8siov1.GRPCRouteFilter) {
+	processFilters := func(filters []gatewayv1.GRPCRouteFilter) {
 		for _, filter := range filters {
 			if filter.RequestMirror != nil {
 				targetNamespace := namespace
