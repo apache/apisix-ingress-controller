@@ -19,8 +19,10 @@ import (
 	"context"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -31,6 +33,7 @@ import (
 	v1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
+	"github.com/apache/apisix-ingress-controller/internal/webhook/v1/reference"
 )
 
 // nolint:unused
@@ -40,7 +43,7 @@ var gatewaylog = logf.Log.WithName("gateway-resource")
 // SetupGatewayWebhookWithManager registers the webhook for Gateway in the manager.
 func SetupGatewayWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).For(&gatewaynetworkingk8siov1.Gateway{}).
-		WithValidator(&GatewayCustomValidator{Client: mgr.GetClient()}).
+		WithValidator(NewGatewayCustomValidator(mgr.GetClient())).
 		Complete()
 }
 
@@ -54,10 +57,18 @@ func SetupGatewayWebhookWithManager(mgr ctrl.Manager) error {
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
 // as this struct is used only for temporary operations and does not need to be deeply copied.
 type GatewayCustomValidator struct {
-	Client client.Client
+	Client  client.Client
+	checker reference.Checker
 }
 
 var _ webhook.CustomValidator = &GatewayCustomValidator{}
+
+func NewGatewayCustomValidator(c client.Client) *GatewayCustomValidator {
+	return &GatewayCustomValidator{
+		Client:  c,
+		checker: reference.NewChecker(c, gatewaylog),
+	}
+}
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type Gateway.
 func (v *GatewayCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
@@ -68,6 +79,7 @@ func (v *GatewayCustomValidator) ValidateCreate(ctx context.Context, obj runtime
 	gatewaylog.Info("Validation for Gateway upon creation", "name", gateway.GetName())
 
 	warnings := v.warnIfMissingGatewayProxyForGateway(ctx, gateway)
+	warnings = append(warnings, v.collectReferenceWarnings(ctx, gateway)...)
 
 	return warnings, nil
 }
@@ -81,6 +93,7 @@ func (v *GatewayCustomValidator) ValidateUpdate(ctx context.Context, oldObj, new
 	gatewaylog.Info("Validation for Gateway upon update", "name", gateway.GetName())
 
 	warnings := v.warnIfMissingGatewayProxyForGateway(ctx, gateway)
+	warnings = append(warnings, v.collectReferenceWarnings(ctx, gateway)...)
 
 	return warnings, nil
 }
@@ -88,6 +101,53 @@ func (v *GatewayCustomValidator) ValidateUpdate(ctx context.Context, oldObj, new
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type Gateway.
 func (v *GatewayCustomValidator) ValidateDelete(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
 	return nil, nil
+}
+
+func (v *GatewayCustomValidator) collectReferenceWarnings(ctx context.Context, gateway *gatewaynetworkingk8siov1.Gateway) admission.Warnings {
+	if gateway == nil {
+		return nil
+	}
+
+	var warnings admission.Warnings
+	secretVisited := make(map[types.NamespacedName]struct{})
+
+	addSecretWarning := func(nn types.NamespacedName) {
+		if nn.Name == "" || nn.Namespace == "" {
+			return
+		}
+		if _, seen := secretVisited[nn]; seen {
+			return
+		}
+		secretVisited[nn] = struct{}{}
+		warnings = append(warnings, v.checker.Secret(ctx, reference.SecretRef{
+			Object:         gateway,
+			NamespacedName: nn,
+		})...)
+	}
+
+	for _, listener := range gateway.Spec.Listeners {
+		if listener.TLS == nil {
+			continue
+		}
+		for _, ref := range listener.TLS.CertificateRefs {
+			if ref.Kind != nil && *ref.Kind != internaltypes.KindSecret {
+				continue
+			}
+			if ref.Group != nil && string(*ref.Group) != corev1.GroupName {
+				continue
+			}
+			nn := types.NamespacedName{
+				Namespace: gateway.GetNamespace(),
+				Name:      string(ref.Name),
+			}
+			if ref.Namespace != nil && *ref.Namespace != "" {
+				nn.Namespace = string(*ref.Namespace)
+			}
+			addSecretWarning(nn)
+		}
+	}
+
+	return warnings
 }
 
 func (v *GatewayCustomValidator) warnIfMissingGatewayProxyForGateway(ctx context.Context, gateway *gatewaynetworkingk8siov1.Gateway) admission.Warnings {
