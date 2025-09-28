@@ -36,17 +36,25 @@ var gatewayProxyLog = logf.Log.WithName("gatewayproxy-resource")
 func SetupGatewayProxyWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&v1alpha1.GatewayProxy{}).
-		WithValidator(&GatewayProxyCustomValidator{Client: mgr.GetClient()}).
+		WithValidator(NewGatewayProxyCustomValidator(mgr.GetClient())).
 		Complete()
 }
 
 // +kubebuilder:webhook:path=/validate-apisix-apache-org-v1alpha1-gatewayproxy,mutating=false,failurePolicy=fail,sideEffects=None,groups=apisix.apache.org,resources=gatewayproxies,verbs=create;update,versions=v1alpha1,name=vgatewayproxy-v1alpha1.kb.io,admissionReviewVersions=v1
 
 type GatewayProxyCustomValidator struct {
-	Client client.Client
+	Client  client.Client
+	checker reference.Checker
 }
 
 var _ webhook.CustomValidator = &GatewayProxyCustomValidator{}
+
+func NewGatewayProxyCustomValidator(c client.Client) *GatewayProxyCustomValidator {
+	return &GatewayProxyCustomValidator{
+		Client:  c,
+		checker: reference.NewChecker(c, gatewayProxyLog),
+	}
+}
 
 func (v *GatewayProxyCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	gp, ok := obj.(*v1alpha1.GatewayProxy)
@@ -73,13 +81,11 @@ func (v *GatewayProxyCustomValidator) ValidateDelete(context.Context, runtime.Ob
 }
 
 func (v *GatewayProxyCustomValidator) collectWarnings(ctx context.Context, gp *v1alpha1.GatewayProxy) admission.Warnings {
-	checker := reference.NewChecker(v.Client, gatewayProxyLog)
-
 	var warnings admission.Warnings
 
 	if gp.Spec.Provider != nil && gp.Spec.Provider.ControlPlane != nil {
 		if svc := gp.Spec.Provider.ControlPlane.Service; svc != nil {
-			warnings = append(warnings, checker.Service(ctx, reference.ServiceRef{
+			warnings = append(warnings, v.checker.Service(ctx, reference.ServiceRef{
 				Object: gp,
 				NamespacedName: types.NamespacedName{
 					Namespace: gp.GetNamespace(),
@@ -92,7 +98,7 @@ func (v *GatewayProxyCustomValidator) collectWarnings(ctx context.Context, gp *v
 		if auth.Type == v1alpha1.AuthTypeAdminKey && auth.AdminKey != nil && auth.AdminKey.ValueFrom != nil && auth.AdminKey.ValueFrom.SecretKeyRef != nil {
 			secretRef := auth.AdminKey.ValueFrom.SecretKeyRef
 			key := secretRef.Key
-			warnings = append(warnings, checker.Secret(ctx, reference.SecretRef{
+			warnings = append(warnings, v.checker.Secret(ctx, reference.SecretRef{
 				Object: gp,
 				NamespacedName: types.NamespacedName{
 					Namespace: gp.GetNamespace(),

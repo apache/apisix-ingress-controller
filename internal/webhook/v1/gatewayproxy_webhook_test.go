@@ -41,7 +41,7 @@ func buildGatewayProxyValidator(t *testing.T, objects ...runtime.Object) *Gatewa
 		builder = builder.WithRuntimeObjects(objects...)
 	}
 
-	return &GatewayProxyCustomValidator{Client: builder.Build()}
+	return NewGatewayProxyCustomValidator(builder.Build())
 }
 
 func newGatewayProxy() *v1alpha1.GatewayProxy {

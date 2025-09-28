@@ -36,17 +36,25 @@ var apisixRouteLog = logf.Log.WithName("apisixroute-resource")
 func SetupApisixRouteWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&apisixv2.ApisixRoute{}).
-		WithValidator(&ApisixRouteCustomValidator{Client: mgr.GetClient()}).
+		WithValidator(NewApisixRouteCustomValidator(mgr.GetClient())).
 		Complete()
 }
 
 // +kubebuilder:webhook:path=/validate-apisix-apache-org-v2-apisixroute,mutating=false,failurePolicy=fail,sideEffects=None,groups=apisix.apache.org,resources=apisixroutes,verbs=create;update,versions=v2,name=vapisixroute-v2.kb.io,admissionReviewVersions=v1
 
 type ApisixRouteCustomValidator struct {
-	Client client.Client
+	Client  client.Client
+	checker reference.Checker
 }
 
 var _ webhook.CustomValidator = &ApisixRouteCustomValidator{}
+
+func NewApisixRouteCustomValidator(c client.Client) *ApisixRouteCustomValidator {
+	return &ApisixRouteCustomValidator{
+		Client:  c,
+		checker: reference.NewChecker(c, apisixRouteLog),
+	}
+}
 
 func (v *ApisixRouteCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	route, ok := obj.(*apisixv2.ApisixRoute)
@@ -73,7 +81,6 @@ func (*ApisixRouteCustomValidator) ValidateDelete(context.Context, runtime.Objec
 }
 
 func (v *ApisixRouteCustomValidator) collectWarnings(ctx context.Context, route *apisixv2.ApisixRoute) admission.Warnings {
-	checker := reference.NewChecker(v.Client, apisixRouteLog)
 	namespace := route.GetNamespace()
 
 	serviceVisited := make(map[types.NamespacedName]struct{})
@@ -89,7 +96,7 @@ func (v *ApisixRouteCustomValidator) collectWarnings(ctx context.Context, route 
 			return
 		}
 		serviceVisited[nn] = struct{}{}
-		warnings = append(warnings, checker.Service(ctx, reference.ServiceRef{
+		warnings = append(warnings, v.checker.Service(ctx, reference.ServiceRef{
 			Object:         route,
 			NamespacedName: nn,
 		})...)
@@ -103,7 +110,7 @@ func (v *ApisixRouteCustomValidator) collectWarnings(ctx context.Context, route 
 			return
 		}
 		secretVisited[nn] = struct{}{}
-		warnings = append(warnings, checker.Secret(ctx, reference.SecretRef{
+		warnings = append(warnings, v.checker.Secret(ctx, reference.SecretRef{
 			Object:         route,
 			NamespacedName: nn,
 		})...)

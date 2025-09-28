@@ -41,7 +41,7 @@ func buildApisixRouteValidator(t *testing.T, objects ...runtime.Object) *ApisixR
 		builder = builder.WithRuntimeObjects(objects...)
 	}
 
-	return &ApisixRouteCustomValidator{Client: builder.Build()}
+	return NewApisixRouteCustomValidator(builder.Build())
 }
 
 func TestApisixRouteValidator_MissingHTTPService(t *testing.T) {

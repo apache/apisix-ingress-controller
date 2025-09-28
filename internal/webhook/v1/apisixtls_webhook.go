@@ -36,17 +36,25 @@ var apisixTlsLog = logf.Log.WithName("apisixtls-resource")
 func SetupApisixTlsWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&apisixv2.ApisixTls{}).
-		WithValidator(&ApisixTlsCustomValidator{Client: mgr.GetClient()}).
+		WithValidator(NewApisixTlsCustomValidator(mgr.GetClient())).
 		Complete()
 }
 
 // +kubebuilder:webhook:path=/validate-apisix-apache-org-v2-apisixtls,mutating=false,failurePolicy=fail,sideEffects=None,groups=apisix.apache.org,resources=apisixtlses,verbs=create;update,versions=v2,name=vapisixtls-v2.kb.io,admissionReviewVersions=v1
 
 type ApisixTlsCustomValidator struct {
-	Client client.Client
+	Client  client.Client
+	checker reference.Checker
 }
 
 var _ webhook.CustomValidator = &ApisixTlsCustomValidator{}
+
+func NewApisixTlsCustomValidator(c client.Client) *ApisixTlsCustomValidator {
+	return &ApisixTlsCustomValidator{
+		Client:  c,
+		checker: reference.NewChecker(c, apisixTlsLog),
+	}
+}
 
 func (v *ApisixTlsCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	tls, ok := obj.(*apisixv2.ApisixTls)
@@ -73,10 +81,9 @@ func (*ApisixTlsCustomValidator) ValidateDelete(context.Context, runtime.Object)
 }
 
 func (v *ApisixTlsCustomValidator) collectWarnings(ctx context.Context, tls *apisixv2.ApisixTls) admission.Warnings {
-	checker := reference.NewChecker(v.Client, apisixTlsLog)
 	var warnings admission.Warnings
 
-	warnings = append(warnings, checker.Secret(ctx, reference.SecretRef{
+	warnings = append(warnings, v.checker.Secret(ctx, reference.SecretRef{
 		Object: tls,
 		NamespacedName: types.NamespacedName{
 			Namespace: tls.Spec.Secret.Namespace,
@@ -85,7 +92,7 @@ func (v *ApisixTlsCustomValidator) collectWarnings(ctx context.Context, tls *api
 	})...)
 
 	if client := tls.Spec.Client; client != nil {
-		warnings = append(warnings, checker.Secret(ctx, reference.SecretRef{
+		warnings = append(warnings, v.checker.Secret(ctx, reference.SecretRef{
 			Object: tls,
 			NamespacedName: types.NamespacedName{
 				Namespace: client.CASecret.Namespace,

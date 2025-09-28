@@ -41,7 +41,7 @@ func buildApisixTlsValidator(t *testing.T, objects ...runtime.Object) *ApisixTls
 		builder = builder.WithRuntimeObjects(objects...)
 	}
 
-	return &ApisixTlsCustomValidator{Client: builder.Build()}
+	return NewApisixTlsCustomValidator(builder.Build())
 }
 
 func newApisixTls() *apisixv2.ApisixTls {

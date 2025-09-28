@@ -37,17 +37,25 @@ var apisixConsumerLog = logf.Log.WithName("apisixconsumer-resource")
 func SetupApisixConsumerWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(&apisixv2.ApisixConsumer{}).
-		WithValidator(&ApisixConsumerCustomValidator{Client: mgr.GetClient()}).
+		WithValidator(NewApisixConsumerCustomValidator(mgr.GetClient())).
 		Complete()
 }
 
 // +kubebuilder:webhook:path=/validate-apisix-apache-org-v2-apisixconsumer,mutating=false,failurePolicy=fail,sideEffects=None,groups=apisix.apache.org,resources=apisixconsumers,verbs=create;update,versions=v2,name=vapisixconsumer-v2.kb.io,admissionReviewVersions=v1
 
 type ApisixConsumerCustomValidator struct {
-	Client client.Client
+	Client  client.Client
+	checker reference.Checker
 }
 
 var _ webhook.CustomValidator = &ApisixConsumerCustomValidator{}
+
+func NewApisixConsumerCustomValidator(c client.Client) *ApisixConsumerCustomValidator {
+	return &ApisixConsumerCustomValidator{
+		Client:  c,
+		checker: reference.NewChecker(c, apisixConsumerLog),
+	}
+}
 
 func (v *ApisixConsumerCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
 	consumer, ok := obj.(*apisixv2.ApisixConsumer)
@@ -74,7 +82,6 @@ func (*ApisixConsumerCustomValidator) ValidateDelete(context.Context, runtime.Ob
 }
 
 func (v *ApisixConsumerCustomValidator) collectWarnings(ctx context.Context, consumer *apisixv2.ApisixConsumer) admission.Warnings {
-	checker := reference.NewChecker(v.Client, apisixConsumerLog)
 	namespace := consumer.GetNamespace()
 	var warnings admission.Warnings
 
@@ -83,7 +90,7 @@ func (v *ApisixConsumerCustomValidator) collectWarnings(ctx context.Context, con
 			return
 		}
 
-		warnings = append(warnings, checker.Secret(ctx, reference.SecretRef{
+		warnings = append(warnings, v.checker.Secret(ctx, reference.SecretRef{
 			Object: consumer,
 			NamespacedName: types.NamespacedName{
 				Namespace: namespace,

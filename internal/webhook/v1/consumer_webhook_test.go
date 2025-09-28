@@ -41,7 +41,7 @@ func buildConsumerValidator(t *testing.T, objects ...runtime.Object) *ConsumerCu
 		builder = builder.WithRuntimeObjects(objects...)
 	}
 
-	return &ConsumerCustomValidator{Client: builder.Build()}
+	return NewConsumerCustomValidator(builder.Build())
 }
 
 func TestConsumerValidator_MissingSecretDefaultNamespace(t *testing.T) {

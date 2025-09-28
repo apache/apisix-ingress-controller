@@ -41,7 +41,7 @@ func buildApisixConsumerValidator(t *testing.T, objects ...runtime.Object) *Apis
 		builder = builder.WithRuntimeObjects(objects...)
 	}
 
-	return &ApisixConsumerCustomValidator{Client: builder.Build()}
+	return NewApisixConsumerCustomValidator(builder.Build())
 }
 
 func TestApisixConsumerValidator_MissingBasicAuthSecret(t *testing.T) {
