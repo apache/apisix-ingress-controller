@@ -235,7 +235,7 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 			log.Debugw("failed to retrieve ApisixUpstream from tctx", zap.Any("ApisixUpstream", upsNN))
 			continue
 		}
-		upstream, err := t.translateApisixUpstream(tctx, au, 0)
+		upstream, err := t.translateApisixUpstream(tctx, au)
 		if err != nil {
 			t.Log.Error(err, "failed to translate ApisixUpstream", "ApisixUpstream", utils.NamespacedName(au))
 			continue
@@ -347,7 +347,7 @@ func (t *Translator) translateApisixRouteHTTPBackend(tctx *provider.TranslateCon
 		if err != nil {
 			return nil, err
 		}
-		upstream, err = t.translateApisixUpstream(tctx, au, port)
+		upstream, err = t.translateApisixUpstreamForPort(tctx, au, ptr.To(port))
 		if err != nil {
 			return nil, err
 		}
@@ -356,12 +356,12 @@ func (t *Translator) translateApisixRouteHTTPBackend(tctx *provider.TranslateCon
 	if backend.ResolveGranularity == apiv2.ResolveGranularityService {
 		upstream.Nodes, err = t.translateApisixRouteBackendResolveGranularityService(tctx, auNN, backend)
 		if err != nil {
-			t.Log.Error(err, "failed to translate backend resolve granularity service", "backend", backend)
+			return nil, err
 		}
 	} else {
 		upstream.Nodes, err = t.translateApisixRouteBackendResolveGranularityEndpoint(tctx, auNN, backend)
 		if err != nil {
-			t.Log.Error(err, "failed to translate backend resolve granularity endpoint", "backend", backend)
+			return nil, err
 		}
 	}
 
@@ -466,7 +466,7 @@ func (t *Translator) translateStreamRule(tctx *provider.TranslateContext, ar *ap
 		if err != nil {
 			return nil, err
 		}
-		upstream, _ = t.translateApisixUpstream(tctx, au, port)
+		upstream, _ = t.translateApisixUpstreamForPort(tctx, au, ptr.To(port))
 	}
 	nodes, err := t.translateApisixRouteStreamBackendResolveGranularity(tctx, utils.NamespacedName(ar), part.Backend)
 	if err != nil {

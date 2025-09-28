@@ -34,8 +34,12 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
-func (t *Translator) translateApisixUpstream(tctx *provider.TranslateContext, au *apiv2.ApisixUpstream, port int32) (*adc.Upstream, error) {
-	log.Debugw("translating ApisixUpstream", zap.Any("apisixupstream", au), zap.Int32("port", port))
+func (t *Translator) translateApisixUpstream(tctx *provider.TranslateContext, au *apiv2.ApisixUpstream) (*adc.Upstream, error) {
+	return t.translateApisixUpstreamForPort(tctx, au, nil)
+}
+
+func (t *Translator) translateApisixUpstreamForPort(tctx *provider.TranslateContext, au *apiv2.ApisixUpstream, port *int32) (*adc.Upstream, error) {
+	log.Debugw("translating ApisixUpstream", zap.Any("apisixupstream", au), zap.Int32p("port", port))
 
 	ups := adc.NewDefaultUpstream()
 	ups.Name = composeExternalUpstreamName(au)
@@ -48,10 +52,11 @@ func (t *Translator) translateApisixUpstream(tctx *provider.TranslateContext, au
 		return nil, err
 	}
 
-	// If portLevelSettings is configured, we need to validate the ports in
-	if len(au.Spec.PortLevelSettings) > 0 && port != 0 {
+	// If PortLevelSettings is configured and a specific port is provided,
+	// apply the ApisixUpstreamConfig for the matching port to the upstream.
+	if len(au.Spec.PortLevelSettings) > 0 && port != nil {
 		for _, pls := range au.Spec.PortLevelSettings {
-			if pls.Port != port {
+			if pls.Port != *port {
 				continue
 			}
 			if err := translateApisixUpstreamConfig(tctx, &pls.ApisixUpstreamConfig, ups); err != nil {
