@@ -21,12 +21,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	apisixv2 "github.com/apache/apisix-ingress-controller/api/v2"
+	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 )
 
 func buildApisixRouteValidator(t *testing.T, objects ...runtime.Object) *ApisixRouteCustomValidator {
@@ -34,12 +36,24 @@ func buildApisixRouteValidator(t *testing.T, objects ...runtime.Object) *ApisixR
 
 	scheme := runtime.NewScheme()
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
+	require.NoError(t, networkingv1.AddToScheme(scheme))
 	require.NoError(t, apisixv2.AddToScheme(scheme))
 
-	builder := fake.NewClientBuilder().WithScheme(scheme)
-	if len(objects) > 0 {
-		builder = builder.WithRuntimeObjects(objects...)
+	managed := []runtime.Object{
+		&networkingv1.IngressClass{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "apisix",
+				Annotations: map[string]string{
+					"ingressclass.kubernetes.io/is-default-class": "true",
+				},
+			},
+			Spec: networkingv1.IngressClassSpec{
+				Controller: config.ControllerConfig.ControllerName,
+			},
+		},
 	}
+	allObjects := append(managed, objects...)
+	builder := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(allObjects...)
 
 	return NewApisixRouteCustomValidator(builder.Build())
 }
@@ -51,6 +65,7 @@ func TestApisixRouteValidator_MissingHTTPService(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: apisixv2.ApisixRouteSpec{
+			IngressClassName: "apisix",
 			HTTP: []apisixv2.ApisixRouteHTTP{{
 				Name: "rule",
 				Backends: []apisixv2.ApisixRouteHTTPBackend{{
@@ -75,6 +90,7 @@ func TestApisixRouteValidator_MissingPluginSecret(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: apisixv2.ApisixRouteSpec{
+			IngressClassName: "apisix",
 			HTTP: []apisixv2.ApisixRouteHTTP{{
 				Name: "rule",
 				Backends: []apisixv2.ApisixRouteHTTPBackend{{
@@ -106,6 +122,7 @@ func TestApisixRouteValidator_MissingStreamService(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: apisixv2.ApisixRouteSpec{
+			IngressClassName: "apisix",
 			Stream: []apisixv2.ApisixRouteStream{{
 				Name:     "stream",
 				Protocol: "TCP",
@@ -131,6 +148,7 @@ func TestApisixRouteValidator_NoWarnings(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: apisixv2.ApisixRouteSpec{
+			IngressClassName: "apisix",
 			HTTP: []apisixv2.ApisixRouteHTTP{{
 				Name: "rule",
 				Backends: []apisixv2.ApisixRouteHTTPBackend{{

@@ -25,8 +25,10 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	apisixv1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 )
 
 func buildConsumerValidator(t *testing.T, objects ...runtime.Object) *ConsumerCustomValidator {
@@ -35,11 +37,24 @@ func buildConsumerValidator(t *testing.T, objects ...runtime.Object) *ConsumerCu
 	scheme := runtime.NewScheme()
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
 	require.NoError(t, apisixv1alpha1.AddToScheme(scheme))
+	require.NoError(t, gatewayv1.Install(scheme))
 
-	builder := fake.NewClientBuilder().WithScheme(scheme)
-	if len(objects) > 0 {
-		builder = builder.WithRuntimeObjects(objects...)
+	managed := []runtime.Object{
+		&gatewayv1.GatewayClass{
+			ObjectMeta: metav1.ObjectMeta{Name: "apisix-gateway-class"},
+			Spec: gatewayv1.GatewayClassSpec{
+				ControllerName: gatewayv1.GatewayController(config.ControllerConfig.ControllerName),
+			},
+		},
+		&gatewayv1.Gateway{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-gateway", Namespace: "default"},
+			Spec: gatewayv1.GatewaySpec{
+				GatewayClassName: gatewayv1.ObjectName("apisix-gateway-class"),
+			},
+		},
 	}
+	allObjects := append(managed, objects...)
+	builder := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(allObjects...)
 
 	return NewConsumerCustomValidator(builder.Build())
 }
@@ -51,6 +66,7 @@ func TestConsumerValidator_MissingSecretDefaultNamespace(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: apisixv1alpha1.ConsumerSpec{
+			GatewayRef: apisixv1alpha1.GatewayRef{Name: "test-gateway"},
 			Credentials: []apisixv1alpha1.Credential{{
 				Type: "jwt-auth",
 				SecretRef: &apisixv1alpha1.SecretReference{
@@ -76,6 +92,7 @@ func TestConsumerValidator_MissingSecretCustomNamespace(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: apisixv1alpha1.ConsumerSpec{
+			GatewayRef: apisixv1alpha1.GatewayRef{Name: "test-gateway"},
 			Credentials: []apisixv1alpha1.Credential{{
 				Type: "jwt-auth",
 				SecretRef: &apisixv1alpha1.SecretReference{
@@ -102,6 +119,7 @@ func TestConsumerValidator_NoWarnings(t *testing.T) {
 			Namespace: "default",
 		},
 		Spec: apisixv1alpha1.ConsumerSpec{
+			GatewayRef: apisixv1alpha1.GatewayRef{Name: "test-gateway"},
 			Credentials: []apisixv1alpha1.Credential{{
 				Type: "jwt-auth",
 				SecretRef: &apisixv1alpha1.SecretReference{

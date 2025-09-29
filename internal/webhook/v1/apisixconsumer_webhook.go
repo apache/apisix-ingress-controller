@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	apisixv2 "github.com/apache/apisix-ingress-controller/api/v2"
+	"github.com/apache/apisix-ingress-controller/internal/controller"
 	"github.com/apache/apisix-ingress-controller/internal/webhook/v1/reference"
 )
 
@@ -64,6 +65,10 @@ func (v *ApisixConsumerCustomValidator) ValidateCreate(ctx context.Context, obj 
 	}
 	apisixConsumerLog.Info("Validation for ApisixConsumer upon creation", "name", consumer.GetName(), "namespace", consumer.GetNamespace())
 
+	if !controller.MatchesIngressClass(v.Client, apisixConsumerLog, consumer) {
+		return nil, nil
+	}
+
 	return v.collectWarnings(ctx, consumer), nil
 }
 
@@ -73,6 +78,9 @@ func (v *ApisixConsumerCustomValidator) ValidateUpdate(ctx context.Context, oldO
 		return nil, fmt.Errorf("expected an ApisixConsumer object for the newObj but got %T", newObj)
 	}
 	apisixConsumerLog.Info("Validation for ApisixConsumer upon update", "name", consumer.GetName(), "namespace", consumer.GetNamespace())
+	if !controller.MatchesIngressClass(v.Client, apisixConsumerLog, consumer) {
+		return nil, nil
+	}
 
 	return v.collectWarnings(ctx, consumer), nil
 }
