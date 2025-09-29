@@ -18,12 +18,12 @@ package v1
 import (
 	"context"
 
-	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
+	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
 
 func isGatewayManaged(ctx context.Context, c client.Client, gateway *gatewayv1.Gateway) (bool, error) {

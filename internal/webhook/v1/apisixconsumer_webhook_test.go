@@ -21,7 +21,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	networkingk8siov1 "k8s.io/api/networking/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -36,18 +36,18 @@ func buildApisixConsumerValidator(t *testing.T, objects ...runtime.Object) *Apis
 
 	scheme := runtime.NewScheme()
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
-	require.NoError(t, networkingk8siov1.AddToScheme(scheme))
+	require.NoError(t, networkingv1.AddToScheme(scheme))
 	require.NoError(t, apisixv2.AddToScheme(scheme))
 
 	managed := []runtime.Object{
-		&networkingk8siov1.IngressClass{
+		&networkingv1.IngressClass{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "apisix",
 				Annotations: map[string]string{
 					"ingressclass.kubernetes.io/is-default-class": "true",
 				},
 			},
-			Spec: networkingk8siov1.IngressClassSpec{
+			Spec: networkingv1.IngressClassSpec{
 				Controller: config.ControllerConfig.ControllerName,
 			},
 		},

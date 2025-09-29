@@ -1360,14 +1360,12 @@ func FindMatchingIngressClass(ctx context.Context, c client.Client, log logr.Log
 }
 
 func FindMatchingIngressClassByName(ctx context.Context, c client.Client, log logr.Logger, ingressClassName string) (*networkingv1.IngressClass, error) {
-	fmt.Println("ingressClassName", ingressClassName)
 	if ingressClassName == "" {
 		// Check for default ingress class
 		ingressClassList := &networkingv1.IngressClassList{}
 		if err := c.List(ctx, ingressClassList, client.MatchingFields{
 			indexer.IngressClass: config.GetControllerName(),
 		}); err != nil {
-			fmt.Println("err", err)
 			log.Error(err, "failed to list ingress classes")
 			return nil, err
 		}
@@ -1538,7 +1536,6 @@ func MatchesIngressClassPredicate(c client.Client, log logr.Logger) predicate.Fu
 }
 
 func MatchesIngressClass(c client.Client, log logr.Logger, obj client.Object) bool {
-	fmt.Println("obj", obj)
 	_, err := FindMatchingIngressClass(context.Background(), c, log, obj)
 	return err == nil
 }

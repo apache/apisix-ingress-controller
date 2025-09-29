@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"slices"
 
-	networkingk8siov1 "k8s.io/api/networking/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -80,7 +80,7 @@ var unsupportedAnnotations = []string{
 
 // checkUnsupportedAnnotations checks if the Ingress contains any unsupported annotations
 // and returns appropriate warnings
-func checkUnsupportedAnnotations(ingress *networkingk8siov1.Ingress) admission.Warnings {
+func checkUnsupportedAnnotations(ingress *networkingv1.Ingress) admission.Warnings {
 	var warnings admission.Warnings
 
 	if len(ingress.Annotations) == 0 {
@@ -103,7 +103,7 @@ func checkUnsupportedAnnotations(ingress *networkingk8siov1.Ingress) admission.W
 
 // SetupIngressWebhookWithManager registers the webhook for Ingress in the manager.
 func SetupIngressWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).For(&networkingk8siov1.Ingress{}).
+	return ctrl.NewWebhookManagedBy(mgr).For(&networkingv1.Ingress{}).
 		WithValidator(NewIngressCustomValidator(mgr.GetClient())).
 		Complete()
 }
@@ -133,7 +133,7 @@ func NewIngressCustomValidator(c client.Client) *IngressCustomValidator {
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type Ingress.
 func (v *IngressCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	ingress, ok := obj.(*networkingk8siov1.Ingress)
+	ingress, ok := obj.(*networkingv1.Ingress)
 	if !ok {
 		return nil, fmt.Errorf("expected a Ingress object but got %T", obj)
 	}
@@ -151,7 +151,7 @@ func (v *IngressCustomValidator) ValidateCreate(ctx context.Context, obj runtime
 
 // ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type Ingress.
 func (v *IngressCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	ingress, ok := newObj.(*networkingk8siov1.Ingress)
+	ingress, ok := newObj.(*networkingv1.Ingress)
 	if !ok {
 		return nil, fmt.Errorf("expected a Ingress object for the newObj but got %T", newObj)
 	}
@@ -172,7 +172,7 @@ func (v *IngressCustomValidator) ValidateDelete(ctx context.Context, obj runtime
 	return nil, nil
 }
 
-func (v *IngressCustomValidator) collectReferenceWarnings(ctx context.Context, ingress *networkingk8siov1.Ingress) admission.Warnings {
+func (v *IngressCustomValidator) collectReferenceWarnings(ctx context.Context, ingress *networkingv1.Ingress) admission.Warnings {
 	serviceVisited := make(map[types.NamespacedName]struct{})
 	secretVisited := make(map[types.NamespacedName]struct{})
 	namespace := ingress.GetNamespace()

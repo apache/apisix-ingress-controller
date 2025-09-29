@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	networkingk8siov1 "k8s.io/api/networking/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -31,6 +31,7 @@ import (
 
 	apisixv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
+	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 )
 
 func buildIngressValidator(t *testing.T, objects ...runtime.Object) *IngressCustomValidator {
@@ -38,31 +39,34 @@ func buildIngressValidator(t *testing.T, objects ...runtime.Object) *IngressCust
 
 	scheme := runtime.NewScheme()
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
-	require.NoError(t, networkingk8siov1.AddToScheme(scheme))
+	require.NoError(t, networkingv1.AddToScheme(scheme))
 	require.NoError(t, apisixv2.AddToScheme(scheme))
 
 	managed := []runtime.Object{
-		&networkingk8siov1.IngressClass{
+		&networkingv1.IngressClass{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "apisix",
 				Annotations: map[string]string{
 					"ingressclass.kubernetes.io/is-default-class": "true",
 				},
 			},
-			Spec: networkingk8siov1.IngressClassSpec{
+			Spec: networkingv1.IngressClassSpec{
 				Controller: config.ControllerConfig.ControllerName,
 			},
 		},
 	}
 	allObjects := append(managed, objects...)
-	builder := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(allObjects...)
+	builder := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithIndex(&networkingv1.IngressClass{}, indexer.IngressClass, indexer.IngressClassIndexFunc).
+		WithRuntimeObjects(allObjects...)
 
 	return NewIngressCustomValidator(builder.Build())
 }
 
 func TestIngressCustomValidator_ValidateCreate_UnsupportedAnnotations(t *testing.T) {
 	validator := buildIngressValidator(t)
-	obj := &networkingk8siov1.Ingress{
+	obj := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-ingress",
 			Namespace: "default",
@@ -85,7 +89,7 @@ func TestIngressCustomValidator_ValidateCreate_UnsupportedAnnotations(t *testing
 
 func TestIngressCustomValidator_ValidateCreate_SupportedAnnotations(t *testing.T) {
 	validator := buildIngressValidator(t)
-	obj := &networkingk8siov1.Ingress{
+	obj := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-ingress",
 			Namespace: "default",
@@ -102,8 +106,8 @@ func TestIngressCustomValidator_ValidateCreate_SupportedAnnotations(t *testing.T
 
 func TestIngressCustomValidator_ValidateUpdate_UnsupportedAnnotations(t *testing.T) {
 	validator := buildIngressValidator(t)
-	oldObj := &networkingk8siov1.Ingress{}
-	obj := &networkingk8siov1.Ingress{
+	oldObj := &networkingv1.Ingress{}
+	obj := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-ingress",
 			Namespace: "default",
@@ -126,7 +130,7 @@ func TestIngressCustomValidator_ValidateUpdate_UnsupportedAnnotations(t *testing
 
 func TestIngressCustomValidator_ValidateDelete_NoWarnings(t *testing.T) {
 	validator := buildIngressValidator(t)
-	obj := &networkingk8siov1.Ingress{
+	obj := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-ingress",
 			Namespace: "default",
@@ -143,7 +147,7 @@ func TestIngressCustomValidator_ValidateDelete_NoWarnings(t *testing.T) {
 
 func TestIngressCustomValidator_ValidateCreate_NoAnnotations(t *testing.T) {
 	validator := buildIngressValidator(t)
-	obj := &networkingk8siov1.Ingress{
+	obj := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-ingress",
 			Namespace: "default",
@@ -157,19 +161,19 @@ func TestIngressCustomValidator_ValidateCreate_NoAnnotations(t *testing.T) {
 
 func TestIngressCustomValidator_WarnsForMissingServiceAndSecret(t *testing.T) {
 	validator := buildIngressValidator(t)
-	obj := &networkingk8siov1.Ingress{
+	obj := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-ingress", Namespace: "default"},
-		Spec: networkingk8siov1.IngressSpec{
-			Rules: []networkingk8siov1.IngressRule{{
-				IngressRuleValue: networkingk8siov1.IngressRuleValue{HTTP: &networkingk8siov1.HTTPIngressRuleValue{
-					Paths: []networkingk8siov1.HTTPIngressPath{{
-						Backend: networkingk8siov1.IngressBackend{
-							Service: &networkingk8siov1.IngressServiceBackend{Name: "default-svc"},
+		Spec: networkingv1.IngressSpec{
+			Rules: []networkingv1.IngressRule{{
+				IngressRuleValue: networkingv1.IngressRuleValue{HTTP: &networkingv1.HTTPIngressRuleValue{
+					Paths: []networkingv1.HTTPIngressPath{{
+						Backend: networkingv1.IngressBackend{
+							Service: &networkingv1.IngressServiceBackend{Name: "default-svc"},
 						},
 					}},
 				}},
 			}},
-			TLS: []networkingk8siov1.IngressTLS{{SecretName: "missing-cert"}},
+			TLS: []networkingv1.IngressTLS{{SecretName: "missing-cert"}},
 		},
 	}
 
@@ -185,19 +189,19 @@ func TestIngressCustomValidator_NoWarningsWhenReferencesExist(t *testing.T) {
 	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "tls-cert", Namespace: "default"}}
 	validator := buildIngressValidator(t, service, secret)
 
-	obj := &networkingk8siov1.Ingress{
+	obj := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{Name: "test-ingress", Namespace: "default"},
-		Spec: networkingk8siov1.IngressSpec{
-			Rules: []networkingk8siov1.IngressRule{{
-				IngressRuleValue: networkingk8siov1.IngressRuleValue{HTTP: &networkingk8siov1.HTTPIngressRuleValue{
-					Paths: []networkingk8siov1.HTTPIngressPath{{
-						Backend: networkingk8siov1.IngressBackend{
-							Service: &networkingk8siov1.IngressServiceBackend{Name: "default-svc"},
+		Spec: networkingv1.IngressSpec{
+			Rules: []networkingv1.IngressRule{{
+				IngressRuleValue: networkingv1.IngressRuleValue{HTTP: &networkingv1.HTTPIngressRuleValue{
+					Paths: []networkingv1.HTTPIngressPath{{
+						Backend: networkingv1.IngressBackend{
+							Service: &networkingv1.IngressServiceBackend{Name: "default-svc"},
 						},
 					}},
 				}},
 			}},
-			TLS: []networkingk8siov1.IngressTLS{{SecretName: "tls-cert"}},
+			TLS: []networkingv1.IngressTLS{{SecretName: "tls-cert"}},
 		},
 	}
 
