@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	apisixv2 "github.com/apache/apisix-ingress-controller/api/v2"
+	"github.com/apache/apisix-ingress-controller/internal/controller"
 	"github.com/apache/apisix-ingress-controller/internal/webhook/v1/reference"
 )
 
@@ -62,6 +63,9 @@ func (v *ApisixTlsCustomValidator) ValidateCreate(ctx context.Context, obj runti
 		return nil, fmt.Errorf("expected an ApisixTls object but got %T", obj)
 	}
 	apisixTlsLog.Info("Validation for ApisixTls upon creation", "name", tls.GetName(), "namespace", tls.GetNamespace())
+	if !controller.MatchesIngressClass(v.Client, apisixTlsLog, tls) {
+		return nil, nil
+	}
 
 	return v.collectWarnings(ctx, tls), nil
 }
@@ -72,6 +76,9 @@ func (v *ApisixTlsCustomValidator) ValidateUpdate(ctx context.Context, oldObj, n
 		return nil, fmt.Errorf("expected an ApisixTls object for the newObj but got %T", newObj)
 	}
 	apisixTlsLog.Info("Validation for ApisixTls upon update", "name", tls.GetName(), "namespace", tls.GetNamespace())
+	if !controller.MatchesIngressClass(v.Client, apisixTlsLog, tls) {
+		return nil, nil
+	}
 
 	return v.collectWarnings(ctx, tls), nil
 }

@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	"github.com/apache/apisix-ingress-controller/internal/controller"
 	"github.com/apache/apisix-ingress-controller/internal/webhook/v1/reference"
 )
 
@@ -137,6 +138,9 @@ func (v *IngressCustomValidator) ValidateCreate(ctx context.Context, obj runtime
 		return nil, fmt.Errorf("expected a Ingress object but got %T", obj)
 	}
 	ingresslog.Info("Validation for Ingress upon creation", "name", ingress.GetName(), "namespace", ingress.GetNamespace())
+	if !controller.MatchesIngressClass(v.Client, ingresslog, ingress) {
+		return nil, nil
+	}
 
 	// Check for unsupported annotations and generate warnings
 	warnings := checkUnsupportedAnnotations(ingress)
@@ -152,6 +156,9 @@ func (v *IngressCustomValidator) ValidateUpdate(ctx context.Context, oldObj, new
 		return nil, fmt.Errorf("expected a Ingress object for the newObj but got %T", newObj)
 	}
 	ingresslog.Info("Validation for Ingress upon update", "name", ingress.GetName(), "namespace", ingress.GetNamespace())
+	if !controller.MatchesIngressClass(v.Client, ingresslog, ingress) {
+		return nil, nil
+	}
 
 	// Check for unsupported annotations and generate warnings
 	warnings := checkUnsupportedAnnotations(ingress)

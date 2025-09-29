@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	apisixv2 "github.com/apache/apisix-ingress-controller/api/v2"
+	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 )
 
 func buildIngressValidator(t *testing.T, objects ...runtime.Object) *IngressCustomValidator {
@@ -40,10 +41,21 @@ func buildIngressValidator(t *testing.T, objects ...runtime.Object) *IngressCust
 	require.NoError(t, networkingk8siov1.AddToScheme(scheme))
 	require.NoError(t, apisixv2.AddToScheme(scheme))
 
-	builder := fake.NewClientBuilder().WithScheme(scheme)
-	if len(objects) > 0 {
-		builder = builder.WithRuntimeObjects(objects...)
+	managed := []runtime.Object{
+		&networkingk8siov1.IngressClass{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "apisix",
+				Annotations: map[string]string{
+					"ingressclass.kubernetes.io/is-default-class": "true",
+				},
+			},
+			Spec: networkingk8siov1.IngressClassSpec{
+				Controller: config.ControllerConfig.ControllerName,
+			},
+		},
 	}
+	allObjects := append(managed, objects...)
+	builder := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(allObjects...)
 
 	return NewIngressCustomValidator(builder.Build())
 }
@@ -163,10 +175,9 @@ func TestIngressCustomValidator_WarnsForMissingServiceAndSecret(t *testing.T) {
 
 	warnings, err := validator.ValidateCreate(context.Background(), obj)
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{
-		"Referenced Service 'default/default-svc' not found",
-		"Referenced Secret 'default/missing-cert' not found",
-	}, warnings)
+	require.Len(t, warnings, 2)
+	require.Contains(t, warnings, "Referenced Service 'default/default-svc' not found")
+	require.Contains(t, warnings, "Referenced Secret 'default/missing-cert' not found")
 }
 
 func TestIngressCustomValidator_NoWarningsWhenReferencesExist(t *testing.T) {

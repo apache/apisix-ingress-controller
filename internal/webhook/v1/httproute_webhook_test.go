@@ -27,6 +27,8 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+
+	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 )
 
 func buildHTTPRouteValidator(t *testing.T, objects ...runtime.Object) *HTTPRouteCustomValidator {
@@ -36,10 +38,22 @@ func buildHTTPRouteValidator(t *testing.T, objects ...runtime.Object) *HTTPRoute
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
 	require.NoError(t, gatewayv1.Install(scheme))
 
-	builder := fake.NewClientBuilder().WithScheme(scheme)
-	if len(objects) > 0 {
-		builder = builder.WithRuntimeObjects(objects...)
+	managed := []runtime.Object{
+		&gatewayv1.GatewayClass{
+			ObjectMeta: metav1.ObjectMeta{Name: "apisix-gateway-class"},
+			Spec: gatewayv1.GatewayClassSpec{
+				ControllerName: gatewayv1.GatewayController(config.ControllerConfig.ControllerName),
+			},
+		},
+		&gatewayv1.Gateway{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-gateway", Namespace: "default"},
+			Spec: gatewayv1.GatewaySpec{
+				GatewayClassName: gatewayv1.ObjectName("apisix-gateway-class"),
+			},
+		},
 	}
+	allObjects := append(managed, objects...)
+	builder := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(allObjects...)
 
 	return NewHTTPRouteCustomValidator(builder.Build())
 }
@@ -48,6 +62,11 @@ func TestHTTPRouteCustomValidator_WarnsForMissingReferences(t *testing.T) {
 	route := &gatewayv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
 		Spec: gatewayv1.HTTPRouteSpec{
+			CommonRouteSpec: gatewayv1.CommonRouteSpec{
+				ParentRefs: []gatewayv1.ParentReference{{
+					Name: gatewayv1.ObjectName("test-gateway"),
+				}},
+			},
 			Rules: []gatewayv1.HTTPRouteRule{{
 				BackendRefs: []gatewayv1.HTTPBackendRef{{
 					BackendRef: gatewayv1.BackendRef{
@@ -88,6 +107,11 @@ func TestHTTPRouteCustomValidator_NoWarningsWhenResourcesExist(t *testing.T) {
 	route := &gatewayv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
 		Spec: gatewayv1.HTTPRouteSpec{
+			CommonRouteSpec: gatewayv1.CommonRouteSpec{
+				ParentRefs: []gatewayv1.ParentReference{{
+					Name: gatewayv1.ObjectName("test-gateway"),
+				}},
+			},
 			Rules: []gatewayv1.HTTPRouteRule{{
 				BackendRefs: []gatewayv1.HTTPBackendRef{{
 					BackendRef: gatewayv1.BackendRef{

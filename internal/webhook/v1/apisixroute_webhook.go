@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	apisixv2 "github.com/apache/apisix-ingress-controller/api/v2"
+	"github.com/apache/apisix-ingress-controller/internal/controller"
 	"github.com/apache/apisix-ingress-controller/internal/webhook/v1/reference"
 )
 
@@ -62,6 +63,9 @@ func (v *ApisixRouteCustomValidator) ValidateCreate(ctx context.Context, obj run
 		return nil, fmt.Errorf("expected an ApisixRoute object but got %T", obj)
 	}
 	apisixRouteLog.Info("Validation for ApisixRoute upon creation", "name", route.GetName(), "namespace", route.GetNamespace())
+	if !controller.MatchesIngressClass(v.Client, apisixRouteLog, route) {
+		return nil, nil
+	}
 
 	return v.collectWarnings(ctx, route), nil
 }
@@ -72,6 +76,9 @@ func (v *ApisixRouteCustomValidator) ValidateUpdate(ctx context.Context, oldObj,
 		return nil, fmt.Errorf("expected an ApisixRoute object for the newObj but got %T", newObj)
 	}
 	apisixRouteLog.Info("Validation for ApisixRoute upon update", "name", route.GetName(), "namespace", route.GetNamespace())
+	if !controller.MatchesIngressClass(v.Client, apisixRouteLog, route) {
+		return nil, nil
+	}
 
 	return v.collectWarnings(ctx, route), nil
 }

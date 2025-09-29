@@ -27,6 +27,8 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+
+	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 )
 
 func buildGRPCRouteValidator(t *testing.T, objects ...runtime.Object) *GRPCRouteCustomValidator {
@@ -36,10 +38,22 @@ func buildGRPCRouteValidator(t *testing.T, objects ...runtime.Object) *GRPCRoute
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
 	require.NoError(t, gatewayv1.Install(scheme))
 
-	builder := fake.NewClientBuilder().WithScheme(scheme)
-	if len(objects) > 0 {
-		builder = builder.WithRuntimeObjects(objects...)
+	managed := []runtime.Object{
+		&gatewayv1.GatewayClass{
+			ObjectMeta: metav1.ObjectMeta{Name: "apisix-gateway-class"},
+			Spec: gatewayv1.GatewayClassSpec{
+				ControllerName: gatewayv1.GatewayController(config.ControllerConfig.ControllerName),
+			},
+		},
+		&gatewayv1.Gateway{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-gateway", Namespace: "default"},
+			Spec: gatewayv1.GatewaySpec{
+				GatewayClassName: gatewayv1.ObjectName("apisix-gateway-class"),
+			},
+		},
 	}
+	allObjects := append(managed, objects...)
+	builder := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(allObjects...)
 
 	return NewGRPCRouteCustomValidator(builder.Build())
 }
@@ -48,6 +62,11 @@ func TestGRPCRouteCustomValidator_WarnsForMissingService(t *testing.T) {
 	route := &gatewayv1.GRPCRoute{
 		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
 		Spec: gatewayv1.GRPCRouteSpec{
+			CommonRouteSpec: gatewayv1.CommonRouteSpec{
+				ParentRefs: []gatewayv1.ParentReference{{
+					Name: gatewayv1.ObjectName("test-gateway"),
+				}},
+			},
 			Rules: []gatewayv1.GRPCRouteRule{{
 				BackendRefs: []gatewayv1.GRPCBackendRef{{
 					BackendRef: gatewayv1.BackendRef{
@@ -74,6 +93,11 @@ func TestGRPCRouteCustomValidator_NoWarningsWhenServiceExists(t *testing.T) {
 	route := &gatewayv1.GRPCRoute{
 		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
 		Spec: gatewayv1.GRPCRouteSpec{
+			CommonRouteSpec: gatewayv1.CommonRouteSpec{
+				ParentRefs: []gatewayv1.ParentReference{{
+					Name: gatewayv1.ObjectName("test-gateway"),
+				}},
+			},
 			Rules: []gatewayv1.GRPCRouteRule{{
 				BackendRefs: []gatewayv1.GRPCBackendRef{{
 					BackendRef: gatewayv1.BackendRef{

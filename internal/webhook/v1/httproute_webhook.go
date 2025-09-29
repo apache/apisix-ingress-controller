@@ -64,6 +64,14 @@ func (v *HTTPRouteCustomValidator) ValidateCreate(ctx context.Context, obj runti
 		return nil, fmt.Errorf("expected a HTTPRoute object but got %T", obj)
 	}
 	httpRouteLog.Info("Validation for HTTPRoute upon creation", "name", route.GetName(), "namespace", route.GetNamespace())
+	managed, err := isHTTPRouteManaged(ctx, v.Client, route)
+	if err != nil {
+		httpRouteLog.Error(err, "failed to decide controller ownership", "name", route.GetName(), "namespace", route.GetNamespace())
+		return nil, nil
+	}
+	if !managed {
+		return nil, nil
+	}
 
 	return v.collectWarnings(ctx, route), nil
 }
@@ -74,6 +82,14 @@ func (v *HTTPRouteCustomValidator) ValidateUpdate(ctx context.Context, oldObj, n
 		return nil, fmt.Errorf("expected a HTTPRoute object for the newObj but got %T", newObj)
 	}
 	httpRouteLog.Info("Validation for HTTPRoute upon update", "name", route.GetName(), "namespace", route.GetNamespace())
+	managed, err := isHTTPRouteManaged(ctx, v.Client, route)
+	if err != nil {
+		httpRouteLog.Error(err, "failed to decide controller ownership", "name", route.GetName(), "namespace", route.GetNamespace())
+		return nil, nil
+	}
+	if !managed {
+		return nil, nil
+	}
 
 	return v.collectWarnings(ctx, route), nil
 }

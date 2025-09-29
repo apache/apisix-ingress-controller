@@ -31,7 +31,6 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	v1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
-	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/webhook/v1/reference"
 )
@@ -78,6 +77,15 @@ func (v *GatewayCustomValidator) ValidateCreate(ctx context.Context, obj runtime
 	}
 	gatewaylog.Info("Validation for Gateway upon creation", "name", gateway.GetName())
 
+	managed, err := isGatewayManaged(ctx, v.Client, gateway)
+	if err != nil {
+		gatewaylog.Error(err, "failed to decide controller ownership", "name", gateway.GetName(), "namespace", gateway.GetNamespace())
+		return nil, nil
+	}
+	if !managed {
+		return nil, nil
+	}
+
 	warnings := v.warnIfMissingGatewayProxyForGateway(ctx, gateway)
 	warnings = append(warnings, v.collectReferenceWarnings(ctx, gateway)...)
 
@@ -91,6 +99,15 @@ func (v *GatewayCustomValidator) ValidateUpdate(ctx context.Context, oldObj, new
 		return nil, fmt.Errorf("expected a Gateway object for the newObj but got %T", newObj)
 	}
 	gatewaylog.Info("Validation for Gateway upon update", "name", gateway.GetName())
+
+	managed, err := isGatewayManaged(ctx, v.Client, gateway)
+	if err != nil {
+		gatewaylog.Error(err, "failed to decide controller ownership", "name", gateway.GetName(), "namespace", gateway.GetNamespace())
+		return nil, nil
+	}
+	if !managed {
+		return nil, nil
+	}
 
 	warnings := v.warnIfMissingGatewayProxyForGateway(ctx, gateway)
 	warnings = append(warnings, v.collectReferenceWarnings(ctx, gateway)...)
@@ -152,17 +169,6 @@ func (v *GatewayCustomValidator) collectReferenceWarnings(ctx context.Context, g
 
 func (v *GatewayCustomValidator) warnIfMissingGatewayProxyForGateway(ctx context.Context, gateway *gatewayv1.Gateway) admission.Warnings {
 	var warnings admission.Warnings
-
-	// get gateway class
-	gatewayClass := &gatewayv1.GatewayClass{}
-	if err := v.Client.Get(ctx, client.ObjectKey{Name: string(gateway.Spec.GatewayClassName)}, gatewayClass); err != nil {
-		gatewaylog.Error(err, "failed to get gateway class", "gateway", gateway.GetName(), "gatewayclass", gateway.Spec.GatewayClassName)
-		return nil
-	}
-	// match controller
-	if string(gatewayClass.Spec.ControllerName) != config.ControllerConfig.ControllerName {
-		return nil
-	}
 
 	infra := gateway.Spec.Infrastructure
 	if infra == nil || infra.ParametersRef == nil {

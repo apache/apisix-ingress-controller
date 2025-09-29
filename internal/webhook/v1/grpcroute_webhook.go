@@ -64,6 +64,14 @@ func (v *GRPCRouteCustomValidator) ValidateCreate(ctx context.Context, obj runti
 		return nil, fmt.Errorf("expected a GRPCRoute object but got %T", obj)
 	}
 	grpcRouteLog.Info("Validation for GRPCRoute upon creation", "name", route.GetName(), "namespace", route.GetNamespace())
+	managed, err := isGRPCRouteManaged(ctx, v.Client, route)
+	if err != nil {
+		grpcRouteLog.Error(err, "failed to decide controller ownership", "name", route.GetName(), "namespace", route.GetNamespace())
+		return nil, nil
+	}
+	if !managed {
+		return nil, nil
+	}
 
 	return v.collectWarnings(ctx, route), nil
 }
@@ -74,6 +82,14 @@ func (v *GRPCRouteCustomValidator) ValidateUpdate(ctx context.Context, oldObj, n
 		return nil, fmt.Errorf("expected a GRPCRoute object for the newObj but got %T", newObj)
 	}
 	grpcRouteLog.Info("Validation for GRPCRoute upon update", "name", route.GetName(), "namespace", route.GetNamespace())
+	managed, err := isGRPCRouteManaged(ctx, v.Client, route)
+	if err != nil {
+		grpcRouteLog.Error(err, "failed to decide controller ownership", "name", route.GetName(), "namespace", route.GetNamespace())
+		return nil, nil
+	}
+	if !managed {
+		return nil, nil
+	}
 
 	return v.collectWarnings(ctx, route), nil
 }

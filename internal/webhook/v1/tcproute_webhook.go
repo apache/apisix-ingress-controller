@@ -64,6 +64,14 @@ func (v *TCPRouteCustomValidator) ValidateCreate(ctx context.Context, obj runtim
 		return nil, fmt.Errorf("expected a TCPRoute object but got %T", obj)
 	}
 	tcpRouteLog.Info("Validation for TCPRoute upon creation", "name", route.GetName(), "namespace", route.GetNamespace())
+	managed, err := isTCPRouteManaged(ctx, v.Client, route)
+	if err != nil {
+		tcpRouteLog.Error(err, "failed to decide controller ownership", "name", route.GetName(), "namespace", route.GetNamespace())
+		return nil, nil
+	}
+	if !managed {
+		return nil, nil
+	}
 
 	return v.collectWarnings(ctx, route), nil
 }
@@ -74,6 +82,14 @@ func (v *TCPRouteCustomValidator) ValidateUpdate(ctx context.Context, oldObj, ne
 		return nil, fmt.Errorf("expected a TCPRoute object for the newObj but got %T", newObj)
 	}
 	tcpRouteLog.Info("Validation for TCPRoute upon update", "name", route.GetName(), "namespace", route.GetNamespace())
+	managed, err := isTCPRouteManaged(ctx, v.Client, route)
+	if err != nil {
+		tcpRouteLog.Error(err, "failed to decide controller ownership", "name", route.GetName(), "namespace", route.GetNamespace())
+		return nil, nil
+	}
+	if !managed {
+		return nil, nil
+	}
 
 	return v.collectWarnings(ctx, route), nil
 }
