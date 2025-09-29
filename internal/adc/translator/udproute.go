@@ -31,25 +31,14 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/types"
 )
 
-func newDefaultUpstreamWithoutScheme() *adctypes.Upstream {
-	return &adctypes.Upstream{
-		Metadata: adctypes.Metadata{
-			Labels: map[string]string{
-				"managed-by": "apisix-ingress-controller",
-			},
-		},
-		Nodes: make(adctypes.UpstreamNodes, 0),
-	}
-}
-
-func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute *gatewayv1alpha2.TCPRoute) (*TranslateResult, error) {
+func (t *Translator) TranslateUDPRoute(tctx *provider.TranslateContext, udpRoute *gatewayv1alpha2.UDPRoute) (*TranslateResult, error) {
 	result := &TranslateResult{}
-	rules := tcpRoute.Spec.Rules
-	labels := label.GenLabel(tcpRoute)
+	rules := udpRoute.Spec.Rules
+	labels := label.GenLabel(udpRoute)
 	for ruleIndex, rule := range rules {
 		service := adctypes.NewDefaultService()
 		service.Labels = labels
-		service.Name = adctypes.ComposeServiceNameWithStream(tcpRoute.Namespace, tcpRoute.Name, fmt.Sprintf("%d", ruleIndex), "TCP")
+		service.Name = adctypes.ComposeServiceNameWithStream(udpRoute.Namespace, udpRoute.Name, fmt.Sprintf("%d", ruleIndex), "UDP")
 		service.ID = id.GenID(service.Name)
 		var (
 			upstreams         = make([]*adctypes.Upstream, 0)
@@ -57,7 +46,7 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 		)
 		for _, backend := range rule.BackendRefs {
 			if backend.Namespace == nil {
-				namespace := gatewayv1.Namespace(tcpRoute.Namespace)
+				namespace := gatewayv1.Namespace(udpRoute.Namespace)
 				backend.Namespace = &namespace
 			}
 			upstream := newDefaultUpstreamWithoutScheme()
@@ -151,7 +140,7 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 			}
 		}
 		streamRoute := adctypes.NewDefaultStreamRoute()
-		streamRouteName := adctypes.ComposeStreamRouteName(tcpRoute.Namespace, tcpRoute.Name, fmt.Sprintf("%d", ruleIndex), "TCP")
+		streamRouteName := adctypes.ComposeStreamRouteName(udpRoute.Namespace, udpRoute.Name, fmt.Sprintf("%d", ruleIndex), "UDP")
 		streamRoute.Name = streamRouteName
 		streamRoute.ID = id.GenID(streamRouteName)
 		streamRoute.Labels = labels
