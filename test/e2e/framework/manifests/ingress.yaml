@@ -168,6 +168,7 @@ rules:
   - grpcroutes
   - httproutes
   - tcproutes
+  - udproutes
   verbs:
   - get
   - list
@@ -177,6 +178,7 @@ rules:
   resources:
   - httproutes/status
   - tcproutes/status
+  - udproutes/status
   verbs:
   - get
   - update
