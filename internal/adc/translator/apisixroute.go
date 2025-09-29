@@ -480,11 +480,9 @@ func (t *Translator) translateApisixRouteStreamBackend(tctx *provider.TranslateC
 		}
 		u, err := t.translateApisixUpstreamForPort(tctx, au, ptr.To(port))
 		if err != nil {
-			// ignore the error and continue to translate the upstream using the backend service
-			t.Log.Error(err, "failed to translate ApisixUpstream", "ApisixUpstream", utils.NamespacedName(au).String())
-		} else {
-			upstream = u
+			return nil, err
 		}
+		upstream = u
 	}
 	nodes, err := t.translateApisixRouteStreamBackendResolveGranularity(tctx, utils.NamespacedName(ar), backend)
 	if err != nil {
