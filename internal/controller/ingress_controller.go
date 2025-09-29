@@ -22,9 +22,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/api7/gopkg/pkg/log"
 	"github.com/go-logr/logr"
-	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -467,7 +465,7 @@ func (r *IngressReconciler) processTLS(tctx *provider.TranslateContext, ingress 
 		}
 
 		if secret.Data == nil {
-			log.Warnw("secret data is nil", zap.String("secret", secret.Namespace+"/"+secret.Name))
+			r.Log.Error(fmt.Errorf("no secret data found"), "secret data is nil", "namespace", ingress.Namespace, "name", tls.SecretName)
 			continue
 		}
 
@@ -571,7 +569,7 @@ func (r *IngressReconciler) updateStatus(ctx context.Context, tctx *provider.Tra
 
 	gatewayProxy, ok := tctx.GatewayProxies[ingressClassKind]
 	if !ok {
-		log.Debugw("no gateway proxy found for ingress class", zap.String("ingressClass", ingressClass.Name))
+		r.Log.V(1).Info("no gateway proxy found for ingress class", "ingressClass", ingressClass.Name)
 		return nil
 	}
 

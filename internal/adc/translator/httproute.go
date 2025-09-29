@@ -22,9 +22,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/api7/gopkg/pkg/log"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -84,13 +82,13 @@ func (t *Translator) fillPluginFromExtensionRef(plugins adctypes.Plugins, namesp
 			pluginconfig := make(map[string]any)
 			if len(plugin.Config.Raw) > 0 {
 				if err := json.Unmarshal(plugin.Config.Raw, &pluginconfig); err != nil {
-					log.Errorw("plugin config unmarshal failed", zap.Error(err))
+					t.Log.Error(err, "plugin config unmarshal failed", "plugin", plugin.Name)
 					continue
 				}
 			}
 			plugins[pluginName] = pluginconfig
 		}
-		log.Debugw("fill plugin from extension ref", zap.Any("plugins", plugins))
+		t.Log.V(1).Info("fill plugin from extension ref", "plugins", plugins)
 	}
 }
 
@@ -322,7 +320,7 @@ func (t *Translator) fillHTTPRoutePolicies(routes []*adctypes.Route, policies []
 			for _, data := range policy.Spec.Vars {
 				var v []adctypes.StringOrSlice
 				if err := json.Unmarshal(data.Raw, &v); err != nil {
-					log.Errorw("failed to unmarshal spec.Vars item to []StringOrSlice", zap.Error(err), zap.String("data", string(data.Raw)))
+					t.Log.Error(err, "failed to unmarshal spec.Vars item to []StringOrSlice", "data", string(data.Raw))
 					// todo: update status
 					continue
 				}
@@ -344,6 +342,7 @@ func (t *Translator) translateEndpointSlice(portName *string, weight int, endpoi
 			}
 			for _, endpoint := range endpointSlice.Endpoints {
 				if endpointFilter != nil && !endpointFilter(&endpoint) {
+					t.Log.V(1).Info("skip endpoint by filter", "endpoint", endpoint)
 					continue
 				}
 				for _, addr := range endpoint.Addresses {
@@ -366,7 +365,6 @@ func (t *Translator) translateEndpointSlice(portName *string, weight int, endpoi
 
 func DefaultEndpointFilter(endpoint *discoveryv1.Endpoint) bool {
 	if endpoint.Conditions.Ready != nil && !*endpoint.Conditions.Ready {
-		log.Debugw("skip not ready endpoint", zap.Any("endpoint", endpoint))
 		return false
 	}
 	return true

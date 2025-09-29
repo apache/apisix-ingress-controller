@@ -24,9 +24,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/api7/gopkg/pkg/log"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -57,7 +55,7 @@ func (t *Translator) TranslateGateway(tctx *provider.TranslateContext, obj *gate
 	rk := utils.NamespacedNameKind(obj)
 	gatewayProxy, ok := tctx.GatewayProxies[rk]
 	if !ok {
-		log.Debugw("no GatewayProxy found for Gateway", zap.String("gateway", obj.Name))
+		t.Log.V(1).Info("no GatewayProxy found for Gateway", "gateway", obj.Name)
 		return result, nil
 	}
 
@@ -92,17 +90,18 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 					Snis: []string{},
 				}
 				name := listener.TLS.CertificateRefs[0].Name
-				secret := tctx.Secrets[types.NamespacedName{Namespace: ns, Name: string(ref.Name)}]
+				secretNN := types.NamespacedName{Namespace: ns, Name: string(ref.Name)}
+				secret := tctx.Secrets[secretNN]
 				if secret == nil {
 					continue
 				}
 				if secret.Data == nil {
-					log.Errorw("secret data is nil", zap.Any("secret", secret))
+					t.Log.Error(errors.New("secret data is nil"), "failed to get secret data", "secret", secretNN)
 					return nil, fmt.Errorf("no secret data found for %s/%s", ns, name)
 				}
 				cert, key, err := extractKeyPair(secret, true)
 				if err != nil {
-					log.Errorw("failed to extract key pair", zap.Error(err), zap.Any("secret", secret))
+					t.Log.Error(err, "extract key pair", "secret", secretNN)
 					return nil, err
 				}
 				sslObj.Certificates = append(sslObj.Certificates, adctypes.Certificate{
@@ -118,14 +117,14 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 						return nil, err
 					}
 					if len(hosts) == 0 {
-						log.Warnw("no valid hostname found in certificate", zap.String("secret", secret.Namespace+"/"+secret.Name))
+						t.Log.Info("no valid hostname found in certificate", "secret", secretNN.String())
 						continue
 					}
 					sslObj.Snis = append(sslObj.Snis, hosts...)
 				}
 				// Note: use cert as id to avoid duplicate certificate across ssl objects
 				sslObj.ID = id.GenID(string(cert))
-				log.Debugw("generated ssl id", zap.String("ssl id", sslObj.ID), zap.String("secret", secret.Namespace+"/"+secret.Name))
+				t.Log.V(1).Info("generated ssl id", "ssl id", sslObj.ID, "secret", secretNN.String())
 				sslObj.Labels = label.GenLabel(obj)
 				sslObjs = append(sslObjs, sslObj)
 			}
@@ -219,13 +218,13 @@ func (t *Translator) fillPluginsFromGatewayProxy(plugins adctypes.GlobalRule, ga
 		pluginConfig := map[string]any{}
 		if len(plugin.Config.Raw) > 0 {
 			if err := json.Unmarshal(plugin.Config.Raw, &pluginConfig); err != nil {
-				log.Errorw("gateway proxy plugin config unmarshal failed", zap.Error(err), zap.String("plugin", pluginName))
+				t.Log.Error(err, "gateway proxy plugin config unmarshal failed", "plugin", pluginName)
 				continue
 			}
 		}
 		plugins[pluginName] = pluginConfig
 	}
-	log.Debugw("fill plugins for gateway proxy", zap.Any("plugins", plugins))
+	t.Log.V(1).Info("fill plugins for gateway proxy", "plugins", plugins)
 }
 
 func (t *Translator) fillPluginMetadataFromGatewayProxy(pluginMetadata adctypes.PluginMetadata, gatewayProxy *v1alpha1.GatewayProxy) {
@@ -235,10 +234,10 @@ func (t *Translator) fillPluginMetadataFromGatewayProxy(pluginMetadata adctypes.
 	for pluginName, plugin := range gatewayProxy.Spec.PluginMetadata {
 		var pluginConfig map[string]any
 		if err := json.Unmarshal(plugin.Raw, &pluginConfig); err != nil {
-			log.Errorw("gateway proxy plugin_metadata unmarshal failed", zap.Error(err), zap.Any("plugin", pluginName), zap.String("config", string(plugin.Raw)))
+			t.Log.Error(err, "gateway proxy plugin_metadata unmarshal failed", "plugin", pluginName, "config", string(plugin.Raw))
 			continue
 		}
-		log.Debugw("fill plugin_metadata for gateway proxy", zap.String("plugin", pluginName), zap.Any("config", pluginConfig))
+		t.Log.V(1).Info("fill plugin_metadata for gateway proxy", "plugin", pluginName, "config", pluginConfig)
 		pluginMetadata[pluginName] = pluginConfig
 	}
 }

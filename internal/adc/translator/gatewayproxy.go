@@ -22,9 +22,7 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/api7/gopkg/pkg/log"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
@@ -108,7 +106,7 @@ func (t *Translator) TranslateGatewayProxyToConfig(tctx *provider.TranslateConte
 				},
 			}, func(endpoint *discoveryv1.Endpoint) bool {
 				if endpoint.Conditions.Terminating != nil && *endpoint.Conditions.Terminating {
-					log.Debugw("skip terminating endpoint", zap.Any("endpoint", endpoint))
+					t.Log.V(1).Info("skip terminating endpoint", "endpoint", endpoint)
 					return false
 				}
 				return true
@@ -130,7 +128,7 @@ func (t *Translator) TranslateGatewayProxyToConfig(tctx *provider.TranslateConte
 			config.ServerAddrs = []string{serverAddr}
 		}
 
-		log.Debugw("add server address to config.ServiceAddrs", zap.Strings("config.ServerAddrs", config.ServerAddrs))
+		t.Log.V(1).Info("add server address to config.ServiceAddrs", "config.ServerAddrs", config.ServerAddrs)
 	}
 
 	return &config, nil

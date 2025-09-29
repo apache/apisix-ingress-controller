@@ -38,7 +38,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/manager"
 	"github.com/apache/apisix-ingress-controller/internal/version"
-	"github.com/api7/gopkg/pkg/log"
 )
 
 type GatewayConfigsFlag struct {
@@ -114,16 +113,6 @@ func newAPISIXIngressController() *cobra.Command {
 			if err != nil {
 				return err
 			}
-
-			l, err := log.NewLogger(
-				log.WithOutputFile("stderr"),
-				log.WithLogLevel(cfg.LogLevel),
-				log.WithSkipFrames(3),
-			)
-			if err != nil {
-				return err
-			}
-			log.DefaultLogger = l
 
 			// controllers log
 			core := zapcore.NewCore(

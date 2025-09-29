@@ -29,7 +29,7 @@ type Translator struct {
 
 func NewTranslator(log logr.Logger) *Translator {
 	return &Translator{
-		Log: log,
+		Log: log.WithName("translator"),
 	}
 }
 

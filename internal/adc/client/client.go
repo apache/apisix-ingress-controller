@@ -26,7 +26,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/api7/gopkg/pkg/log"
+	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
@@ -47,22 +47,28 @@ type Client struct {
 
 	ConfigManager    *common.ConfigManager[types.NamespacedNameKind, adctypes.Config]
 	ADCDebugProvider *common.ADCDebugProvider
+
+	log logr.Logger
 }
 
-func New(mode string, timeout time.Duration) (*Client, error) {
+func New(log logr.Logger, mode string, timeout time.Duration) (*Client, error) {
 	serverURL := os.Getenv("ADC_SERVER_URL")
 	if serverURL == "" {
 		serverURL = defaultHTTPADCExecutorAddr
 	}
-	store := cache.NewStore()
+	store := cache.NewStore(log)
 	configManager := common.NewConfigManager[types.NamespacedNameKind, adctypes.Config]()
-	log.Infow("using HTTP ADC Executor", zap.String("server_url", serverURL))
+
+	logger := log.WithName("client")
+	logger.Info("ADC client initialized", zap.String("mode", mode))
+
 	return &Client{
 		Store:            store,
-		executor:         NewHTTPADCExecutor(serverURL, timeout),
+		executor:         NewHTTPADCExecutor(log, serverURL, timeout),
 		BackendMode:      mode,
 		ConfigManager:    configManager,
 		ADCDebugProvider: common.NewADCDebugProvider(store, configManager),
+		log:              logger,
 	}, nil
 }
 
@@ -80,31 +86,31 @@ type StoreDelta struct {
 	Applied map[types.NamespacedNameKind]adctypes.Config
 }
 
-func (d *Client) applyStoreChanges(args Task, isDelete bool) (StoreDelta, error) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
+func (c *Client) applyStoreChanges(args Task, isDelete bool) (StoreDelta, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	var delta StoreDelta
 
 	if isDelete {
-		delta.Deleted = d.ConfigManager.Get(args.Key)
-		d.ConfigManager.Delete(args.Key)
+		delta.Deleted = c.ConfigManager.Get(args.Key)
+		c.ConfigManager.Delete(args.Key)
 	} else {
-		deleted := d.ConfigManager.Update(args.Key, args.Configs)
+		deleted := c.ConfigManager.Update(args.Key, args.Configs)
 		delta.Deleted = deleted
 		delta.Applied = args.Configs
 	}
 
 	for _, cfg := range delta.Deleted {
-		if err := d.Store.Delete(cfg.Name, args.ResourceTypes, args.Labels); err != nil {
-			log.Errorw("store delete failed", zap.Error(err), zap.Any("cfg", cfg), zap.Any("args", args))
+		if err := c.Store.Delete(cfg.Name, args.ResourceTypes, args.Labels); err != nil {
+			c.log.Error(err, "store delete failed", "cfg", cfg, "args", args)
 			return StoreDelta{}, errors.Wrap(err, fmt.Sprintf("store delete failed for config %s", cfg.Name))
 		}
 	}
 
 	for _, cfg := range delta.Applied {
-		if err := d.Insert(cfg.Name, args.ResourceTypes, args.Resources, args.Labels); err != nil {
-			log.Errorw("store insert failed", zap.Error(err), zap.Any("cfg", cfg), zap.Any("args", args))
+		if err := c.Insert(cfg.Name, args.ResourceTypes, args.Resources, args.Labels); err != nil {
+			c.log.Error(err, "store insert failed", "cfg", cfg, "args", args)
 			return StoreDelta{}, errors.Wrap(err, fmt.Sprintf("store insert failed for config %s", cfg.Name))
 		}
 	}
@@ -112,23 +118,23 @@ func (d *Client) applyStoreChanges(args Task, isDelete bool) (StoreDelta, error)
 	return delta, nil
 }
 
-func (d *Client) applySync(ctx context.Context, args Task, delta StoreDelta) error {
-	d.syncMu.RLock()
-	defer d.syncMu.RUnlock()
+func (c *Client) applySync(ctx context.Context, args Task, delta StoreDelta) error {
+	c.syncMu.RLock()
+	defer c.syncMu.RUnlock()
 
 	if len(delta.Deleted) > 0 {
-		if err := d.sync(ctx, Task{
+		if err := c.sync(ctx, Task{
 			Name:          args.Name,
 			Labels:        args.Labels,
 			ResourceTypes: args.ResourceTypes,
 			Configs:       delta.Deleted,
 		}); err != nil {
-			log.Warnw("failed to sync deleted configs", zap.Error(err))
+			c.log.Error(err, "failed to sync deleted configs", "args", args, "delta", delta)
 		}
 	}
 
 	if len(delta.Applied) > 0 {
-		return d.sync(ctx, Task{
+		return c.sync(ctx, Task{
 			Name:          args.Name,
 			Labels:        args.Labels,
 			ResourceTypes: args.ResourceTypes,
@@ -139,45 +145,45 @@ func (d *Client) applySync(ctx context.Context, args Task, delta StoreDelta) err
 	return nil
 }
 
-func (d *Client) Update(ctx context.Context, args Task) error {
-	delta, err := d.applyStoreChanges(args, false)
+func (c *Client) Update(ctx context.Context, args Task) error {
+	delta, err := c.applyStoreChanges(args, false)
 	if err != nil {
 		return err
 	}
-	return d.applySync(ctx, args, delta)
+	return c.applySync(ctx, args, delta)
 }
 
-func (d *Client) UpdateConfig(ctx context.Context, args Task) error {
-	_, err := d.applyStoreChanges(args, false)
+func (c *Client) UpdateConfig(ctx context.Context, args Task) error {
+	_, err := c.applyStoreChanges(args, false)
 	return err
 }
 
-func (d *Client) Delete(ctx context.Context, args Task) error {
-	delta, err := d.applyStoreChanges(args, true)
+func (c *Client) Delete(ctx context.Context, args Task) error {
+	delta, err := c.applyStoreChanges(args, true)
 	if err != nil {
 		return err
 	}
-	return d.applySync(ctx, args, delta)
+	return c.applySync(ctx, args, delta)
 }
 
-func (d *Client) DeleteConfig(ctx context.Context, args Task) error {
-	_, err := d.applyStoreChanges(args, true)
+func (c *Client) DeleteConfig(ctx context.Context, args Task) error {
+	_, err := c.applyStoreChanges(args, true)
 	return err
 }
 
 func (c *Client) Sync(ctx context.Context) (map[string]types.ADCExecutionErrors, error) {
 	c.syncMu.Lock()
 	defer c.syncMu.Unlock()
-	log.Debug("syncing all resources")
+	c.log.Info("syncing all resources")
 
 	configs := c.ConfigManager.List()
 
 	if len(configs) == 0 {
-		log.Warn("no GatewayProxy configs provided")
+		c.log.Info("no GatewayProxy configs provided")
 		return nil, nil
 	}
 
-	log.Debugw("syncing resources with multiple configs", zap.Any("configs", configs))
+	c.log.V(1).Info("syncing resources with multiple configs", zap.Any("configs", configs))
 
 	failedMap := map[string]types.ADCExecutionErrors{}
 	var failedConfigs []string
@@ -185,7 +191,7 @@ func (c *Client) Sync(ctx context.Context) (map[string]types.ADCExecutionErrors,
 		name := config.Name
 		resources, err := c.GetResources(name)
 		if err != nil {
-			log.Errorw("failed to get resources from store", zap.String("name", name), zap.Error(err))
+			c.log.Error(err, "failed to get resources from store", "name", name)
 			failedConfigs = append(failedConfigs, name)
 			continue
 		}
@@ -200,7 +206,7 @@ func (c *Client) Sync(ctx context.Context) (map[string]types.ADCExecutionErrors,
 			},
 			Resources: resources,
 		}); err != nil {
-			log.Errorw("failed to sync resources", zap.String("name", name), zap.Error(err))
+			c.log.Error(err, "failed to sync resources", "name", name)
 			failedConfigs = append(failedConfigs, name)
 			var execErrs types.ADCExecutionErrors
 			if errors.As(err, &execErrs) {
@@ -219,10 +225,10 @@ func (c *Client) Sync(ctx context.Context) (map[string]types.ADCExecutionErrors,
 }
 
 func (c *Client) sync(ctx context.Context, task Task) error {
-	log.Debugw("syncing resources", zap.Any("task", task))
+	c.log.V(1).Info("syncing resources", "task", task)
 
 	if len(task.Configs) == 0 {
-		log.Warnw("no adc configs provided", zap.Any("task", task))
+		c.log.Info("no adc configs provided")
 		return nil
 	}
 
@@ -238,6 +244,7 @@ func (c *Client) sync(ctx context.Context, task Task) error {
 	}
 	pkgmetrics.RecordFileIODuration("prepare_sync_file", adctypes.StatusSuccess, time.Since(fileIOStart).Seconds())
 	defer cleanup()
+	c.log.V(1).Info("prepared sync file", "path", syncFilePath)
 
 	args := BuildADCExecuteArgs(syncFilePath, task.Labels, task.ResourceTypes)
 
@@ -255,7 +262,7 @@ func (c *Client) sync(ctx context.Context, task Task) error {
 		status := adctypes.StatusSuccess
 		if err != nil {
 			status = "failure"
-			log.Errorw("failed to execute adc command", zap.Error(err), zap.Any("config", config))
+			c.log.Error(err, "failed to execute adc command", "config", config)
 
 			var execErr types.ADCExecutionError
 			if errors.As(err, &execErr) {
@@ -294,8 +301,6 @@ func prepareSyncFile(resources any) (string, func(), error) {
 		cleanup()
 		return "", nil, err
 	}
-
-	log.Debugw("generated adc file", zap.String("filename", tmpFile.Name()), zap.String("json", string(data)))
 
 	return tmpFile.Name(), cleanup, nil
 }

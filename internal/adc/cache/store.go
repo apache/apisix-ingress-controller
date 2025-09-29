@@ -21,9 +21,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/api7/gopkg/pkg/log"
+	"github.com/go-logr/logr"
 	"github.com/google/uuid"
-	"go.uber.org/zap"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
@@ -34,12 +33,14 @@ type Store struct {
 	pluginMetadataMap map[string]adctypes.PluginMetadata
 
 	sync.Mutex
+	log logr.Logger
 }
 
-func NewStore() *Store {
+func NewStore(log logr.Logger) *Store {
 	return &Store{
 		cacheMap:          make(map[string]Cache),
 		pluginMetadataMap: make(map[string]adctypes.PluginMetadata),
+		log:               log,
 	}
 }
 
@@ -55,7 +56,7 @@ func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.
 		s.cacheMap[name] = db
 		targetCache = s.cacheMap[name]
 	}
-	log.Debugw("Inserting resources into cache for", zap.String("name", name))
+	s.log.V(1).Info("Inserting resources into cache", "name", name, "resourceTypes", resourceTypes, "Labels", Labels)
 	selector := &KindLabelSelector{
 		Kind:      Labels[label.LabelKind],
 		Name:      Labels[label.LabelName],
@@ -162,41 +163,41 @@ func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]st
 		case adctypes.TypeService:
 			services, err := targetCache.ListServices(selector)
 			if err != nil {
-				log.Errorw("failed to list services", zap.Error(err))
+				s.log.Error(err, "failed to list services")
 			}
 			for _, service := range services {
 				if err := targetCache.DeleteService(service); err != nil {
-					log.Errorw("failed to delete service", zap.Error(err), zap.String("service", service.ID))
+					s.log.Error(err, "failed to delete service", "service", service.ID)
 				}
 			}
 		case adctypes.TypeSSL:
 			ssls, err := targetCache.ListSSL(selector)
 			if err != nil {
-				log.Errorw("failed to list ssl", zap.Error(err))
+				s.log.Error(err, "failed to list ssl")
 			}
 			for _, ssl := range ssls {
 				if err := targetCache.DeleteSSL(ssl); err != nil {
-					log.Errorw("failed to delete ssl", zap.Error(err), zap.String("ssl", ssl.ID))
+					s.log.Error(err, "failed to delete ssl", "ssl", ssl.ID)
 				}
 			}
 		case adctypes.TypeConsumer:
 			consumers, err := targetCache.ListConsumers(selector)
 			if err != nil {
-				log.Errorw("failed to list consumers", zap.Error(err))
+				s.log.Error(err, "failed to list consumers")
 			}
 			for _, consumer := range consumers {
 				if err := targetCache.DeleteConsumer(consumer); err != nil {
-					log.Errorw("failed to delete consumer", zap.Error(err), zap.String("consumer", consumer.Username))
+					s.log.Error(err, "failed to delete consumer", "consumer", consumer.Username)
 				}
 			}
 		case adctypes.TypeGlobalRule:
 			globalRules, err := targetCache.ListGlobalRules(selector)
 			if err != nil {
-				log.Errorw("failed to list global rules", zap.Error(err))
+				s.log.Error(err, "failed to list global rules")
 			}
 			for _, globalRule := range globalRules {
 				if err := targetCache.DeleteGlobalRule(globalRule); err != nil {
-					log.Errorw("failed to delete global rule", zap.Error(err), zap.String("global rule", globalRule.ID))
+					s.log.Error(err, "failed to delete global rule", "global rule", globalRule.ID)
 				}
 			}
 		case adctypes.TypePluginMetadata:
@@ -229,7 +230,7 @@ func (s *Store) GetResources(name string) (*adctypes.Resources, error) {
 		}
 		globalrule = adctypes.GlobalRule(merged)
 	}
-	log.Debugw("get resources global rule items", zap.Any("globalRuleItems", globalRuleItems))
+	s.log.V(1).Info("GetResources fetched global rule items", "items", globalRuleItems, "gobalrule", globalrule)
 	if meta, ok := s.pluginMetadataMap[name]; ok {
 		metadata = meta.DeepCopy()
 	}

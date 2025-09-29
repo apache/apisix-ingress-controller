@@ -22,10 +22,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/api7/gopkg/pkg/log"
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
@@ -167,7 +165,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		msg:    "Route is accepted",
 	}
 
-	gateways, err := ParseRouteParentRefs(ctx, r.Client, hr, hr.Spec.ParentRefs)
+	gateways, err := ParseRouteParentRefs(ctx, r.Client, r.Log, hr, hr.Spec.ParentRefs)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -250,7 +248,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if isRouteAccepted(gateways) && err == nil {
 		routeToUpdate := hr
 		if filteredHTTPRoute != nil {
-			log.Debugw("filteredHTTPRoute", zap.Any("filteredHTTPRoute", filteredHTTPRoute))
+			r.Log.V(1).Info("filtered httproute", "httproute", filteredHTTPRoute)
 			routeToUpdate = filteredHTTPRoute
 		}
 		if err := r.Provider.Update(ctx, tctx, routeToUpdate); err != nil {

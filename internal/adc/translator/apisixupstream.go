@@ -21,9 +21,7 @@ import (
 	"cmp"
 	"fmt"
 
-	"github.com/api7/gopkg/pkg/log"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -57,8 +55,7 @@ func (t *Translator) translateApisixUpstream(tctx *provider.TranslateContext, au
 		}
 	}
 
-	log.Debugw("translated ApisixUpstream", zap.Any("upstream", ups),
-		zap.String("namespace", au.Namespace), zap.String("name", au.Name))
+	t.Log.V(1).Info("translated ApisixUpstream", "upstream", ups)
 	return
 }
 

@@ -22,13 +22,19 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/provider/apisix"
+	"github.com/go-logr/logr"
 )
 
 func init() {
 	provider.Register("apisix", apisix.New)
-	provider.Register("apisix-standalone", func(statusUpdater status.Updater, readinessManager readiness.ReadinessManager, opts ...provider.Option) (provider.Provider, error) {
-		opts = append(opts, provider.WithBackendMode("apisix-standalone"))
-		opts = append(opts, provider.WithResolveEndpoints())
-		return apisix.New(statusUpdater, readinessManager, opts...)
-	})
+	provider.Register("apisix-standalone",
+		func(log logr.Logger,
+			statusUpdater status.Updater,
+			readinessManager readiness.ReadinessManager,
+			opts ...provider.Option,
+		) (provider.Provider, error) {
+			opts = append(opts, provider.WithBackendMode("apisix-standalone"))
+			opts = append(opts, provider.WithResolveEndpoints())
+			return apisix.New(log, statusUpdater, readinessManager, opts...)
+		})
 }

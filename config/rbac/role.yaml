@@ -102,8 +102,8 @@ rules:
   - gateways
   - grpcroutes
   - httproutes
-  - tcproutes
   - referencegrants
+  - tcproutes
   verbs:
   - get
   - list
