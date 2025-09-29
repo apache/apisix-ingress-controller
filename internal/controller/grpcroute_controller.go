@@ -297,7 +297,6 @@ func (r *GRPCRouteReconciler) listGRPCRoutesForBackendTrafficPolicy(ctx context.
 		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to BackendTrafficPolicy")
 		return nil
 	}
-
 	grpcRouteList := []gatewayv1.GRPCRoute{}
 	for _, targetRef := range policy.Spec.TargetRefs {
 		service := &corev1.Service{}

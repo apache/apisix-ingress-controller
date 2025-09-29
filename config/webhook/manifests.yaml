@@ -130,6 +130,46 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
+      path: /validate-gateway-networking-k8s-io-v1-grpcroute
+  failurePolicy: Fail
+  name: vgrpcroute-v1.kb.io
+  rules:
+  - apiGroups:
+    - gateway.networking.k8s.io
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - grpcroutes
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-gateway-networking-k8s-io-v1-httproute
+  failurePolicy: Fail
+  name: vhttproute-v1.kb.io
+  rules:
+  - apiGroups:
+    - gateway.networking.k8s.io
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - httproutes
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
       path: /validate-networking-k8s-io-v1-ingress
   failurePolicy: Fail
   name: vingress-v1.kb.io
@@ -163,4 +203,24 @@ webhooks:
     - UPDATE
     resources:
     - ingressclasses
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-gateway-networking-k8s-io-v1alpha2-tcproute
+  failurePolicy: Fail
+  name: vtcproute-v1alpha2.kb.io
+  rules:
+  - apiGroups:
+    - gateway.networking.k8s.io
+    apiVersions:
+    - v1alpha2
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - tcproutes
   sideEffects: None

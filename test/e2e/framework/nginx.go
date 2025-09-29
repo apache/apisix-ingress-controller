@@ -54,6 +54,8 @@ func (f *Framework) DeployNginx(opts NginxOptions) *corev1.Service {
 	err := ngxSpecTpl.Execute(buf, opts)
 	f.GomegaT.Expect(err).ToNot(HaveOccurred(), "rendering nginx spec")
 
+	f.applySSLSecret(opts.Namespace, "nginx-ssl", []byte(TESTCert1), []byte(TestKey1), []byte(TestCACert))
+
 	kubectlOpts := k8s.NewKubectlOptions("", "", opts.Namespace)
 
 	k8s.KubectlApplyFromString(f.GinkgoT, kubectlOpts, buf.String())

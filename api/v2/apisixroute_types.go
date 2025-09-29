@@ -36,9 +36,15 @@ type ApisixRouteSpec struct {
 	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
 	// HTTP defines a list of HTTP route rules.
 	// Each rule specifies conditions to match HTTP requests and how to forward them.
+	//
+	// +listType=map
+	// +listMapKey=name
 	HTTP []ApisixRouteHTTP `json:"http,omitempty" yaml:"http,omitempty"`
 	// Stream defines a list of stream route rules.
 	// Each rule specifies conditions to match TCP/UDP traffic and how to forward them.
+	//
+	// +listType=map
+	// +listMapKey=name
 	Stream []ApisixRouteStream `json:"stream,omitempty" yaml:"stream,omitempty"`
 }
 

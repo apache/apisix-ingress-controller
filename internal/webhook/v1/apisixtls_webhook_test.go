@@ -21,12 +21,14 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	apisixv2 "github.com/apache/apisix-ingress-controller/api/v2"
+	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 )
 
 func buildApisixTlsValidator(t *testing.T, objects ...runtime.Object) *ApisixTlsCustomValidator {
@@ -34,12 +36,24 @@ func buildApisixTlsValidator(t *testing.T, objects ...runtime.Object) *ApisixTls
 
 	scheme := runtime.NewScheme()
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
+	require.NoError(t, networkingv1.AddToScheme(scheme))
 	require.NoError(t, apisixv2.AddToScheme(scheme))
 
-	builder := fake.NewClientBuilder().WithScheme(scheme)
-	if len(objects) > 0 {
-		builder = builder.WithRuntimeObjects(objects...)
+	managed := []runtime.Object{
+		&networkingv1.IngressClass{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "apisix",
+				Annotations: map[string]string{
+					"ingressclass.kubernetes.io/is-default-class": "true",
+				},
+			},
+			Spec: networkingv1.IngressClassSpec{
+				Controller: config.ControllerConfig.ControllerName,
+			},
+		},
 	}
+	allObjects := append(managed, objects...)
+	builder := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(allObjects...)
 
 	return NewApisixTlsCustomValidator(builder.Build())
 }
@@ -51,7 +65,8 @@ func newApisixTls() *apisixv2.ApisixTls {
 			Namespace: "default",
 		},
 		Spec: apisixv2.ApisixTlsSpec{
-			Hosts: []apisixv2.HostType{"example.com"},
+			IngressClassName: "apisix",
+			Hosts:            []apisixv2.HostType{"example.com"},
 			Secret: apisixv2.ApisixSecret{
 				Name:      "server-cert",
 				Namespace: "default",
