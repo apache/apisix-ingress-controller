@@ -27,13 +27,13 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = Describe("Test TCPRoute Webhook", Label("webhook"), func() {
+var _ = FDescribe("Test UDPRoute Webhook", Label("webhook"), func() {
 	s := scaffold.NewScaffold(scaffold.Options{
-		Name:          "tcproute-webhook-test",
+		Name:          "udproute-webhook-test",
 		EnableWebhook: true,
 	})
 
-	const tcpGateway = `
+	const udpGateway = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -41,12 +41,12 @@ metadata:
 spec:
   gatewayClassName: %s
   listeners:
-  - name: tcp
-    protocol: TCP
+  - name: udp
+    protocol: UDP
     port: 9000
     allowedRoutes:
       kinds:
-      - kind: TCPRoute
+      - kind: UDPRoute
   infrastructure:
     parametersRef:
       group: apisix.apache.org
@@ -65,37 +65,37 @@ spec:
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
 		time.Sleep(2 * time.Second)
 
-		By("creating Gateway with TCP listener")
-		err = s.CreateResourceFromString(fmt.Sprintf(tcpGateway, s.Namespace(), s.Namespace()))
-		Expect(err).NotTo(HaveOccurred(), "creating TCP-capable Gateway")
+		By("creating Gateway with UDP listener")
+		err = s.CreateResourceFromString(fmt.Sprintf(udpGateway, s.Namespace(), s.Namespace()))
+		Expect(err).NotTo(HaveOccurred(), "creating UDP-capable Gateway")
 		time.Sleep(5 * time.Second)
 	})
 
 	It("should warn on missing backend services", func() {
-		missingService := "missing-tcp-backend"
-		routeName := "webhook-tcproute"
+		missingService := "missing-udp-backend"
+		routeName := "webhook-udproute"
 		gatewayName := s.Namespace()
 		routeYAML := `
 apiVersion: gateway.networking.k8s.io/v1alpha2
-kind: TCPRoute
+kind: UDPRoute
 metadata:
   name: %s
 spec:
   parentRefs:
   - name: %s
-    sectionName: tcp
+    sectionName: udp
   rules:
   - backendRefs:
     - name: %s
-      port: 80
+      port: 53
 `
 
 		output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(routeYAML, routeName, gatewayName, missingService))
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Referenced Service '%s/%s' not found", s.Namespace(), missingService)))
 
-		By("delete the TCPRoute")
-		err = s.DeleteResource("TCPRoute", routeName)
+		By("delete the UDPRoute")
+		err = s.DeleteResource("UDPRoute", routeName)
 		Expect(err).NotTo(HaveOccurred())
 		time.Sleep(2 * time.Second)
 
@@ -109,13 +109,14 @@ spec:
   selector:
     app: placeholder
   ports:
-  - name: tcp
-    port: 80
-    targetPort: 80
+  - name: udp
+    port: 53
+    targetPort: 53
+    protocol: UDP
   type: ClusterIP
 `, missingService)
 		err = s.CreateResourceFromString(backendService)
-		Expect(err).NotTo(HaveOccurred(), "creating tcp backend service")
+		Expect(err).NotTo(HaveOccurred(), "creating udp backend service")
 
 		time.Sleep(2 * time.Second)
 

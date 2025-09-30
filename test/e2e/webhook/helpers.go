@@ -83,6 +83,11 @@ spec:
 	Expect(output).To(ContainSubstring(missingBackendWarning))
 	Expect(output).To(ContainSubstring(mirrorBackendWarning))
 
+	By("delete the " + tc.routeKind)
+	err = s.DeleteResource(tc.routeKind, tc.routeName)
+	Expect(err).NotTo(HaveOccurred())
+	time.Sleep(2 * time.Second)
+
 	By(fmt.Sprintf("creating referenced backend services for %s", tc.routeKind))
 	serviceYAML := `
 apiVersion: v1
