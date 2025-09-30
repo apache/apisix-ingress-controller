@@ -23,25 +23,25 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = Describe("Test TCPRoute Webhook", Label("webhook"), func() {
+var _ = Describe("Test UDPRoute Webhook", Label("webhook"), func() {
 	s := scaffold.NewScaffold(scaffold.Options{
-		Name:          "tcproute-webhook-test",
+		Name:          "udproute-webhook-test",
 		EnableWebhook: true,
 	})
 
 	BeforeEach(func() {
-		setupSimpleGatewayWithProtocol(s, "TCP", "tcp", 9000)
+		setupSimpleGatewayWithProtocol(s, "UDP", "udp", 9000)
 	})
 
 	It("should warn on missing backend services", func() {
 		tc := simpleRouteWebhookTestCase{
-			routeKind:       "TCPRoute",
-			routeName:       "webhook-tcproute",
-			sectionName:     "tcp",
-			missingService:  "missing-tcp-backend",
-			servicePortName: "tcp",
-			servicePort:     80,
-			serviceProtocol: "",
+			routeKind:       "UDPRoute",
+			routeName:       "webhook-udproute",
+			sectionName:     "udp",
+			missingService:  "missing-udp-backend",
+			servicePortName: "udp",
+			servicePort:     53,
+			serviceProtocol: "UDP",
 		}
 		verifySimpleRouteMissingBackendWarnings(s, tc)
 	})
