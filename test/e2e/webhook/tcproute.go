@@ -18,11 +18,7 @@
 package webhook
 
 import (
-	"fmt"
-	"time"
-
 	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
@@ -33,94 +29,20 @@ var _ = Describe("Test TCPRoute Webhook", Label("webhook"), func() {
 		EnableWebhook: true,
 	})
 
-	const tcpGateway = `
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: %s
-spec:
-  gatewayClassName: %s
-  listeners:
-  - name: tcp
-    protocol: TCP
-    port: 9000
-    allowedRoutes:
-      kinds:
-      - kind: TCPRoute
-  infrastructure:
-    parametersRef:
-      group: apisix.apache.org
-      kind: GatewayProxy
-      name: apisix-proxy-config
-`
-
 	BeforeEach(func() {
-		By("creating GatewayProxy")
-		err := s.CreateResourceFromString(s.GetGatewayProxySpec())
-		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-		time.Sleep(5 * time.Second)
-
-		By("creating GatewayClass")
-		err = s.CreateResourceFromString(s.GetGatewayClassYaml())
-		Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
-		time.Sleep(2 * time.Second)
-
-		By("creating Gateway with TCP listener")
-		err = s.CreateResourceFromString(fmt.Sprintf(tcpGateway, s.Namespace(), s.Namespace()))
-		Expect(err).NotTo(HaveOccurred(), "creating TCP-capable Gateway")
-		time.Sleep(5 * time.Second)
+		setupSimpleGatewayWithProtocol(s, "TCP", "tcp", 9000)
 	})
 
 	It("should warn on missing backend services", func() {
-		missingService := "missing-tcp-backend"
-		routeName := "webhook-tcproute"
-		gatewayName := s.Namespace()
-		routeYAML := `
-apiVersion: gateway.networking.k8s.io/v1alpha2
-kind: TCPRoute
-metadata:
-  name: %s
-spec:
-  parentRefs:
-  - name: %s
-    sectionName: tcp
-  rules:
-  - backendRefs:
-    - name: %s
-      port: 80
-`
-
-		output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(routeYAML, routeName, gatewayName, missingService))
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Referenced Service '%s/%s' not found", s.Namespace(), missingService)))
-
-		By("delete the TCPRoute")
-		err = s.DeleteResource("TCPRoute", routeName)
-		Expect(err).NotTo(HaveOccurred())
-		time.Sleep(2 * time.Second)
-
-		By("creating referenced backend service")
-		backendService := fmt.Sprintf(`
-apiVersion: v1
-kind: Service
-metadata:
-  name: %s
-spec:
-  selector:
-    app: placeholder
-  ports:
-  - name: tcp
-    port: 80
-    targetPort: 80
-  type: ClusterIP
-`, missingService)
-		err = s.CreateResourceFromString(backendService)
-		Expect(err).NotTo(HaveOccurred(), "creating tcp backend service")
-
-		time.Sleep(2 * time.Second)
-
-		output, err = s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(routeYAML, routeName, gatewayName, missingService))
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced Service '%s/%s' not found", s.Namespace(), missingService)))
+		tc := simpleRouteWebhookTestCase{
+			routeKind:       "TCPRoute",
+			routeName:       "webhook-tcproute",
+			sectionName:     "tcp",
+			missingService:  "missing-tcp-backend",
+			servicePortName: "tcp",
+			servicePort:     80,
+			serviceProtocol: "",
+		}
+		verifySimpleRouteMissingBackendWarnings(s, tc)
 	})
 })
