@@ -20,6 +20,174 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: test-webhook-{{ .Namespace }}
 webhooks:
+- name: vapisixconsumer-v2.kb.io
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: {{ .Namespace }}
+      path: /validate-apisix-apache-org-v2-apisixconsumer
+    caBundle: {{ .CABundle }}
+  admissionReviewVersions:
+    - v1
+  rules:
+    - operations:
+        - CREATE
+        - UPDATE
+      apiGroups:
+        - apisix.apache.org
+      apiVersions:
+        - v2
+      resources:
+        - apisixconsumers
+  failurePolicy: Fail
+  sideEffects: None
+- name: vapisixroute-v2.kb.io
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: {{ .Namespace }}
+      path: /validate-apisix-apache-org-v2-apisixroute
+    caBundle: {{ .CABundle }}
+  admissionReviewVersions:
+    - v1
+  rules:
+    - operations:
+        - CREATE
+        - UPDATE
+      apiGroups:
+        - apisix.apache.org
+      apiVersions:
+        - v2
+      resources:
+        - apisixroutes
+  failurePolicy: Fail
+  sideEffects: None
+- name: vapisixtls-v2.kb.io
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: {{ .Namespace }}
+      path: /validate-apisix-apache-org-v2-apisixtls
+    caBundle: {{ .CABundle }}
+  admissionReviewVersions:
+    - v1
+  rules:
+    - operations:
+        - CREATE
+        - UPDATE
+      apiGroups:
+        - apisix.apache.org
+      apiVersions:
+        - v2
+      resources:
+        - apisixtlses
+  failurePolicy: Fail
+  sideEffects: None
+- name: vconsumer-v1alpha1.kb.io
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: {{ .Namespace }}
+      path: /validate-apisix-apache-org-v1alpha1-consumer
+    caBundle: {{ .CABundle }}
+  admissionReviewVersions:
+    - v1
+  rules:
+    - operations:
+        - CREATE
+        - UPDATE
+      apiGroups:
+        - apisix.apache.org
+      apiVersions:
+        - v1alpha1
+      resources:
+        - consumers
+  failurePolicy: Fail
+  sideEffects: None
+- name: vgateway-v1.kb.io
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: {{ .Namespace }}
+      path: /validate-gateway-networking-k8s-io-v1-gateway
+    caBundle: {{ .CABundle }}
+  admissionReviewVersions:
+    - v1
+  rules:
+    - operations:
+        - CREATE
+        - UPDATE
+      apiGroups:
+        - gateway.networking.k8s.io
+      apiVersions:
+        - v1
+      resources:
+        - gateways
+  failurePolicy: Fail
+  sideEffects: None
+- name: vgatewayproxy-v1alpha1.kb.io
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: {{ .Namespace }}
+      path: /validate-apisix-apache-org-v1alpha1-gatewayproxy
+    caBundle: {{ .CABundle }}
+  admissionReviewVersions:
+    - v1
+  rules:
+    - operations:
+        - CREATE
+        - UPDATE
+      apiGroups:
+        - apisix.apache.org
+      apiVersions:
+        - v1alpha1
+      resources:
+        - gatewayproxies
+  failurePolicy: Fail
+  sideEffects: None
+- name: vgrpcroute-v1.kb.io
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: {{ .Namespace }}
+      path: /validate-gateway-networking-k8s-io-v1-grpcroute
+    caBundle: {{ .CABundle }}
+  admissionReviewVersions:
+    - v1
+  rules:
+    - operations:
+        - CREATE
+        - UPDATE
+      apiGroups:
+        - gateway.networking.k8s.io
+      apiVersions:
+        - v1
+      resources:
+        - grpcroutes
+  failurePolicy: Fail
+  sideEffects: None
+- name: vhttproute-v1.kb.io
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: {{ .Namespace }}
+      path: /validate-gateway-networking-k8s-io-v1-httproute
+    caBundle: {{ .CABundle }}
+  admissionReviewVersions:
+    - v1
+  rules:
+    - operations:
+        - CREATE
+        - UPDATE
+      apiGroups:
+        - gateway.networking.k8s.io
+      apiVersions:
+        - v1
+      resources:
+        - httproutes
+  failurePolicy: Fail
+  sideEffects: None
 - name: vingress-v1.kb.io
   clientConfig:
     service:
@@ -30,15 +198,15 @@ webhooks:
   admissionReviewVersions:
     - v1
   rules:
-  - operations:
-      - CREATE
-      - UPDATE
-    apiGroups:
-      - networking.k8s.io
-    apiVersions:
-      - v1
-    resources:
-      - ingresses
+    - operations:
+        - CREATE
+        - UPDATE
+      apiGroups:
+        - networking.k8s.io
+      apiVersions:
+        - v1
+      resources:
+        - ingresses
   failurePolicy: Fail
   sideEffects: None
 - name: vingressclass-v1.kb.io
@@ -62,12 +230,12 @@ webhooks:
         - ingressclasses
   failurePolicy: Fail
   sideEffects: None
-- name: vgateway-v1.kb.io
+- name: vtcproute-v1alpha2.kb.io
   clientConfig:
     service:
       name: webhook-service
       namespace: {{ .Namespace }}
-      path: /validate-gateway-networking-k8s-io-v1-gateway
+      path: /validate-gateway-networking-k8s-io-v1alpha2-tcproute
     caBundle: {{ .CABundle }}
   admissionReviewVersions:
     - v1
@@ -78,8 +246,8 @@ webhooks:
       apiGroups:
         - gateway.networking.k8s.io
       apiVersions:
-        - v1
+        - v1alpha2
       resources:
-        - gateways
+        - tcproutes
   failurePolicy: Fail
   sideEffects: None
