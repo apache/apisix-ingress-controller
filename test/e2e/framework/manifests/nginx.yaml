@@ -31,7 +31,14 @@ data:
     http {
       server {
         listen 80 default_server;
+        listen 443 ssl default_server;
 
+        ssl_certificate /etc/nginx/ssl/tls.crt;
+        ssl_certificate_key /etc/nginx/ssl/tls.key;
+        ssl_client_certificate /etc/nginx/ssl/ca.crt;
+
+        add_header X-Port $server_port;
+        add_header X-Host $host;
         location / {
           return 200 'Hello, World!';
         }
@@ -57,6 +64,9 @@ spec:
         - name: nginx-config
           configMap:
             name: nginx-config
+        - name: nginx-ssl
+          secret:
+            secretName: nginx-ssl
       containers:
         - livenessProbe:
             failureThreshold: 3
@@ -74,10 +84,15 @@ spec:
             - containerPort: 80
               name: "http"
               protocol: "TCP"
+            - containerPort: 443
+              name: "https"
+              protocol: "TCP"
           volumeMounts:
             - mountPath: /etc/nginx/nginx.conf
               name: nginx-config
               subPath: nginx.conf
+            - mountPath: /etc/nginx/ssl
+              name: nginx-ssl
 ---
 apiVersion: v1
 kind: Service
@@ -91,4 +106,26 @@ spec:
       port: 80
       protocol: TCP
       targetPort: 80
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: 443
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx2
+spec:
+  selector:
+    app: nginx
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 80
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: 443
   type: ClusterIP

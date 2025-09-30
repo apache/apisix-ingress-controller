@@ -346,6 +346,9 @@ spec:
                   - name
                   type: object
                 type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
               ingressClassName:
                 description: |-
                   IngressClassName is the name of the IngressClass this route belongs to.
@@ -459,6 +462,9 @@ spec:
                   - protocol
                   type: object
                 type: array
+                x-kubernetes-list-map-keys:
+                - name
+                x-kubernetes-list-type: map
             type: object
           status:
             description: ApisixStatus is the status report for Apisix ingress Resources
