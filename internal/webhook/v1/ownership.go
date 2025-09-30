@@ -68,6 +68,13 @@ func isTCPRouteManaged(ctx context.Context, c client.Client, route *gatewayv1alp
 	return routeReferencesManagedGateway(ctx, c, route.Spec.ParentRefs, route.Namespace)
 }
 
+func isUDPRouteManaged(ctx context.Context, c client.Client, route *gatewayv1alpha2.UDPRoute) (bool, error) {
+	if route == nil {
+		return false, nil
+	}
+	return routeReferencesManagedGateway(ctx, c, route.Spec.ParentRefs, route.Namespace)
+}
+
 func routeReferencesManagedGateway(ctx context.Context, c client.Client, parents []gatewayv1.ParentReference, defaultNamespace string) (bool, error) {
 	for _, parent := range parents {
 		if parent.Name == "" {
