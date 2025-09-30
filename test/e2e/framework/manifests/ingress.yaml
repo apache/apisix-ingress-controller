@@ -356,6 +356,8 @@ spec:
         app: apisix-ingress-controller
         control-plane: controller-manager
     spec:
+      securityContext:
+        fsGroup: 2000   
       containers:
       - image: apache/apisix-ingress-controller:dev
         env:
@@ -367,10 +369,14 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
+        - name: ADC_SERVER_URL
+          value: "unix:/sockets/adc.sock"
         volumeMounts:
         - name: ingress-config
           mountPath: /app/conf/config.yaml
           subPath: config.yaml
+        - name: socket-volume
+          mountPath: /sockets
         {{ if .WebhookEnable -}}
         - name: webhook-certs
           mountPath: /tmp/certs
@@ -395,12 +401,7 @@ spec:
             path: /readyz
             port: 8081
           initialDelaySeconds: 5
-          periodSeconds: 10
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
+          periodSeconds: 10       
       - image: ghcr.io/api7/adc:dev
         env:
         - name: ADC_RUNNING_MODE
@@ -413,7 +414,7 @@ spec:
         args:
         - "server"
         - "--listen"
-        - "http://127.0.0.1:3000"
+        - "unix:/sockets/adc.sock"
         - "--listen-status"
         - "3001"
         ports:
@@ -436,10 +437,15 @@ spec:
             port: 3001
           initialDelaySeconds: 5
           periodSeconds: 5
+        volumeMounts:
+        - name: socket-volume
+          mountPath: /sockets
       volumes:
       - name: ingress-config
         configMap:
           name: ingress-config
+      - name: socket-volume
+        emptyDir: {}
       {{ if .WebhookEnable -}}
       - name: webhook-certs
         secret:
