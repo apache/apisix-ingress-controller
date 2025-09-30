@@ -418,9 +418,6 @@ spec:
         - "--listen-status"
         - "3001"
         ports:
-        - name: http
-          containerPort: 3000
-          protocol: TCP
         - name: http-status
           containerPort: 3001
           protocol: TCP
