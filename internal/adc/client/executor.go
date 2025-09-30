@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -218,14 +219,33 @@ type HTTPADCExecutor struct {
 	log        logr.Logger
 }
 
-// NewHTTPADCExecutor creates a new HTTPADCExecutor with the specified ADC Server URL
+// NewHTTPADCExecutor creates a new HTTPADCExecutor with the specified ADC Server URL.
+// serverURL can be "http(s)://host:port" or "unix:///path/to/socket" or "unix:/path/to/socket".
 func NewHTTPADCExecutor(log logr.Logger, serverURL string, timeout time.Duration) *HTTPADCExecutor {
+	httpClient := &http.Client{
+		Timeout: timeout,
+	}
+
+	if strings.HasPrefix(serverURL, "unix:") {
+		var socketPath string
+		if strings.HasPrefix(serverURL, "unix:///") {
+			socketPath = strings.TrimPrefix(serverURL, "unix://")
+		} else {
+			socketPath = strings.TrimPrefix(serverURL, "unix:")
+		}
+		transport := &http.Transport{
+			DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+				return (&net.Dialer{}).DialContext(ctx, "unix", socketPath)
+			},
+		}
+		httpClient.Transport = transport
+		serverURL = "http://unix"
+	}
+
 	return &HTTPADCExecutor{
-		httpClient: &http.Client{
-			Timeout: timeout,
-		},
-		serverURL: serverURL,
-		log:       log.WithName("executor"),
+		httpClient: httpClient,
+		serverURL:  serverURL,
+		log:        log.WithName("executor"),
 	}
 }
 
