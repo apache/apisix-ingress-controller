@@ -28,7 +28,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/adc/cache"
@@ -60,7 +59,7 @@ func New(log logr.Logger, mode string, timeout time.Duration) (*Client, error) {
 	configManager := common.NewConfigManager[types.NamespacedNameKind, adctypes.Config]()
 
 	logger := log.WithName("client")
-	logger.Info("ADC client initialized", zap.String("mode", mode))
+	logger.Info("ADC client initialized", "mode", mode)
 
 	return &Client{
 		Store:            store,
@@ -183,7 +182,7 @@ func (c *Client) Sync(ctx context.Context) (map[string]types.ADCExecutionErrors,
 		return nil, nil
 	}
 
-	c.log.V(1).Info("syncing resources with multiple configs", zap.Any("configs", configs))
+	c.log.V(1).Info("syncing resources with multiple configs", "configs", configs)
 
 	failedMap := map[string]types.ADCExecutionErrors{}
 	var failedConfigs []string
