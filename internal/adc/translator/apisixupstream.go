@@ -22,9 +22,7 @@ import (
 	"fmt"
 	"maps"
 
-	"github.com/api7/gopkg/pkg/log"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -39,7 +37,7 @@ func (t *Translator) translateApisixUpstream(tctx *provider.TranslateContext, au
 }
 
 func (t *Translator) translateApisixUpstreamForPort(tctx *provider.TranslateContext, au *apiv2.ApisixUpstream, port *int32) (*adc.Upstream, error) {
-	log.Debugw("translating ApisixUpstream", zap.Any("apisixupstream", au), zap.Int32p("port", port))
+	t.Log.V(1).Info("translating ApisixUpstream", "apisixupstream", au, "port", port)
 
 	ups := adc.NewDefaultUpstream()
 	ups.Name = composeExternalUpstreamName(au)
@@ -70,7 +68,7 @@ func (t *Translator) translateApisixUpstreamForPort(tctx *provider.TranslateCont
 		}
 	}
 
-	log.Debugw("translated ApisixUpstream", zap.Any("upstream", ups))
+	t.Log.V(1).Info("translated ApisixUpstream", "upstream", ups)
 
 	return ups, nil
 }

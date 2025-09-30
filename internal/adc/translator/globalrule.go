@@ -20,9 +20,6 @@ package translator
 import (
 	"encoding/json"
 
-	"github.com/api7/gopkg/pkg/log"
-	"go.uber.org/zap"
-
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
@@ -30,10 +27,7 @@ import (
 
 // TranslateApisixGlobalRule translates ApisixGlobalRule to APISIX GlobalRule
 func (t *Translator) TranslateApisixGlobalRule(tctx *provider.TranslateContext, obj *apiv2.ApisixGlobalRule) (*TranslateResult, error) {
-	log.Debugw("translating ApisixGlobalRule",
-		zap.String("namespace", obj.Namespace),
-		zap.String("name", obj.Name),
-	)
+	t.Log.V(1).Info("translating ApisixGlobalRule", "namespace", obj.Namespace, "name", obj.Name)
 
 	// Create global rule plugins
 	plugins := make(adctypes.Plugins)
@@ -48,7 +42,7 @@ func (t *Translator) TranslateApisixGlobalRule(tctx *provider.TranslateContext, 
 		pluginConfig := make(map[string]any)
 		if len(plugin.Config.Raw) > 0 {
 			if err := json.Unmarshal(plugin.Config.Raw, &pluginConfig); err != nil {
-				log.Errorw("failed to unmarshal plugin config", zap.String("plugin", plugin.Name), zap.Error(err))
+				t.Log.Error(err, "failed to unmarshal plugin config", "plugin", plugin.Name)
 				continue
 			}
 		}

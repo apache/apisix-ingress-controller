@@ -182,7 +182,7 @@ func (r *GRPCRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		msg:    "Route is accepted",
 	}
 
-	gateways, err := ParseRouteParentRefs(ctx, r.Client, gr, gr.Spec.ParentRefs)
+	gateways, err := ParseRouteParentRefs(ctx, r.Client, r.Log, gr, gr.Spec.ParentRefs)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

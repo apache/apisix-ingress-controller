@@ -24,8 +24,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/api7/gopkg/pkg/log"
-	"go.uber.org/zap"
+	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	k8stypes "k8s.io/apimachinery/pkg/types"
@@ -79,16 +78,19 @@ type readinessManager struct {
 	done      chan struct{}
 
 	isReady atomic.Bool
+
+	log logr.Logger
 }
 
 // ReadinessManager tracks readiness of specific resources across the cluster.
-func NewReadinessManager(client client.Client) ReadinessManager {
+func NewReadinessManager(client client.Client, log logr.Logger) ReadinessManager {
 	return &readinessManager{
 		client:  client,
 		state:   make(map[schema.GroupVersionKind]map[k8stypes.NamespacedName]struct{}),
 		started: make(chan struct{}),
 		done:    make(chan struct{}),
 		isReady: atomic.Bool{},
+		log:     log.WithName("readiness"),
 	}
 }
 
@@ -123,7 +125,7 @@ func (r *readinessManager) Start(ctx context.Context) error {
 					})
 				}
 				if len(expected) > 0 {
-					log.Debugw("registering readiness state", zap.Any("gvk", gvk), zap.Any("expected", expected))
+					r.log.V(1).Info("registering readiness state", "gvk", gvk, "expected", expected)
 					r.registerState(gvk, expected)
 				}
 			}

@@ -18,8 +18,6 @@
 package translator
 
 import (
-	"github.com/api7/gopkg/pkg/log"
-	"go.uber.org/zap"
 	networkingv1 "k8s.io/api/networking/v1"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
@@ -33,7 +31,7 @@ func (t *Translator) TranslateIngressClass(tctx *provider.TranslateContext, obj 
 	rk := utils.NamespacedNameKind(obj)
 	gatewayProxy, ok := tctx.GatewayProxies[rk]
 	if !ok {
-		log.Debugw("no GatewayProxy found for IngressClass", zap.String("ingressclass", obj.Name))
+		t.Log.V(1).Info("no GatewayProxy found for IngressClass", "ingressclass", obj.Name)
 		return result, nil
 	}
 
