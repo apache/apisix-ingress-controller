@@ -20,7 +20,7 @@ version: '3'
 services:
   openldap:
     container_name: openldap
-    image: docker.io/bitnami/openldap:2.6
+    image: docker.io/bitnamilegacy/openldap:2.6
     ports:
       - '1389:1389'
     environment:
