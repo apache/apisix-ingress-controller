@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"slices"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -50,7 +49,7 @@ func (t *Translator) TranslateGateway(tctx *provider.TranslateContext, obj *gate
 			result.SSL = append(result.SSL, ssl...)
 		}
 	}
-	result.SSL = mergeSSLWithSameID(result.SSL)
+	// No longer need to merge SSLs since each SNI now has a unique ID based on namespace+secretName+sni
 
 	rk := utils.NamespacedNameKind(obj)
 	gatewayProxy, ok := tctx.GatewayProxies[rk]
@@ -86,9 +85,6 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 				ns = string(*ref.Namespace)
 			}
 			if listener.TLS.CertificateRefs[0].Kind != nil && *listener.TLS.CertificateRefs[0].Kind == internaltypes.KindSecret {
-				sslObj := &adctypes.SSL{
-					Snis: []string{},
-				}
 				name := listener.TLS.CertificateRefs[0].Name
 				secretNN := types.NamespacedName{Namespace: ns, Name: string(ref.Name)}
 				secret := tctx.Secrets[secretNN]
@@ -104,13 +100,11 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 					t.Log.Error(err, "extract key pair", "secret", secretNN)
 					return nil, err
 				}
-				sslObj.Certificates = append(sslObj.Certificates, adctypes.Certificate{
-					Certificate: string(cert),
-					Key:         string(key),
-				})
-				// we doesn't allow wildcard hostname
+
+				// Collect SNIs from listener hostname or certificate
+				var snis []string
 				if listener.Hostname != nil && *listener.Hostname != "" {
-					sslObj.Snis = append(sslObj.Snis, string(*listener.Hostname))
+					snis = []string{string(*listener.Hostname)}
 				} else {
 					hosts, err := extractHost(cert)
 					if err != nil {
@@ -120,13 +114,34 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 						t.Log.Info("no valid hostname found in certificate", "secret", secretNN.String())
 						continue
 					}
-					sslObj.Snis = append(sslObj.Snis, hosts...)
+					snis = hosts
 				}
-				// Note: use cert as id to avoid duplicate certificate across ssl objects
-				sslObj.ID = id.GenID(string(cert))
-				t.Log.V(1).Info("generated ssl id", "ssl id", sslObj.ID, "secret", secretNN.String())
-				sslObj.Labels = label.GenLabel(obj)
-				sslObjs = append(sslObjs, sslObj)
+
+				// Create one SSL object per SNI to avoid conflicts when the same certificate
+				// is used across multiple Gateway listeners with different SNIs.
+				// Using namespace + secretName + sni as the ID ensures:
+				// 1. Different Gateways with same cert+sni will share the same SSL (expected behavior)
+				// 2. Same Gateway with same cert but different SNIs will have separate SSL objects
+				// 3. No overwrites in MemDB due to ID collision
+				for _, sni := range snis {
+					sslObj := &adctypes.SSL{
+						Metadata: adctypes.Metadata{
+							Labels: label.GenLabel(obj),
+							// Generate unique ID based on namespace, secret name, and SNI
+							// This allows the same wildcard certificate to be used for multiple SNIs
+							ID: id.GenID(secretNN.Namespace + "_" + secretNN.Name + "_" + sni),
+						},
+						Certificates: []adctypes.Certificate{
+							{
+								Certificate: string(cert),
+								Key:         string(key),
+							},
+						},
+						Snis: []string{sni},
+					}
+					t.Log.V(1).Info("generated ssl id", "ssl id", sslObj.ID, "secret", secretNN.String(), "sni", sni)
+					sslObjs = append(sslObjs, sslObj)
+				}
 			}
 
 		}
@@ -240,48 +255,4 @@ func (t *Translator) fillPluginMetadataFromGatewayProxy(pluginMetadata adctypes.
 		t.Log.V(1).Info("fill plugin_metadata for gateway proxy", "plugin", pluginName, "config", pluginConfig)
 		pluginMetadata[pluginName] = pluginConfig
 	}
-}
-
-// mergeSSLWithSameID merge ssl with same id
-func mergeSSLWithSameID(sslList []*adctypes.SSL) []*adctypes.SSL {
-	if len(sslList) <= 1 {
-		return sslList
-	}
-
-	// create a map to store ssl with same id
-	sslMap := make(map[string]*adctypes.SSL)
-	for _, ssl := range sslList {
-		if existing, exists := sslMap[ssl.ID]; exists {
-			// if ssl with same id exists, merge their snis
-			// use map to deduplicate
-			sniMap := make(map[string]struct{})
-			// add existing snis
-			for _, sni := range existing.Snis {
-				sniMap[sni] = struct{}{}
-			}
-			// add new snis
-			for _, sni := range ssl.Snis {
-				sniMap[sni] = struct{}{}
-			}
-			// rebuild deduplicated snis list
-			newSnis := make([]string, 0, len(sniMap))
-			for sni := range sniMap {
-				newSnis = append(newSnis, sni)
-			}
-
-			slices.Sort(newSnis)
-			// update existing ssl object
-			existing.Snis = newSnis
-		} else {
-			slices.Sort(ssl.Snis)
-			// if new ssl id, add to map
-			sslMap[ssl.ID] = ssl
-		}
-	}
-
-	mergedSSL := make([]*adctypes.SSL, 0, len(sslMap))
-	for _, ssl := range sslMap {
-		mergedSSL = append(mergedSSL, ssl)
-	}
-	return mergedSSL
 }

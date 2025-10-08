@@ -54,22 +54,10 @@ func (t *Translator) TranslateApisixTls(tctx *provider.TranslateContext, tls *ap
 		snis[i] = string(host)
 	}
 
-	// Create SSL object
-	ssl := &adctypes.SSL{
-		Metadata: adctypes.Metadata{
-			ID:     id.GenID(tls.Namespace + "_" + tls.Name),
-			Labels: label.GenLabel(tls),
-		},
-		Certificates: []adctypes.Certificate{
-			{
-				Certificate: string(cert),
-				Key:         string(key),
-			},
-		},
-		Snis: snis,
-	}
+	labels := label.GenLabel(tls)
 
 	// Handle mutual TLS client configuration if present
+	var client *adctypes.ClientClass
 	if tls.Spec.Client != nil {
 		caSecretKey := types.NamespacedName{
 			Namespace: tls.Spec.Client.CASecret.Namespace,
@@ -85,13 +73,37 @@ func (t *Translator) TranslateApisixTls(tctx *provider.TranslateContext, tls *ap
 			return nil, err
 		}
 		depth := int64(tls.Spec.Client.Depth)
-		ssl.Client = &adctypes.ClientClass{
+		client = &adctypes.ClientClass{
 			CA:               string(ca),
 			Depth:            &depth,
 			SkipMtlsURIRegex: tls.Spec.Client.SkipMTLSUriRegex,
 		}
 	}
 
-	result.SSL = append(result.SSL, ssl)
+	// Create one SSL object per SNI to maintain consistency with Ingress and Gateway API.
+	// Using namespace + secretName + sni as the ID ensures:
+	// 1. Different ApisixTls with same cert+sni will share the same SSL (expected behavior)
+	// 2. Same ApisixTls with same cert but different SNIs will have separate SSL objects
+	// 3. Consistent behavior across all SSL configuration methods (Ingress, Gateway, ApisixTls)
+	for _, sni := range snis {
+		ssl := &adctypes.SSL{
+			Metadata: adctypes.Metadata{
+				Labels: labels,
+				// Generate unique ID based on namespace, secret name, and SNI
+				// This allows the same wildcard certificate to be used for multiple SNIs
+				ID: id.GenID(secretKey.Namespace + "_" + secretKey.Name + "_" + sni),
+			},
+			Certificates: []adctypes.Certificate{
+				{
+					Certificate: string(cert),
+					Key:         string(key),
+				},
+			},
+			Snis:   []string{sni},
+			Client: client,
+		}
+		result.SSL = append(result.SSL, ssl)
+	}
+
 	return result, nil
 }
