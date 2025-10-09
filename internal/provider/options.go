@@ -17,7 +17,9 @@
 
 package provider
 
-import "time"
+import (
+	"time"
+)
 
 type Option interface {
 	ApplyToList(*Options)

@@ -28,10 +28,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/api7/gopkg/pkg/log"
 	"github.com/go-logr/logr"
 	"github.com/samber/lo"
-	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -318,7 +316,11 @@ func SetRouteParentRef(routeParentStatus *gatewayv1.RouteParentStatus, gatewayNa
 }
 
 func ParseRouteParentRefs(
-	ctx context.Context, mgrc client.Client, route client.Object, parentRefs []gatewayv1.ParentReference,
+	ctx context.Context,
+	mgrc client.Client,
+	log logr.Logger,
+	route client.Object,
+	parentRefs []gatewayv1.ParentReference,
 ) ([]RouteParentRefContext, error) {
 	gateways := make([]RouteParentRefContext, 0)
 	for _, parentRef := range parentRefs {
@@ -387,12 +389,10 @@ func ParseRouteParentRefs(
 			listenerName = string(listener.Name)
 			ok, err := routeMatchesListenerAllowedRoutes(ctx, mgrc, route, listener.AllowedRoutes, gateway.Namespace, parentRef.Namespace)
 			if err != nil {
-				log.Warnw("failed matching listener to a route for gateway",
-					zap.String("listener", string(listener.Name)),
-					zap.String("route", route.GetName()),
-					zap.String("gateway", gateway.Name),
-					zap.Error(err),
-				)
+				log.Error(err, "failed matching listener to a route for gateway",
+					"listener", string(listener.Name),
+					"route", route.GetName(),
+					"gateway", gateway.Name)
 			}
 			if !ok {
 				reason = gatewayv1.RouteReasonNotAllowedByListeners
@@ -975,7 +975,7 @@ func ProcessGatewayProxy(r client.Client, log logr.Logger, tctx *provider.Transl
 					}
 
 					if cp.Service != nil {
-						if err := addProviderEndpointsToTranslateContext(tctx, r, k8stypes.NamespacedName{
+						if err := addProviderEndpointsToTranslateContext(tctx, r, log, k8stypes.NamespacedName{
 							Namespace: gatewayProxy.GetNamespace(),
 							Name:      cp.Service.Name,
 						}); err != nil {
@@ -1031,7 +1031,6 @@ func filterHostnames(gateways []RouteParentRefContext, httpRoute *gatewayv1.HTTP
 		}
 	}
 
-	log.Debugw("filtered hostnames", zap.Any("httpRouteHostnames", httpRoute.Spec.Hostnames), zap.Any("hostnames", filteredHostnames))
 	httpRoute.Spec.Hostnames = filteredHostnames
 	return httpRoute, nil
 }
@@ -1345,7 +1344,7 @@ func ProcessIngressClassParameters(tctx *provider.TranslateContext, c client.Cli
 
 				// process control plane provider service
 				if cp.Service != nil {
-					if err := addProviderEndpointsToTranslateContext(tctx, c, client.ObjectKey{
+					if err := addProviderEndpointsToTranslateContext(tctx, c, log, client.ObjectKey{
 						Namespace: gatewayProxy.GetNamespace(),
 						Name:      cp.Service.Name,
 					}); err != nil {
@@ -1411,13 +1410,13 @@ func distinctRequests(requests []reconcile.Request) []reconcile.Request {
 	return distinctRequests
 }
 
-func addProviderEndpointsToTranslateContext(tctx *provider.TranslateContext, c client.Client, serviceNN k8stypes.NamespacedName) error {
-	log.Debugw("to process provider endpoints by provider.service", zap.Any("service", serviceNN))
+func addProviderEndpointsToTranslateContext(tctx *provider.TranslateContext, c client.Client, log logr.Logger, serviceNN k8stypes.NamespacedName) error {
+	log.V(1).Info("to process provider endpoints by provider.service", "service", serviceNN)
 	var (
 		service corev1.Service
 	)
 	if err := c.Get(tctx, serviceNN, &service); err != nil {
-		log.Errorw("failed to get service from GatewayProxy provider", zap.Error(err), zap.Any("key", serviceNN))
+		log.Error(err, "failed to get service from GatewayProxy provider", "service", serviceNN)
 		return err
 	}
 	tctx.Services[serviceNN] = &service
@@ -1431,7 +1430,8 @@ func addProviderEndpointsToTranslateContext(tctx *provider.TranslateContext, c c
 		client.MatchingLabels{
 			discoveryv1.LabelServiceName: serviceNN.Name,
 		}); err != nil {
-		log.Errorw("failed to get endpoints for GatewayProxy provider", zap.Error(err), zap.Any("endpoints", serviceNN))
+		log.Error(err, "failed to get endpoints for GatewayProxy provider", "endpoints", serviceNN)
+
 		return err
 	}
 	tctx.EndpointSlices[serviceNN] = esList.Items

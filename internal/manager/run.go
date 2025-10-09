@@ -164,7 +164,7 @@ func Run(ctx context.Context, logger logr.Logger) error {
 		return err
 	}
 
-	readier := readiness.NewReadinessManager(mgr.GetClient())
+	readier := readiness.NewReadinessManager(mgr.GetClient(), logger)
 	registerReadinessGVK(mgr.GetClient(), readier)
 
 	if err := mgr.Add(readier); err != nil {
@@ -179,12 +179,13 @@ func Run(ctx context.Context, logger logr.Logger) error {
 
 	providerType := string(config.ControllerConfig.ProviderConfig.Type)
 
-	provider, err := provider.New(providerType, updater.Writer(), readier, &provider.Options{
+	providerOptions := &provider.Options{
 		SyncTimeout:   config.ControllerConfig.ExecADCTimeout.Duration,
 		SyncPeriod:    config.ControllerConfig.ProviderConfig.SyncPeriod.Duration,
 		InitSyncDelay: config.ControllerConfig.ProviderConfig.InitSyncDelay.Duration,
 		BackendMode:   string(config.ControllerConfig.ProviderConfig.Type),
-	})
+	}
+	provider, err := provider.New(providerType, logger, updater.Writer(), readier, providerOptions)
 	if err != nil {
 		setupLog.Error(err, "unable to create provider")
 		return err

@@ -32,8 +32,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/api7/gopkg/pkg/log"
-	"go.uber.org/zap"
+	"github.com/go-logr/logr"
 	"k8s.io/utils/ptr"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
@@ -50,6 +49,7 @@ type ADCExecutor interface {
 
 type DefaultADCExecutor struct {
 	sync.Mutex
+	log logr.Logger
 }
 
 func (e *DefaultADCExecutor) Execute(ctx context.Context, mode string, config adctypes.Config, args []string) error {
@@ -63,7 +63,7 @@ func (e *DefaultADCExecutor) runADC(ctx context.Context, mode string, config adc
 
 	for _, addr := range config.ServerAddrs {
 		if err := e.runForSingleServerWithTimeout(ctx, addr, mode, config, args); err != nil {
-			log.Errorw("failed to run adc for server", zap.String("server", addr), zap.Error(err))
+			e.log.Error(err, "failed to run adc for server", "server", addr)
 			var execErr types.ADCExecutionServerAddrError
 			if errors.As(err, &execErr) {
 				execErrs.FailedErrors = append(execErrs.FailedErrors, execErr)
@@ -103,9 +103,9 @@ func (e *DefaultADCExecutor) runForSingleServer(ctx context.Context, serverAddr,
 	cmd.Stderr = &stderr
 	cmd.Env = append(os.Environ(), env...)
 
-	log.Debugw("running adc command",
-		zap.String("command", strings.Join(cmd.Args, " ")),
-		zap.Strings("env", filterSensitiveEnv(env)),
+	e.log.V(1).Info("running adc command",
+		"command", strings.Join(cmd.Args, " "),
+		"env", filterSensitiveEnv(env),
 	)
 
 	if err := cmd.Run(); err != nil {
@@ -114,22 +114,21 @@ func (e *DefaultADCExecutor) runForSingleServer(ctx context.Context, serverAddr,
 
 	result, err := e.handleOutput(stdout.Bytes())
 	if err != nil {
-		log.Errorw("failed to handle adc output",
-			zap.Error(err),
-			zap.String("stdout", stdout.String()),
-			zap.String("stderr", stderr.String()),
-		)
+		e.log.Error(err, "failed to handle adc output",
+			"stdout", stdout.String(),
+			"stderr", stderr.String())
 		return fmt.Errorf("failed to handle adc output: %w", err)
 	}
 	if result.FailedCount > 0 && len(result.Failed) > 0 {
-		log.Errorw("adc sync failed", zap.Any("result", result))
+		reason := result.Failed[0].Reason
+		e.log.Error(fmt.Errorf("adc sync failed: %s", reason), "adc sync failed", "result", result)
 		return types.ADCExecutionServerAddrError{
 			ServerAddr:     serverAddr,
-			Err:            result.Failed[0].Reason,
+			Err:            reason,
 			FailedStatuses: result.Failed,
 		}
 	}
-	log.Debugw("adc sync success", zap.Any("result", result))
+	e.log.V(1).Info("adc sync success", "result", result)
 	return nil
 }
 
@@ -161,28 +160,19 @@ func (e *DefaultADCExecutor) buildCmdError(runErr error, stdout, stderr []byte) 
 	if errMsg == "" {
 		errMsg = string(stdout)
 	}
-	log.Errorw("failed to run adc",
-		zap.Error(runErr),
-		zap.String("output", string(stdout)),
-		zap.String("stderr", string(stderr)),
-	)
+	e.log.Error(runErr, "failed to run adc", "output", string(stdout), "stderr", string(stderr))
 	return errors.New("failed to sync resources: " + errMsg + ", exit err: " + runErr.Error())
 }
 
 func (e *DefaultADCExecutor) handleOutput(output []byte) (*adctypes.SyncResult, error) {
+	e.log.V(1).Info("adc command output", "output", string(output))
 	var result adctypes.SyncResult
-	log.Debugw("adc output", zap.String("output", string(output)))
 	if lines := bytes.Split(output, []byte{'\n'}); len(lines) > 0 {
 		output = lines[len(lines)-1]
 	}
 	if err := json.Unmarshal(output, &result); err != nil {
-		log.Errorw("failed to unmarshal adc output",
-			zap.Error(err),
-			zap.String("stdout", string(output)),
-		)
-		return nil, errors.New("failed to parse adc result: " + err.Error())
+		return nil, errors.New("failed to unmarshal response: " + string(output) + ", err: " + err.Error())
 	}
-
 	return &result, nil
 }
 
@@ -226,11 +216,12 @@ type ADCServerOpts struct {
 type HTTPADCExecutor struct {
 	httpClient *http.Client
 	serverURL  string
+	log        logr.Logger
 }
 
 // NewHTTPADCExecutor creates a new HTTPADCExecutor with the specified ADC Server URL.
 // serverURL can be "http(s)://host:port" or "unix:///path/to/socket" or "unix:/path/to/socket".
-func NewHTTPADCExecutor(serverURL string, timeout time.Duration) *HTTPADCExecutor {
+func NewHTTPADCExecutor(log logr.Logger, serverURL string, timeout time.Duration) *HTTPADCExecutor {
 	httpClient := &http.Client{
 		Timeout: timeout,
 	}
@@ -254,6 +245,7 @@ func NewHTTPADCExecutor(serverURL string, timeout time.Duration) *HTTPADCExecuto
 	return &HTTPADCExecutor{
 		httpClient: httpClient,
 		serverURL:  serverURL,
+		log:        log.WithName("executor"),
 	}
 }
 
@@ -274,11 +266,11 @@ func (e *HTTPADCExecutor) runHTTPSync(ctx context.Context, mode string, config a
 		}
 		return config.ServerAddrs
 	}()
-	log.Debugw("running http sync", zap.Strings("serverAddrs", serverAddrs), zap.String("mode", mode))
+	e.log.V(1).Info("running http sync", "serverAddrs", serverAddrs, "mode", mode)
 
 	for _, addr := range serverAddrs {
 		if err := e.runHTTPSyncForSingleServer(ctx, addr, mode, config, args); err != nil {
-			log.Errorw("failed to run http sync for server", zap.String("server", addr), zap.Error(err))
+			e.log.Error(err, "failed to run http sync for server", "server", addr)
 			var execErr types.ADCExecutionServerAddrError
 			if errors.As(err, &execErr) {
 				execErrs.FailedErrors = append(execErrs.FailedErrors, execErr)
@@ -326,7 +318,7 @@ func (e *HTTPADCExecutor) runHTTPSyncForSingleServer(ctx context.Context, server
 	}
 	defer func() {
 		if closeErr := resp.Body.Close(); closeErr != nil {
-			log.Warnw("failed to close response body", zap.Error(closeErr))
+			e.log.Error(closeErr, "failed to close response body")
 		}
 	}()
 
@@ -405,21 +397,21 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr, mode
 		},
 	}
 
+	e.log.V(1).Info("prepared request body", "body", reqBody)
+
 	jsonData, err := json.Marshal(reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request body: %w", err)
 	}
 
-	log.Debugw("request body", zap.String("body", string(jsonData)))
-
-	log.Debugw("sending HTTP request to ADC Server",
-		zap.String("url", e.serverURL+"/sync"),
-		zap.String("server", serverAddr),
-		zap.String("mode", mode),
-		zap.String("cacheKey", config.Name),
-		zap.Any("labelSelector", labels),
-		zap.Strings("includeResourceType", types),
-		zap.Bool("tlsSkipVerify", !tlsVerify),
+	e.log.V(1).Info("sending HTTP request to ADC Server",
+		"url", e.serverURL+"/sync",
+		"server", serverAddr,
+		"mode", mode,
+		"cacheKey", config.Name,
+		"labelSelector", labels,
+		"includeResourceType", types,
+		"tlsSkipVerify", !tlsVerify,
 	)
 
 	// Create HTTP request
@@ -439,10 +431,10 @@ func (e *HTTPADCExecutor) handleHTTPResponse(resp *http.Response, serverAddr str
 		return fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	log.Debugw("received HTTP response from ADC Server",
-		zap.String("server", serverAddr),
-		zap.Int("status", resp.StatusCode),
-		zap.String("response", string(body)),
+	e.log.V(1).Info("received HTTP response from ADC Server",
+		"server", serverAddr,
+		"status", resp.StatusCode,
+		"response", string(body),
 	)
 
 	// not only 200, HTTP 202 is also accepted
@@ -456,23 +448,20 @@ func (e *HTTPADCExecutor) handleHTTPResponse(resp *http.Response, serverAddr str
 	// Parse response body
 	var result adctypes.SyncResult
 	if err := json.Unmarshal(body, &result); err != nil {
-		log.Errorw("failed to unmarshal ADC Server response",
-			zap.Error(err),
-			zap.String("response", string(body)),
-		)
-		return fmt.Errorf("failed to parse ADC Server response: %w", err)
+		return fmt.Errorf("failed to unmarshal response body: %s, err: %w", string(body), err)
 	}
 
 	// Check for sync failures
 	if result.FailedCount > 0 && len(result.Failed) > 0 {
-		log.Errorw("ADC Server sync failed", zap.Any("result", result))
+		reason := result.Failed[0].Reason
+		e.log.Error(fmt.Errorf("ADC Server sync failed: %s", reason), "ADC Server sync failed", "result", result)
 		return types.ADCExecutionServerAddrError{
 			ServerAddr:     serverAddr,
-			Err:            result.Failed[0].Reason,
+			Err:            reason,
 			FailedStatuses: result.Failed,
 		}
 	}
 
-	log.Debugw("ADC Server sync success", zap.Any("result", result))
+	e.log.V(1).Info("ADC Server sync success", "result", result)
 	return nil
 }
