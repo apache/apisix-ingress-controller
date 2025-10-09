@@ -82,7 +82,7 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 	sslObjs := make([]*adctypes.SSL, 0)
 	switch *listener.TLS.Mode {
 	case gatewayv1.TLSModeTerminate:
-		for _, ref := range listener.TLS.CertificateRefs {
+		for refIndex, ref := range listener.TLS.CertificateRefs {
 			ns := obj.GetNamespace()
 			if ref.Namespace != nil {
 				ns = string(*ref.Namespace)
@@ -123,8 +123,7 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 					}
 					sslObj.Snis = append(sslObj.Snis, hosts...)
 				}
-				// Note: use cert as id to avoid duplicate certificate across ssl objects
-				sslObj.ID = id.GenID(string(cert))
+				sslObj.ID = id.GenID(fmt.Sprintf("Gateway_%s_%s_%s_%d", obj.Namespace, obj.Name, listener.Name, refIndex))
 				log.Debugw("generated ssl id", zap.String("ssl id", sslObj.ID), zap.String("secret", secret.Namespace+"/"+secret.Name))
 				sslObj.Labels = label.GenLabel(obj)
 				sslObjs = append(sslObjs, sslObj)
