@@ -18,6 +18,8 @@ package v1
 import (
 	"context"
 	"fmt"
+	"sort"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -63,7 +65,12 @@ func (v *GatewayProxyCustomValidator) ValidateCreate(ctx context.Context, obj ru
 	}
 	gatewayProxyLog.Info("Validation for GatewayProxy upon creation", "name", gp.GetName(), "namespace", gp.GetNamespace())
 
-	return v.collectWarnings(ctx, gp), nil
+	warnings := v.collectWarnings(ctx, gp)
+	if err := v.validateGatewayGroupConflict(ctx, gp); err != nil {
+		return warnings, err
+	}
+
+	return warnings, nil
 }
 
 func (v *GatewayProxyCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
@@ -73,7 +80,12 @@ func (v *GatewayProxyCustomValidator) ValidateUpdate(ctx context.Context, oldObj
 	}
 	gatewayProxyLog.Info("Validation for GatewayProxy upon update", "name", gp.GetName(), "namespace", gp.GetNamespace())
 
-	return v.collectWarnings(ctx, gp), nil
+	warnings := v.collectWarnings(ctx, gp)
+	if err := v.validateGatewayGroupConflict(ctx, gp); err != nil {
+		return warnings, err
+	}
+
+	return warnings, nil
 }
 
 func (v *GatewayProxyCustomValidator) ValidateDelete(context.Context, runtime.Object) (admission.Warnings, error) {
@@ -110,4 +122,115 @@ func (v *GatewayProxyCustomValidator) collectWarnings(ctx context.Context, gp *v
 	}
 
 	return warnings
+}
+
+func (v *GatewayProxyCustomValidator) validateGatewayGroupConflict(ctx context.Context, gp *v1alpha1.GatewayProxy) error {
+	current := buildGatewayGroupConfig(gp)
+	if !current.readyForConflict() {
+		return nil
+	}
+
+	var list v1alpha1.GatewayProxyList
+	if err := v.Client.List(ctx, &list); err != nil {
+		gatewayProxyLog.Error(err, "failed to list GatewayProxy objects for conflict detection")
+		return fmt.Errorf("failed to list existing GatewayProxy resources: %w", err)
+	}
+
+	for _, other := range list.Items {
+		if other.GetNamespace() == gp.GetNamespace() && other.GetName() == gp.GetName() {
+			// skip self
+			continue
+		}
+		otherConfig := buildGatewayGroupConfig(&other)
+		if !otherConfig.readyForConflict() {
+			continue
+		}
+		if current.adminKeyKey != otherConfig.adminKeyKey {
+			continue
+		}
+		if current.serviceKey != "" && current.serviceKey == otherConfig.serviceKey {
+			return fmt.Errorf("gateway group conflict: GatewayProxy %s/%s and %s/%s both target %s while sharing %s",
+				gp.GetNamespace(), gp.GetName(),
+				other.GetNamespace(), other.GetName(),
+				current.serviceDescription,
+				current.adminKeyDescription,
+			)
+		}
+		if len(current.endpoints) > 0 && len(otherConfig.endpoints) > 0 {
+			if overlap := current.endpointOverlap(otherConfig); len(overlap) > 0 {
+				return fmt.Errorf("gateway group conflict: GatewayProxy %s/%s and %s/%s both target control plane endpoints [%s] while sharing %s",
+					gp.GetNamespace(), gp.GetName(),
+					other.GetNamespace(), other.GetName(),
+					strings.Join(overlap, ", "),
+					current.adminKeyDescription,
+				)
+			}
+		}
+	}
+
+	return nil
+}
+
+type gatewayGroupConfig struct {
+	adminKeyKey         string
+	adminKeyDescription string
+	serviceKey          string
+	serviceDescription  string
+	endpoints           map[string]struct{}
+	sortedEndpoints     []string
+}
+
+func buildGatewayGroupConfig(gp *v1alpha1.GatewayProxy) gatewayGroupConfig {
+	var cfg gatewayGroupConfig
+
+	if gp == nil || gp.Spec.Provider == nil || gp.Spec.Provider.Type != v1alpha1.ProviderTypeControlPlane || gp.Spec.Provider.ControlPlane == nil {
+		return cfg
+	}
+
+	cp := gp.Spec.Provider.ControlPlane
+
+	if cp.Auth.AdminKey != nil {
+		if value := strings.TrimSpace(cp.Auth.AdminKey.Value); value != "" {
+			cfg.adminKeyKey = "value:" + value
+			cfg.adminKeyDescription = "the same inline AdminKey value"
+		} else if cp.Auth.AdminKey.ValueFrom != nil && cp.Auth.AdminKey.ValueFrom.SecretKeyRef != nil {
+			ref := cp.Auth.AdminKey.ValueFrom.SecretKeyRef
+			cfg.adminKeyKey = fmt.Sprintf("secret:%s/%s:%s", gp.GetNamespace(), ref.Name, ref.Key)
+			cfg.adminKeyDescription = fmt.Sprintf("AdminKey secret %s/%s key %s", gp.GetNamespace(), ref.Name, ref.Key)
+		}
+	}
+
+	if cp.Service != nil && cp.Service.Name != "" {
+		cfg.serviceKey = fmt.Sprintf("service:%s/%s:%d", gp.GetNamespace(), cp.Service.Name, cp.Service.Port)
+		cfg.serviceDescription = fmt.Sprintf("Service %s/%s port %d", gp.GetNamespace(), cp.Service.Name, cp.Service.Port)
+	}
+
+	if len(cp.Endpoints) > 0 {
+		cfg.endpoints = make(map[string]struct{}, len(cp.Endpoints))
+		cfg.sortedEndpoints = append([]string(nil), cp.Endpoints...)
+		for _, endpoint := range cfg.sortedEndpoints {
+			cfg.endpoints[endpoint] = struct{}{}
+		}
+		sort.Strings(cfg.sortedEndpoints)
+	}
+
+	return cfg
+}
+
+func (c gatewayGroupConfig) readyForConflict() bool {
+	if c.adminKeyKey == "" {
+		return false
+	}
+	return c.serviceKey != "" || len(c.endpoints) > 0
+}
+
+func (c gatewayGroupConfig) endpointOverlap(other gatewayGroupConfig) []string {
+	var overlap []string
+	for endpoint := range c.endpoints {
+		if _, ok := other.endpoints[endpoint]; ok {
+			overlap = append(overlap, endpoint)
+		}
+	}
+	sort.Strings(overlap)
+	return overlap
 }
