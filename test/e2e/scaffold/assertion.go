@@ -200,7 +200,7 @@ func (s *Scaffold) HTTPOverTCPConnectAssert(shouldRespond bool, timeout time.Dur
 		defer func() {
 			_ = conn.Close()
 		}()
-		_, _ = fmt.Fprintf(conn, "GET /get HTTP/1.1\r\nHost: localhost\r\n\r\n")
+		_, _ = fmt.Fprintf(conn, "GET /get HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
 
 		// Read response
 		_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
