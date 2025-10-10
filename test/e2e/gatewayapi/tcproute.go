@@ -80,7 +80,7 @@ spec:
 				NotTo(HaveOccurred(), "creating Gateway")
 		})
 
-		FIt("should route TCP traffic to backend service", func() {
+		It("should route TCP traffic to backend service", func() {
 			By("creating TCPRoute")
 			Expect(s.CreateResourceFromString(fmt.Sprintf(tcpRoute, s.Namespace()))).
 				NotTo(HaveOccurred(), "creating TCPRoute")
