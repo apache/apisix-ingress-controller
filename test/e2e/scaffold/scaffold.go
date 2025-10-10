@@ -31,8 +31,7 @@ import (
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/gruntwork-io/terratest/modules/testing"
 	. "github.com/onsi/ginkgo/v2" //nolint:staticcheck
-	ginkgo "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega" //nolint:staticcheck
+	. "github.com/onsi/gomega"    //nolint:staticcheck
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -300,7 +299,7 @@ func (s *Scaffold) NewAPISIXClientWithTLSProxy(host string) *httpexpect.Expect {
 			},
 		},
 		Reporter: httpexpect.NewAssertReporter(
-			httpexpect.NewAssertReporter(ginkgo.GinkgoT()),
+			httpexpect.NewAssertReporter(s.GinkgoT),
 		),
 	})
 }

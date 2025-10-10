@@ -20,7 +20,6 @@ package gatewayapi
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -88,21 +87,31 @@ spec:
 		It("Basic", func() {
 			s.ResourceApplied("TLSRoute", "tls-route", tlsRoute, 1)
 
-			time.Sleep(10 * time.Second)
 			client := s.NewAPISIXClientWithTLSProxy(host)
-			client.GET("/ip").
-				Expect().
-				Status(http.StatusOK)
-			client.GET("/notfound").
-				Expect().
-				Status(http.StatusNotFound)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Client: client,
+				Method: http.MethodGet,
+				Path:   "/ip",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+			s.RequestAssert(&scaffold.RequestAssert{
+				Client: client,
+				Method: http.MethodGet,
+				Path:   "/notfound",
+				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+			})
 
-			s.DeleteResourceFromString(tlsRoute)
-			time.Sleep(5 * time.Second)
+			Expect(s.DeleteResourceFromString(tlsRoute)).NotTo(HaveOccurred(), "deleting TLSRoute")
 
-			reporter := &scaffold.ErrorReporter{}
-			_ = client.GET("/ip").WithReporter(reporter).Expect()
-			Expect(reporter.Err().Error()).Should(ContainSubstring("EOF"), "should get EOF after deleting TLSRoute")
+			s.RetryAssertion(func() string {
+				var errMsg string
+				reporter := &scaffold.ErrorReporter{}
+				_ = client.GET("/ip").WithReporter(reporter).Expect()
+				if reporter.Err() != nil {
+					errMsg = reporter.Err().Error()
+				}
+				return errMsg
+			}).Should(ContainSubstring("EOF"), "should get EOF after deleting TLSRoute")
 		})
 	})
 })

@@ -35,7 +35,7 @@ func (t *Translator) TranslateTLSRoute(tctx *provider.TranslateContext, tlsRoute
 	result := &TranslateResult{}
 	rules := tlsRoute.Spec.Rules
 	labels := label.GenLabel(tlsRoute)
-	var hosts []string
+	hosts := make([]string, 0, len(tlsRoute.Spec.Hostnames))
 	for _, hostname := range tlsRoute.Spec.Hostnames {
 		hosts = append(hosts, string(hostname))
 	}
