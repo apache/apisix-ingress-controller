@@ -29,6 +29,10 @@ import (
 	v1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
 )
 
+const (
+	candidateName = "candidate"
+)
+
 func buildGatewayProxyValidator(t *testing.T, objects ...runtime.Object) *GatewayProxyCustomValidator {
 	t.Helper()
 
@@ -209,12 +213,12 @@ func TestGatewayProxyValidator_DetectsServiceConflict(t *testing.T) {
 	validator := buildGatewayProxyValidator(t, existing, service, secret)
 
 	candidate := newGatewayProxy()
-	candidate.Name = "candidate"
+	candidate.Name = candidateName
 
 	warnings, err := validator.ValidateCreate(context.Background(), candidate)
 	require.Error(t, err)
 	require.Len(t, warnings, 0)
-	require.Contains(t, err.Error(), "gateway group conflict")
+	require.Contains(t, err.Error(), "gateway proxy configuration conflict")
 	require.Contains(t, err.Error(), "Service default/control-plane port 9180")
 	require.Contains(t, err.Error(), "AdminKey secret default/admin-key key token")
 }
@@ -232,12 +236,12 @@ func TestGatewayProxyValidator_DetectsEndpointConflict(t *testing.T) {
 	}
 	validator := buildGatewayProxyValidator(t, existing, secret)
 
-	candidate := newGatewayProxyWithEndpoints("candidate", []string{"https://10.0.0.1:9443", "https://127.0.0.1:9443"})
+	candidate := newGatewayProxyWithEndpoints(candidateName, []string{"https://10.0.0.1:9443", "https://127.0.0.1:9443"})
 
 	warnings, err := validator.ValidateCreate(context.Background(), candidate)
 	require.Error(t, err)
 	require.Len(t, warnings, 0)
-	require.Contains(t, err.Error(), "gateway group conflict")
+	require.Contains(t, err.Error(), "gateway proxy configuration conflict")
 	require.Contains(t, err.Error(), "endpoints [https://10.0.0.1:9443, https://127.0.0.1:9443]")
 	require.Contains(t, err.Error(), "AdminKey secret default/admin-key key token")
 }
@@ -262,7 +266,7 @@ func TestGatewayProxyValidator_AllowsDistinctGatewayGroups(t *testing.T) {
 	validator := buildGatewayProxyValidator(t, existing, secret, service)
 
 	candidate := newGatewayProxy()
-	candidate.Name = "candidate"
+	candidate.Name = candidateName
 	candidate.Spec.Provider.ControlPlane.Service = &v1alpha1.ProviderService{
 		Name: "control-plane",
 		Port: 9180,
@@ -278,7 +282,7 @@ func TestGatewayProxyValidator_AllowsServiceConflictWithDifferentAdminSecret(t *
 	existing.Name = "existing"
 
 	candidate := newGatewayProxy()
-	candidate.Name = "candidate"
+	candidate.Name = candidateName
 	setSecretAdminKey(candidate, "admin-key-alt", "token")
 
 	service := &corev1.Service{
@@ -317,7 +321,7 @@ func TestGatewayProxyValidator_DetectsInlineAdminKeyConflict(t *testing.T) {
 	existing := newGatewayProxyWithEndpoints("existing", []string{"https://127.0.0.1:9443", "https://10.0.0.1:9443"})
 	setInlineAdminKey(existing, "inline-cred")
 
-	candidate := newGatewayProxyWithEndpoints("candidate", []string{"https://10.0.0.1:9443"})
+	candidate := newGatewayProxyWithEndpoints(candidateName, []string{"https://10.0.0.1:9443"})
 	setInlineAdminKey(candidate, "inline-cred")
 
 	validator := buildGatewayProxyValidator(t, existing)
@@ -325,7 +329,7 @@ func TestGatewayProxyValidator_DetectsInlineAdminKeyConflict(t *testing.T) {
 	warnings, err := validator.ValidateCreate(context.Background(), candidate)
 	require.Error(t, err)
 	require.Len(t, warnings, 0)
-	require.Contains(t, err.Error(), "gateway group conflict")
+	require.Contains(t, err.Error(), "gateway proxy configuration conflict")
 	require.Contains(t, err.Error(), "control plane endpoints [https://10.0.0.1:9443]")
 	require.Contains(t, err.Error(), "inline AdminKey value")
 }
@@ -333,7 +337,7 @@ func TestGatewayProxyValidator_DetectsInlineAdminKeyConflict(t *testing.T) {
 func TestGatewayProxyValidator_AllowsEndpointOverlapWithDifferentAdminKey(t *testing.T) {
 	existing := newGatewayProxyWithEndpoints("existing", []string{"https://127.0.0.1:9443", "https://10.0.0.1:9443"})
 
-	candidate := newGatewayProxyWithEndpoints("candidate", []string{"https://10.0.0.1:9443", "https://192.168.0.1:9443"})
+	candidate := newGatewayProxyWithEndpoints(candidateName, []string{"https://10.0.0.1:9443", "https://192.168.0.1:9443"})
 	setSecretAdminKey(candidate, "admin-key-alt", "token")
 
 	existingSecret := &corev1.Secret{

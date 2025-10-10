@@ -149,7 +149,7 @@ func (v *GatewayProxyCustomValidator) validateGatewayGroupConflict(ctx context.C
 			continue
 		}
 		if current.serviceKey != "" && current.serviceKey == otherConfig.serviceKey {
-			return fmt.Errorf("gateway group conflict: GatewayProxy %s/%s and %s/%s both target %s while sharing %s",
+			return fmt.Errorf("gateway proxy configuration conflict: GatewayProxy %s/%s and %s/%s both target %s while sharing %s",
 				gp.GetNamespace(), gp.GetName(),
 				other.GetNamespace(), other.GetName(),
 				current.serviceDescription,
@@ -158,7 +158,7 @@ func (v *GatewayProxyCustomValidator) validateGatewayGroupConflict(ctx context.C
 		}
 		if len(current.endpoints) > 0 && len(otherConfig.endpoints) > 0 {
 			if overlap := current.endpointOverlap(otherConfig); len(overlap) > 0 {
-				return fmt.Errorf("gateway group conflict: GatewayProxy %s/%s and %s/%s both target control plane endpoints [%s] while sharing %s",
+				return fmt.Errorf("gateway proxy configuration conflict: GatewayProxy %s/%s and %s/%s both target control plane endpoints [%s] while sharing %s",
 					gp.GetNamespace(), gp.GetName(),
 					other.GetNamespace(), other.GetName(),
 					strings.Join(overlap, ", "),
