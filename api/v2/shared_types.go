@@ -101,6 +101,8 @@ const (
 	SchemeTCP = "tcp"
 	// SchemeUDP represents the UDP protocol.
 	SchemeUDP = "udp"
+	// SchemeTLS represents the TLS protocol.
+	SchemeTLS = "tls"
 )
 
 const (

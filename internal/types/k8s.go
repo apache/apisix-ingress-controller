@@ -37,6 +37,7 @@ const (
 	KindTCPRoute             = "TCPRoute"
 	KindUDPRoute             = "UDPRoute"
 	KindGRPCRoute            = "GRPCRoute"
+	KindTLSRoute             = "TLSRoute"
 	KindGatewayClass         = "GatewayClass"
 	KindIngress              = "Ingress"
 	KindIngressClass         = "IngressClass"
@@ -68,6 +69,8 @@ func KindOf(obj any) string {
 		return KindHTTPRoute
 	case *gatewayv1.GRPCRoute:
 		return KindGRPCRoute
+	case *gatewayv1alpha2.TLSRoute:
+		return KindTLSRoute
 	case *gatewayv1.GatewayClass:
 		return KindGatewayClass
 	case *netv1.Ingress:
@@ -110,9 +113,7 @@ func GvkOf(obj any) schema.GroupVersionKind {
 	switch obj.(type) {
 	case *gatewayv1.Gateway, *gatewayv1.HTTPRoute, *gatewayv1.GatewayClass, *gatewayv1.GRPCRoute:
 		return gatewayv1.SchemeGroupVersion.WithKind(kind)
-	case *gatewayv1alpha2.TCPRoute:
-		return gatewayv1alpha2.SchemeGroupVersion.WithKind(kind)
-	case *gatewayv1alpha2.UDPRoute:
+	case *gatewayv1alpha2.TCPRoute, *gatewayv1alpha2.UDPRoute, *gatewayv1alpha2.TLSRoute:
 		return gatewayv1alpha2.SchemeGroupVersion.WithKind(kind)
 	case *gatewayv1beta1.ReferenceGrant:
 		return gatewayv1beta1.SchemeGroupVersion.WithKind(kind)
