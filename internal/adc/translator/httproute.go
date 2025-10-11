@@ -734,7 +734,7 @@ func (t *Translator) translateGatewayHTTPRouteMatch(match *gatewayv1.HTTPRouteMa
 		for _, query := range match.QueryParams {
 			var this []adctypes.StringOrSlice
 			this = append(this, adctypes.StringOrSlice{
-				StrVal: "arg_" + strings.ToLower(fmt.Sprintf("%v", query.Name)),
+				StrVal: "arg_" + fmt.Sprintf("%v", query.Name),
 			})
 
 			queryType := gatewayv1.QueryParamMatchExact
@@ -773,7 +773,6 @@ func (t *Translator) translateGatewayHTTPRouteMatch(match *gatewayv1.HTTPRouteMa
 }
 
 func HeaderMatchToVars(matchType, name, value string) ([]adctypes.StringOrSlice, error) {
-	name = strings.ToLower(name)
 	name = strings.ReplaceAll(name, "-", "_")
 
 	var this []adctypes.StringOrSlice
