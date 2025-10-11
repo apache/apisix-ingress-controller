@@ -200,35 +200,58 @@ func (s *Scaffold) HTTPOverTCPConnectAssert(shouldRespond bool, timeout time.Dur
 		defer func() {
 			_ = conn.Close()
 		}()
-		_, _ = fmt.Fprintf(conn, "GET /get HTTP/1.1\r\nHost: localhost\r\n\r\n")
+		_, _ = fmt.Fprintf(conn, "GET /get HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
 
-		// Read response
-		_ = conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-		buf := make([]byte, 1024)
-		n, err := conn.Read(buf)
+		// Read response - loop until EOF or error
+		// Set deadline for total read time (not per-read)
+		_ = conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+		var responseBuilder strings.Builder
+		buf := make([]byte, 4096)
+
+		for {
+			n, err := conn.Read(buf)
+			if n > 0 {
+				responseBuilder.Write(buf[:n])
+			}
+
+			// EOF is expected with Connection: close
+			if err == io.EOF {
+				break
+			}
+
+			// Other errors (including timeout)
+			if err != nil {
+				// If we haven't received any data yet, this is an error
+				if responseBuilder.Len() == 0 {
+					return fmt.Errorf("read error before receiving data: %v", err)
+				}
+				// If we have partial data, treat timeout as potential issue
+				if strings.Contains(err.Error(), "timeout") {
+					break // Use whatever we've received so far
+				}
+				return fmt.Errorf("read error: %v", err)
+			}
+		}
+
+		response := responseBuilder.String()
 
 		if shouldRespond {
 			// Should get a response (HTTP 200 from httpbin)
-			if err != nil || n == 0 {
-				return fmt.Errorf("expected response but got error: %v or empty response", err)
+			if len(response) == 0 {
+				return fmt.Errorf("expected response but got empty response")
 			}
 			// Check if we got a valid HTTP response
-			response := string(buf[:n])
 			if !strings.Contains(response, "HTTP/1.1") {
 				return fmt.Errorf("expected HTTP response but got: %s", response)
 			}
 		} else {
 			// Should get no response or connection reset
-			if err == nil && n > 0 {
-				return fmt.Errorf("expected no response but got: %s", string(buf[:n]))
-			}
-			// EOF or timeout is expected when no route is configured
-			if err != io.EOF && !strings.Contains(err.Error(), "timeout") {
-				return fmt.Errorf("expected EOF or timeout but got: %v", err)
+			if len(response) > 0 {
+				return fmt.Errorf("expected no response but got: %s", response)
 			}
 		}
 		return nil
-	}).WithTimeout(timeout).WithPolling(2 * time.Second).Should(Succeed())
+	}).WithTimeout(timeout).WithPolling(10 * time.Second).Should(Succeed())
 }
 
 func (s *Scaffold) RequestAssert(r *RequestAssert) bool {

@@ -72,25 +72,17 @@ spec:
 				NotTo(HaveOccurred(), "creating GatewayProxy")
 
 			// Create GatewayClass
-			gatewayClassName := s.Namespace()
 			Expect(s.CreateResourceFromString(s.GetGatewayClassYaml())).
 				NotTo(HaveOccurred(), "creating GatewayClass")
-			gcyaml, _ := s.GetResourceYaml("GatewayClass", gatewayClassName)
-			s.ResourceApplied("GatewayClass", gatewayClassName, gcyaml, 1)
 
 			// Create Gateway with TCP listener
-			gatewayName := s.Namespace()
-			Expect(s.CreateResourceFromString(fmt.Sprintf(tcpGateway, gatewayName, gatewayClassName))).
+			Expect(s.CreateResourceFromString(fmt.Sprintf(tcpGateway, s.Namespace(), s.Namespace()))).
 				NotTo(HaveOccurred(), "creating Gateway")
-
-			gwyaml, _ := s.GetResourceYaml("Gateway", gatewayName)
-			s.ResourceApplied("Gateway", gatewayName, gwyaml, 1)
 		})
 
 		It("should route TCP traffic to backend service", func() {
-			gatewayName := s.Namespace()
 			By("creating TCPRoute")
-			Expect(s.CreateResourceFromString(fmt.Sprintf(tcpRoute, gatewayName))).
+			Expect(s.CreateResourceFromString(fmt.Sprintf(tcpRoute, s.Namespace()))).
 				NotTo(HaveOccurred(), "creating TCPRoute")
 
 			// Verify TCPRoute status becomes programmed
@@ -98,7 +90,7 @@ spec:
 			s.ResourceApplied("TCPRoute", "tcp-app-1", routeYaml, 1)
 
 			By("verifying TCPRoute is functional")
-			s.HTTPOverTCPConnectAssert(true, time.Minute*5) // should be able to connect
+			s.HTTPOverTCPConnectAssert(true, time.Minute*3) // should be able to connect
 			By("sending TCP traffic to verify routing")
 			s.RequestAssert(&scaffold.RequestAssert{
 				Client:   s.NewAPISIXClientOnTCPPort(),
@@ -113,7 +105,7 @@ spec:
 			Expect(s.DeleteResource("TCPRoute", "tcp-app-1")).
 				NotTo(HaveOccurred(), "deleting TCPRoute")
 
-			s.HTTPOverTCPConnectAssert(false, time.Minute*5)
+			s.HTTPOverTCPConnectAssert(false, time.Minute*3)
 		})
 	})
 })

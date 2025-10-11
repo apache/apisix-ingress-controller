@@ -57,7 +57,7 @@ func (t *Translator) TranslateApisixTls(tctx *provider.TranslateContext, tls *ap
 	// Create SSL object
 	ssl := &adctypes.SSL{
 		Metadata: adctypes.Metadata{
-			ID:     id.GenID(tls.Namespace + "_" + tls.Name),
+			ID:     id.GenID("ApisixTls_" + tls.Namespace + "_" + tls.Name),
 			Labels: label.GenLabel(tls),
 		},
 		Certificates: []adctypes.Certificate{

@@ -284,8 +284,8 @@ spec:
 			Eventually(func() error {
 				tls, err := s.DefaultDataplaneResource().SSL().List(context.Background())
 				Expect(err).NotTo(HaveOccurred(), "list ssl")
-				if len(tls) != 1 {
-					return fmt.Errorf("expect 1 ssl, got %d", len(tls))
+				if len(tls) != 2 {
+					return fmt.Errorf("expect 2 ssl, got %d", len(tls))
 				}
 				if len(tls[0].Certificates) != 1 {
 					return fmt.Errorf("expect 1 certificate, got %d", len(tls[0].Certificates))
@@ -305,7 +305,7 @@ spec:
 			Eventually(func() string {
 				tls, err := s.DefaultDataplaneResource().SSL().List(context.Background())
 				Expect(err).NotTo(HaveOccurred(), "list ssl")
-				if len(tls) < 1 {
+				if len(tls) != 2 {
 					return ""
 				}
 				if len(tls[0].Certificates) < 1 {
