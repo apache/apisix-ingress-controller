@@ -152,7 +152,6 @@ func (t *Translator) TranslateTLSRoute(tctx *provider.TranslateContext, tlsRoute
 			streamRoute.SNI = host
 			streamRoute.Labels = labels
 			service.StreamRoutes = append(service.StreamRoutes, streamRoute)
-
 		}
 		result.Services = append(result.Services, service)
 	}
