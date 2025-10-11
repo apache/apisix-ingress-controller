@@ -118,14 +118,33 @@ func (t *Translator) fillPluginFromURLRewriteFilter(plugins adctypes.Plugins, ur
 				}
 				prefixPaths = append(prefixPaths, *match.Path.Value)
 			}
-			regexPattern := "^(" + strings.Join(prefixPaths, "|") + ")" + "/(.*)"
-			replaceTarget := *urlRewrite.Path.ReplacePrefixMatch
-			regexTarget := replaceTarget + "/$2"
-
-			plugin.RewriteTargetRegex = []string{
-				regexPattern,
-				regexTarget,
+			if len(prefixPaths) == 0 || urlRewrite.Path.ReplacePrefixMatch == nil {
+				break
 			}
+			prefixGroup := "(" + strings.Join(prefixPaths, "|") + ")"
+			replaceTarget := *urlRewrite.Path.ReplacePrefixMatch
+			// Handle ReplacePrefixMatch path rewrite
+			// If replaceTarget == "/", special handling is required to avoid
+			// producing double slashes or empty paths.
+			var regexPattern, regexTarget string
+			if replaceTarget == "/" {
+				// Match either "/prefix" or "/prefix/<remainder>"
+				// Pattern captures the remainder (if any) without a leading slash.
+				// Template reconstructs "/" + remainder, resulting in:
+				//   /prefix/three → /three
+				//   /prefix       → /
+				regexPattern = "^" + prefixGroup + "(?:/(.*))?$"
+				regexTarget = "/" + "$2"
+			} else {
+				// Match either "/prefix" or "/prefix/<remainder>"
+				// Pattern captures the remainder (including leading slash) as $2.
+				// Template appends it to replaceTarget:
+				//   /prefix/one/two → /one/two
+				//   /prefix/one     → /one
+				regexPattern = "^" + prefixGroup + "(/.*)?$"
+				regexTarget = replaceTarget + "$2"
+			}
+			plugin.RewriteTargetRegex = []string{regexPattern, regexTarget}
 		}
 	}
 }
