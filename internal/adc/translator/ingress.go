@@ -33,7 +33,7 @@ import (
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
 
-func (t *Translator) translateIngressTLS(ingressTLS *networkingv1.IngressTLS, secret *corev1.Secret, labels map[string]string) (*adctypes.SSL, error) {
+func (t *Translator) translateIngressTLS(ingressTLS *networkingv1.IngressTLS, secret *corev1.Secret, labels map[string]string) ([]*adctypes.SSL, error) {
 	// extract the key pair from the secret
 	cert, key, err := extractKeyPair(secret, true)
 	if err != nil {
@@ -52,21 +52,36 @@ func (t *Translator) translateIngressTLS(ingressTLS *networkingv1.IngressTLS, se
 		return nil, fmt.Errorf("no hosts found in ingress TLS")
 	}
 
-	ssl := &adctypes.SSL{
-		Metadata: adctypes.Metadata{
-			Labels: labels,
-		},
-		Certificates: []adctypes.Certificate{
-			{
-				Certificate: string(cert),
-				Key:         string(key),
-			},
-		},
-		Snis: hosts,
-	}
-	ssl.ID = id.GenID(string(cert))
+	// Create one SSL object per SNI to avoid conflicts when the same certificate
+	// is used across multiple Ingresses with different SNIs.
+	// Using namespace + secretName + sni as the ID ensures:
+	// 1. Different Ingresses with same cert+sni will share the same SSL (expected behavior)
+	// 2. Same Ingress with same cert but different SNIs will have separate SSL objects
+	// 3. No overwrites in MemDB due to ID collision
+	namespace := labels[label.LabelNamespace]
+	secretName := secret.Name
 
-	return ssl, nil
+	ssls := make([]*adctypes.SSL, 0, len(hosts))
+	for _, host := range hosts {
+		ssl := &adctypes.SSL{
+			Metadata: adctypes.Metadata{
+				Labels: labels,
+				// Generate unique ID based on namespace, secret name, and SNI
+				// This allows the same wildcard certificate to be used for multiple SNIs
+				ID: id.GenID(namespace + "_" + secretName + "_" + host),
+			},
+			Certificates: []adctypes.Certificate{
+				{
+					Certificate: string(cert),
+					Key:         string(key),
+				},
+			},
+			Snis: []string{host},
+		}
+		ssls = append(ssls, ssl)
+	}
+
+	return ssls, nil
 }
 
 func (t *Translator) TranslateIngress(tctx *provider.TranslateContext, obj *networkingv1.Ingress) (*TranslateResult, error) {
@@ -86,12 +101,12 @@ func (t *Translator) TranslateIngress(tctx *provider.TranslateContext, obj *netw
 		if secret == nil {
 			continue
 		}
-		ssl, err := t.translateIngressTLS(&tls, secret, labels)
+		ssls, err := t.translateIngressTLS(&tls, secret, labels)
 		if err != nil {
 			return nil, err
 		}
 
-		result.SSL = append(result.SSL, ssl)
+		result.SSL = append(result.SSL, ssls...)
 	}
 
 	// process Ingress rules, convert to Service and Route objects
