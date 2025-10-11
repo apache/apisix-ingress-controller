@@ -90,6 +90,8 @@ import (
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=referencegrants/status,verbs=get;update
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=grpcroutes,verbs=get;list;watch
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=grpcroutes/status,verbs=get;update
+// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=tlsroutes,verbs=get;list;watch
+// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=tlsroutes/status,verbs=get;update
 
 // Networking
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch
@@ -146,6 +148,14 @@ func setupControllers(ctx context.Context, mgr manager.Manager, pro provider.Pro
 			Client:   mgr.GetClient(),
 			Scheme:   mgr.GetScheme(),
 			Log:      ctrl.LoggerFrom(ctx).WithName("controllers").WithName(types.KindGRPCRoute),
+			Provider: pro,
+			Updater:  updater,
+			Readier:  readier,
+		},
+		&controller.TLSRouteReconciler{
+			Client:   mgr.GetClient(),
+			Scheme:   mgr.GetScheme(),
+			Log:      ctrl.LoggerFrom(ctx).WithName("controllers").WithName(types.KindTLSRoute),
 			Provider: pro,
 			Updater:  updater,
 			Readier:  readier,
@@ -234,6 +244,7 @@ func registerReadinessGVK(c client.Client, readier readiness.ReadinessManager) {
 				types.GvkOf(&gatewayv1alpha2.TCPRoute{}),
 				types.GvkOf(&gatewayv1alpha2.UDPRoute{}),
 				types.GvkOf(&gatewayv1.GRPCRoute{}),
+				types.GvkOf(&gatewayv1alpha2.TLSRoute{}),
 			},
 		},
 		{

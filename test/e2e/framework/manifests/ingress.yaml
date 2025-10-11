@@ -158,6 +158,9 @@ rules:
   - grpcroutes/status
   - httproutes/status
   - referencegrants/status
+  - tcproutes/status
+  - tlsroutes/status
+  - udproutes/status
   verbs:
   - get
   - update
@@ -167,25 +170,10 @@ rules:
   - gateways
   - grpcroutes
   - httproutes
-  - tcproutes
-  - udproutes
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - gateway.networking.k8s.io
-  resources:
-  - httproutes/status
-  - tcproutes/status
-  - udproutes/status
-  verbs:
-  - get
-  - update
-- apiGroups:
-  - gateway.networking.k8s.io
-  resources:
   - referencegrants
+  - tcproutes
+  - tlsroutes
+  - udproutes
   verbs:
   - get
   - list
@@ -206,6 +194,7 @@ rules:
   verbs:
   - get
   - update
+
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole

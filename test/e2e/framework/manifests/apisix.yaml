@@ -47,6 +47,8 @@ data:
       stream_proxy:                 # TCP/UDP proxy
         tcp:                        # TCP proxy port list
           - 9100
+          - addr: 9110
+            tls: true
         udp:                        # UDP proxy port list
           - 9200
     discovery:
@@ -111,6 +113,9 @@ spec:
             - name: udp
               containerPort: 9200
               protocol: UDP
+            - name: tls
+              containerPort: 9110
+              protocol: TCP
           volumeMounts:
             - name: config-writable
               mountPath: /usr/local/apisix/conf
@@ -156,6 +161,10 @@ spec:
       port: 9200
       protocol: UDP
       targetPort: 9200
+    - name: tls
+      port: 9110
+      protocol: TCP
+      targetPort: 9110
   selector:
     app.kubernetes.io/name: apisix 
   type: {{ .ServiceType | default "NodePort" }}
