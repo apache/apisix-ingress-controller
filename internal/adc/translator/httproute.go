@@ -179,17 +179,19 @@ func (t *Translator) fillPluginFromHTTPRequestHeaderFilter(plugins adctypes.Plug
 	obj := plugins[pluginName]
 	var plugin *adctypes.RewriteConfig
 	if obj == nil {
-		plugin = &adctypes.RewriteConfig{
-			Headers: &adctypes.Headers{
-				Add:    make(map[string]string, len(reqHeaderModifier.Add)),
-				Set:    make(map[string]string, len(reqHeaderModifier.Set)),
-				Remove: make([]string, 0, len(reqHeaderModifier.Remove)),
-			},
-		}
+		plugin = &adctypes.RewriteConfig{}
 		plugins[pluginName] = plugin
 	} else {
 		plugin = obj.(*adctypes.RewriteConfig)
 	}
+	if plugin.Headers == nil {
+		plugin.Headers = &adctypes.Headers{
+			Add:    make(map[string]string, len(reqHeaderModifier.Add)),
+			Set:    make(map[string]string, len(reqHeaderModifier.Set)),
+			Remove: make([]string, 0, len(reqHeaderModifier.Remove)),
+		}
+	}
+
 	for _, header := range reqHeaderModifier.Add {
 		val := plugin.Headers.Add[string(header.Name)]
 		if val != "" {
