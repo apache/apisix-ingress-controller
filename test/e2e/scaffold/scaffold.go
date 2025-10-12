@@ -80,6 +80,7 @@ type Tunnels struct {
 	HTTP  *k8s.Tunnel
 	HTTPS *k8s.Tunnel
 	TCP   *k8s.Tunnel
+	TLS   *k8s.Tunnel
 }
 
 func (t *Tunnels) Close() {
@@ -94,6 +95,10 @@ func (t *Tunnels) Close() {
 	if t.TCP != nil {
 		t.safeClose(t.TCP.Close)
 		t.TCP = nil
+	}
+	if t.TLS != nil {
+		t.safeClose(t.TLS.Close)
+		t.TLS = nil
 	}
 }
 
@@ -274,6 +279,31 @@ func (s *Scaffold) NewAPISIXClientWithTCPProxy() *httpexpect.Expect {
 	})
 }
 
+func (s *Scaffold) NewAPISIXClientWithTLSProxy(host string) *httpexpect.Expect {
+	u := url.URL{
+		Scheme: apiv2.SchemeHTTPS,
+		Host:   s.apisixTunnels.TLS.Endpoint(),
+	}
+	return httpexpect.WithConfig(httpexpect.Config{
+		BaseURL: u.String(),
+		Client: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					// accept any certificate; for testing only!
+					InsecureSkipVerify: true,
+					ServerName:         host,
+				},
+			},
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+		Reporter: httpexpect.NewAssertReporter(
+			httpexpect.NewAssertReporter(s.GinkgoT),
+		),
+	})
+}
+
 func (s *Scaffold) DefaultDataplaneResource() DataplaneResource {
 	return s.Deployer.DefaultDataplaneResource()
 }
@@ -359,6 +389,7 @@ func (s *Scaffold) createDataplaneTunnels(
 		httpPort  int
 		httpsPort int
 		tcpPort   int
+		tlsPort   int
 	)
 
 	for _, port := range svc.Spec.Ports {
@@ -369,6 +400,8 @@ func (s *Scaffold) createDataplaneTunnels(
 			httpsPort = int(port.Port)
 		case apiv2.SchemeTCP:
 			tcpPort = int(port.Port)
+		case apiv2.SchemeTLS:
+			tlsPort = int(port.Port)
 		}
 	}
 
@@ -381,6 +414,8 @@ func (s *Scaffold) createDataplaneTunnels(
 		0, httpsPort)
 	tcpTunnel := k8s.NewTunnel(kubectlOpts, k8s.ResourceTypeService, serviceName,
 		0, tcpPort)
+	tlsTunnel := k8s.NewTunnel(kubectlOpts, k8s.ResourceTypeService, serviceName,
+		0, tlsPort)
 
 	if err := httpTunnel.ForwardPortE(s.t); err != nil {
 		return nil, err
@@ -396,6 +431,10 @@ func (s *Scaffold) createDataplaneTunnels(
 		return nil, err
 	}
 	tunnels.TCP = tcpTunnel
+	if err := tlsTunnel.ForwardPortE(s.t); err != nil {
+		return nil, err
+	}
+	tunnels.TLS = tlsTunnel
 
 	return tunnels, nil
 }

@@ -500,6 +500,8 @@ func routeHostnamesIntersectsWithListenerHostname(route client.Object, listener 
 		return true // TCPRoute and UDPRoute don't have Hostnames to match
 	case *gatewayv1.GRPCRoute:
 		return listenerHostnameIntersectWithRouteHostnames(listener, r.Spec.Hostnames)
+	case *gatewayv1alpha2.TLSRoute:
+		return listenerHostnameIntersectWithRouteHostnames(listener, r.Spec.Hostnames)
 	default:
 		return false
 	}
@@ -670,6 +672,10 @@ func routeMatchesListenerType(route client.Object, listener gatewayv1.Listener) 
 		}
 	case *gatewayv1alpha2.UDPRoute:
 		if listener.Protocol != gatewayv1.UDPProtocolType {
+			return false
+		}
+	case *gatewayv1alpha2.TLSRoute:
+		if listener.Protocol != gatewayv1.TLSProtocolType {
 			return false
 		}
 	default:

@@ -34,6 +34,9 @@ import (
 var skippedTestsForSSL = []string{
 	tests.HTTPRouteHTTPSListener.ShortName,
 	tests.HTTPRouteRedirectPortAndScheme.ShortName,
+
+	// TODO: APISIX does not support TLSRoute passthrough.
+	tests.TLSRouteSimpleSameNamespace.ShortName,
 }
 
 // TODO: HTTPRoute hostname intersection and listener hostname matching
