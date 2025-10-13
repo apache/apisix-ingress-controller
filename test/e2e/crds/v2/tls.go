@@ -336,5 +336,107 @@ spec:
 			assert.Contains(GinkgoT(), tls[0].Client.SkipMtlsURIRegex, skipMtlsUriRegex, "skip_mtls_uri_regex should be set")
 		})
 
+		It("ApisixTls and Ingress with same certificate but different hosts", func() {
+			By("create shared TLS secret")
+			err := s.NewKubeTlsSecret("shared-tls-secret", Cert, Key)
+			Expect(err).NotTo(HaveOccurred(), "creating shared TLS secret")
+
+			const apisixTlsSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixTls
+metadata:
+  name: test-apisixtls-shared
+spec:
+  ingressClassName: %s
+  hosts:
+  - api6.com
+  secret:
+    name: shared-tls-secret
+    namespace: %s
+`
+
+			By("apply ApisixTls with api6.com")
+			var apisixTls apiv2.ApisixTls
+			tlsSpec := fmt.Sprintf(apisixTlsSpec, s.Namespace(), s.Namespace())
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-apisixtls-shared"}, &apisixTls, tlsSpec)
+
+			const ingressYamlWithTLS = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: test-ingress-tls-shared
+spec:
+  ingressClassName: %s
+  tls:
+  - hosts:
+    - api7.com
+    secretName: shared-tls-secret
+  rules:
+  - host: api7.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
+
+			By("apply Ingress with api7.com using same certificate")
+			err = s.CreateResourceFromString(fmt.Sprintf(ingressYamlWithTLS, s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "creating Ingress")
+
+			By("verify two SSL objects exist in control plane")
+			Eventually(func() bool {
+				tls, err := s.DefaultDataplaneResource().SSL().List(context.Background())
+				if err != nil {
+					return false
+				}
+				return len(tls) == 2
+			}).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(BeTrue())
+
+			tls, err := s.DefaultDataplaneResource().SSL().List(context.Background())
+			assert.Nil(GinkgoT(), err, "list tls error")
+			assert.Len(GinkgoT(), tls, 2, "should have exactly 2 SSL objects")
+
+			By("verify SSL objects have different IDs and SNIs")
+			sniFound := make(map[string]bool)
+
+			for i := range tls {
+				// Check certificate content is the same
+				assert.Len(GinkgoT(), tls[i].Certificates, 1, "each SSL should have 1 certificate")
+				assert.Equal(GinkgoT(), Cert, tls[i].Certificates[0].Certificate, "certificate should match")
+
+				// Track SNIs
+				for _, sni := range tls[i].Snis {
+					sniFound[sni] = true
+				}
+			}
+
+			By("verify both hosts are covered")
+			assert.True(GinkgoT(), sniFound["api6.com"], "api6.com should be in SNIs")
+			assert.True(GinkgoT(), sniFound["api7.com"], "api7.com should be in SNIs")
+
+			By("test HTTPS request to api6.com")
+			Eventually(func() int {
+				return s.NewAPISIXHttpsClient("api6.com").
+					GET("/get").
+					WithHost("api6.com").
+					Expect().
+					Raw().StatusCode
+			}).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(Equal(http.StatusOK))
+
+			By("test HTTPS request to api7.com")
+			Eventually(func() int {
+				return s.NewAPISIXHttpsClient("api7.com").
+					GET("/get").
+					WithHost("api7.com").
+					Expect().
+					Raw().StatusCode
+			}).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(Equal(http.StatusOK))
+		})
+
 	})
 })

@@ -33,7 +33,7 @@ import (
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
 
-func (t *Translator) translateIngressTLS(ingressTLS *networkingv1.IngressTLS, secret *corev1.Secret, labels map[string]string) (*adctypes.SSL, error) {
+func (t *Translator) translateIngressTLS(namespace, name string, tlsIndex int, ingressTLS *networkingv1.IngressTLS, secret *corev1.Secret, labels map[string]string) (*adctypes.SSL, error) {
 	// extract the key pair from the secret
 	cert, key, err := extractKeyPair(secret, true)
 	if err != nil {
@@ -64,7 +64,7 @@ func (t *Translator) translateIngressTLS(ingressTLS *networkingv1.IngressTLS, se
 		},
 		Snis: hosts,
 	}
-	ssl.ID = id.GenID(string(cert))
+	ssl.ID = id.GenID(fmt.Sprintf("%s_%d", adctypes.ComposeSSLName(internaltypes.KindIngress, namespace, name), tlsIndex))
 
 	return ssl, nil
 }
@@ -75,7 +75,7 @@ func (t *Translator) TranslateIngress(tctx *provider.TranslateContext, obj *netw
 	labels := label.GenLabel(obj)
 
 	// handle TLS configuration, convert to SSL objects
-	for _, tls := range obj.Spec.TLS {
+	for tlsIndex, tls := range obj.Spec.TLS {
 		if tls.SecretName == "" {
 			continue
 		}
@@ -86,7 +86,7 @@ func (t *Translator) TranslateIngress(tctx *provider.TranslateContext, obj *netw
 		if secret == nil {
 			continue
 		}
-		ssl, err := t.translateIngressTLS(&tls, secret, labels)
+		ssl, err := t.translateIngressTLS(obj.Namespace, obj.Name, tlsIndex, &tls, secret, labels)
 		if err != nil {
 			return nil, err
 		}
