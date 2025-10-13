@@ -27,6 +27,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/id"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
 
 func (t *Translator) TranslateApisixTls(tctx *provider.TranslateContext, tls *apiv2.ApisixTls) (*TranslateResult, error) {
@@ -57,7 +58,7 @@ func (t *Translator) TranslateApisixTls(tctx *provider.TranslateContext, tls *ap
 	// Create SSL object
 	ssl := &adctypes.SSL{
 		Metadata: adctypes.Metadata{
-			ID:     id.GenID(tls.Namespace + "_" + tls.Name),
+			ID:     id.GenID(adctypes.ComposeSSLName(internaltypes.KindApisixTls, tls.Namespace, tls.Name)),
 			Labels: label.GenLabel(tls),
 		},
 		Certificates: []adctypes.Certificate{
