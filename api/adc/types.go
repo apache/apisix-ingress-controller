@@ -473,6 +473,19 @@ func (n Upstream) MarshalJSON() ([]byte, error) {
 	return json.Marshal((Alias)(n))
 }
 
+func ComposeSSLName(kind, namespace, name string) string {
+	p := make([]byte, 0, len(kind)+len(namespace)+len(name)+2)
+	buf := bytes.NewBuffer(p)
+
+	buf.WriteString(kind)
+	buf.WriteByte('_')
+	buf.WriteString(namespace)
+	buf.WriteByte('_')
+	buf.WriteString(name)
+
+	return buf.String()
+}
+
 // ComposeRouteName uses namespace, name and rule name to compose
 // the route name.
 func ComposeRouteName(namespace, name string, rule string) string {

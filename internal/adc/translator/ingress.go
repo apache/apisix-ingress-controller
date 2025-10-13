@@ -64,7 +64,7 @@ func (t *Translator) translateIngressTLS(namespace, name string, tlsIndex int, i
 		},
 		Snis: hosts,
 	}
-	ssl.ID = id.GenID(fmt.Sprintf("Ingress_%s_%s_%d", namespace, name, tlsIndex))
+	ssl.ID = id.GenID(fmt.Sprintf("%s_%d", adctypes.ComposeSSLName(internaltypes.KindIngress, namespace, name), tlsIndex))
 
 	return ssl, nil
 }
