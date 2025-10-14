@@ -2502,7 +2502,7 @@ spec:
 			})
 		})
 
-		It("WWS backend", func() {
+		It("WSS backend", func() {
 			s.ResourceApplied("HTTPRoute", "nginx-wss", fmt.Sprintf(httprouteWithWSS, s.Namespace()), 1)
 			time.Sleep(6 * time.Second)
 
