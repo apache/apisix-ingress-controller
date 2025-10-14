@@ -186,7 +186,7 @@ func (t *Translator) buildRoute(ar *apiv2.ApisixRoute, service *adc.Service, rul
 	route.Desc = "Created by apisix-ingress-controller, DO NOT modify it manually"
 	route.Labels = label.GenLabel(ar)
 	route.EnableWebsocket = rule.Websocket
-	if route.EnableWebsocket == nil {
+	if route.EnableWebsocket == nil && *enableWebsocket != nil {
 		route.EnableWebsocket = *enableWebsocket
 	}
 	route.FilterFunc = rule.Match.FilterFunc
