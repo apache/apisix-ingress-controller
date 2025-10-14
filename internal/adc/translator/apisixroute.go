@@ -369,7 +369,7 @@ func (t *Translator) translateApisixRouteHTTPBackend(tctx *provider.TranslateCon
 	}
 	upstream.Nodes = nodes
 	upstream.Scheme = appProtocolToUpstreamScheme(protocol)
-	if protocol == "kubernetes.io/ws" || protocol == "kubernetes.io/wss" {
+	if protocol == internaltypes.AppProtocolWS || protocol == internaltypes.AppProtocolWSS {
 		*enableWebsocket = ptr.To(true)
 	}
 	if backend.Weight != nil {

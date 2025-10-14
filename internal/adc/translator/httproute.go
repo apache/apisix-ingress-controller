@@ -565,7 +565,7 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 			if len(upNodes) == 0 {
 				continue
 			}
-			if protocol == "kubernetes.io/ws" || protocol == "kubernetes.io/wss" {
+			if protocol == internaltypes.AppProtocolWS || protocol == internaltypes.AppProtocolWSS {
 				enableWebsocket = ptr.To(true)
 			}
 
@@ -836,11 +836,13 @@ func (t *Translator) translateHTTPRouteHeaderMatchToVars(header gatewayv1.HTTPHe
 
 func appProtocolToUpstreamScheme(appProtocol string) string {
 	switch appProtocol {
-	case "http":
+	case internaltypes.AppProtocolHTTP:
 		return apiv2.SchemeHTTP
-	case "https":
+	case internaltypes.AppProtocolHTTPS:
 		return apiv2.SchemeHTTPS
-	case "kubernetes.io/wss":
+	case internaltypes.AppProtocolWS:
+		return apiv2.SchemeHTTP
+	case internaltypes.AppProtocolWSS:
 		return apiv2.SchemeHTTPS
 	default:
 		return ""
