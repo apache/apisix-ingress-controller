@@ -101,7 +101,7 @@ func (d *ConflictDetector) DetectConflicts(ctx context.Context, obj client.Objec
 			if existing.CertificateHash == mapping.CertificateHash {
 				continue
 			}
-			// keep the first encountered mapping to surface a deterministic conflict reference
+			// keep the first encountered mapping, this will not happen in normal cases
 			continue
 		}
 		byHost[mapping.Host] = mapping
