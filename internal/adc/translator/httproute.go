@@ -840,7 +840,7 @@ func appProtocolToUpstreamScheme(appProtocol string) string {
 		return apiv2.SchemeHTTP
 	case "https":
 		return apiv2.SchemeHTTPS
-	case "kubenetes.io/wss":
+	case "kubernetes.io/wss":
 		return apiv2.SchemeHTTPS
 	default:
 		return ""
