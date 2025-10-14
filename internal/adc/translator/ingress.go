@@ -70,7 +70,10 @@ func (t *Translator) translateIngressTLS(namespace, name string, tlsIndex int, i
 	return ssl, nil
 }
 
-func (t *Translator) TranslateIngress(tctx *provider.TranslateContext, obj *networkingv1.Ingress) (*TranslateResult, error) {
+func (t *Translator) TranslateIngress(
+	tctx *provider.TranslateContext,
+	obj *networkingv1.Ingress,
+) (*TranslateResult, error) {
 	result := &TranslateResult{}
 
 	labels := label.GenLabel(obj)
