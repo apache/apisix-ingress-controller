@@ -56,6 +56,7 @@ func TestConflictDetectorDetectsGatewayConflict(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo-gp",
 			Namespace: testNamespace,
+			UID:       "gatewayproxy-uid",
 		},
 	}
 
@@ -65,6 +66,7 @@ func TestConflictDetectorDetectsGatewayConflict(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo-gateway",
 			Namespace: testNamespace,
+			UID:       "gateway-uid",
 		},
 		Spec: gatewayv1.GatewaySpec{
 			GatewayClassName: gatewayv1.ObjectName("demo-gc"),
@@ -110,7 +112,7 @@ func TestConflictDetectorDetectsGatewayConflict(t *testing.T) {
 		},
 	}
 
-	client := fake.NewClientBuilder().
+	fakeClient := fake.NewClientBuilder().
 		WithScheme(scheme).
 		WithIndex(&gatewayv1.Gateway{}, indexer.ParametersRef, indexer.GatewayParametersRefIndexFunc).
 		WithIndex(&networkingv1.IngressClass{}, indexer.IngressClassParametersRef, indexer.IngressClassParametersRefIndexFunc).
@@ -119,13 +121,14 @@ func TestConflictDetectorDetectsGatewayConflict(t *testing.T) {
 		WithObjects(secretA, secretB, gatewayProxy, gateway, ingressClass).
 		Build()
 
-	detector := NewConflictDetector(client)
+	detector := NewConflictDetector(fakeClient)
 	ctx := context.Background()
 
 	newTls := &apiv2.ApisixTls{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "incoming",
 			Namespace: testNamespace,
+			UID:       "apisixtls-uid",
 		},
 		Spec: apiv2.ApisixTlsSpec{
 			IngressClassName: testIngressClass,
@@ -159,11 +162,21 @@ func TestConflictDetectorAllowedWhenCertificateMatches(t *testing.T) {
 	scheme := buildScheme(t)
 	secret := newTLSSecret(t, "shared-cert", []string{"shared.example.com"})
 
-	gatewayProxy := &v1alpha1.GatewayProxy{ObjectMeta: metav1.ObjectMeta{Name: "gp", Namespace: testNamespace}}
+	gatewayProxy := &v1alpha1.GatewayProxy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "gp",
+			Namespace: testNamespace,
+			UID:       "gatewayproxy-uid-2",
+		},
+	}
 	modeTerminate := gatewayv1.TLSModeTerminate
 	listenerHostname := gatewayv1.Hostname("shared.example.com")
 	gateway := &gatewayv1.Gateway{
-		ObjectMeta: metav1.ObjectMeta{Name: "gw", Namespace: testNamespace},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "gw",
+			Namespace: testNamespace,
+			UID:       "gateway-uid-2",
+		},
 		Spec: gatewayv1.GatewaySpec{
 			GatewayClassName: gatewayv1.ObjectName("gc"),
 			Listeners: []gatewayv1.Listener{
@@ -217,7 +230,11 @@ func TestConflictDetectorAllowedWhenCertificateMatches(t *testing.T) {
 	ctx := context.Background()
 
 	newTls := &apiv2.ApisixTls{
-		ObjectMeta: metav1.ObjectMeta{Name: "allowed", Namespace: testNamespace},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "allowed",
+			Namespace: testNamespace,
+			UID:       "apisixtls-uid-2",
+		},
 		Spec: apiv2.ApisixTlsSpec{
 			IngressClassName: testIngressClass,
 			Hosts:            []apiv2.HostType{"shared.example.com"},
@@ -263,6 +280,117 @@ func newTLSSecret(t *testing.T, name string, hosts []string) *corev1.Secret {
 			corev1.TLSCertKey:       cert,
 			corev1.TLSPrivateKeyKey: key,
 		},
+	}
+}
+
+func TestConflictDetectorDetectsSelfConflict(t *testing.T) {
+	scheme := buildScheme(t)
+	secretA := newTLSSecret(t, "cert-a", []string{"example.com"})
+	secretB := newTLSSecret(t, "cert-b", []string{"example.com"})
+
+	gatewayProxy := &v1alpha1.GatewayProxy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-gp",
+			Namespace: testNamespace,
+			UID:       "gatewayproxy-uid-3",
+		},
+	}
+
+	modeTerminate := gatewayv1.TLSModeTerminate
+	hostname := gatewayv1.Hostname("example.com")
+	// Create a Gateway with TWO listeners using DIFFERENT certificates for the SAME host
+	gateway := &gatewayv1.Gateway{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-gateway",
+			Namespace: testNamespace,
+			UID:       "gateway-uid-3",
+		},
+		Spec: gatewayv1.GatewaySpec{
+			GatewayClassName: gatewayv1.ObjectName("demo-gc"),
+			Listeners: []gatewayv1.Listener{
+				{
+					Name:     "tls-1",
+					Protocol: gatewayv1.HTTPSProtocolType,
+					Port:     443,
+					Hostname: &hostname,
+					TLS: &gatewayv1.GatewayTLSConfig{
+						Mode: &modeTerminate,
+						CertificateRefs: []gatewayv1.SecretObjectReference{
+							{Name: gatewayv1.ObjectName(secretA.Name)},
+						},
+					},
+				},
+				{
+					Name:     "tls-2",
+					Protocol: gatewayv1.HTTPSProtocolType,
+					Port:     8443,
+					Hostname: &hostname,
+					TLS: &gatewayv1.GatewayTLSConfig{
+						Mode: &modeTerminate,
+						CertificateRefs: []gatewayv1.SecretObjectReference{
+							{Name: gatewayv1.ObjectName(secretB.Name)},
+						},
+					},
+				},
+			},
+		},
+	}
+	gateway.Spec.Infrastructure = &gatewayv1.GatewayInfrastructure{
+		ParametersRef: &gatewayv1.LocalParametersReference{
+			Group: gatewayv1.Group(v1alpha1.GroupVersion.Group),
+			Kind:  gatewayv1.Kind(internaltypes.KindGatewayProxy),
+			Name:  gatewayProxy.Name,
+		},
+	}
+
+	fakeClient := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithIndex(&gatewayv1.Gateway{}, indexer.ParametersRef, indexer.GatewayParametersRefIndexFunc).
+		WithIndex(&networkingv1.IngressClass{}, indexer.IngressClassParametersRef, indexer.IngressClassParametersRefIndexFunc).
+		WithIndex(&networkingv1.Ingress{}, indexer.IngressClassRef, indexer.IngressClassRefIndexFunc).
+		WithIndex(&apiv2.ApisixTls{}, indexer.IngressClassRef, indexer.ApisixTlsIngressClassIndexFunc).
+		WithObjects(secretA, secretB, gatewayProxy, gateway).
+		Build()
+
+	detector := NewConflictDetector(fakeClient)
+	ctx := context.Background()
+
+	// Build mappings for this Gateway - should have 2 mappings for same host with different certs
+	mappings := detector.BuildGatewayMappings(ctx, gateway)
+	if len(mappings) != 2 {
+		t.Fatalf("expected 2 mappings, got %d", len(mappings))
+	}
+
+	// Both mappings should be for the same host
+	if mappings[0].Host != mappings[1].Host {
+		t.Fatalf("expected same host, got %s and %s", mappings[0].Host, mappings[1].Host)
+	}
+
+	// But with different certificate hashes
+	if mappings[0].CertificateHash == mappings[1].CertificateHash {
+		t.Fatalf("expected different certificate hashes, but they are the same: %s", mappings[0].CertificateHash)
+	}
+
+	// DetectConflicts should detect this self-conflict
+	conflicts, err := detector.DetectConflicts(ctx, gateway, mappings)
+	if err != nil {
+		t.Fatalf("DetectConflicts returned error: %v", err)
+	}
+
+	// Should detect 1 conflict (the resource conflicts with itself)
+	if len(conflicts) != 1 {
+		t.Fatalf("expected 1 self-conflict, got %d", len(conflicts))
+	}
+
+	conflict := conflicts[0]
+	if conflict.Host != "example.com" {
+		t.Fatalf("unexpected host: %s", conflict.Host)
+	}
+
+	// The conflicting resource should point to itself
+	expectedRef := fmt.Sprintf("Gateway/%s/%s", gateway.Namespace, gateway.Name)
+	if conflict.ConflictingResource != expectedRef {
+		t.Fatalf("unexpected conflicting resource: %s, expected %s", conflict.ConflictingResource, expectedRef)
 	}
 }
 

@@ -107,16 +107,20 @@ func (d *ConflictDetector) DetectConflicts(ctx context.Context, obj client.Objec
 		byHost[mapping.Host] = mapping
 	}
 
+	// First, check for conflicts within the new resource itself
 	seen := make(map[string]string, len(newMappings))
-	// TODO: need to check with self-referencing mappings
 	for _, mapping := range newMappings {
 		if mapping.Host == "" || mapping.CertificateHash == "" {
 			continue
 		}
 		if prev, ok := seen[mapping.Host]; ok {
-			// prefer the first hash when duplicates appear inside the same object
+			// If same host appears with different certificate in the same resource, report conflict
 			if prev != mapping.CertificateHash {
-				seen[mapping.Host] = mapping.CertificateHash
+				conflicts = append(conflicts, SSLConflict{
+					Host:                mapping.Host,
+					ConflictingResource: mapping.ResourceRef,
+					CertificateHash:     prev,
+				})
 			}
 			continue
 		}
