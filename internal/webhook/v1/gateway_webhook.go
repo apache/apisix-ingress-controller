@@ -33,6 +33,7 @@ import (
 	v1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/webhook/v1/reference"
+	sslvalidator "github.com/apache/apisix-ingress-controller/internal/webhook/v1/ssl"
 )
 
 // nolint:unused
@@ -89,6 +90,19 @@ func (v *GatewayCustomValidator) ValidateCreate(ctx context.Context, obj runtime
 	warnings := v.warnIfMissingGatewayProxyForGateway(ctx, gateway)
 	warnings = append(warnings, v.collectReferenceWarnings(ctx, gateway)...)
 
+	detector := sslvalidator.NewConflictDetector(v.Client)
+	mappings, mappingWarnings := detector.BuildGatewayMappings(ctx, gateway)
+	for _, warning := range mappingWarnings {
+		warnings = append(warnings, warning)
+	}
+	conflicts, err := detector.DetectConflicts(ctx, gateway, mappings)
+	if err != nil {
+		return nil, err
+	}
+	if len(conflicts) > 0 {
+		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
+	}
+
 	return warnings, nil
 }
 
@@ -111,6 +125,19 @@ func (v *GatewayCustomValidator) ValidateUpdate(ctx context.Context, oldObj, new
 
 	warnings := v.warnIfMissingGatewayProxyForGateway(ctx, gateway)
 	warnings = append(warnings, v.collectReferenceWarnings(ctx, gateway)...)
+
+	detector := sslvalidator.NewConflictDetector(v.Client)
+	mappings, mappingWarnings := detector.BuildGatewayMappings(ctx, gateway)
+	for _, warning := range mappingWarnings {
+		warnings = append(warnings, warning)
+	}
+	conflicts, err := detector.DetectConflicts(ctx, gateway, mappings)
+	if err != nil {
+		return nil, err
+	}
+	if len(conflicts) > 0 {
+		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
+	}
 
 	return warnings, nil
 }

@@ -31,6 +31,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/internal/controller"
 	"github.com/apache/apisix-ingress-controller/internal/webhook/v1/reference"
+	sslvalidator "github.com/apache/apisix-ingress-controller/internal/webhook/v1/ssl"
 )
 
 var ingresslog = logf.Log.WithName("ingress-resource")
@@ -146,6 +147,19 @@ func (v *IngressCustomValidator) ValidateCreate(ctx context.Context, obj runtime
 	warnings := checkUnsupportedAnnotations(ingress)
 	warnings = append(warnings, v.collectReferenceWarnings(ctx, ingress)...)
 
+	detector := sslvalidator.NewConflictDetector(v.Client)
+	mappings, mappingWarnings := detector.BuildIngressMappings(ctx, ingress)
+	for _, warning := range mappingWarnings {
+		warnings = append(warnings, warning)
+	}
+	conflicts, err := detector.DetectConflicts(ctx, ingress, mappings)
+	if err != nil {
+		return nil, err
+	}
+	if len(conflicts) > 0 {
+		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
+	}
+
 	return warnings, nil
 }
 
@@ -163,6 +177,19 @@ func (v *IngressCustomValidator) ValidateUpdate(ctx context.Context, oldObj, new
 	// Check for unsupported annotations and generate warnings
 	warnings := checkUnsupportedAnnotations(ingress)
 	warnings = append(warnings, v.collectReferenceWarnings(ctx, ingress)...)
+
+	detector := sslvalidator.NewConflictDetector(v.Client)
+	mappings, mappingWarnings := detector.BuildIngressMappings(ctx, ingress)
+	for _, warning := range mappingWarnings {
+		warnings = append(warnings, warning)
+	}
+	conflicts, err := detector.DetectConflicts(ctx, ingress, mappings)
+	if err != nil {
+		return nil, err
+	}
+	if len(conflicts) > 0 {
+		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
+	}
 
 	return warnings, nil
 }

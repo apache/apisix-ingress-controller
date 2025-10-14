@@ -30,6 +30,7 @@ import (
 	apisixv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller"
 	"github.com/apache/apisix-ingress-controller/internal/webhook/v1/reference"
+	sslvalidator "github.com/apache/apisix-ingress-controller/internal/webhook/v1/ssl"
 )
 
 var apisixTlsLog = logf.Log.WithName("apisixtls-resource")
@@ -67,7 +68,21 @@ func (v *ApisixTlsCustomValidator) ValidateCreate(ctx context.Context, obj runti
 		return nil, nil
 	}
 
-	return v.collectWarnings(ctx, tls), nil
+	detector := sslvalidator.NewConflictDetector(v.Client)
+	mappings, mappingWarnings := detector.BuildApisixTlsMappings(ctx, tls)
+	warnings := v.collectWarnings(ctx, tls)
+	for _, warning := range mappingWarnings {
+		warnings = append(warnings, warning)
+	}
+	conflicts, err := detector.DetectConflicts(ctx, tls, mappings)
+	if err != nil {
+		return nil, err
+	}
+	if len(conflicts) > 0 {
+		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
+	}
+
+	return warnings, nil
 }
 
 func (v *ApisixTlsCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
@@ -80,7 +95,21 @@ func (v *ApisixTlsCustomValidator) ValidateUpdate(ctx context.Context, oldObj, n
 		return nil, nil
 	}
 
-	return v.collectWarnings(ctx, tls), nil
+	detector := sslvalidator.NewConflictDetector(v.Client)
+	mappings, mappingWarnings := detector.BuildApisixTlsMappings(ctx, tls)
+	warnings := v.collectWarnings(ctx, tls)
+	for _, warning := range mappingWarnings {
+		warnings = append(warnings, warning)
+	}
+	conflicts, err := detector.DetectConflicts(ctx, tls, mappings)
+	if err != nil {
+		return nil, err
+	}
+	if len(conflicts) > 0 {
+		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
+	}
+
+	return warnings, nil
 }
 
 func (*ApisixTlsCustomValidator) ValidateDelete(context.Context, runtime.Object) (admission.Warnings, error) {

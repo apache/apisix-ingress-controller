@@ -29,6 +29,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/api/adc"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	sslutils "github.com/apache/apisix-ingress-controller/internal/ssl"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
@@ -187,7 +188,7 @@ func translateApisixUpstreamClientTLS(tctx *provider.TranslateContext, config *a
 		return errors.Errorf("sercret %s not found", secretNN)
 	}
 
-	cert, key, err := extractKeyPair(secret, true)
+	cert, key, err := sslutils.ExtractKeyPair(secret, true)
 	if err != nil {
 		return err
 	}

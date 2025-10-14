@@ -30,19 +30,20 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/id"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	sslutils "github.com/apache/apisix-ingress-controller/internal/ssl"
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
 
 func (t *Translator) translateIngressTLS(ingressTLS *networkingv1.IngressTLS, secret *corev1.Secret, labels map[string]string) (*adctypes.SSL, error) {
 	// extract the key pair from the secret
-	cert, key, err := extractKeyPair(secret, true)
+	cert, key, err := sslutils.ExtractKeyPair(secret, true)
 	if err != nil {
 		return nil, err
 	}
 
 	hosts := ingressTLS.Hosts
 	if len(hosts) == 0 {
-		certHosts, err := extractHost(cert)
+		certHosts, err := sslutils.ExtractHostsFromCertificate(cert)
 		if err != nil {
 			return nil, err
 		}
