@@ -25,6 +25,7 @@ import (
 	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
@@ -111,6 +112,7 @@ func (t *Translator) TranslateIngress(tctx *provider.TranslateContext, obj *netw
 			if path.Backend.Service == nil {
 				continue
 			}
+			var enableWebsocket *bool
 
 			service := adctypes.NewDefaultService()
 			service.Labels = labels
@@ -169,6 +171,15 @@ func (t *Translator) TranslateIngress(tctx *provider.TranslateContext, obj *netw
 						break
 					}
 				}
+				if getServicePort != nil && getServicePort.AppProtocol != nil {
+					if upstream.Scheme == "" {
+						upstream.Scheme = appProtocolToUpstreamScheme(*getServicePort.AppProtocol)
+					}
+					if *getServicePort.AppProtocol == internaltypes.AppProtocolWS ||
+						*getServicePort.AppProtocol == internaltypes.AppProtocolWSS {
+						enableWebsocket = ptr.To(true)
+					}
+				}
 				endpointSlices := tctx.EndpointSlices[types.NamespacedName{
 					Namespace: obj.Namespace,
 					Name:      backendService.Name,
@@ -185,6 +196,7 @@ func (t *Translator) TranslateIngress(tctx *provider.TranslateContext, obj *netw
 			route := adctypes.NewDefaultRoute()
 			route.Name = adctypes.ComposeRouteName(obj.Namespace, obj.Name, fmt.Sprintf("%d-%d", i, j))
 			route.ID = id.GenID(route.Name)
+			route.EnableWebsocket = enableWebsocket
 			route.Labels = labels
 
 			uris := []string{path.Path}

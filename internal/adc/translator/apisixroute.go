@@ -368,7 +368,9 @@ func (t *Translator) translateApisixRouteHTTPBackend(tctx *provider.TranslateCon
 		return nil, err
 	}
 	upstream.Nodes = nodes
-	upstream.Scheme = appProtocolToUpstreamScheme(protocol)
+	if upstream.Scheme == "" {
+		upstream.Scheme = appProtocolToUpstreamScheme(protocol)
+	}
 	if protocol == internaltypes.AppProtocolWS || protocol == internaltypes.AppProtocolWSS {
 		*enableWebsocket = ptr.To(true)
 	}

@@ -19,11 +19,14 @@ package gatewayapi
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
+	"github.com/gorilla/websocket"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
@@ -2440,17 +2443,18 @@ spec:
 
 	})
 
-	Context("Test AppProtocol", func() {
-		var httproute = `
+	Context("Test Service With AppProtocol", func() {
+		var (
+			httproute = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: httpbin
+  name: nginx
 spec:
   parentRefs:
   - name: %s
   hostnames:
-  - httpbin.example
+  - api6.com
   rules:
   - matches:
     - path:
@@ -2460,22 +2464,82 @@ spec:
     - name: nginx
       port: 443
  `
+			httprouteWithWSS = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: nginx-wss
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - api6.com
+  rules:
+  - matches:
+    - path:
+        type: Exact
+        value: /ws
+    backendRefs:
+    - name: nginx
+      port: 8443
+ `
+		)
 
 		BeforeEach(func() {
-			beforeEachHTTP()
+			beforeEachHTTPS()
 			s.DeployNginx(framework.NginxOptions{
 				Namespace: s.Namespace(),
 				Replicas:  ptr.To(int32(1)),
 			})
 		})
 		It("HTTPS backend", func() {
-			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(httproute, s.Namespace()), 1)
+			s.ResourceApplied("HTTPRoute", "nginx", fmt.Sprintf(httproute, s.Namespace()), 1)
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
 				Path:   "/get",
-				Host:   "httpbin.example",
+				Host:   "api6.com",
 				Check:  scaffold.WithExpectedStatus(http.StatusOK),
 			})
+		})
+
+		It("WWS backend", func() {
+			s.ResourceApplied("HTTPRoute", "nginx-wss", fmt.Sprintf(httprouteWithWSS, s.Namespace()), 1)
+			time.Sleep(6 * time.Second)
+
+			By("verify wss connection")
+			u := url.URL{
+				Scheme: "wss",
+				Host:   s.GetAPISIXHTTPSEndpoint(),
+				Path:   "/ws",
+			}
+			headers := http.Header{"Host": []string{"api6.com"}}
+
+			hostname := "api6.com"
+
+			dialer := websocket.Dialer{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+					ServerName:         hostname,
+				},
+			}
+
+			conn, resp, err := dialer.Dial(u.String(), headers)
+			Expect(err).ShouldNot(HaveOccurred(), "WebSocket handshake")
+			Expect(resp.StatusCode).Should(Equal(http.StatusSwitchingProtocols))
+
+			defer func() {
+				_ = conn.Close()
+			}()
+
+			By("send and receive message through WebSocket")
+			testMessage := "hello, this is APISIX"
+			err = conn.WriteMessage(websocket.TextMessage, []byte(testMessage))
+			Expect(err).ShouldNot(HaveOccurred(), "writing WebSocket message")
+
+			// Then our echo
+			_, msg, err := conn.ReadMessage()
+			Expect(err).ShouldNot(HaveOccurred(), "reading echo message")
+			Expect(string(msg)).To(Equal(testMessage), "message content verification")
 		})
 	})
 })
