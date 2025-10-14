@@ -70,10 +70,10 @@ func (t *Translator) translateHTTPRule(tctx *provider.TranslateContext, ar *apiv
 		return nil, err
 	}
 
+	var enableWebsocket *bool
 	service := t.buildService(ar, rule, ruleIndex)
-	t.buildRoute(ar, service, rule, plugins, timeout, vars)
-	t.buildUpstream(tctx, service, ar, rule)
-
+	t.buildUpstream(tctx, service, ar, rule, &enableWebsocket)
+	t.buildRoute(ar, service, rule, plugins, timeout, vars, &enableWebsocket)
 	return service, nil
 }
 
@@ -179,13 +179,16 @@ func (t *Translator) addAuthenticationPlugins(rule apiv2.ApisixRouteHTTP, plugin
 	}
 }
 
-func (t *Translator) buildRoute(ar *apiv2.ApisixRoute, service *adc.Service, rule apiv2.ApisixRouteHTTP, plugins adc.Plugins, timeout *adc.Timeout, vars adc.Vars) {
+func (t *Translator) buildRoute(ar *apiv2.ApisixRoute, service *adc.Service, rule apiv2.ApisixRouteHTTP, plugins adc.Plugins, timeout *adc.Timeout, vars adc.Vars, enableWebsocket **bool) {
 	route := adc.NewDefaultRoute()
 	route.Name = adc.ComposeRouteName(ar.Namespace, ar.Name, rule.Name)
 	route.ID = id.GenID(route.Name)
 	route.Desc = "Created by apisix-ingress-controller, DO NOT modify it manually"
 	route.Labels = label.GenLabel(ar)
-	route.EnableWebsocket = ptr.To(rule.Websocket)
+	route.EnableWebsocket = rule.Websocket
+	if route.EnableWebsocket == nil {
+		route.EnableWebsocket = *enableWebsocket
+	}
 	route.FilterFunc = rule.Match.FilterFunc
 	route.Hosts = rule.Match.Hosts
 	route.Methods = rule.Match.Methods
@@ -202,7 +205,7 @@ func (t *Translator) buildRoute(ar *apiv2.ApisixRoute, service *adc.Service, rul
 	service.Routes = []*adc.Route{route}
 }
 
-func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc.Service, ar *apiv2.ApisixRoute, rule apiv2.ApisixRouteHTTP) {
+func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc.Service, ar *apiv2.ApisixRoute, rule apiv2.ApisixRouteHTTP, enableWebsocket **bool) {
 	var (
 		upstreams         = make([]*adc.Upstream, 0)
 		weightedUpstreams = make([]adc.TrafficSplitConfigRuleWeightedUpstream, 0)
@@ -211,7 +214,7 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 	for _, backend := range rule.Backends {
 		// try to get the apisixupstream with the same name as the backend service to be upstream config.
 		// err is ignored because it does not care about the externalNodes of the apisixupstream.
-		upstream, err := t.translateApisixRouteHTTPBackend(tctx, ar, backend)
+		upstream, err := t.translateApisixRouteHTTPBackend(tctx, ar, backend, enableWebsocket)
 		if err != nil {
 			t.Log.Error(err, "failed to translate ApisixRoute backend", "backend", backend)
 			continue
@@ -330,7 +333,7 @@ func getPortFromService(svc *v1.Service, backendSvcPort intstr.IntOrString) (int
 	return port, nil
 }
 
-func (t *Translator) translateApisixRouteHTTPBackend(tctx *provider.TranslateContext, ar *apiv2.ApisixRoute, backend apiv2.ApisixRouteHTTPBackend) (*adc.Upstream, error) {
+func (t *Translator) translateApisixRouteHTTPBackend(tctx *provider.TranslateContext, ar *apiv2.ApisixRoute, backend apiv2.ApisixRouteHTTPBackend, enableWebsocket **bool) (*adc.Upstream, error) {
 	auNN := types.NamespacedName{
 		Namespace: ar.Namespace,
 		Name:      backend.ServiceName,
@@ -352,39 +355,44 @@ func (t *Translator) translateApisixRouteHTTPBackend(tctx *provider.TranslateCon
 		upstream = u
 	}
 	var (
-		err   error
-		nodes adc.UpstreamNodes
+		err      error
+		nodes    adc.UpstreamNodes
+		protocol string
 	)
 	if backend.ResolveGranularity == apiv2.ResolveGranularityService {
-		nodes, err = t.translateApisixRouteBackendResolveGranularityService(tctx, auNN, backend)
+		nodes, protocol, err = t.translateApisixRouteBackendResolveGranularityService(tctx, auNN, backend)
 	} else {
-		nodes, err = t.translateApisixRouteBackendResolveGranularityEndpoint(tctx, auNN, backend)
+		nodes, protocol, err = t.translateApisixRouteBackendResolveGranularityEndpoint(tctx, auNN, backend)
 	}
 	if err != nil {
 		return nil, err
 	}
 	upstream.Nodes = nodes
+	upstream.Scheme = appProtocolToUpstreamScheme(protocol)
+	if protocol == "kubernetes.io/ws" || protocol == "kubernetes.io/wss" {
+		*enableWebsocket = ptr.To(true)
+	}
 	if backend.Weight != nil {
 		upstream.Labels["meta_weight"] = strconv.FormatInt(int64(*backend.Weight), 10)
 	}
 	return upstream, nil
 }
 
-func (t *Translator) translateApisixRouteBackendResolveGranularityService(tctx *provider.TranslateContext, arNN types.NamespacedName, backend apiv2.ApisixRouteHTTPBackend) (adc.UpstreamNodes, error) {
+func (t *Translator) translateApisixRouteBackendResolveGranularityService(tctx *provider.TranslateContext, arNN types.NamespacedName, backend apiv2.ApisixRouteHTTPBackend) (adc.UpstreamNodes, string, error) {
 	serviceNN := types.NamespacedName{
 		Namespace: arNN.Namespace,
 		Name:      backend.ServiceName,
 	}
 	svc, ok := tctx.Services[serviceNN]
 	if !ok {
-		return nil, errors.Errorf("service not found, ApisixRoute: %s, Service: %s", arNN, serviceNN)
+		return nil, "", errors.Errorf("service not found, ApisixRoute: %s, Service: %s", arNN, serviceNN)
 	}
 	if svc.Spec.ClusterIP == "" {
-		return nil, errors.Errorf("conflict headless service and backend resolve granularity, ApisixRoute: %s, Service: %s", arNN, serviceNN)
+		return nil, "", errors.Errorf("conflict headless service and backend resolve granularity, ApisixRoute: %s, Service: %s", arNN, serviceNN)
 	}
 	port, err := getPortFromService(svc, backend.ServicePort)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	return adc.UpstreamNodes{
 		{
@@ -392,10 +400,10 @@ func (t *Translator) translateApisixRouteBackendResolveGranularityService(tctx *
 			Port:   int(port),
 			Weight: *cmp.Or(backend.Weight, ptr.To(apiv2.DefaultWeight)),
 		},
-	}, nil
+	}, "", nil
 }
 
-func (t *Translator) translateApisixRouteStreamBackendResolveGranularity(tctx *provider.TranslateContext, arNN types.NamespacedName, backend apiv2.ApisixRouteStreamBackend) (adc.UpstreamNodes, error) {
+func (t *Translator) translateApisixRouteStreamBackendResolveGranularity(tctx *provider.TranslateContext, arNN types.NamespacedName, backend apiv2.ApisixRouteStreamBackend) (adc.UpstreamNodes, string, error) {
 	tsBackend := apiv2.ApisixRouteHTTPBackend{
 		ServiceName:        backend.ServiceName,
 		ServicePort:        backend.ServicePort,
@@ -409,18 +417,18 @@ func (t *Translator) translateApisixRouteStreamBackendResolveGranularity(tctx *p
 	}
 }
 
-func (t *Translator) translateApisixRouteBackendResolveGranularityEndpoint(tctx *provider.TranslateContext, arNN types.NamespacedName, backend apiv2.ApisixRouteHTTPBackend) (adc.UpstreamNodes, error) {
+func (t *Translator) translateApisixRouteBackendResolveGranularityEndpoint(tctx *provider.TranslateContext, arNN types.NamespacedName, backend apiv2.ApisixRouteHTTPBackend) (adc.UpstreamNodes, string, error) {
 	serviceNN := types.NamespacedName{
 		Namespace: arNN.Namespace,
 		Name:      backend.ServiceName,
 	}
 	svc, ok := tctx.Services[serviceNN]
 	if !ok {
-		return nil, errors.Errorf("service not found, ApisixRoute: %s, Service: %s", arNN, serviceNN)
+		return nil, "", errors.Errorf("service not found, ApisixRoute: %s, Service: %s", arNN, serviceNN)
 	}
 	port, err := getPortFromService(svc, backend.ServicePort)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	weight := int32(*cmp.Or(backend.Weight, ptr.To(apiv2.DefaultWeight)))
 	backendRef := gatewayv1.BackendRef{
@@ -482,7 +490,7 @@ func (t *Translator) translateApisixRouteStreamBackend(tctx *provider.TranslateC
 		}
 		upstream = u
 	}
-	nodes, err := t.translateApisixRouteStreamBackendResolveGranularity(tctx, utils.NamespacedName(ar), backend)
+	nodes, _, err := t.translateApisixRouteStreamBackendResolveGranularity(tctx, utils.NamespacedName(ar), backend)
 	if err != nil {
 		return nil, err
 	}

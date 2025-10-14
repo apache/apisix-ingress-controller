@@ -2439,4 +2439,43 @@ spec:
 		})
 
 	})
+
+	Context("Test AppProtocol", func() {
+		var httproute = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: httpbin
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - httpbin.example
+  rules:
+  - matches:
+    - path:
+        type: Exact
+        value: /get
+    backendRefs:
+    - name: nginx
+      port: 443
+ `
+
+		BeforeEach(func() {
+			beforeEachHTTP()
+			s.DeployNginx(framework.NginxOptions{
+				Namespace: s.Namespace(),
+				Replicas:  ptr.To(int32(1)),
+			})
+		})
+		It("HTTPS backend", func() {
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(httproute, s.Namespace()), 1)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.example",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+		})
+	})
 })

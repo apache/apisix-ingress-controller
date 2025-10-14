@@ -110,6 +110,7 @@ spec:
       port: 443
       protocol: TCP
       targetPort: 443
+      appProtocol: https
   type: ClusterIP
 ---
 apiVersion: v1

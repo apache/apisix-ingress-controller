@@ -54,7 +54,7 @@ func (t *Translator) TranslateTLSRoute(tctx *provider.TranslateContext, tlsRoute
 				backend.Namespace = &namespace
 			}
 			upstream := newDefaultUpstreamWithoutScheme()
-			upNodes, err := t.translateBackendRef(tctx, backend, DefaultEndpointFilter)
+			upNodes, _, err := t.translateBackendRef(tctx, backend, DefaultEndpointFilter)
 			if err != nil {
 				continue
 			}

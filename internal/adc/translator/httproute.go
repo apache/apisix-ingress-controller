@@ -391,13 +391,15 @@ func DefaultEndpointFilter(endpoint *discoveryv1.Endpoint) bool {
 	return true
 }
 
-func (t *Translator) TranslateBackendRefWithFilter(tctx *provider.TranslateContext, ref gatewayv1.BackendRef, endpointFilter func(*discoveryv1.Endpoint) bool) (adctypes.UpstreamNodes, error) {
+func (t *Translator) TranslateBackendRefWithFilter(tctx *provider.TranslateContext, ref gatewayv1.BackendRef, endpointFilter func(*discoveryv1.Endpoint) bool) (adctypes.UpstreamNodes, string, error) {
 	return t.translateBackendRef(tctx, ref, endpointFilter)
 }
 
-func (t *Translator) translateBackendRef(tctx *provider.TranslateContext, ref gatewayv1.BackendRef, endpointFilter func(*discoveryv1.Endpoint) bool) (adctypes.UpstreamNodes, error) {
+func (t *Translator) translateBackendRef(tctx *provider.TranslateContext, ref gatewayv1.BackendRef, endpointFilter func(*discoveryv1.Endpoint) bool) (adctypes.UpstreamNodes, string, error) {
+	nodes := adctypes.UpstreamNodes{}
+	var protocol string
 	if ref.Kind != nil && *ref.Kind != internaltypes.KindService {
-		return adctypes.UpstreamNodes{}, fmt.Errorf("kind %s is not supported", *ref.Kind)
+		return nodes, protocol, fmt.Errorf("kind %s is not supported", *ref.Kind)
 	}
 
 	key := types.NamespacedName{
@@ -406,7 +408,7 @@ func (t *Translator) translateBackendRef(tctx *provider.TranslateContext, ref ga
 	}
 	service, ok := tctx.Services[key]
 	if !ok {
-		return adctypes.UpstreamNodes{}, fmt.Errorf("service %s not found", key)
+		return nodes, protocol, fmt.Errorf("service %s not found", key)
 	}
 
 	weight := 1
@@ -425,7 +427,7 @@ func (t *Translator) translateBackendRef(tctx *provider.TranslateContext, ref ga
 				Port:   port,
 				Weight: weight,
 			},
-		}, nil
+		}, protocol, nil
 	}
 
 	var portName *string
@@ -433,16 +435,18 @@ func (t *Translator) translateBackendRef(tctx *provider.TranslateContext, ref ga
 		for _, p := range service.Spec.Ports {
 			if int(p.Port) == int(*ref.Port) {
 				portName = ptr.To(p.Name)
+				protocol = ptr.Deref(p.AppProtocol, "")
 				break
 			}
 		}
 		if portName == nil {
-			return adctypes.UpstreamNodes{}, nil
+			return adctypes.UpstreamNodes{}, protocol, nil
 		}
 	}
 
 	endpointSlices := tctx.EndpointSlices[key]
-	return t.translateEndpointSlice(portName, weight, endpointSlices, endpointFilter), nil
+	nodes = t.translateEndpointSlice(portName, weight, endpointSlices, endpointFilter)
+	return nodes, protocol, nil
 }
 
 // calculateHTTPRoutePriority calculates the priority of the HTTP route.
@@ -544,6 +548,7 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 			upstreams         = make([]*adctypes.Upstream, 0)
 			weightedUpstreams = make([]adctypes.TrafficSplitConfigRuleWeightedUpstream, 0)
 			backendErr        error
+			enableWebsocket   *bool
 		)
 
 		for _, backend := range rule.BackendRefs {
@@ -552,7 +557,7 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 				backend.Namespace = &namespace
 			}
 			upstream := adctypes.NewDefaultUpstream()
-			upNodes, err := t.translateBackendRef(tctx, backend.BackendRef, DefaultEndpointFilter)
+			upNodes, protocol, err := t.translateBackendRef(tctx, backend.BackendRef, DefaultEndpointFilter)
 			if err != nil {
 				backendErr = err
 				continue
@@ -560,10 +565,13 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 			if len(upNodes) == 0 {
 				continue
 			}
+			if protocol == "kubernetes.io/ws" || protocol == "kubernetes.io/wss" {
+				enableWebsocket = ptr.To(true)
+			}
 
 			t.AttachBackendTrafficPolicyToUpstream(backend.BackendRef, tctx.BackendTrafficPolicies, upstream)
 			upstream.Nodes = upNodes
-
+			upstream.Scheme = appProtocolToUpstreamScheme(protocol)
 			var (
 				kind string
 				port int32
@@ -683,7 +691,7 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 			route.Name = name
 			route.ID = id.GenID(name)
 			route.Labels = labels
-			route.EnableWebsocket = ptr.To(true)
+			route.EnableWebsocket = enableWebsocket
 
 			// Set the route priority
 			priority := calculateHTTPRoutePriority(&match, ruleIndex, hosts)
@@ -824,4 +832,17 @@ func (t *Translator) translateHTTPRouteHeaderMatchToVars(header gatewayv1.HTTPHe
 		matchType = string(*header.Type)
 	}
 	return HeaderMatchToVars(matchType, string(header.Name), header.Value)
+}
+
+func appProtocolToUpstreamScheme(appProtocol string) string {
+	switch appProtocol {
+	case "http":
+		return apiv2.SchemeHTTP
+	case "https":
+		return apiv2.SchemeHTTPS
+	case "kubenetes.io/wss":
+		return apiv2.SchemeHTTPS
+	default:
+		return ""
+	}
 }
