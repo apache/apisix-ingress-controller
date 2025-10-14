@@ -137,10 +137,7 @@ func TestConflictDetectorDetectsGatewayConflict(t *testing.T) {
 		},
 	}
 
-	mappings, warnings := detector.BuildApisixTlsMappings(ctx, newTls)
-	if len(warnings) != 0 {
-		t.Fatalf("expected no build warnings, got %v", warnings)
-	}
+	mappings := detector.BuildApisixTlsMappings(ctx, newTls)
 	conflicts, err := detector.DetectConflicts(ctx, newTls, mappings)
 	if err != nil {
 		t.Fatalf("DetectConflicts returned error: %v", err)
@@ -228,7 +225,7 @@ func TestConflictDetectorAllowedWhenCertificateMatches(t *testing.T) {
 		},
 	}
 
-	mappings, _ := detector.BuildApisixTlsMappings(ctx, newTls)
+	mappings := detector.BuildApisixTlsMappings(ctx, newTls)
 	conflicts, err := detector.DetectConflicts(ctx, newTls, mappings)
 	if err != nil {
 		t.Fatalf("DetectConflicts returned error: %v", err)

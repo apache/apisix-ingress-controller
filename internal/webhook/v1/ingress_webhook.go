@@ -148,10 +148,7 @@ func (v *IngressCustomValidator) ValidateCreate(ctx context.Context, obj runtime
 	warnings = append(warnings, v.collectReferenceWarnings(ctx, ingress)...)
 
 	detector := sslvalidator.NewConflictDetector(v.Client)
-	mappings, mappingWarnings := detector.BuildIngressMappings(ctx, ingress)
-	for _, warning := range mappingWarnings {
-		warnings = append(warnings, warning)
-	}
+	mappings := detector.BuildIngressMappings(ctx, ingress)
 	conflicts, err := detector.DetectConflicts(ctx, ingress, mappings)
 	if err != nil {
 		return nil, err
@@ -179,10 +176,7 @@ func (v *IngressCustomValidator) ValidateUpdate(ctx context.Context, oldObj, new
 	warnings = append(warnings, v.collectReferenceWarnings(ctx, ingress)...)
 
 	detector := sslvalidator.NewConflictDetector(v.Client)
-	mappings, mappingWarnings := detector.BuildIngressMappings(ctx, ingress)
-	for _, warning := range mappingWarnings {
-		warnings = append(warnings, warning)
-	}
+	mappings := detector.BuildIngressMappings(ctx, ingress)
 	conflicts, err := detector.DetectConflicts(ctx, ingress, mappings)
 	if err != nil {
 		return nil, err

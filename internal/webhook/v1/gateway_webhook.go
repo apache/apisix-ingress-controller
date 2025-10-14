@@ -91,10 +91,7 @@ func (v *GatewayCustomValidator) ValidateCreate(ctx context.Context, obj runtime
 	warnings = append(warnings, v.collectReferenceWarnings(ctx, gateway)...)
 
 	detector := sslvalidator.NewConflictDetector(v.Client)
-	mappings, mappingWarnings := detector.BuildGatewayMappings(ctx, gateway)
-	for _, warning := range mappingWarnings {
-		warnings = append(warnings, warning)
-	}
+	mappings := detector.BuildGatewayMappings(ctx, gateway)
 	conflicts, err := detector.DetectConflicts(ctx, gateway, mappings)
 	if err != nil {
 		return nil, err
@@ -127,10 +124,7 @@ func (v *GatewayCustomValidator) ValidateUpdate(ctx context.Context, oldObj, new
 	warnings = append(warnings, v.collectReferenceWarnings(ctx, gateway)...)
 
 	detector := sslvalidator.NewConflictDetector(v.Client)
-	mappings, mappingWarnings := detector.BuildGatewayMappings(ctx, gateway)
-	for _, warning := range mappingWarnings {
-		warnings = append(warnings, warning)
-	}
+	mappings := detector.BuildGatewayMappings(ctx, gateway)
 	conflicts, err := detector.DetectConflicts(ctx, gateway, mappings)
 	if err != nil {
 		return nil, err

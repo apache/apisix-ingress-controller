@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"encoding/pem"
 	"errors"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -83,8 +84,6 @@ func ExtractCertificate(secret *corev1.Secret) ([]byte, error) {
 }
 
 // ExtractHostsFromCertificate parses the certificate PEM block and returns the DNS names.
-//
-// Invalid or wildcard hosts are filtered out and the remaining hosts are lower-cased.
 func ExtractHostsFromCertificate(certPEM []byte) ([]string, error) {
 	block, _ := pem.Decode(certPEM)
 	if block == nil {
@@ -105,7 +104,7 @@ func ExtractHostsFromCertificate(certPEM []byte) ([]string, error) {
 	return hosts, nil
 }
 
-// NormalizeHosts removes duplicate entries, lower-cases them, and filters out empty strings or wildcards.
+// NormalizeHosts removes duplicate entries
 func NormalizeHosts(hosts []string) []string {
 	if len(hosts) == 0 {
 		return nil
@@ -114,11 +113,12 @@ func NormalizeHosts(hosts []string) []string {
 	normalized := make([]string, 0, len(hosts))
 	seen := make(map[string]struct{}, len(hosts))
 	for _, host := range hosts {
-		if _, ok := seen[host]; ok {
+		candidate := strings.ToLower(strings.TrimSpace(host))
+		if _, ok := seen[candidate]; ok {
 			continue
 		}
-		seen[host] = struct{}{}
-		normalized = append(normalized, host)
+		seen[candidate] = struct{}{}
+		normalized = append(normalized, candidate)
 	}
 	return normalized
 }

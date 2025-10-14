@@ -155,12 +155,11 @@ func FormatConflicts(conflicts []SSLConflict) string {
 }
 
 // BuildGatewayMappings calculates host-to-certificate mappings for a Gateway.
-func (d *ConflictDetector) BuildGatewayMappings(ctx context.Context, gateway *gatewayv1.Gateway) ([]HostCertMapping, []string) {
+func (d *ConflictDetector) BuildGatewayMappings(ctx context.Context, gateway *gatewayv1.Gateway) []HostCertMapping {
 	mappings := make([]HostCertMapping, 0)
-	warnings := make([]string, 0)
 
 	if gateway == nil {
-		return mappings, warnings
+		return mappings
 	}
 
 	for _, listener := range gateway.Spec.Listeners {
@@ -185,7 +184,6 @@ func (d *ConflictDetector) BuildGatewayMappings(ctx context.Context, gateway *ga
 			info, err := d.getSecretInfo(ctx, secretNN)
 			if err != nil {
 				logger.Error(err, "failed to read secret for Gateway", "gateway", objectKey(gateway), "secret", secretNN)
-				warnings = append(warnings, fmt.Sprintf("failed to read Secret %s for Gateway %s/%s: %v", secretNN, gateway.Namespace, gateway.Name, err))
 				continue
 			}
 
@@ -207,15 +205,14 @@ func (d *ConflictDetector) BuildGatewayMappings(ctx context.Context, gateway *ga
 		}
 	}
 
-	return mappings, warnings
+	return mappings
 }
 
 // BuildIngressMappings calculates host-to-certificate mappings for an Ingress.
-func (d *ConflictDetector) BuildIngressMappings(ctx context.Context, ingress *networkingv1.Ingress) ([]HostCertMapping, []string) {
+func (d *ConflictDetector) BuildIngressMappings(ctx context.Context, ingress *networkingv1.Ingress) []HostCertMapping {
 	mappings := make([]HostCertMapping, 0)
-	warnings := make([]string, 0)
 	if ingress == nil {
-		return mappings, warnings
+		return mappings
 	}
 
 	for _, tls := range ingress.Spec.TLS {
@@ -226,7 +223,6 @@ func (d *ConflictDetector) BuildIngressMappings(ctx context.Context, ingress *ne
 		info, err := d.getSecretInfo(ctx, secretNN)
 		if err != nil {
 			logger.Error(err, "failed to read secret for Ingress", "ingress", objectKey(ingress), "secret", secretNN)
-			warnings = append(warnings, fmt.Sprintf("failed to read Secret %s for Ingress %s/%s: %v", secretNN, ingress.Namespace, ingress.Name, err))
 			continue
 		}
 
@@ -243,15 +239,14 @@ func (d *ConflictDetector) BuildIngressMappings(ctx context.Context, ingress *ne
 		}
 	}
 
-	return mappings, warnings
+	return mappings
 }
 
 // BuildApisixTlsMappings calculates host-to-certificate mappings for an ApisixTls resource.
-func (d *ConflictDetector) BuildApisixTlsMappings(ctx context.Context, tls *apiv2.ApisixTls) ([]HostCertMapping, []string) {
+func (d *ConflictDetector) BuildApisixTlsMappings(ctx context.Context, tls *apiv2.ApisixTls) []HostCertMapping {
 	mappings := make([]HostCertMapping, 0)
-	warnings := make([]string, 0)
 	if tls == nil {
-		return mappings, warnings
+		return mappings
 	}
 
 	secretNN := types.NamespacedName{
@@ -261,8 +256,7 @@ func (d *ConflictDetector) BuildApisixTlsMappings(ctx context.Context, tls *apiv
 	info, err := d.getSecretInfo(ctx, secretNN)
 	if err != nil {
 		logger.Error(err, "failed to read secret for ApisixTls", "apisixtls", objectKey(tls), "secret", secretNN)
-		warnings = append(warnings, fmt.Sprintf("failed to read Secret %s for ApisixTls %s/%s: %v", secretNN, tls.Namespace, tls.Name, err))
-		return mappings, warnings
+		return mappings
 	}
 
 	hosts := make([]string, 0, len(tls.Spec.Hosts))
@@ -282,7 +276,7 @@ func (d *ConflictDetector) BuildApisixTlsMappings(ctx context.Context, tls *apiv
 		})
 	}
 
-	return mappings, warnings
+	return mappings
 }
 
 func (d *ConflictDetector) getSecretInfo(ctx context.Context, nn types.NamespacedName) (*secretInfo, error) {
@@ -366,7 +360,7 @@ func (d *ConflictDetector) collectExistingMappings(ctx context.Context, gatewayP
 		if _, ok := processedGateways[gateway.GetUID()]; ok {
 			continue
 		}
-		gatewayMappings, _ := d.BuildGatewayMappings(ctx, gateway)
+		gatewayMappings := d.BuildGatewayMappings(ctx, gateway)
 		mappings = append(mappings, gatewayMappings...)
 		processedGateways[gateway.GetUID()] = struct{}{}
 	}
@@ -397,7 +391,7 @@ func (d *ConflictDetector) collectExistingMappings(ctx context.Context, gatewayP
 			if _, ok := processedIngress[ingress.GetUID()]; ok {
 				continue
 			}
-			ingressMappings, _ := d.BuildIngressMappings(ctx, ingress)
+			ingressMappings := d.BuildIngressMappings(ctx, ingress)
 			mappings = append(mappings, ingressMappings...)
 			processedIngress[ingress.GetUID()] = struct{}{}
 		}
@@ -414,7 +408,7 @@ func (d *ConflictDetector) collectExistingMappings(ctx context.Context, gatewayP
 			if _, ok := processedTls[tls.GetUID()]; ok {
 				continue
 			}
-			tlsMappings, _ := d.BuildApisixTlsMappings(ctx, tls)
+			tlsMappings := d.BuildApisixTlsMappings(ctx, tls)
 			mappings = append(mappings, tlsMappings...)
 			processedTls[tls.GetUID()] = struct{}{}
 		}
@@ -436,7 +430,7 @@ func (d *ConflictDetector) collectExistingMappings(ctx context.Context, gatewayP
 			if _, ok := processedIngress[ingress.GetUID()]; ok {
 				continue
 			}
-			ingressMappings, _ := d.BuildIngressMappings(ctx, ingress)
+			ingressMappings := d.BuildIngressMappings(ctx, ingress)
 			mappings = append(mappings, ingressMappings...)
 			processedIngress[ingress.GetUID()] = struct{}{}
 		}
@@ -456,7 +450,7 @@ func (d *ConflictDetector) collectExistingMappings(ctx context.Context, gatewayP
 			if _, ok := processedTls[tls.GetUID()]; ok {
 				continue
 			}
-			tlsMappings, _ := d.BuildApisixTlsMappings(ctx, tls)
+			tlsMappings := d.BuildApisixTlsMappings(ctx, tls)
 			mappings = append(mappings, tlsMappings...)
 			processedTls[tls.GetUID()] = struct{}{}
 		}
