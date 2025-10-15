@@ -24,6 +24,7 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -333,6 +334,30 @@ func getPortFromService(svc *v1.Service, backendSvcPort intstr.IntOrString) (int
 	return port, nil
 }
 
+func findMatchingServicePort(svc *v1.Service, backendSvcPort intstr.IntOrString) (*corev1.ServicePort, error) {
+	var servicePort *corev1.ServicePort
+	var portNumber int32 = -1
+	var servicePortName string
+	switch backendSvcPort.Type {
+	case intstr.Int:
+		portNumber = backendSvcPort.IntVal
+	case intstr.String:
+		servicePortName = backendSvcPort.StrVal
+	}
+	for _, svcPort := range svc.Spec.Ports {
+		p := svcPort
+		if p.Port == portNumber || (p.Name != "" && p.Name == servicePortName) {
+			servicePort = &p
+			break
+		}
+	}
+	if servicePort == nil {
+		return nil, errors.Errorf("service port %s not found in service %s", backendSvcPort.String(), svc.Name)
+	}
+
+	return servicePort, nil
+}
+
 func (t *Translator) translateApisixRouteHTTPBackend(tctx *provider.TranslateContext, ar *apiv2.ApisixRoute, backend apiv2.ApisixRouteHTTPBackend, enableWebsocket **bool) (*adc.Upstream, error) {
 	auNN := types.NamespacedName{
 		Namespace: ar.Namespace,
@@ -392,17 +417,17 @@ func (t *Translator) translateApisixRouteBackendResolveGranularityService(tctx *
 	if svc.Spec.ClusterIP == "" {
 		return nil, "", errors.Errorf("conflict headless service and backend resolve granularity, ApisixRoute: %s, Service: %s", arNN, serviceNN)
 	}
-	port, err := getPortFromService(svc, backend.ServicePort)
+	port, err := findMatchingServicePort(svc, backend.ServicePort)
 	if err != nil {
 		return nil, "", err
 	}
 	return adc.UpstreamNodes{
 		{
 			Host:   svc.Spec.ClusterIP,
-			Port:   int(port),
+			Port:   int(port.Port),
 			Weight: *cmp.Or(backend.Weight, ptr.To(apiv2.DefaultWeight)),
 		},
-	}, "", nil
+	}, ptr.Deref(port.AppProtocol, ""), nil
 }
 
 func (t *Translator) translateApisixRouteStreamBackendResolveGranularity(tctx *provider.TranslateContext, arNN types.NamespacedName, backend apiv2.ApisixRouteStreamBackend) (adc.UpstreamNodes, string, error) {
