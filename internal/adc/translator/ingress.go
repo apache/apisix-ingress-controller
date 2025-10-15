@@ -144,31 +144,31 @@ func (t *Translator) TranslateIngress(tctx *provider.TranslateContext, obj *netw
 			if getService == nil {
 				continue
 			}
+			var getServicePort *corev1.ServicePort
+			for _, port := range getService.Spec.Ports {
+				p := port
+				if servicePort > 0 && port.Port == servicePort {
+					getServicePort = &p
+					break
+				}
+				if servicePortName != "" && port.Name == servicePortName {
+					getServicePort = &p
+					break
+				}
+			}
 			if getService.Spec.Type == corev1.ServiceTypeExternalName {
-				defaultServicePort := 80
-				if servicePort > 0 {
-					defaultServicePort = int(servicePort)
+				servicePort := 80
+				if getServicePort != nil {
+					servicePort = int(getServicePort.Port)
 				}
 				upstream.Nodes = adctypes.UpstreamNodes{
 					{
 						Host:   getService.Spec.ExternalName,
-						Port:   defaultServicePort,
+						Port:   servicePort,
 						Weight: 1,
 					},
 				}
 			} else {
-				var getServicePort *corev1.ServicePort
-				for _, port := range getService.Spec.Ports {
-					port := port
-					if servicePort > 0 && port.Port == servicePort {
-						getServicePort = &port
-						break
-					}
-					if servicePortName != "" && port.Name == servicePortName {
-						getServicePort = &port
-						break
-					}
-				}
 				endpointSlices := tctx.EndpointSlices[types.NamespacedName{
 					Namespace: obj.Namespace,
 					Name:      backendService.Name,

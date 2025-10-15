@@ -224,6 +224,36 @@ spec:
             port:
               number: 80
 `
+		var ingressWithExternalNamePortName = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpbin-external-domain
+spec:
+  type: ExternalName
+  externalName: httpbin-service-e2e-test
+  ports:
+  - name: http
+    port: 8080
+    protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-external-name-port-name
+spec:
+  rules:
+  - host: httpbin.external
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: httpbin-external-domain
+            port:
+              name: http
+`
 		BeforeEach(func() {
 			By("create GatewayProxy")
 			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
@@ -288,6 +318,26 @@ spec:
 				Interval: time.Second * 10,
 				Timeout:  3 * time.Minute,
 			})
+		})
+
+		It("Mathch Service Port by Name", func() {
+			By("create Ingress")
+			err := s.CreateResourceFromString(ingressWithExternalNamePortName)
+			Expect(err).NotTo(HaveOccurred(), "creating Ingress without IngressClass")
+
+			By("checking the external service response")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.external",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+
+			upstreams, err := s.DefaultDataplaneResource().Upstream().List(context.Background())
+			Expect(err).NotTo(HaveOccurred(), "listing Upstream")
+			Expect(upstreams).To(HaveLen(1), "the number of Upstream")
+			Expect(upstreams[0].Nodes).To(HaveLen(1), "the number of Upstream nodes")
+			Expect(upstreams[0].Nodes[0].Port).To(Equal(8080), "the port of Upstream node")
 		})
 
 		It("Delete Ingress during restart", func() {
