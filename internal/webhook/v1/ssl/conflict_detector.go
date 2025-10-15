@@ -203,7 +203,7 @@ func (d *ConflictDetector) BuildGatewayMappings(ctx context.Context, gateway *ga
 				mappings = append(mappings, HostCertMapping{
 					Host:            host,
 					CertificateHash: info.hash,
-					ResourceRef:     fmt.Sprintf("Gateway/%s/%s", gateway.Namespace, gateway.Name),
+					ResourceRef:     fmt.Sprintf("%s/%s/%s", internaltypes.KindGateway, gateway.Namespace, gateway.Name),
 				})
 			}
 		}
@@ -238,7 +238,7 @@ func (d *ConflictDetector) BuildIngressMappings(ctx context.Context, ingress *ne
 			mappings = append(mappings, HostCertMapping{
 				Host:            host,
 				CertificateHash: info.hash,
-				ResourceRef:     fmt.Sprintf("Ingress/%s/%s", ingress.Namespace, ingress.Name),
+				ResourceRef:     fmt.Sprintf("%s/%s/%s", internaltypes.KindIngress, ingress.Namespace, ingress.Name),
 			})
 		}
 	}
@@ -276,7 +276,7 @@ func (d *ConflictDetector) BuildApisixTlsMappings(ctx context.Context, tls *apiv
 		mappings = append(mappings, HostCertMapping{
 			Host:            host,
 			CertificateHash: info.hash,
-			ResourceRef:     fmt.Sprintf("ApisixTls/%s/%s", tls.Namespace, tls.Name),
+			ResourceRef:     fmt.Sprintf("%s/%s/%s", internaltypes.KindApisixTls, tls.Namespace, tls.Name),
 		})
 	}
 

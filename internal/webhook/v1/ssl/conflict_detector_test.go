@@ -101,13 +101,10 @@ func TestConflictDetectorDetectsGatewayConflict(t *testing.T) {
 		Spec: networkingv1.IngressClassSpec{
 			Controller: config.ControllerConfig.ControllerName,
 			Parameters: &networkingv1.IngressClassParametersReference{
-				APIGroup: ptr.To(v1alpha1.GroupVersion.Group),
-				Kind:     internaltypes.KindGatewayProxy,
-				Name:     gatewayProxy.Name,
-				Namespace: func() *string {
-					ns := testNamespace
-					return &ns
-				}(),
+				APIGroup:  ptr.To(v1alpha1.GroupVersion.Group),
+				Kind:      internaltypes.KindGatewayProxy,
+				Name:      gatewayProxy.Name,
+				Namespace: ptr.To(testNamespace),
 			},
 		},
 	}
@@ -206,13 +203,10 @@ func TestConflictDetectorAllowedWhenCertificateMatches(t *testing.T) {
 		Spec: networkingv1.IngressClassSpec{
 			Controller: config.ControllerConfig.ControllerName,
 			Parameters: &networkingv1.IngressClassParametersReference{
-				APIGroup: ptr.To(v1alpha1.GroupVersion.Group),
-				Kind:     internaltypes.KindGatewayProxy,
-				Name:     gatewayProxy.Name,
-				Namespace: func() *string {
-					ns := testNamespace
-					return &ns
-				}(),
+				APIGroup:  ptr.To(v1alpha1.GroupVersion.Group),
+				Kind:      internaltypes.KindGatewayProxy,
+				Name:      gatewayProxy.Name,
+				Namespace: ptr.To(testNamespace),
 			},
 		},
 	}
