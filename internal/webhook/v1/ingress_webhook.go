@@ -143,10 +143,6 @@ func (v *IngressCustomValidator) ValidateCreate(ctx context.Context, obj runtime
 		return nil, nil
 	}
 
-	// Check for unsupported annotations and generate warnings
-	warnings := checkUnsupportedAnnotations(ingress)
-	warnings = append(warnings, v.collectReferenceWarnings(ctx, ingress)...)
-
 	detector := sslvalidator.NewConflictDetector(v.Client)
 	mappings := detector.BuildIngressMappings(ctx, ingress)
 	conflicts, err := detector.DetectConflicts(ctx, ingress, mappings)
@@ -156,6 +152,10 @@ func (v *IngressCustomValidator) ValidateCreate(ctx context.Context, obj runtime
 	if len(conflicts) > 0 {
 		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
 	}
+
+	// Check for unsupported annotations and generate warnings
+	warnings := checkUnsupportedAnnotations(ingress)
+	warnings = append(warnings, v.collectReferenceWarnings(ctx, ingress)...)
 
 	return warnings, nil
 }
@@ -171,10 +171,6 @@ func (v *IngressCustomValidator) ValidateUpdate(ctx context.Context, oldObj, new
 		return nil, nil
 	}
 
-	// Check for unsupported annotations and generate warnings
-	warnings := checkUnsupportedAnnotations(ingress)
-	warnings = append(warnings, v.collectReferenceWarnings(ctx, ingress)...)
-
 	detector := sslvalidator.NewConflictDetector(v.Client)
 	mappings := detector.BuildIngressMappings(ctx, ingress)
 	conflicts, err := detector.DetectConflicts(ctx, ingress, mappings)
@@ -185,6 +181,9 @@ func (v *IngressCustomValidator) ValidateUpdate(ctx context.Context, oldObj, new
 		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
 	}
 
+	// Check for unsupported annotations and generate warnings
+	warnings := checkUnsupportedAnnotations(ingress)
+	warnings = append(warnings, v.collectReferenceWarnings(ctx, ingress)...)
 	return warnings, nil
 }
 
