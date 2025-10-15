@@ -46,6 +46,7 @@ const (
 	IngressClassParametersRef = "ingressClassParametersRef"
 	ConsumerGatewayRef        = "consumerGatewayRef"
 	PolicyTargetRefs          = "targetRefs"
+	TLSHostIndexRef           = "tlsHostRefs"
 	GatewayClassIndexRef      = "gatewayClassRef"
 	ApisixUpstreamRef         = "apisixUpstreamRef"
 	PluginConfigIndexRef      = "pluginConfigRefs"
@@ -71,6 +72,7 @@ func SetupIndexer(mgr ctrl.Manager) error {
 		setupApisixTlsIndexer,
 		setupApisixConsumerIndexer,
 		setupGatewayClassIndexer,
+		setupTLSHostIndexer,
 	} {
 		if err := setup(mgr); err != nil {
 			return err

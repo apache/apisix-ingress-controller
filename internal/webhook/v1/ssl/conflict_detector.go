@@ -18,6 +18,7 @@ package ssl
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 
 	corev1 "k8s.io/api/core/v1"
@@ -30,7 +31,6 @@ import (
 	v1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller"
-	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	sslutil "github.com/apache/apisix-ingress-controller/internal/ssl"
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
@@ -85,36 +85,15 @@ func (d *ConflictDetector) DetectConflicts(ctx context.Context, obj client.Objec
 		return nil, nil
 	}
 
-	existingMappings, err := d.collectExistingMappings(ctx, gatewayProxy, obj.GetUID())
-	if err != nil {
-		logger.Error(err, "failed to collect existing SSL mappings", "gatewayProxy", objectKey(gatewayProxy))
-		return nil, nil
-	}
-
 	conflicts := make([]SSLConflict, 0)
-	byHost := make(map[string]HostCertMapping, len(existingMappings))
-	for _, mapping := range existingMappings {
-		if mapping.Host == "" || mapping.CertificateHash == "" {
-			continue
-		}
-		if existing, ok := byHost[mapping.Host]; ok {
-			if existing.CertificateHash == mapping.CertificateHash {
-				continue
-			}
-			// keep the first encountered mapping, this will not happen in normal cases
-			continue
-		}
-		byHost[mapping.Host] = mapping
-	}
 
-	// First, check for conflicts within the new resource itself
+	// First, check for conflicts within the new resource itself.
 	seen := make(map[string]string, len(newMappings))
 	for _, mapping := range newMappings {
 		if mapping.Host == "" || mapping.CertificateHash == "" {
 			continue
 		}
 		if prev, ok := seen[mapping.Host]; ok {
-			// If same host appears with different certificate in the same resource, report conflict
 			if prev != mapping.CertificateHash {
 				conflicts = append(conflicts, SSLConflict{
 					Host:                mapping.Host,
@@ -127,21 +106,17 @@ func (d *ConflictDetector) DetectConflicts(ctx context.Context, obj client.Objec
 		seen[mapping.Host] = mapping.CertificateHash
 	}
 
-	for host, hash := range seen {
-		existing, ok := byHost[host]
-		if !ok {
-			continue
-		}
-		if existing.CertificateHash == hash {
-			continue
-		}
-		conflicts = append(conflicts, SSLConflict{
-			Host:                host,
-			ConflictingResource: existing.ResourceRef,
-			CertificateHash:     existing.CertificateHash,
-		})
+	if len(seen) == 0 {
+		return conflicts, nil
 	}
 
+	externalConflicts, err := d.findExternalConflicts(ctx, obj, gatewayProxy, seen)
+	if err != nil {
+		logger.Error(err, "failed to evaluate existing TLS host mappings", "gatewayProxy", objectKey(gatewayProxy))
+		return conflicts, nil
+	}
+
+	conflicts = append(conflicts, externalConflicts...)
 	return conflicts, nil
 }
 
@@ -345,125 +320,151 @@ func (d *ConflictDetector) resolveGatewayProxy(ctx context.Context, obj client.O
 	}
 }
 
-func (d *ConflictDetector) collectExistingMappings(ctx context.Context, gatewayProxy *v1alpha1.GatewayProxy, excludeUID types.UID) ([]HostCertMapping, error) {
-	mappings := make([]HostCertMapping, 0)
+func (d *ConflictDetector) findExternalConflicts(ctx context.Context, obj client.Object, gatewayProxy *v1alpha1.GatewayProxy, hosts map[string]string) ([]SSLConflict, error) {
+	excludeUID := obj.GetUID()
+	hostValues := make([]string, 0, len(hosts))
+	for host := range hosts {
+		hostValues = append(hostValues, host)
+	}
+	sort.Strings(hostValues)
 
-	if gatewayProxy == nil {
-		return mappings, nil
+	conflictSet := make(map[string]SSLConflict)
+	proxyCache := make(map[types.UID]*v1alpha1.GatewayProxy)
+	mappingCache := make(map[types.UID][]HostCertMapping)
+
+	for _, host := range hostValues {
+		candidates, err := d.listResourcesByHost(ctx, host)
+		if err != nil {
+			return nil, err
+		}
+		for _, candidate := range candidates {
+			if candidate.GetUID() == excludeUID {
+				continue
+			}
+
+			resolvedProxy, err := d.resolveGatewayProxyWithCache(ctx, candidate, proxyCache)
+			if err != nil {
+				logger.Error(err, "failed to resolve GatewayProxy for indexed resource", "resource", objectKey(candidate), "host", host)
+				continue
+			}
+			// we only check if the resolved proxy is the same as the gateway proxy,
+			if resolvedProxy == nil || !gatewayProxiesEqual(resolvedProxy, gatewayProxy) {
+				continue
+			}
+
+			mapping, ok := d.mappingForHostWithCache(ctx, candidate, host, mappingCache)
+			if !ok {
+				continue
+			}
+			// same cert hash, no conflict
+			if mapping.CertificateHash == hosts[host] {
+				continue
+			}
+
+			key := fmt.Sprintf("%s|%s|%s", host, mapping.ResourceRef, mapping.CertificateHash)
+			if _, exists := conflictSet[key]; exists {
+				continue
+			}
+			conflictSet[key] = SSLConflict{
+				Host:                host,
+				ConflictingResource: mapping.ResourceRef,
+				CertificateHash:     mapping.CertificateHash,
+			}
+		}
 	}
 
-	indexKey := indexer.GenIndexKey(gatewayProxy.Namespace, gatewayProxy.Name)
+	if len(conflictSet) == 0 {
+		return nil, nil
+	}
 
-	processedGateways := make(map[types.UID]struct{})
+	keys := make([]string, 0, len(conflictSet))
+	for key := range conflictSet {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+
+	results := make([]SSLConflict, 0, len(keys))
+	for _, key := range keys {
+		results = append(results, conflictSet[key])
+	}
+	return results, nil
+}
+
+func (d *ConflictDetector) listResourcesByHost(ctx context.Context, host string) ([]client.Object, error) {
+	results := make([]client.Object, 0)
+
 	var gatewayList gatewayv1.GatewayList
-	if err := d.client.List(ctx, &gatewayList, client.MatchingFields{indexer.ParametersRef: indexKey}); err != nil {
+	if err := d.client.List(ctx, &gatewayList, client.MatchingFields{indexer.TLSHostIndexRef: host}); err != nil {
 		return nil, err
 	}
 	for i := range gatewayList.Items {
-		gateway := &gatewayList.Items[i]
-		if gateway.GetUID() == excludeUID {
-			continue
-		}
-		if _, ok := processedGateways[gateway.GetUID()]; ok {
-			continue
-		}
-		gatewayMappings := d.BuildGatewayMappings(ctx, gateway)
-		mappings = append(mappings, gatewayMappings...)
-		processedGateways[gateway.GetUID()] = struct{}{}
+		results = append(results, gatewayList.Items[i].DeepCopy())
 	}
 
-	processedIngress := make(map[types.UID]struct{})
-	processedTls := make(map[types.UID]struct{})
-	defaultIngressClasses := make(map[string]struct{})
-
-	var ingressClassList networkingv1.IngressClassList
-	if err := d.client.List(ctx, &ingressClassList, client.MatchingFields{indexer.IngressClassParametersRef: indexKey}); err != nil {
+	var ingressList networkingv1.IngressList
+	if err := d.client.List(ctx, &ingressList, client.MatchingFields{indexer.TLSHostIndexRef: host}); err != nil {
 		return nil, err
 	}
-	for i := range ingressClassList.Items {
-		ingressClass := &ingressClassList.Items[i]
-		if controller.IsDefaultIngressClass(ingressClass) && ingressClass.Spec.Controller == config.ControllerConfig.ControllerName {
-			defaultIngressClasses[ingressClass.Name] = struct{}{}
-		}
-
-		var ingressList networkingv1.IngressList
-		if err := d.client.List(ctx, &ingressList, client.MatchingFields{indexer.IngressClassRef: ingressClass.Name}); err != nil {
-			return nil, err
-		}
-		for j := range ingressList.Items {
-			ingress := &ingressList.Items[j]
-			if ingress.GetUID() == excludeUID {
-				continue
-			}
-			if _, ok := processedIngress[ingress.GetUID()]; ok {
-				continue
-			}
-			ingressMappings := d.BuildIngressMappings(ctx, ingress)
-			mappings = append(mappings, ingressMappings...)
-			processedIngress[ingress.GetUID()] = struct{}{}
-		}
-
-		var tlsList apiv2.ApisixTlsList
-		if err := d.client.List(ctx, &tlsList, client.MatchingFields{indexer.IngressClassRef: ingressClass.Name}); err != nil {
-			return nil, err
-		}
-		for j := range tlsList.Items {
-			tls := &tlsList.Items[j]
-			if tls.GetUID() == excludeUID {
-				continue
-			}
-			if _, ok := processedTls[tls.GetUID()]; ok {
-				continue
-			}
-			tlsMappings := d.BuildApisixTlsMappings(ctx, tls)
-			mappings = append(mappings, tlsMappings...)
-			processedTls[tls.GetUID()] = struct{}{}
-		}
+	for i := range ingressList.Items {
+		results = append(results, ingressList.Items[i].DeepCopy())
 	}
 
-	if len(defaultIngressClasses) > 0 {
-		var allIngress networkingv1.IngressList
-		if err := d.client.List(ctx, &allIngress); err != nil {
-			return nil, err
-		}
-		for i := range allIngress.Items {
-			ingress := &allIngress.Items[i]
-			if ingress.Spec.IngressClassName != nil {
-				continue
-			}
-			if ingress.GetUID() == excludeUID {
-				continue
-			}
-			if _, ok := processedIngress[ingress.GetUID()]; ok {
-				continue
-			}
-			ingressMappings := d.BuildIngressMappings(ctx, ingress)
-			mappings = append(mappings, ingressMappings...)
-			processedIngress[ingress.GetUID()] = struct{}{}
-		}
-
-		var allTls apiv2.ApisixTlsList
-		if err := d.client.List(ctx, &allTls); err != nil {
-			return nil, err
-		}
-		for i := range allTls.Items {
-			tls := &allTls.Items[i]
-			if tls.Spec.IngressClassName != "" {
-				continue
-			}
-			if tls.GetUID() == excludeUID {
-				continue
-			}
-			if _, ok := processedTls[tls.GetUID()]; ok {
-				continue
-			}
-			tlsMappings := d.BuildApisixTlsMappings(ctx, tls)
-			mappings = append(mappings, tlsMappings...)
-			processedTls[tls.GetUID()] = struct{}{}
-		}
+	var tlsList apiv2.ApisixTlsList
+	if err := d.client.List(ctx, &tlsList, client.MatchingFields{indexer.TLSHostIndexRef: host}); err != nil {
+		return nil, err
+	}
+	for i := range tlsList.Items {
+		results = append(results, tlsList.Items[i].DeepCopy())
 	}
 
-	return mappings, nil
+	return results, nil
+}
+
+func (d *ConflictDetector) resolveGatewayProxyWithCache(ctx context.Context, obj client.Object, cache map[types.UID]*v1alpha1.GatewayProxy) (*v1alpha1.GatewayProxy, error) {
+	if proxy, ok := cache[obj.GetUID()]; ok {
+		return proxy, nil
+	}
+	proxy, err := d.resolveGatewayProxy(ctx, obj)
+	if err != nil {
+		return nil, err
+	}
+	cache[obj.GetUID()] = proxy
+	return proxy, nil
+}
+
+func (d *ConflictDetector) mappingForHostWithCache(ctx context.Context, obj client.Object, host string, cache map[types.UID][]HostCertMapping) (HostCertMapping, bool) {
+	mappings, ok := cache[obj.GetUID()]
+	if !ok {
+		mappings = d.buildMappingsForObject(ctx, obj)
+		cache[obj.GetUID()] = mappings
+	}
+
+	for _, mapping := range mappings {
+		if mapping.Host == host {
+			return mapping, true
+		}
+	}
+	return HostCertMapping{}, false
+}
+
+func (d *ConflictDetector) buildMappingsForObject(ctx context.Context, obj client.Object) []HostCertMapping {
+	switch resource := obj.(type) {
+	case *gatewayv1.Gateway:
+		return d.BuildGatewayMappings(ctx, resource)
+	case *networkingv1.Ingress:
+		return d.BuildIngressMappings(ctx, resource)
+	case *apiv2.ApisixTls:
+		return d.BuildApisixTlsMappings(ctx, resource)
+	default:
+		return nil
+	}
+}
+
+func gatewayProxiesEqual(a, b *v1alpha1.GatewayProxy) bool {
+	if a == nil || b == nil {
+		return false
+	}
+	return a.Namespace == b.Namespace && a.Name == b.Name
 }
 
 func objectKey(obj client.Object) types.NamespacedName {
