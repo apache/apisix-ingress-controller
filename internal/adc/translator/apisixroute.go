@@ -25,7 +25,6 @@ import (
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -140,7 +139,7 @@ func (t *Translator) loadRoutePlugins(tctx *provider.TranslateContext, ar *apiv2
 	}
 }
 
-func (t *Translator) buildPluginConfig(plugin apiv2.ApisixRoutePlugin, namespace string, secrets map[types.NamespacedName]*v1.Secret) map[string]any {
+func (t *Translator) buildPluginConfig(plugin apiv2.ApisixRoutePlugin, namespace string, secrets map[types.NamespacedName]*corev1.Secret) map[string]any {
 	config := make(map[string]any)
 	if len(plugin.Config.Raw) > 0 {
 		if err := json.Unmarshal(plugin.Config.Raw, &config); err != nil {
@@ -314,7 +313,7 @@ func (t *Translator) buildService(ar *apiv2.ApisixRoute, rule apiv2.ApisixRouteH
 	return service
 }
 
-func getPortFromService(svc *v1.Service, backendSvcPort intstr.IntOrString) (int32, error) {
+func getPortFromService(svc *corev1.Service, backendSvcPort intstr.IntOrString) (int32, error) {
 	var port int32
 	if backendSvcPort.Type == intstr.Int {
 		port = int32(backendSvcPort.IntValue())
@@ -334,7 +333,7 @@ func getPortFromService(svc *v1.Service, backendSvcPort intstr.IntOrString) (int
 	return port, nil
 }
 
-func findMatchingServicePort(svc *v1.Service, backendSvcPort intstr.IntOrString) (*corev1.ServicePort, error) {
+func findMatchingServicePort(svc *corev1.Service, backendSvcPort intstr.IntOrString) (*corev1.ServicePort, error) {
 	var servicePort *corev1.ServicePort
 	var portNumber int32 = -1
 	var servicePortName string
