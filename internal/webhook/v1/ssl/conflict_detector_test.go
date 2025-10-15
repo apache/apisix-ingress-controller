@@ -31,6 +31,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -46,6 +47,23 @@ const (
 	testNamespace    = "default"
 	testIngressClass = "example-class"
 )
+
+func staticTLSSecretAccessor(secrets ...*corev1.Secret) indexer.TLSSecretAccessor {
+	store := make(map[types.NamespacedName]*corev1.Secret, len(secrets))
+	for _, secret := range secrets {
+		if secret == nil {
+			continue
+		}
+		key := types.NamespacedName{Namespace: secret.Namespace, Name: secret.Name}
+		store[key] = secret.DeepCopy()
+	}
+	return func(_ context.Context, nn types.NamespacedName) (*corev1.Secret, error) {
+		if secret, ok := store[nn]; ok {
+			return secret.DeepCopy(), nil
+		}
+		return nil, fmt.Errorf("secret %s not found", nn.String())
+	}
+}
 
 func TestConflictDetectorDetectsGatewayConflict(t *testing.T) {
 	scheme := buildScheme(t)
@@ -109,18 +127,17 @@ func TestConflictDetectorDetectsGatewayConflict(t *testing.T) {
 		},
 	}
 
-	indexer.SetTLSHostSecretAccessor(indexer.NewStaticTLSSecretAccessor([]*corev1.Secret{secretA, secretB}))
-	t.Cleanup(indexer.ResetTLSHostSecretAccessor)
+	tlsIndexers := indexer.NewTLSHostIndexers(staticTLSSecretAccessor(secretA, secretB))
 
 	fakeClient := fake.NewClientBuilder().
 		WithScheme(scheme).
 		WithIndex(&gatewayv1.Gateway{}, indexer.ParametersRef, indexer.GatewayParametersRefIndexFunc).
-		WithIndex(&gatewayv1.Gateway{}, indexer.TLSHostIndexRef, indexer.GatewayTLSHostIndexFunc).
+		WithIndex(&gatewayv1.Gateway{}, indexer.TLSHostIndexRef, tlsIndexers.GatewayTLSHostIndexFunc).
 		WithIndex(&networkingv1.IngressClass{}, indexer.IngressClassParametersRef, indexer.IngressClassParametersRefIndexFunc).
 		WithIndex(&networkingv1.Ingress{}, indexer.IngressClassRef, indexer.IngressClassRefIndexFunc).
-		WithIndex(&networkingv1.Ingress{}, indexer.TLSHostIndexRef, indexer.IngressTLSHostIndexFunc).
+		WithIndex(&networkingv1.Ingress{}, indexer.TLSHostIndexRef, tlsIndexers.IngressTLSHostIndexFunc).
 		WithIndex(&apiv2.ApisixTls{}, indexer.IngressClassRef, indexer.ApisixTlsIngressClassIndexFunc).
-		WithIndex(&apiv2.ApisixTls{}, indexer.TLSHostIndexRef, indexer.ApisixTlsHostIndexFunc).
+		WithIndex(&apiv2.ApisixTls{}, indexer.TLSHostIndexRef, tlsIndexers.ApisixTlsHostIndexFunc).
 		WithObjects(secretA, secretB, gatewayProxy, gateway, ingressClass).
 		Build()
 
@@ -217,18 +234,17 @@ func TestConflictDetectorAllowedWhenCertificateMatches(t *testing.T) {
 		},
 	}
 
-	indexer.SetTLSHostSecretAccessor(indexer.NewStaticTLSSecretAccessor([]*corev1.Secret{secret}))
-	t.Cleanup(indexer.ResetTLSHostSecretAccessor)
+	tlsIndexers := indexer.NewTLSHostIndexers(staticTLSSecretAccessor(secret))
 
 	client := fake.NewClientBuilder().
 		WithScheme(scheme).
 		WithIndex(&gatewayv1.Gateway{}, indexer.ParametersRef, indexer.GatewayParametersRefIndexFunc).
-		WithIndex(&gatewayv1.Gateway{}, indexer.TLSHostIndexRef, indexer.GatewayTLSHostIndexFunc).
+		WithIndex(&gatewayv1.Gateway{}, indexer.TLSHostIndexRef, tlsIndexers.GatewayTLSHostIndexFunc).
 		WithIndex(&networkingv1.IngressClass{}, indexer.IngressClassParametersRef, indexer.IngressClassParametersRefIndexFunc).
 		WithIndex(&networkingv1.Ingress{}, indexer.IngressClassRef, indexer.IngressClassRefIndexFunc).
-		WithIndex(&networkingv1.Ingress{}, indexer.TLSHostIndexRef, indexer.IngressTLSHostIndexFunc).
+		WithIndex(&networkingv1.Ingress{}, indexer.TLSHostIndexRef, tlsIndexers.IngressTLSHostIndexFunc).
 		WithIndex(&apiv2.ApisixTls{}, indexer.IngressClassRef, indexer.ApisixTlsIngressClassIndexFunc).
-		WithIndex(&apiv2.ApisixTls{}, indexer.TLSHostIndexRef, indexer.ApisixTlsHostIndexFunc).
+		WithIndex(&apiv2.ApisixTls{}, indexer.TLSHostIndexRef, tlsIndexers.ApisixTlsHostIndexFunc).
 		WithObjects(secret, gatewayProxy, gateway, ingressClass).
 		Build()
 
@@ -349,18 +365,17 @@ func TestConflictDetectorDetectsSelfConflict(t *testing.T) {
 		},
 	}
 
-	indexer.SetTLSHostSecretAccessor(indexer.NewStaticTLSSecretAccessor([]*corev1.Secret{secretA, secretB}))
-	t.Cleanup(indexer.ResetTLSHostSecretAccessor)
+	tlsIndexers := indexer.NewTLSHostIndexers(staticTLSSecretAccessor(secretA, secretB))
 
 	fakeClient := fake.NewClientBuilder().
 		WithScheme(scheme).
 		WithIndex(&gatewayv1.Gateway{}, indexer.ParametersRef, indexer.GatewayParametersRefIndexFunc).
-		WithIndex(&gatewayv1.Gateway{}, indexer.TLSHostIndexRef, indexer.GatewayTLSHostIndexFunc).
+		WithIndex(&gatewayv1.Gateway{}, indexer.TLSHostIndexRef, tlsIndexers.GatewayTLSHostIndexFunc).
 		WithIndex(&networkingv1.IngressClass{}, indexer.IngressClassParametersRef, indexer.IngressClassParametersRefIndexFunc).
 		WithIndex(&networkingv1.Ingress{}, indexer.IngressClassRef, indexer.IngressClassRefIndexFunc).
-		WithIndex(&networkingv1.Ingress{}, indexer.TLSHostIndexRef, indexer.IngressTLSHostIndexFunc).
+		WithIndex(&networkingv1.Ingress{}, indexer.TLSHostIndexRef, tlsIndexers.IngressTLSHostIndexFunc).
 		WithIndex(&apiv2.ApisixTls{}, indexer.IngressClassRef, indexer.ApisixTlsIngressClassIndexFunc).
-		WithIndex(&apiv2.ApisixTls{}, indexer.TLSHostIndexRef, indexer.ApisixTlsHostIndexFunc).
+		WithIndex(&apiv2.ApisixTls{}, indexer.TLSHostIndexRef, tlsIndexers.ApisixTlsHostIndexFunc).
 		WithObjects(secretA, secretB, gatewayProxy, gateway).
 		Build()
 
