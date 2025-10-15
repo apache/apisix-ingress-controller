@@ -301,7 +301,10 @@ func (d *ConflictDetector) getSecretInfo(ctx context.Context, nn types.Namespace
 		return nil, err
 	}
 
-	hash := sslutil.CertificateHash(cert)
+	hash, err := sslutil.CertificateHash(cert)
+	if err != nil {
+		return nil, err
+	}
 	hosts, err := sslutil.ExtractHostsFromCertificate(cert)
 	if err != nil {
 		logger.Error(err, "failed to extract hosts from certificate", "secret", nn)

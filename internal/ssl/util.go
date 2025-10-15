@@ -123,8 +123,20 @@ func NormalizeHosts(hosts []string) []string {
 	return normalized
 }
 
-// CertificateHash returns the SHA-256 hash of the certificate PEM bytes in hexadecimal form.
-func CertificateHash(cert []byte) string {
-	sum := sha256.Sum256(cert)
-	return hex.EncodeToString(sum[:])
+// CertificateHash returns the SHA-256 hash of the leaf certificate contained in the PEM data.
+// The hash is calculated from the DER-encoded bytes so that formatting differences (whitespace,
+// line endings, certificate ordering) do not affect the result.
+func CertificateHash(certPEM []byte) (string, error) {
+	block, _ := pem.Decode(certPEM)
+	if block == nil {
+		return "", ErrInvalidPEM
+	}
+
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return "", err
+	}
+
+	sum := sha256.Sum256(cert.Raw)
+	return hex.EncodeToString(sum[:]), nil
 }
