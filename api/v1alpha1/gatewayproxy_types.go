@@ -36,7 +36,7 @@ type GatewayProxySpec struct {
 	// Provider configures the provider details.
 	//
 	// +kubebuilder:validation:required
-	Provider *GatewayProxyProvider `json:"provider,omitempty"`
+	Provider *GatewayProxyProvider `json:"provider"`
 	// Plugins configure global plugins.
 	Plugins []GatewayProxyPlugin `json:"plugins,omitempty"`
 	// PluginMetadata configures common configuration shared by all plugin instances of the same name.

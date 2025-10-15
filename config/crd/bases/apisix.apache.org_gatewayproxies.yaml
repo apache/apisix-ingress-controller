@@ -175,6 +175,8 @@ spec:
                 items:
                   type: string
                 type: array
+            required:
+            - provider
             type: object
         type: object
     served: true
