@@ -103,6 +103,9 @@ spec:
                                     type: object
                                 type: object
                             type: object
+                            x-kubernetes-validations:
+                            - message: exactly one of value or valueFrom must be specified
+                              rule: has(self.value) != has(self.valueFrom)
                           type:
                             description: |-
                               Type specifies the type of authentication.
@@ -113,6 +116,10 @@ spec:
                         required:
                         - type
                         type: object
+                        x-kubernetes-validations:
+                        - message: adminKey must be specified when type is AdminKey
+                          rule: 'self.type == ''AdminKey'' ? has(self.adminKey) :
+                            true'
                       endpoints:
                         description: Endpoints specifies the list of control plane
                           endpoints.
@@ -168,6 +175,8 @@ spec:
                 items:
                   type: string
                 type: array
+            required:
+            - provider
             type: object
         type: object
     served: true
