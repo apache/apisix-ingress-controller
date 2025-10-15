@@ -742,6 +742,496 @@ spec:
 		})
 	})
 
+	Context("Default IngressClass conflict detection", func() {
+		It("should reject Ingress without explicit class when default class uses a different certificate", func() {
+			host := "default-ingress-conflict.example.com"
+			secretA := "default-ingress-cert-a"
+			secretB := "default-ingress-cert-b"
+			defaultClassName := fmt.Sprintf("%s-default", s.Namespace())
+
+			By("creating TLS secrets for default ingress test")
+			certA, keyA := generateTLSCertificate([]string{host})
+			secretAYAML := fmt.Sprintf(`
+apiVersion: v1
+kind: Secret
+metadata:
+  name: %s
+  namespace: %s
+type: kubernetes.io/tls
+data:
+  tls.crt: %s
+  tls.key: %s
+`, secretA, s.Namespace(), certA, keyA)
+			err := s.CreateResourceFromString(secretAYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating secret A")
+
+			certB, keyB := generateTLSCertificate([]string{host})
+			secretBYAML := fmt.Sprintf(`
+apiVersion: v1
+kind: Secret
+metadata:
+  name: %s
+  namespace: %s
+type: kubernetes.io/tls
+data:
+  tls.crt: %s
+  tls.key: %s
+`, secretB, s.Namespace(), certB, keyB)
+			err = s.CreateResourceFromString(secretBYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating secret B")
+
+			By("creating default IngressClass with APISIX controller")
+			defaultIngressClassYAML := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: %s
+  annotations:
+    ingressclass.kubernetes.io/is-default-class: "true"
+spec:
+  controller: %s
+  parameters:
+    apiGroup: "apisix.apache.org"
+    kind: "GatewayProxy"
+    name: "apisix-proxy-config"
+    namespace: %s
+    scope: Namespace
+`, defaultClassName, s.GetControllerName(), s.Namespace())
+			err = s.CreateResourceFromStringWithNamespace(defaultIngressClassYAML, "")
+			Expect(err).NotTo(HaveOccurred(), "creating default IngressClass")
+
+			time.Sleep(2 * time.Second)
+
+			By("creating backend service for default ingress test")
+			serviceYAML := fmt.Sprintf(`
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-service-default
+  namespace: %s
+spec:
+  selector:
+    app: test
+  ports:
+  - port: 80
+    targetPort: 80
+`, s.Namespace())
+			err = s.CreateResourceFromString(serviceYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating service")
+
+			time.Sleep(2 * time.Second)
+
+			By("creating baseline Ingress with certificate A")
+			ingressAYAML := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-default-a
+  namespace: %s
+spec:
+  tls:
+  - hosts:
+    - %s
+    secretName: %s
+  rules:
+  - host: %s
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: test-service-default
+            port:
+              number: 80
+`, s.Namespace(), host, secretA, host)
+			err = s.CreateResourceFromString(ingressAYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating baseline Ingress")
+
+			time.Sleep(2 * time.Second)
+
+			By("attempting to create second Ingress with conflicting certificate via default class")
+			ingressBYAML := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-default-b
+  namespace: %s
+spec:
+  tls:
+  - hosts:
+    - %s
+    secretName: %s
+  rules:
+  - host: %s
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: test-service-default
+            port:
+              number: 80
+`, s.Namespace(), host, secretB, host)
+			err = s.CreateResourceFromString(ingressBYAML)
+			Expect(err).Should(HaveOccurred(), "expecting conflict when creating second Ingress")
+			Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+			Expect(err.Error()).To(ContainSubstring(host))
+		})
+
+		It("should reject ApisixTls without explicit class when default class uses a different certificate", func() {
+			host := "default-tls-conflict.example.com"
+			secretA := "default-tls-cert-a"
+			secretB := "default-tls-cert-b"
+			defaultClassName := fmt.Sprintf("%s-default-tls", s.Namespace())
+
+			By("creating TLS secrets for default ApisixTls test")
+			certA, keyA := generateTLSCertificate([]string{host})
+			secretAYAML := fmt.Sprintf(`
+apiVersion: v1
+kind: Secret
+metadata:
+  name: %s
+  namespace: %s
+type: kubernetes.io/tls
+data:
+  tls.crt: %s
+  tls.key: %s
+`, secretA, s.Namespace(), certA, keyA)
+			err := s.CreateResourceFromString(secretAYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating secret A")
+
+			certB, keyB := generateTLSCertificate([]string{host})
+			secretBYAML := fmt.Sprintf(`
+apiVersion: v1
+kind: Secret
+metadata:
+  name: %s
+  namespace: %s
+type: kubernetes.io/tls
+data:
+  tls.crt: %s
+  tls.key: %s
+`, secretB, s.Namespace(), certB, keyB)
+			err = s.CreateResourceFromString(secretBYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating secret B")
+
+			By("creating default IngressClass required for ApisixTls admission")
+			defaultIngressClassYAML := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: %s
+  annotations:
+    ingressclass.kubernetes.io/is-default-class: "true"
+spec:
+  controller: %s
+  parameters:
+    apiGroup: "apisix.apache.org"
+    kind: "GatewayProxy"
+    name: "apisix-proxy-config"
+    namespace: %s
+    scope: Namespace
+`, defaultClassName, s.GetControllerName(), s.Namespace())
+			err = s.CreateResourceFromStringWithNamespace(defaultIngressClassYAML, "")
+			Expect(err).NotTo(HaveOccurred(), "creating default IngressClass")
+
+			time.Sleep(2 * time.Second)
+
+			By("creating baseline ApisixTls without explicit ingress class")
+			tlsAYAML := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixTls
+metadata:
+  name: tls-default-a
+  namespace: %s
+spec:
+  hosts:
+  - %s
+  secret:
+    name: %s
+    namespace: %s
+`, s.Namespace(), host, secretA, s.Namespace())
+			err = s.CreateResourceFromString(tlsAYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating baseline ApisixTls")
+
+			time.Sleep(2 * time.Second)
+
+			By("attempting to create ApisixTls with conflicting certificate without class override")
+			tlsBYAML := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixTls
+metadata:
+  name: tls-default-b
+  namespace: %s
+spec:
+  hosts:
+  - %s
+  secret:
+    name: %s
+    namespace: %s
+`, s.Namespace(), host, secretB, s.Namespace())
+			err = s.CreateResourceFromString(tlsBYAML)
+			Expect(err).Should(HaveOccurred(), "expecting conflict when creating second ApisixTls")
+			Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+			Expect(err.Error()).To(ContainSubstring(host))
+		})
+	})
+
+	Context("Update scenario conflict detection", func() {
+		It("should reject Ingress update that switches to a conflicting certificate", func() {
+			host := "ingress-update-conflict.example.com"
+			secretA := "ingress-update-cert-a"
+			secretB := "ingress-update-cert-b"
+
+			By("creating TLS secrets for ingress update test")
+			certA, keyA := generateTLSCertificate([]string{host})
+			secretAYAML := fmt.Sprintf(`
+apiVersion: v1
+kind: Secret
+metadata:
+  name: %s
+  namespace: %s
+type: kubernetes.io/tls
+data:
+  tls.crt: %s
+  tls.key: %s
+`, secretA, s.Namespace(), certA, keyA)
+			err := s.CreateResourceFromString(secretAYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating secret A")
+
+			certB, keyB := generateTLSCertificate([]string{host})
+			secretBYAML := fmt.Sprintf(`
+apiVersion: v1
+kind: Secret
+metadata:
+  name: %s
+  namespace: %s
+type: kubernetes.io/tls
+data:
+  tls.crt: %s
+  tls.key: %s
+`, secretB, s.Namespace(), certB, keyB)
+			err = s.CreateResourceFromString(secretBYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating secret B")
+
+			By("creating ApisixTls with certificate A to establish existing mapping")
+			tlsYAML := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixTls
+metadata:
+  name: tls-update-baseline
+  namespace: %s
+spec:
+  ingressClassName: %s
+  hosts:
+  - %s
+  secret:
+    name: %s
+    namespace: %s
+`, s.Namespace(), s.Namespace(), host, secretA, s.Namespace())
+			err = s.CreateResourceFromString(tlsYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating baseline ApisixTls for ingress update")
+
+			time.Sleep(2 * time.Second)
+
+			By("creating backend service for ingress update test")
+			serviceYAML := fmt.Sprintf(`
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-service-update
+  namespace: %s
+spec:
+  selector:
+    app: test
+  ports:
+  - port: 80
+    targetPort: 80
+`, s.Namespace())
+			err = s.CreateResourceFromString(serviceYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating service")
+
+			time.Sleep(2 * time.Second)
+
+			By("creating initial Ingress with matching certificate")
+			ingressBaseYAML := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-update
+  namespace: %s
+spec:
+  ingressClassName: %s
+  tls:
+  - hosts:
+    - %s
+    secretName: %s
+  rules:
+  - host: %s
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: test-service-update
+            port:
+              number: 80
+`, s.Namespace(), s.Namespace(), host, secretA, host)
+			err = s.CreateResourceFromString(ingressBaseYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating initial Ingress")
+
+			time.Sleep(2 * time.Second)
+
+			By("attempting to update Ingress to use conflicting certificate B")
+			ingressUpdatedYAML := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-update
+  namespace: %s
+spec:
+  ingressClassName: %s
+  tls:
+  - hosts:
+    - %s
+    secretName: %s
+  rules:
+  - host: %s
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: test-service-update
+            port:
+              number: 80
+`, s.Namespace(), s.Namespace(), host, secretB, host)
+			err = s.CreateResourceFromString(ingressUpdatedYAML)
+			Expect(err).Should(HaveOccurred(), "expecting conflict when updating Ingress certificate")
+			Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+			Expect(err.Error()).To(ContainSubstring(host))
+		})
+
+		It("should reject Gateway update that switches to a conflicting certificate", func() {
+			host := "gateway-update-conflict.example.com"
+			secretA := "gateway-update-cert-a"
+			secretB := "gateway-update-cert-b"
+
+			By("creating TLS secrets for gateway update test")
+			certA, keyA := generateTLSCertificate([]string{host})
+			secretAYAML := fmt.Sprintf(`
+apiVersion: v1
+kind: Secret
+metadata:
+  name: %s
+  namespace: %s
+type: kubernetes.io/tls
+data:
+  tls.crt: %s
+  tls.key: %s
+`, secretA, s.Namespace(), certA, keyA)
+			err := s.CreateResourceFromString(secretAYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating secret A")
+
+			certB, keyB := generateTLSCertificate([]string{host})
+			secretBYAML := fmt.Sprintf(`
+apiVersion: v1
+kind: Secret
+metadata:
+  name: %s
+  namespace: %s
+type: kubernetes.io/tls
+data:
+  tls.crt: %s
+  tls.key: %s
+`, secretB, s.Namespace(), certB, keyB)
+			err = s.CreateResourceFromString(secretBYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating secret B")
+
+			By("creating ApisixTls with certificate A to establish host ownership")
+			tlsYAML := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixTls
+metadata:
+  name: tls-gateway-update
+  namespace: %s
+spec:
+  ingressClassName: %s
+  hosts:
+  - %s
+  secret:
+    name: %s
+    namespace: %s
+`, s.Namespace(), s.Namespace(), host, secretA, s.Namespace())
+			err = s.CreateResourceFromString(tlsYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating baseline ApisixTls for gateway update")
+
+			time.Sleep(2 * time.Second)
+
+			By("creating initial Gateway using certificate A")
+			gatewayBaseYAML := fmt.Sprintf(`
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: gateway-update
+  namespace: %s
+spec:
+  gatewayClassName: %s
+  listeners:
+  - name: https
+    protocol: HTTPS
+    port: 443
+    hostname: %s
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: %s
+  infrastructure:
+    parametersRef:
+      group: apisix.apache.org
+      kind: GatewayProxy
+      name: apisix-proxy-config
+`, s.Namespace(), s.Namespace(), host, secretA)
+			err = s.CreateResourceFromString(gatewayBaseYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating initial Gateway")
+
+			time.Sleep(2 * time.Second)
+
+			By("attempting to update Gateway to use conflicting certificate B")
+			gatewayUpdatedYAML := fmt.Sprintf(`
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: gateway-update
+  namespace: %s
+spec:
+  gatewayClassName: %s
+  listeners:
+  - name: https
+    protocol: HTTPS
+    port: 443
+    hostname: %s
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: %s
+  infrastructure:
+    parametersRef:
+      group: apisix.apache.org
+      kind: GatewayProxy
+      name: apisix-proxy-config
+`, s.Namespace(), s.Namespace(), host, secretB)
+			err = s.CreateResourceFromString(gatewayUpdatedYAML)
+			Expect(err).Should(HaveOccurred(), "expecting conflict when updating Gateway certificate")
+			Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+			Expect(err.Error()).To(ContainSubstring(host))
+		})
+	})
+
 	Context("Mixed resource conflict detection", func() {
 		It("should handle conflicts among Gateway, Ingress, and ApisixTls", func() {
 			host := "mixed.example.com"
