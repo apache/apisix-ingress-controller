@@ -98,7 +98,7 @@ func (t *Translator) TranslateGatewayProxyToConfig(tctx *provider.TranslateConte
 			if endpoint == nil {
 				return nil, nil
 			}
-			upstreamNodes, err := t.TranslateBackendRefWithFilter(tctx, gatewayv1.BackendRef{
+			upstreamNodes, _, err := t.TranslateBackendRefWithFilter(tctx, gatewayv1.BackendRef{
 				BackendObjectReference: gatewayv1.BackendObjectReference{
 					Name:      gatewayv1.ObjectName(provider.ControlPlane.Service.Name),
 					Namespace: (*gatewayv1.Namespace)(&gatewayProxy.Namespace),

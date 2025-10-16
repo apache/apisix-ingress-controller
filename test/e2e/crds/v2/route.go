@@ -19,6 +19,7 @@ package v2
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"math"
@@ -34,6 +35,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/utils/ptr"
 
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
@@ -2031,6 +2033,148 @@ spec:
 				Host:   "httpbin",
 				Check:  scaffold.WithExpectedStatus(200),
 			})
+		})
+	})
+
+	Context("Test Services With AppProtocol", func() {
+		const apisixRoute = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: nginx
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - nginx.example
+      paths:
+      - /v1
+    backends:
+    - serviceName: nginx
+      servicePort: 443
+`
+		const apisixRouteWithGranularityService = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: nginx-v2
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - nginx.example
+      paths:
+      - /v2
+    backends:
+    - serviceName: nginx
+      servicePort: 443
+      resolveGranularity: service
+`
+		const apisixRouteWithBackendWSS = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: default
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - api6.com
+      paths:
+      - /ws
+    backends:
+    - serviceName: nginx
+      servicePort: 8443
+      resolveGranularity: service
+`
+
+		const apisixTlsSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixTls
+metadata:
+  name: test-tls
+spec:
+  ingressClassName: %s
+  hosts:
+  - api6.com
+  secret:
+    name: test-tls-secret
+    namespace: %s
+`
+		BeforeEach(func() {
+			s.DeployNginx(framework.NginxOptions{
+				Namespace: s.Namespace(),
+				Replicas:  ptr.To(int32(1)),
+			})
+		})
+
+		It("HTTPS Backend", func() {
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "nginx"},
+				new(apiv2.ApisixRoute), fmt.Sprintf(apisixRoute, s.Namespace()))
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "nginx-v2"},
+				new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteWithGranularityService, s.Namespace()))
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/v1",
+				Host:   "nginx.example",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/v2",
+				Host:   "nginx.example",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+		})
+
+		It("WSS Backend", func() {
+			err := s.NewKubeTlsSecret("test-tls-secret", Cert, Key)
+			Expect(err).NotTo(HaveOccurred(), "creating TLS secret")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-tls"},
+				&apiv2.ApisixTls{}, fmt.Sprintf(apisixTlsSpec, s.Namespace(), s.Namespace()))
+
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteWithBackendWSS, s.Namespace()))
+			time.Sleep(6 * time.Second)
+
+			By("verify wss connection")
+			u := url.URL{
+				Scheme: "wss",
+				Host:   s.GetAPISIXHTTPSEndpoint(),
+				Path:   "/ws",
+			}
+			headers := http.Header{"Host": []string{"api6.com"}}
+			dialer := websocket.Dialer{
+				TLSClientConfig: &tls.Config{
+					InsecureSkipVerify: true,
+					ServerName:         "api6.com",
+				},
+			}
+
+			conn, resp, err := dialer.Dial(u.String(), headers)
+			Expect(err).ShouldNot(HaveOccurred(), "WebSocket handshake")
+			Expect(resp.StatusCode).Should(Equal(http.StatusSwitchingProtocols))
+
+			defer func() {
+				_ = conn.Close()
+			}()
+
+			By("send and receive message through WebSocket")
+			testMessage := "hello, this is APISIX"
+			err = conn.WriteMessage(websocket.TextMessage, []byte(testMessage))
+			Expect(err).ShouldNot(HaveOccurred(), "writing WebSocket message")
+
+			// Then our echo
+			_, msg, err := conn.ReadMessage()
+			Expect(err).ShouldNot(HaveOccurred(), "reading echo message")
+			Expect(string(msg)).To(Equal(testMessage), "message content verification")
 		})
 	})
 })

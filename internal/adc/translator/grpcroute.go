@@ -183,7 +183,7 @@ func (t *Translator) TranslateGRPCRoute(tctx *provider.TranslateContext, grpcRou
 				backend.Namespace = &namespace
 			}
 			upstream := adctypes.NewDefaultUpstream()
-			upNodes, err := t.translateBackendRef(tctx, backend.BackendRef, DefaultEndpointFilter)
+			upNodes, _, err := t.translateBackendRef(tctx, backend.BackendRef, DefaultEndpointFilter)
 			if err != nil {
 				backendErr = err
 				continue

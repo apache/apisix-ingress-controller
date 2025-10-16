@@ -57,6 +57,13 @@ const (
 	KindApisixUpstream       = "ApisixUpstream"
 )
 
+const (
+	AppProtocolHTTP  = "http"
+	AppProtocolHTTPS = "https"
+	AppProtocolWS    = "kubernetes.io/ws"
+	AppProtocolWSS   = "kubernetes.io/wss"
+)
+
 func KindOf(obj any) string {
 	switch obj.(type) {
 	case *gatewayv1.Gateway:
