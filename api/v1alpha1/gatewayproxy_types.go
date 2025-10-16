@@ -34,7 +34,9 @@ type GatewayProxySpec struct {
 	// of GatewayProxy or Ingress resources for developers to access.
 	StatusAddress []string `json:"statusAddress,omitempty"`
 	// Provider configures the provider details.
-	Provider *GatewayProxyProvider `json:"provider,omitempty"`
+	//
+	// +kubebuilder:validation:required
+	Provider *GatewayProxyProvider `json:"provider"`
 	// Plugins configure global plugins.
 	Plugins []GatewayProxyPlugin `json:"plugins,omitempty"`
 	// PluginMetadata configures common configuration shared by all plugin instances of the same name.
@@ -83,6 +85,7 @@ type SecretKeySelector struct {
 }
 
 // AdminKeyAuth defines the admin key authentication configuration.
+// +kubebuilder:validation:XValidation:rule="has(self.value) != has(self.valueFrom)",message="exactly one of value or valueFrom must be specified"
 type AdminKeyAuth struct {
 	// Value sets the admin key value explicitly (not recommended for production).
 	// +optional
@@ -101,6 +104,8 @@ type AdminKeyValueFrom struct {
 }
 
 // ControlPlaneAuth defines the authentication configuration for control plane.
+//
+// +kubebuilder:validation:XValidation:rule="self.type == 'AdminKey' ? has(self.adminKey) : true",message="adminKey must be specified when type is AdminKey"
 type ControlPlaneAuth struct {
 	// Type specifies the type of authentication.
 	// Can only be `AdminKey`.
