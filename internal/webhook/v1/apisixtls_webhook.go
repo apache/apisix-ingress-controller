@@ -69,8 +69,7 @@ func (v *ApisixTlsCustomValidator) ValidateCreate(ctx context.Context, obj runti
 	}
 
 	detector := sslvalidator.NewConflictDetector(v.Client)
-	mappings := detector.BuildApisixTlsMappings(ctx, tls)
-	conflicts := detector.DetectConflicts(ctx, tls, mappings)
+	conflicts := detector.DetectConflicts(ctx, tls)
 	if len(conflicts) > 0 {
 		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
 	}
@@ -89,8 +88,7 @@ func (v *ApisixTlsCustomValidator) ValidateUpdate(ctx context.Context, oldObj, n
 	}
 
 	detector := sslvalidator.NewConflictDetector(v.Client)
-	mappings := detector.BuildApisixTlsMappings(ctx, tls)
-	conflicts := detector.DetectConflicts(ctx, tls, mappings)
+	conflicts := detector.DetectConflicts(ctx, tls)
 	if len(conflicts) > 0 {
 		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
 	}

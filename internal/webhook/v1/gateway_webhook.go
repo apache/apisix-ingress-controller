@@ -88,8 +88,7 @@ func (v *GatewayCustomValidator) ValidateCreate(ctx context.Context, obj runtime
 	}
 
 	detector := sslvalidator.NewConflictDetector(v.Client)
-	mappings := detector.BuildGatewayMappings(ctx, gateway)
-	conflicts := detector.DetectConflicts(ctx, gateway, mappings)
+	conflicts := detector.DetectConflicts(ctx, gateway)
 	if len(conflicts) > 0 {
 		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
 	}
@@ -118,8 +117,7 @@ func (v *GatewayCustomValidator) ValidateUpdate(ctx context.Context, oldObj, new
 	}
 
 	detector := sslvalidator.NewConflictDetector(v.Client)
-	mappings := detector.BuildGatewayMappings(ctx, gateway)
-	conflicts := detector.DetectConflicts(ctx, gateway, mappings)
+	conflicts := detector.DetectConflicts(ctx, gateway)
 	if len(conflicts) > 0 {
 		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
 	}

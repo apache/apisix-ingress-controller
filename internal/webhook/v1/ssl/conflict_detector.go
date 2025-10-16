@@ -71,11 +71,12 @@ func NewConflictDetector(c client.Client) *ConflictDetector {
 	}
 }
 
-// DetectConflicts returns the list of conflicts between the provided mappings and
+// DetectConflicts returns the list of conflicts between the new resource and
 // existing resources that are associated with the same GatewayProxy. Best-effort:
 // failures while enumerating existing resources or reading Secrets will be logged
 // and result in no conflicts instead of blocking the admission.
-func (d *ConflictDetector) DetectConflicts(ctx context.Context, obj client.Object, newMappings []HostCertMapping) []SSLConflict {
+func (d *ConflictDetector) DetectConflicts(ctx context.Context, obj client.Object) []SSLConflict {
+	newMappings := d.buildMappingsForObject(ctx, obj)
 	if len(newMappings) == 0 {
 		return nil
 	}
