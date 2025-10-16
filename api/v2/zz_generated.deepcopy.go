@@ -755,6 +755,11 @@ func (in *ApisixRouteHTTP) DeepCopyInto(out *ApisixRouteHTTP) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.Websocket != nil {
+		in, out := &in.Websocket, &out.Websocket
+		*out = new(bool)
+		**out = **in
+	}
 	if in.Plugins != nil {
 		in, out := &in.Plugins, &out.Plugins
 		*out = make([]ApisixRoutePlugin, len(*in))

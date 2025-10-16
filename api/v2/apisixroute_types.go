@@ -100,7 +100,7 @@ type ApisixRouteHTTP struct {
 
 	// Websocket enables or disables websocket support for this route.
 	// +kubebuilder:validation:Optional
-	Websocket bool `json:"websocket" yaml:"websocket"`
+	Websocket *bool `json:"websocket" yaml:"websocket"`
 	// PluginConfigName specifies the name of the plugin config to apply.
 	PluginConfigName string `json:"plugin_config_name,omitempty" yaml:"plugin_config_name,omitempty"`
 	// PluginConfigNamespace specifies the namespace of the plugin config.
