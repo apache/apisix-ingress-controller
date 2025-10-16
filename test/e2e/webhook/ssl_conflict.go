@@ -827,6 +827,119 @@ spec:
 			err = s.CreateResourceFromString(ingressYAML)
 			Expect(err).NotTo(HaveOccurred(), "Ingress should be allowed with same certificate")
 		})
+
+		It("should reject Ingress when Gateway without hostname uses different certificate", func() {
+			host := "gateway-ingress-no-host-conflict.example.com"
+			secretA := "gateway-ingress-no-host-cert-a"
+			secretB := "gateway-ingress-no-host-cert-b"
+
+			By("creating two different TLS secrets")
+			certA, keyA := generateTLSCertificate([]string{host})
+			secretAYAML := fmt.Sprintf(`
+apiVersion: v1
+kind: Secret
+metadata:
+  name: %s
+  namespace: %s
+type: kubernetes.io/tls
+data:
+  tls.crt: %s
+  tls.key: %s
+`, secretA, s.Namespace(), certA, keyA)
+			err := s.CreateResourceFromString(secretAYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating secret A")
+
+			certB, keyB := generateTLSCertificate([]string{host})
+			secretBYAML := fmt.Sprintf(`
+apiVersion: v1
+kind: Secret
+metadata:
+  name: %s
+  namespace: %s
+type: kubernetes.io/tls
+data:
+  tls.crt: %s
+  tls.key: %s
+`, secretB, s.Namespace(), certB, keyB)
+			err = s.CreateResourceFromString(secretBYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating secret B")
+
+			time.Sleep(2 * time.Second)
+
+			By("creating Gateway without explicit hostname using certificate A")
+			gatewayYAML := fmt.Sprintf(`
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: gateway-ingress-no-host
+  namespace: %s
+spec:
+  gatewayClassName: %s
+  listeners:
+  - name: https
+    protocol: HTTPS
+    port: 443
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: %s
+  infrastructure:
+    parametersRef:
+      group: apisix.apache.org
+      kind: GatewayProxy
+      name: apisix-proxy-config
+`, s.Namespace(), s.Namespace(), secretA)
+			err = s.CreateResourceFromString(gatewayYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating Gateway without hostname")
+
+			time.Sleep(2 * time.Second)
+
+			By("creating a backend service for Ingress")
+			serviceYAML := fmt.Sprintf(`
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-service-ingress-no-host
+  namespace: %s
+spec:
+  selector:
+    app: test
+  ports:
+  - port: 80
+    targetPort: 80
+`, s.Namespace())
+			err = s.CreateResourceFromString(serviceYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating service")
+
+			time.Sleep(2 * time.Second)
+
+			By("attempting to create Ingress without explicit host using certificate B")
+			ingressYAML := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-no-host-conflict
+  namespace: %s
+spec:
+  ingressClassName: %s
+  tls:
+  - secretName: %s
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: test-service-ingress-no-host
+            port:
+              number: 80
+`, s.Namespace(), s.Namespace(), secretB)
+			err = s.CreateResourceFromString(ingressYAML)
+			Expect(err).Should(HaveOccurred(), "expecting conflict when creating Ingress without hostname")
+			Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+			Expect(err.Error()).To(ContainSubstring(host))
+		})
 	})
 
 	Context("Default IngressClass conflict detection", func() {
