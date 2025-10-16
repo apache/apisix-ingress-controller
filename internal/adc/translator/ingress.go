@@ -25,6 +25,7 @@ import (
 	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/utils/ptr"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
@@ -172,12 +173,11 @@ func (t *Translator) resolveIngressUpstream(
 	t.AttachBackendTrafficPolicyToUpstream(backendRef, tctx.BackendTrafficPolicies, upstream)
 	// determine service port/port name
 	var protocol string
-	var servicePort int32 = 0
-	var servicePortName string
+	var port intstr.IntOrString
 	if backendService.Port.Number != 0 {
-		servicePort = backendService.Port.Number
+		port = intstr.FromInt32(backendService.Port.Number)
 	} else if backendService.Port.Name != "" {
-		servicePortName = backendService.Port.Name
+		port = intstr.FromString(backendService.Port.Name)
 	}
 
 	getService := tctx.Services[types.NamespacedName{
@@ -187,41 +187,26 @@ func (t *Translator) resolveIngressUpstream(
 	if getService == nil {
 		return protocol
 	}
-
-	if getService.Spec.Type == corev1.ServiceTypeExternalName {
-		defaultServicePort := 80
-		if servicePort > 0 {
-			defaultServicePort = int(servicePort)
-		}
-		upstream.Nodes = adctypes.UpstreamNodes{
-			{
-				Host:   getService.Spec.ExternalName,
-				Port:   defaultServicePort,
-				Weight: 1,
-			},
-		}
-		return protocol
-	}
-
-	// find matching service port object
-	var getServicePort *corev1.ServicePort
-	for _, port := range getService.Spec.Ports {
-		p := port
-		if servicePort > 0 && p.Port == servicePort {
-			getServicePort = &p
-			break
-		}
-		if servicePortName != "" && p.Name == servicePortName {
-			getServicePort = &p
-			break
-		}
-	}
-
+	getServicePort, _ := findMatchingServicePort(getService, port)
 	if getServicePort != nil && getServicePort.AppProtocol != nil {
 		protocol = *getServicePort.AppProtocol
 		if upstream.Scheme == "" {
 			upstream.Scheme = appProtocolToUpstreamScheme(*getServicePort.AppProtocol)
 		}
+	}
+	if getService.Spec.Type == corev1.ServiceTypeExternalName {
+		servicePort := 80
+		if getServicePort != nil {
+			servicePort = int(getServicePort.Port)
+		}
+		upstream.Nodes = adctypes.UpstreamNodes{
+			{
+				Host:   getService.Spec.ExternalName,
+				Port:   servicePort,
+				Weight: 1,
+			},
+		}
+		return protocol
 	}
 
 	endpointSlices := tctx.EndpointSlices[types.NamespacedName{

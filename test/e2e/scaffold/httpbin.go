@@ -89,6 +89,10 @@ spec:
       port: 80
       protocol: TCP
       targetPort: 80
+    - name: http-v2
+      port: 8080
+      protocol: TCP
+      targetPort: 80
   type: ClusterIP
 `
 )
