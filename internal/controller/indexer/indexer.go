@@ -72,7 +72,6 @@ func SetupIndexer(mgr ctrl.Manager) error {
 		setupApisixTlsIndexer,
 		setupApisixConsumerIndexer,
 		setupGatewayClassIndexer,
-		setupTLSHostIndexer,
 	} {
 		if err := setup(mgr); err != nil {
 			return err
@@ -101,6 +100,17 @@ func setupGatewayIndexer(mgr ctrl.Manager) error {
 	); err != nil {
 		return err
 	}
+
+	indexers := NewTLSHostIndexers(newClientTLSSecretAccessor(mgr.GetClient()))
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&gatewayv1.Gateway{},
+		TLSHostIndexRef,
+		indexers.GatewayTLSHostIndexFunc,
+	); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -295,6 +305,16 @@ func setupIngressClassIndexer(mgr ctrl.Manager) error {
 		&networkingv1.IngressClass{},
 		IngressClassParametersRef,
 		IngressClassParametersRefIndexFunc,
+	); err != nil {
+		return err
+	}
+
+	indexers := NewTLSHostIndexers(newClientTLSSecretAccessor(mgr.GetClient()))
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&networkingv1.IngressClass{},
+		TLSHostIndexRef,
+		indexers.IngressTLSHostIndexFunc,
 	); err != nil {
 		return err
 	}
@@ -847,6 +867,16 @@ func setupApisixTlsIndexer(mgr ctrl.Manager) error {
 		&apiv2.ApisixTls{},
 		IngressClassRef,
 		ApisixTlsIngressClassIndexFunc,
+	); err != nil {
+		return err
+	}
+
+	indexers := NewTLSHostIndexers(newClientTLSSecretAccessor(mgr.GetClient()))
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&apiv2.ApisixTls{},
+		TLSHostIndexRef,
+		indexers.ApisixTlsHostIndexFunc,
 	); err != nil {
 		return err
 	}

@@ -161,10 +161,7 @@ func TestConflictDetectorDetectsGatewayConflict(t *testing.T) {
 	}
 
 	mappings := detector.BuildApisixTlsMappings(ctx, newTls)
-	conflicts, err := detector.DetectConflicts(ctx, newTls, mappings)
-	if err != nil {
-		t.Fatalf("DetectConflicts returned error: %v", err)
-	}
+	conflicts := detector.DetectConflicts(ctx, newTls, mappings)
 	if len(conflicts) != 1 {
 		t.Fatalf("expected 1 conflict, got %d", len(conflicts))
 	}
@@ -265,10 +262,7 @@ func TestConflictDetectorAllowedWhenCertificateMatches(t *testing.T) {
 	}
 
 	mappings := detector.BuildApisixTlsMappings(ctx, newTls)
-	conflicts, err := detector.DetectConflicts(ctx, newTls, mappings)
-	if err != nil {
-		t.Fatalf("DetectConflicts returned error: %v", err)
-	}
+	conflicts := detector.DetectConflicts(ctx, newTls, mappings)
 	if len(conflicts) != 0 {
 		t.Fatalf("expected no conflicts, got %v", conflicts)
 	}
@@ -399,10 +393,7 @@ func TestConflictDetectorDetectsSelfConflict(t *testing.T) {
 	}
 
 	// DetectConflicts should detect this self-conflict
-	conflicts, err := detector.DetectConflicts(ctx, gateway, mappings)
-	if err != nil {
-		t.Fatalf("DetectConflicts returned error: %v", err)
-	}
+	conflicts := detector.DetectConflicts(ctx, gateway, mappings)
 
 	// Should detect 1 conflict (the resource conflicts with itself)
 	if len(conflicts) != 1 {

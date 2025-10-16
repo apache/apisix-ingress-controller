@@ -50,24 +50,6 @@ func NewTLSHostIndexers(accessor TLSSecretAccessor) *TLSHostIndexers {
 	}
 }
 
-func setupTLSHostIndexer(mgr ctrl.Manager) error {
-	indexers := NewTLSHostIndexers(newClientTLSSecretAccessor(mgr.GetClient()))
-	fieldIndexer := mgr.GetFieldIndexer()
-	for _, registration := range []struct {
-		Obj  client.Object
-		Func client.IndexerFunc
-	}{
-		{Obj: &gatewayv1.Gateway{}, Func: indexers.GatewayTLSHostIndexFunc},
-		{Obj: &networkingv1.Ingress{}, Func: indexers.IngressTLSHostIndexFunc},
-		{Obj: &apiv2.ApisixTls{}, Func: indexers.ApisixTlsHostIndexFunc},
-	} {
-		if err := fieldIndexer.IndexField(context.Background(), registration.Obj, TLSHostIndexRef, registration.Func); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // newClientTLSSecretAccessor returns a TLSSecretAccessor backed by a controller-runtime client.
 func newClientTLSSecretAccessor(c client.Reader) TLSSecretAccessor {
 	return func(ctx context.Context, nn types.NamespacedName) (*corev1.Secret, error) {

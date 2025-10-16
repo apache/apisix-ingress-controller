@@ -75,14 +75,17 @@ func NewConflictDetector(c client.Client) *ConflictDetector {
 // existing resources that are associated with the same GatewayProxy. Best-effort:
 // failures while enumerating existing resources or reading Secrets will be logged
 // and result in no conflicts instead of blocking the admission.
-func (d *ConflictDetector) DetectConflicts(ctx context.Context, obj client.Object, newMappings []HostCertMapping) ([]SSLConflict, error) {
+func (d *ConflictDetector) DetectConflicts(ctx context.Context, obj client.Object, newMappings []HostCertMapping) []SSLConflict {
+	if len(newMappings) == 0 {
+		return nil
+	}
 	gatewayProxy, err := d.resolveGatewayProxy(ctx, obj)
 	if err != nil {
 		logger.Error(err, "failed to resolve GatewayProxy", "object", objectKey(obj))
-		return nil, nil
+		return nil
 	}
 	if gatewayProxy == nil {
-		return nil, nil
+		return nil
 	}
 
 	conflicts := make([]SSLConflict, 0)
@@ -106,18 +109,18 @@ func (d *ConflictDetector) DetectConflicts(ctx context.Context, obj client.Objec
 		seen[mapping.Host] = mapping.CertificateHash
 	}
 
-	if len(seen) == 0 {
-		return conflicts, nil
+	if len(conflicts) > 0 {
+		return conflicts
 	}
 
 	externalConflicts, err := d.findExternalConflicts(ctx, obj, gatewayProxy, seen)
 	if err != nil {
 		logger.Error(err, "failed to evaluate existing TLS host mappings", "gatewayProxy", objectKey(gatewayProxy))
-		return conflicts, nil
+		return conflicts
 	}
 
 	conflicts = append(conflicts, externalConflicts...)
-	return conflicts, nil
+	return conflicts
 }
 
 // FormatConflicts renders a human-readable error message for multiple conflicts.
