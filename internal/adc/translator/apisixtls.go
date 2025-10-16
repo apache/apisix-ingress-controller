@@ -27,6 +27,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/id"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	sslutils "github.com/apache/apisix-ingress-controller/internal/ssl"
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
 
@@ -44,7 +45,7 @@ func (t *Translator) TranslateApisixTls(tctx *provider.TranslateContext, tls *ap
 	}
 
 	// Extract cert and key from secret
-	cert, key, err := extractKeyPair(secret, true)
+	cert, key, err := sslutils.ExtractKeyPair(secret, true)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +82,7 @@ func (t *Translator) TranslateApisixTls(tctx *provider.TranslateContext, tls *ap
 			return nil, fmt.Errorf("client CA secret %s not found", caSecretKey.String())
 		}
 
-		ca, _, err := extractKeyPair(caSecret, false)
+		ca, _, err := sslutils.ExtractKeyPair(caSecret, false)
 		if err != nil {
 			return nil, err
 		}

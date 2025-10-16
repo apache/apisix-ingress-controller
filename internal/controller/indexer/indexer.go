@@ -46,6 +46,7 @@ const (
 	IngressClassParametersRef = "ingressClassParametersRef"
 	ConsumerGatewayRef        = "consumerGatewayRef"
 	PolicyTargetRefs          = "targetRefs"
+	TLSHostIndexRef           = "tlsHostRefs"
 	GatewayClassIndexRef      = "gatewayClassRef"
 	ApisixUpstreamRef         = "apisixUpstreamRef"
 	PluginConfigIndexRef      = "pluginConfigRefs"
@@ -99,6 +100,16 @@ func setupGatewayIndexer(mgr ctrl.Manager) error {
 	); err != nil {
 		return err
 	}
+
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&gatewayv1.Gateway{},
+		TLSHostIndexRef,
+		GatewayTLSHostIndexFunc,
+	); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -400,6 +411,15 @@ func setupIngressIndexer(mgr ctrl.Manager) error {
 		&networkingv1.Ingress{},
 		SecretIndexRef,
 		IngressSecretIndexFunc,
+	); err != nil {
+		return err
+	}
+
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&networkingv1.Ingress{},
+		TLSHostIndexRef,
+		IngressTLSHostIndexFunc,
 	); err != nil {
 		return err
 	}
@@ -845,6 +865,15 @@ func setupApisixTlsIndexer(mgr ctrl.Manager) error {
 		&apiv2.ApisixTls{},
 		IngressClassRef,
 		ApisixTlsIngressClassIndexFunc,
+	); err != nil {
+		return err
+	}
+
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&apiv2.ApisixTls{},
+		TLSHostIndexRef,
+		ApisixTlsHostIndexFunc,
 	); err != nil {
 		return err
 	}
