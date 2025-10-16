@@ -347,6 +347,7 @@ func (d *ConflictDetector) findExternalConflicts(ctx context.Context, obj client
 		}
 		if host != "" {
 			if !noHostFetched {
+				// List resources with empty host.
 				noHostCandidates, err = d.listResourcesByHost(ctx, "")
 				if err != nil {
 					logger.Error(err, "failed to list resources by host", "host", "", "object", objectKey(obj))

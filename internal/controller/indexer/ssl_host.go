@@ -29,7 +29,11 @@ import (
 	sslutil "github.com/apache/apisix-ingress-controller/internal/ssl"
 )
 
-var tlsHostIndexLogger = ctrl.Log.WithName("tls-host-indexer")
+var (
+	tlsHostIndexLogger = ctrl.Log.WithName("tls-host-indexer")
+	// Empty host is used to match the resource which does not specify any explicit host.
+	emptyHost = ""
+)
 
 // GatewayTLSHostIndexFunc indexes Gateways by their TLS SNI hosts.
 func GatewayTLSHostIndexFunc(rawObj client.Object) []string {
@@ -61,7 +65,7 @@ func GatewayTLSHostIndexFunc(rawObj client.Object) []string {
 		}
 
 		if !hasExplicitHost {
-			hosts[""] = struct{}{}
+			hosts[emptyHost] = struct{}{}
 		}
 	}
 
@@ -97,7 +101,7 @@ func IngressTLSHostIndexFunc(rawObj client.Object) []string {
 		}
 
 		if !hasExplicitHost {
-			hosts[""] = struct{}{}
+			hosts[emptyHost] = struct{}{}
 		}
 	}
 
