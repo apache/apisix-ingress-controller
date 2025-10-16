@@ -335,10 +335,25 @@ func (d *ConflictDetector) findExternalConflicts(ctx context.Context, obj client
 	proxyCache := make(map[types.UID]*v1alpha1.GatewayProxy)
 	mappingCache := make(map[types.UID][]HostCertMapping)
 
+	var noHostCandidates []client.Object
+	noHostFetched := false
+
 	for _, host := range hostValues {
 		candidates, err := d.listResourcesByHost(ctx, host)
 		if err != nil {
+			logger.Error(err, "failed to list resources by host", "host", host)
 			return nil, err
+		}
+		if host != "" {
+			if !noHostFetched {
+				noHostCandidates, err = d.listResourcesByHost(ctx, "")
+				if err != nil {
+					logger.Error(err, "failed to list resources by host", "host", "", "object", objectKey(obj))
+					return nil, err
+				}
+				noHostFetched = true
+			}
+			candidates = mergeCandidateObjects(candidates, noHostCandidates)
 		}
 		for _, candidate := range candidates {
 			if candidate.GetUID() == excludeUID {
@@ -421,6 +436,24 @@ func (d *ConflictDetector) listResourcesByHost(ctx context.Context, host string)
 	}
 
 	return results, nil
+}
+
+func mergeCandidateObjects(primary, additional []client.Object) []client.Object {
+	if len(additional) == 0 {
+		return primary
+	}
+	seen := make(map[types.UID]struct{}, len(primary))
+	for _, obj := range primary {
+		seen[obj.GetUID()] = struct{}{}
+	}
+	for _, obj := range additional {
+		if _, exists := seen[obj.GetUID()]; exists {
+			continue
+		}
+		primary = append(primary, obj)
+		seen[obj.GetUID()] = struct{}{}
+	}
+	return primary
 }
 
 func (d *ConflictDetector) resolveGatewayProxyWithCache(ctx context.Context, obj client.Object, cache map[types.UID]*v1alpha1.GatewayProxy) (*v1alpha1.GatewayProxy, error) {

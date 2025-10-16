@@ -360,6 +360,93 @@ spec:
 			err = s.CreateResourceFromString(gatewayYAML)
 			Expect(err).NotTo(HaveOccurred(), "Gateway should be allowed with same certificate")
 		})
+
+		It("should reject ApisixTls when Gateway without hostname uses different certificate", func() {
+			host := "gateway-no-host-conflict.example.com"
+			secretA := "gateway-no-host-cert-a"
+			secretB := "gateway-no-host-cert-b"
+
+			By("creating two different TLS secrets")
+			certA, keyA := generateTLSCertificate([]string{host})
+			secretAYAML := fmt.Sprintf(`
+apiVersion: v1
+kind: Secret
+metadata:
+  name: %s
+  namespace: %s
+type: kubernetes.io/tls
+data:
+  tls.crt: %s
+  tls.key: %s
+`, secretA, s.Namespace(), certA, keyA)
+			err := s.CreateResourceFromString(secretAYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating secret A")
+
+			certB, keyB := generateTLSCertificate([]string{host})
+			secretBYAML := fmt.Sprintf(`
+apiVersion: v1
+kind: Secret
+metadata:
+  name: %s
+  namespace: %s
+type: kubernetes.io/tls
+data:
+  tls.crt: %s
+  tls.key: %s
+`, secretB, s.Namespace(), certB, keyB)
+			err = s.CreateResourceFromString(secretBYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating secret B")
+
+			time.Sleep(2 * time.Second)
+
+			By("creating Gateway without explicit hostname using certificate A")
+			gatewayYAML := fmt.Sprintf(`
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: gateway-no-host
+  namespace: %s
+spec:
+  gatewayClassName: %s
+  listeners:
+  - name: https
+    protocol: HTTPS
+    port: 443
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: %s
+  infrastructure:
+    parametersRef:
+      group: apisix.apache.org
+      kind: GatewayProxy
+      name: apisix-proxy-config
+`, s.Namespace(), s.Namespace(), secretA)
+			err = s.CreateResourceFromString(gatewayYAML)
+			Expect(err).NotTo(HaveOccurred(), "creating Gateway without hostname")
+
+			time.Sleep(2 * time.Second)
+
+			By("attempting to create ApisixTls with certificate B for same host")
+			tlsYAML := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixTls
+metadata:
+  name: apisixtls-no-host-conflict
+  namespace: %s
+spec:
+  ingressClassName: %s
+  hosts:
+  - %s
+  secret:
+    name: %s
+    namespace: %s
+`, s.Namespace(), s.Namespace(), host, secretB, s.Namespace())
+			err = s.CreateResourceFromString(tlsYAML)
+			Expect(err).Should(HaveOccurred(), "expecting conflict when creating ApisixTls without hostname on existing Gateway")
+			Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+			Expect(err.Error()).To(ContainSubstring(host))
+		})
 	})
 
 	Context("Gateway self-conflict detection", func() {
