@@ -18,14 +18,7 @@
 package webhook
 
 import (
-	"crypto/rand"
-	"crypto/rsa"
-	"crypto/x509"
-	"crypto/x509/pkix"
-	"encoding/base64"
-	"encoding/pem"
 	"fmt"
-	"math/big"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -64,36 +57,8 @@ var _ = Describe("Test SSL/TLS Conflict Detection", Label("webhook"), func() {
 			secretB := "tls-cert-b"
 
 			By("creating two different TLS secrets")
-			certA, keyA := generateTLSCertificate([]string{host})
-			secretAYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretA, s.Namespace(), certA, keyA)
-			err := s.CreateResourceFromString(secretAYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret A")
-
-			certB, keyB := generateTLSCertificate([]string{host})
-			secretBYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretB, s.Namespace(), certB, keyB)
-			err = s.CreateResourceFromString(secretBYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret B")
-
+			createApisixTLSSecret(s, secretA, host, "creating secret A")
+			createApisixTLSSecret(s, secretB, host, "creating secret B")
 			time.Sleep(2 * time.Second)
 
 			By("creating first ApisixTls with certificate A")
@@ -111,7 +76,7 @@ spec:
     name: %s
     namespace: %s
 `, s.Namespace(), s.Namespace(), host, secretA, s.Namespace())
-			err = s.CreateResourceFromString(tlsAYAML)
+			err := s.CreateResourceFromString(tlsAYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixTls A")
 
 			time.Sleep(2 * time.Second)
@@ -143,20 +108,7 @@ spec:
 			sharedSecret := "tls-shared-cert"
 
 			By("creating a shared TLS secret")
-			cert, key := generateTLSCertificate([]string{host})
-			secretYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, sharedSecret, s.Namespace(), cert, key)
-			err := s.CreateResourceFromString(secretYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating shared secret")
+			createKubeTLSSecret(s, sharedSecret, host, "creating shared secret")
 
 			time.Sleep(2 * time.Second)
 
@@ -175,7 +127,7 @@ spec:
     name: %s
     namespace: %s
 `, s.Namespace(), s.Namespace(), host, sharedSecret, s.Namespace())
-			err = s.CreateResourceFromString(tls1YAML)
+			err := s.CreateResourceFromString(tls1YAML)
 			Expect(err).NotTo(HaveOccurred(), "creating first ApisixTls")
 
 			time.Sleep(2 * time.Second)
@@ -207,35 +159,8 @@ spec:
 			secretB := "gateway-cert-b"
 
 			By("creating two different TLS secrets")
-			certA, keyA := generateTLSCertificate([]string{host})
-			secretAYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretA, s.Namespace(), certA, keyA)
-			err := s.CreateResourceFromString(secretAYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret A")
-
-			certB, keyB := generateTLSCertificate([]string{host})
-			secretBYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretB, s.Namespace(), certB, keyB)
-			err = s.CreateResourceFromString(secretBYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret B")
+			createKubeTLSSecret(s, secretA, host, "creating secret A")
+			createKubeTLSSecret(s, secretB, host, "creating secret B")
 
 			time.Sleep(2 * time.Second)
 
@@ -254,7 +179,7 @@ spec:
     name: %s
     namespace: %s
 `, s.Namespace(), s.Namespace(), host, secretA, s.Namespace())
-			err = s.CreateResourceFromString(tlsYAML)
+			err := s.CreateResourceFromString(tlsYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixTls")
 
 			time.Sleep(2 * time.Second)
@@ -295,20 +220,7 @@ spec:
 			sharedSecret := "gateway-shared-cert"
 
 			By("creating a shared TLS secret")
-			cert, key := generateTLSCertificate([]string{host})
-			secretYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, sharedSecret, s.Namespace(), cert, key)
-			err := s.CreateResourceFromString(secretYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating shared secret")
+			createKubeTLSSecret(s, sharedSecret, host, "creating shared secret")
 
 			time.Sleep(2 * time.Second)
 
@@ -327,7 +239,7 @@ spec:
     name: %s
     namespace: %s
 `, s.Namespace(), s.Namespace(), host, sharedSecret, s.Namespace())
-			err = s.CreateResourceFromString(tlsYAML)
+			err := s.CreateResourceFromString(tlsYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixTls")
 
 			time.Sleep(2 * time.Second)
@@ -367,35 +279,8 @@ spec:
 			secretB := "gateway-no-host-cert-b"
 
 			By("creating two different TLS secrets")
-			certA, keyA := generateTLSCertificate([]string{host})
-			secretAYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretA, s.Namespace(), certA, keyA)
-			err := s.CreateResourceFromString(secretAYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret A")
-
-			certB, keyB := generateTLSCertificate([]string{host})
-			secretBYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretB, s.Namespace(), certB, keyB)
-			err = s.CreateResourceFromString(secretBYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret B")
+			createKubeTLSSecret(s, secretA, host, "creating secret A")
+			createKubeTLSSecret(s, secretB, host, "creating secret B")
 
 			time.Sleep(2 * time.Second)
 
@@ -422,7 +307,7 @@ spec:
       kind: GatewayProxy
       name: apisix-proxy-config
 `, s.Namespace(), s.Namespace(), secretA)
-			err = s.CreateResourceFromString(gatewayYAML)
+			err := s.CreateResourceFromString(gatewayYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway without hostname")
 
 			time.Sleep(2 * time.Second)
@@ -456,35 +341,8 @@ spec:
 			secretB := "gateway-self-cert-b"
 
 			By("creating two different TLS secrets")
-			certA, keyA := generateTLSCertificate([]string{host})
-			secretAYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretA, s.Namespace(), certA, keyA)
-			err := s.CreateResourceFromString(secretAYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret A")
-
-			certB, keyB := generateTLSCertificate([]string{host})
-			secretBYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretB, s.Namespace(), certB, keyB)
-			err = s.CreateResourceFromString(secretBYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret B")
+			createKubeTLSSecret(s, secretA, host, "creating secret A")
+			createKubeTLSSecret(s, secretB, host, "creating secret B")
 
 			time.Sleep(2 * time.Second)
 
@@ -521,7 +379,7 @@ spec:
       kind: GatewayProxy
       name: apisix-proxy-config
 `, s.Namespace(), s.Namespace(), hostname, secretA, hostname, secretB)
-			err = s.CreateResourceFromString(gatewayYAML)
+			err := s.CreateResourceFromString(gatewayYAML)
 			Expect(err).Should(HaveOccurred(), "expecting self-conflict in Gateway")
 			Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
 			Expect(err.Error()).To(ContainSubstring(host))
@@ -535,35 +393,8 @@ spec:
 			secretB := "ingress-self-cert-b"
 
 			By("creating two different TLS secrets")
-			certA, keyA := generateTLSCertificate([]string{host})
-			secretAYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretA, s.Namespace(), certA, keyA)
-			err := s.CreateResourceFromString(secretAYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret A")
-
-			certB, keyB := generateTLSCertificate([]string{host})
-			secretBYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretB, s.Namespace(), certB, keyB)
-			err = s.CreateResourceFromString(secretBYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret B")
+			createKubeTLSSecret(s, secretA, host, "creating secret A")
+			createKubeTLSSecret(s, secretB, host, "creating secret B")
 
 			time.Sleep(2 * time.Second)
 
@@ -581,7 +412,7 @@ spec:
   - port: 80
     targetPort: 80
 `, s.Namespace())
-			err = s.CreateResourceFromString(serviceYAML)
+			err := s.CreateResourceFromString(serviceYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating service")
 
 			time.Sleep(2 * time.Second)
@@ -626,35 +457,8 @@ spec:
 			secretB := "ingress-cert-b"
 
 			By("creating two different TLS secrets")
-			certA, keyA := generateTLSCertificate([]string{host})
-			secretAYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretA, s.Namespace(), certA, keyA)
-			err := s.CreateResourceFromString(secretAYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret A")
-
-			certB, keyB := generateTLSCertificate([]string{host})
-			secretBYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretB, s.Namespace(), certB, keyB)
-			err = s.CreateResourceFromString(secretBYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret B")
+			createKubeTLSSecret(s, secretA, host, "creating secret A")
+			createKubeTLSSecret(s, secretB, host, "creating secret B")
 
 			time.Sleep(2 * time.Second)
 
@@ -673,7 +477,7 @@ spec:
     name: %s
     namespace: %s
 `, s.Namespace(), s.Namespace(), host, secretA, s.Namespace())
-			err = s.CreateResourceFromString(tlsYAML)
+			err := s.CreateResourceFromString(tlsYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixTls")
 
 			time.Sleep(2 * time.Second)
@@ -733,20 +537,7 @@ spec:
 			sharedSecret := "ingress-gateway-shared-cert"
 
 			By("creating a shared TLS secret")
-			cert, key := generateTLSCertificate([]string{host})
-			secretYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, sharedSecret, s.Namespace(), cert, key)
-			err := s.CreateResourceFromString(secretYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating shared secret")
+			createKubeTLSSecret(s, sharedSecret, host, "creating shared secret")
 
 			time.Sleep(2 * time.Second)
 
@@ -775,7 +566,7 @@ spec:
       kind: GatewayProxy
       name: apisix-proxy-config
 `, s.Namespace(), s.Namespace(), hostname, sharedSecret)
-			err = s.CreateResourceFromString(gatewayYAML)
+			err := s.CreateResourceFromString(gatewayYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 
 			time.Sleep(2 * time.Second)
@@ -834,35 +625,8 @@ spec:
 			secretB := "gateway-ingress-no-host-cert-b"
 
 			By("creating two different TLS secrets")
-			certA, keyA := generateTLSCertificate([]string{host})
-			secretAYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretA, s.Namespace(), certA, keyA)
-			err := s.CreateResourceFromString(secretAYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret A")
-
-			certB, keyB := generateTLSCertificate([]string{host})
-			secretBYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretB, s.Namespace(), certB, keyB)
-			err = s.CreateResourceFromString(secretBYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret B")
+			createKubeTLSSecret(s, secretA, host, "creating secret A")
+			createKubeTLSSecret(s, secretB, host, "creating secret B")
 
 			time.Sleep(2 * time.Second)
 
@@ -889,7 +653,7 @@ spec:
       kind: GatewayProxy
       name: apisix-proxy-config
 `, s.Namespace(), s.Namespace(), secretA)
-			err = s.CreateResourceFromString(gatewayYAML)
+			err := s.CreateResourceFromString(gatewayYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway without hostname")
 
 			time.Sleep(2 * time.Second)
@@ -950,35 +714,8 @@ spec:
 			defaultClassName := fmt.Sprintf("%s-default", s.Namespace())
 
 			By("creating TLS secrets for default ingress test")
-			certA, keyA := generateTLSCertificate([]string{host})
-			secretAYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretA, s.Namespace(), certA, keyA)
-			err := s.CreateResourceFromString(secretAYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret A")
-
-			certB, keyB := generateTLSCertificate([]string{host})
-			secretBYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretB, s.Namespace(), certB, keyB)
-			err = s.CreateResourceFromString(secretBYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret B")
+			createKubeTLSSecret(s, secretA, host, "creating secret A")
+			createKubeTLSSecret(s, secretB, host, "creating secret B")
 
 			By("creating default IngressClass with APISIX controller")
 			defaultIngressClassYAML := fmt.Sprintf(`
@@ -997,7 +734,7 @@ spec:
     namespace: %s
     scope: Namespace
 `, defaultClassName, s.GetControllerName(), s.Namespace())
-			err = s.CreateResourceFromStringWithNamespace(defaultIngressClassYAML, "")
+			err := s.CreateResourceFromStringWithNamespace(defaultIngressClassYAML, "")
 			Expect(err).NotTo(HaveOccurred(), "creating default IngressClass")
 
 			time.Sleep(2 * time.Second)
@@ -1087,35 +824,8 @@ spec:
 			defaultClassName := fmt.Sprintf("%s-default-tls", s.Namespace())
 
 			By("creating TLS secrets for default ApisixTls test")
-			certA, keyA := generateTLSCertificate([]string{host})
-			secretAYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretA, s.Namespace(), certA, keyA)
-			err := s.CreateResourceFromString(secretAYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret A")
-
-			certB, keyB := generateTLSCertificate([]string{host})
-			secretBYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretB, s.Namespace(), certB, keyB)
-			err = s.CreateResourceFromString(secretBYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret B")
+			createKubeTLSSecret(s, secretA, host, "creating secret A")
+			createKubeTLSSecret(s, secretB, host, "creating secret B")
 
 			By("creating default IngressClass required for ApisixTls admission")
 			defaultIngressClassYAML := fmt.Sprintf(`
@@ -1134,7 +844,7 @@ spec:
     namespace: %s
     scope: Namespace
 `, defaultClassName, s.GetControllerName(), s.Namespace())
-			err = s.CreateResourceFromStringWithNamespace(defaultIngressClassYAML, "")
+			err := s.CreateResourceFromStringWithNamespace(defaultIngressClassYAML, "")
 			Expect(err).NotTo(HaveOccurred(), "creating default IngressClass")
 
 			time.Sleep(2 * time.Second)
@@ -1186,35 +896,8 @@ spec:
 			secretB := "ingress-update-cert-b"
 
 			By("creating TLS secrets for ingress update test")
-			certA, keyA := generateTLSCertificate([]string{host})
-			secretAYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretA, s.Namespace(), certA, keyA)
-			err := s.CreateResourceFromString(secretAYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret A")
-
-			certB, keyB := generateTLSCertificate([]string{host})
-			secretBYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretB, s.Namespace(), certB, keyB)
-			err = s.CreateResourceFromString(secretBYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret B")
+			createKubeTLSSecret(s, secretA, host, "creating secret A")
+			createKubeTLSSecret(s, secretB, host, "creating secret B")
 
 			By("creating ApisixTls with certificate A to establish existing mapping")
 			tlsYAML := fmt.Sprintf(`
@@ -1231,7 +914,7 @@ spec:
     name: %s
     namespace: %s
 `, s.Namespace(), s.Namespace(), host, secretA, s.Namespace())
-			err = s.CreateResourceFromString(tlsYAML)
+			err := s.CreateResourceFromString(tlsYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating baseline ApisixTls for ingress update")
 
 			time.Sleep(2 * time.Second)
@@ -1322,35 +1005,8 @@ spec:
 			secretB := "gateway-update-cert-b"
 
 			By("creating TLS secrets for gateway update test")
-			certA, keyA := generateTLSCertificate([]string{host})
-			secretAYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretA, s.Namespace(), certA, keyA)
-			err := s.CreateResourceFromString(secretAYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret A")
-
-			certB, keyB := generateTLSCertificate([]string{host})
-			secretBYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretB, s.Namespace(), certB, keyB)
-			err = s.CreateResourceFromString(secretBYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret B")
+			createKubeTLSSecret(s, secretA, host, "creating secret A")
+			createKubeTLSSecret(s, secretB, host, "creating secret B")
 
 			By("creating ApisixTls with certificate A to establish host ownership")
 			tlsYAML := fmt.Sprintf(`
@@ -1367,7 +1023,7 @@ spec:
     name: %s
     namespace: %s
 `, s.Namespace(), s.Namespace(), host, secretA, s.Namespace())
-			err = s.CreateResourceFromString(tlsYAML)
+			err := s.CreateResourceFromString(tlsYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating baseline ApisixTls for gateway update")
 
 			time.Sleep(2 * time.Second)
@@ -1440,50 +1096,9 @@ spec:
 			secretC := "mixed-cert-c"
 
 			By("creating three different TLS secrets")
-			certA, keyA := generateTLSCertificate([]string{host})
-			secretAYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretA, s.Namespace(), certA, keyA)
-			err := s.CreateResourceFromString(secretAYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret A")
-
-			certB, keyB := generateTLSCertificate([]string{host})
-			secretBYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretB, s.Namespace(), certB, keyB)
-			err = s.CreateResourceFromString(secretBYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret B")
-
-			certC, keyC := generateTLSCertificate([]string{host})
-			secretCYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-  namespace: %s
-type: kubernetes.io/tls
-data:
-  tls.crt: %s
-  tls.key: %s
-`, secretC, s.Namespace(), certC, keyC)
-			err = s.CreateResourceFromString(secretCYAML)
-			Expect(err).NotTo(HaveOccurred(), "creating secret C")
+			createKubeTLSSecret(s, secretA, host, "creating secret A")
+			createKubeTLSSecret(s, secretB, host, "creating secret B")
+			createKubeTLSSecret(s, secretC, host, "creating secret C")
 
 			time.Sleep(2 * time.Second)
 
@@ -1512,7 +1127,7 @@ spec:
       kind: GatewayProxy
       name: apisix-proxy-config
 `, s.Namespace(), s.Namespace(), hostname, secretA)
-			err = s.CreateResourceFromString(gatewayYAML)
+			err := s.CreateResourceFromString(gatewayYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway with cert A")
 
 			time.Sleep(2 * time.Second)
@@ -1587,37 +1202,14 @@ spec:
 	})
 })
 
-// generateTLSCertificate generates a self-signed TLS certificate for testing
-// Returns base64-encoded certificate and key for use in Kubernetes Secrets
-func generateTLSCertificate(hosts []string) (string, string) {
-	priv, err := rsa.GenerateKey(rand.Reader, 2048)
-	Expect(err).NotTo(HaveOccurred(), "generating private key")
+func createApisixTLSSecret(s *scaffold.Scaffold, secretName, host, failureMessage string) {
+	cert, key := s.GenerateCert(GinkgoT(), []string{host})
+	err := s.NewSecret(secretName, cert.String(), key.String())
+	Expect(err).NotTo(HaveOccurred(), failureMessage)
+}
 
-	serial, err := rand.Int(rand.Reader, big.NewInt(1<<62))
-	Expect(err).NotTo(HaveOccurred(), "generating serial number")
-
-	template := &x509.Certificate{
-		SerialNumber: serial,
-		Subject: pkix.Name{
-			CommonName: hosts[0],
-		},
-		DNSNames:              hosts,
-		NotBefore:             time.Now().Add(-time.Hour),
-		NotAfter:              time.Now().Add(24 * time.Hour),
-		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-		BasicConstraintsValid: true,
-	}
-
-	derBytes, err := x509.CreateCertificate(rand.Reader, template, template, &priv.PublicKey, priv)
-	Expect(err).NotTo(HaveOccurred(), "creating certificate")
-
-	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: derBytes})
-	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)})
-
-	// Base64 encode for Kubernetes Secret data field
-	certBase64 := base64.StdEncoding.EncodeToString(certPEM)
-	keyBase64 := base64.StdEncoding.EncodeToString(keyPEM)
-
-	return certBase64, keyBase64
+func createKubeTLSSecret(s *scaffold.Scaffold, secretName, host, failureMessage string) {
+	cert, key := s.GenerateCert(GinkgoT(), []string{host})
+	err := s.NewKubeTlsSecret(secretName, cert.String(), key.String())
+	Expect(err).NotTo(HaveOccurred(), failureMessage)
 }
