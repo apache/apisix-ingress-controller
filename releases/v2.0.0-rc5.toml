@@ -1,0 +1,98 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# commit to be tagged for new release
+commit = "HEAD"
+
+# project_name is used to refer to the project in the notes
+project_name = "apisix-ingress-controller"
+
+# github_repo is the github project, only github is currently supported
+github_repo = "apache/apisix-ingress-controller"
+
+# match_deps is a pattern to determine which dependencies should be included
+# as part of this release. The changelog will also include changes for these
+# dependencies based on the change in the dependency's version.
+match_deps = "^github.com/(apache/[a-zA-Z0-9-]+)$"
+
+# previous release of this project for determining changes
+previous = "2.0.0-rc4"
+
+# pre_release is whether to include a disclaimer about being a pre-release
+pre_release = true
+
+# preface is the description of the release which precedes the author list
+# and changelog. This description could include highlights as well as any
+# description of changes. Use markdown formatting.
+preface = """\
+
+## Highlights
+
+- **Gateway API Support**: Added support for **TCPRoute**, **UDPRoute**, **GRPCRoute**, and **TLSRoute**, achieving comprehensive Gateway API coverage.  
+- **Enhanced Webhook Validation**:  
+  - Introduced **certificate conflict detection** and **Secret/Service resource checking** to improve configuration consistency and security.  
+  - Added admission webhooks for **IngressClass** and **Gateway** resources.  
+- **GatewayProxy Improvements**: Added **conflict detection** and **stricter provider validation** to prevent misconfiguration between instances.  
+- **APISIX Upstream Enhancements**: Added support for **health checks**, **service discovery**, and **port-level settings**.  
+- **Improved Inter-Container Communication**: Added **Unix socket** support for faster internal communication.  
+- **Conformance and Stability Fixes**: Fixed multiple **Gateway API conformance tests** (PathRewrite, QueryParamMatching, RewriteHost, etc.) to ensure better compatibility.  
+- **Resilience Improvements**: Introduced **retry mechanism** on sync failures.  
+- **Debugging and Observability**: Added a **unified API server** for debugging and enhanced logging consistency.  
+
+---
+
+## Features
+
+* feat: add certificate conflict detection to admission webhooks [#2603](https://github.com/apache/apisix-ingress-controller/pull/2603)  
+* feat: support resolve `svc.ports[].appProtocol` [#2601](https://github.com/apache/apisix-ingress-controller/pull/2601)  
+* feat: add conflict detection for gateway proxy [#2600](https://github.com/apache/apisix-ingress-controller/pull/2600)  
+* feat(gateway-api): support TLSRoute [#2594](https://github.com/apache/apisix-ingress-controller/pull/2594)  
+* feat: support UDPRoute webhook [#2588](https://github.com/apache/apisix-ingress-controller/pull/2588)  
+* feat: add Unix socket support for inter-container communication [#2587](https://github.com/apache/apisix-ingress-controller/pull/2587)  
+* feat(apisixupstream): support portLevelSettings [#2582](https://github.com/apache/apisix-ingress-controller/pull/2582)  
+* feat: add secret/service resource checker for webhook [#2583](https://github.com/apache/apisix-ingress-controller/pull/2583)  
+* feat(gateway-api): add support for UDPRoute [#2578](https://github.com/apache/apisix-ingress-controller/pull/2578)  
+* feat(apisixupstream): support discovery [#2577](https://github.com/apache/apisix-ingress-controller/pull/2577)  
+* feat(apisixupstream): support healthcheck [#2574](https://github.com/apache/apisix-ingress-controller/pull/2574)  
+* feat: add webhook for ingressclass and gateway [#2572](https://github.com/apache/apisix-ingress-controller/pull/2572)  
+* feat(gateway-api): support GRPCRoute [#2570](https://github.com/apache/apisix-ingress-controller/pull/2570)  
+* feat: add webhook server [#2566](https://github.com/apache/apisix-ingress-controller/pull/2566)  
+* feat: add unified API server with debugging capabilities [#2550](https://github.com/apache/apisix-ingress-controller/pull/2550)  
+* feat: add support for named servicePort in ApisixRoute backend [#2553](https://github.com/apache/apisix-ingress-controller/pull/2553)  
+* feat: support stream_route for ApisixRoute [#2551](https://github.com/apache/apisix-ingress-controller/pull/2551)  
+* feat: add support for CORS httproutefilter [#2548](https://github.com/apache/apisix-ingress-controller/pull/2548)  
+* feat: add support for TCPRoute [#2564](https://github.com/apache/apisix-ingress-controller/pull/2564)  
+* feat: support retry in case of sync failure [#2534](https://github.com/apache/apisix-ingress-controller/pull/2534)  
+
+---
+
+## Bug Fixes
+
+* fix(ingress): port.name matching failure for ExternalName Services [#2604](https://github.com/apache/apisix-ingress-controller/pull/2604)  
+* fix(gatewayproxy): add stricter validation rules for provider [#2602](https://github.com/apache/apisix-ingress-controller/pull/2602)  
+* fix: generate unique SSL IDs to prevent certificate conflicts across different hosts [#2592](https://github.com/apache/apisix-ingress-controller/pull/2592)  
+* fix(conformance-test): HTTPRoutePathRewrite [#2597](https://github.com/apache/apisix-ingress-controller/pull/2597)  
+* fix(conformance-test): HTTPRouteQueryParamMatching [#2598](https://github.com/apache/apisix-ingress-controller/pull/2598)  
+* fix(conformance-test): HTTPRouteRewriteHost [#2596](https://github.com/apache/apisix-ingress-controller/pull/2596)  
+* fix: residual data issue when updating ingressClassName [#2543](https://github.com/apache/apisix-ingress-controller/pull/2543)  
+* fix: responseHeaderModifier fails to synchronize [#2544](https://github.com/apache/apisix-ingress-controller/pull/2544)  
+* fix: handle httproute multi backend refs [#2540](https://github.com/apache/apisix-ingress-controller/pull/2540)  
+* fix: sync exception caused by ingress endpoint 0 [#2538](https://github.com/apache/apisix-ingress-controller/pull/2538)  
+* fix: use upstream id instead of inline upstream in traffic-split plugin [#2546](https://github.com/apache/apisix-ingress-controller/pull/2546)  
+* fix: hmac-auth plugin spec compatibility with latest apisix [#2528](https://github.com/apache/apisix-ingress-controller/pull/2528)  
+
+
+"""
