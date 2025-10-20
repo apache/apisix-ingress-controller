@@ -30,7 +30,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  ADC_VERSION: dev
+  ADC_VERSION: 0.21.2
 
 jobs:
   e2e-test:
