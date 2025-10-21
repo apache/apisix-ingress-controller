@@ -190,9 +190,7 @@ spec:
                             minimum: 0
                             type: integer
                           timeout:
-                            description: |-
-                              Timeout sets health check timeout in seconds.
-                              https://github.com/apache/apisix/blob/0151d9e35bba63d7c316187272d88e19db0be634/apisix/schema_def.lua#L196
+                            description: Timeout sets health check timeout in seconds.
                             maximum: 254
                             minimum: 1
                             type: integer
@@ -254,9 +252,7 @@ spec:
                             minimum: 0
                             type: integer
                           timeout:
-                            description: |-
-                              Timeout sets health check timeout in seconds.
-                              https://github.com/apache/apisix/blob/0151d9e35bba63d7c316187272d88e19db0be634/apisix/schema_def.lua#L196
+                            description: Timeout sets health check timeout in seconds.
                             maximum: 254
                             minimum: 1
                             type: integer
@@ -451,9 +447,8 @@ spec:
                                   minimum: 0
                                   type: integer
                                 timeout:
-                                  description: |-
-                                    Timeout sets health check timeout in seconds.
-                                    https://github.com/apache/apisix/blob/0151d9e35bba63d7c316187272d88e19db0be634/apisix/schema_def.lua#L196
+                                  description: Timeout sets health check timeout in
+                                    seconds.
                                   maximum: 254
                                   minimum: 1
                                   type: integer
@@ -515,9 +510,8 @@ spec:
                                   minimum: 0
                                   type: integer
                                 timeout:
-                                  description: |-
-                                    Timeout sets health check timeout in seconds.
-                                    https://github.com/apache/apisix/blob/0151d9e35bba63d7c316187272d88e19db0be634/apisix/schema_def.lua#L196
+                                  description: Timeout sets health check timeout in
+                                    seconds.
                                   maximum: 254
                                   minimum: 1
                                   type: integer

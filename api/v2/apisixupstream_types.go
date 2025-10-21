@@ -314,8 +314,6 @@ type PassiveHealthCheckUnhealthy struct {
 	// TCPFailures define the number of TCP failures to define an unhealthy target.
 	TCPFailures int `json:"tcpFailures,omitempty" yaml:"tcpFailures,omitempty"`
 	// Timeout sets health check timeout in seconds.
-	// https://github.com/apache/apisix/blob/0151d9e35bba63d7c316187272d88e19db0be634/apisix/schema_def.lua#L196
-	//
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=254
 	Timeouts int `json:"timeout,omitempty" yaml:"timeout,omitempty"`
