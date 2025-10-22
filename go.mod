@@ -16,6 +16,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/gruntwork-io/terratest v0.50.0
 	github.com/hashicorp/go-memdb v1.3.4
+	github.com/imdario/mergo v0.3.16
 	github.com/incubator4/go-resty-expr v0.1.1
 	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.36.1
@@ -125,7 +126,6 @@ require (
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/hpcloud/tail v1.0.0 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect
-	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/imkira/go-interpol v1.1.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
