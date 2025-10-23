@@ -64,7 +64,9 @@ func TestTranslateAnnotations(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set up mock parsers
+			orig := ingressAnnotationParsers
+			defer func() { ingressAnnotationParsers = orig }()
+
 			ingressAnnotationParsers = make(map[string]annotations.IngressAnnotationsParser)
 			for key, parser := range tt.parsers {
 				ingressAnnotationParsers[key] = parser
@@ -79,11 +81,6 @@ func TestTranslateAnnotations(t *testing.T) {
 				assert.NoError(t, err)
 			}
 			assert.Equal(t, tt.expected, dst)
-
-			// Clean up mock parsers
-			for key := range tt.parsers {
-				delete(ingressAnnotationParsers, key)
-			}
 		})
 	}
 }
