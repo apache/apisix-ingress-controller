@@ -237,13 +237,14 @@ func (r *IngressReconciler) listIngressForIngressClass(ctx context.Context, obj 
 		}
 
 		requests := make([]reconcile.Request, 0, len(ingressList.Items))
-		for _, ingress := range ingressList.Items {
-			if ingress.Spec.IngressClassName == nil || *ingress.Spec.IngressClassName == "" ||
-				*ingress.Spec.IngressClassName == ingressClass.GetName() {
+		for i := range ingressList.Items {
+			ingress := &ingressList.Items[i]
+			effectiveClassName := internaltypes.GetEffectiveIngressClassName(ingress)
+			if effectiveClassName == "" || effectiveClassName == ingressClass.GetName() {
 				requests = append(requests, reconcile.Request{
 					NamespacedName: client.ObjectKey{
-						Namespace: ingress.Namespace,
-						Name:      ingress.Name,
+						Namespace: ingress.GetNamespace(),
+						Name:      ingress.GetName(),
 					},
 				})
 			}
