@@ -94,7 +94,7 @@ spec:
       name: apisix-config       # 5
 ```
 
-❶ The controllerName field in GatewayClass needs to be customized if you are running multiple distinct instances of the APISIX Ingress Controller in the same cluster (not a single instance with multiple replicas). Each ingress controller instance must use a unique controllerName in its [configuration file](configuration-file.md), and the corresponding GatewayClass should reference that value.
+❶ The controller name should be customized if you are running multiple distinct instances of the APISIX Ingress Controller in the same cluster (not a single instance with multiple replicas). Each ingress controller instance must use a unique controllerName in its [configuration file](configuration-file.md), and the corresponding GatewayClass should reference that value.
 
 ❷ The `port` in the Gateway listener is required but ignored. This is due to limitations in the data plane: it cannot dynamically open new ports. Since the Ingress Controller does not manage the data plane deployment, it cannot automatically update the configuration or restart the data plane to apply port changes.
 
@@ -115,14 +115,26 @@ metadata:
   namespace: ingress-apisix
   name: apisix
 spec:
-  controller: apisix.apache.org/apisix-ingress-controller
+  controller: apisix.apache.org/apisix-ingress-controller    # 1
   parameters:
-    apiGroup: apisix.apache.org
-    kind: GatewayProxy
-    name: apisix-config
-    namespace: ingress-apisix
-    scope: Namespace
+    apiGroup: apisix.apache.org    # 2
+    kind: GatewayProxy             # 3
+    name: apisix-config            # 4
+    namespace: ingress-apisix      # 5
+    scope: Namespace               # 6
 ```
+
+❶ The controller name should be customized if you are running multiple distinct instances of the APISIX Ingress Controller in the same cluster (not a single instance with multiple replicas). Each ingress controller instance must use a unique controllerName in its [configuration file](configuration-file.md), and the corresponding IngressClass should reference that value.
+
+❷ API group of the referenced resource.
+
+❸ Kind of the referenced resource.
+
+❹ Name of the referenced resource. Should match the `metadata.name` of the GatewayProxy resource.
+
+❺ Namespace where the referenced resource is defined.
+
+❻ Scope of the referenced resource.
 
 </TabItem>
 
@@ -135,14 +147,26 @@ metadata:
   namespace: ingress-apisix
   name: apisix
 spec:
-  controller: apisix.apache.org/apisix-ingress-controller
+  controller: apisix.apache.org/apisix-ingress-controller    # 1
   parameters:
-    apiGroup: apisix.apache.org
-    kind: GatewayProxy
-    name: apisix-config
-    namespace: ingress-apisix
-    scope: Namespace
+    apiGroup: apisix.apache.org    # 2
+    kind: GatewayProxy             # 3
+    name: apisix-config            # 4
+    namespace: ingress-apisix      # 5
+    scope: Namespace               # 6
 ```
+
+❶ The controller name should be customized if you are running multiple distinct instances of the APISIX Ingress Controller in the same cluster (not a single instance with multiple replicas). Each ingress controller instance must use a unique controllerName in its [configuration file](configuration-file.md), and the corresponding IngressClass should reference that value.
+
+❷ API group of the referenced resource.
+
+❸ Kind of the referenced resource.
+
+❹ Name of the referenced resource. Should match the `metadata.name` of the GatewayProxy resource.
+
+❺ Namespace where the referenced resource is defined.
+
+❻ Scope of the referenced resource.
 
 </TabItem>
 
@@ -836,6 +860,11 @@ metadata:
   namespace: ingress-apisix
   name: apisix-config
 spec:
+  provider:
+    type: ControlPlane
+    controlPlane:
+      # add your control plane connection configuration here
+      # ....
   plugins:
   - name: clickhouse-logger
     config:
@@ -894,6 +923,11 @@ metadata:
   namespace: ingress-apisix
   name: apisix-config
 spec:
+  provider:
+    type: ControlPlane
+    controlPlane:
+      # add your control plane connection configuration here
+      # ....
   pluginMetadata:
     opentelemetry: {
       "trace_id_source": "x-request-id",
@@ -1047,6 +1081,11 @@ metadata:
   namespace: ingress-apisix
   name: apisix-config
 spec:
+  provider:
+    type: ControlPlane
+    controlPlane:
+      # add your control plane connection configuration here
+      # ....
   statusAddress:
     - 10.24.87.13
 ```
@@ -1066,6 +1105,11 @@ metadata:
   namespace: ingress-apisix
   name: apisix-config
 spec:
+  provider:
+    type: ControlPlane
+    controlPlane:
+      # add your control plane connection configuration here
+      # ....
   statusAddress:
     - 10.24.87.13
 ```
@@ -1079,7 +1123,12 @@ metadata:
   namespace: ingress-apisix
   name: apisix-config
 spec:
-  publishService: apisix-ee-3-gateway-gateway
+  provider:
+    type: ControlPlane
+    controlPlane:
+      # add your control plane connection configuration here
+      # ....
+  publishService: apisix-gateway
 ```
 
 When using `publishService`, make sure your gateway Service is of `LoadBalancer` type the address can be populated. The controller will use the endpoint of this Service to update the status information of the Ingress resource. The format can be either `namespace/svc-name` or simply `svc-name` if the default namespace is correctly set.

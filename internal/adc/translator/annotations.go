@@ -33,7 +33,6 @@ type IngressConfig struct {
 	Plugins  adctypes.Plugins
 }
 
-// parsers registered for ingress annotations
 var ingressAnnotationParsers = map[string]annotations.IngressAnnotationsParser{
 	"upstream": upstream.NewParser(),
 	"plugins":  plugins.NewParser(),

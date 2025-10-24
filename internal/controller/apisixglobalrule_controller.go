@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -35,9 +36,11 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
+	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
@@ -100,6 +103,21 @@ func (r *ApisixGlobalRuleReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
+	// Validate plugins and their secrets
+	if err := r.validatePlugins(tctx, &globalRule, globalRule.Spec.Plugins); err != nil {
+		r.Log.Error(err, "failed to validate plugins")
+		// Update status with failure condition
+		r.updateStatus(&globalRule, metav1.Condition{
+			Type:               string(apiv2.ConditionTypeAccepted),
+			Status:             metav1.ConditionFalse,
+			ObservedGeneration: globalRule.Generation,
+			LastTransitionTime: metav1.Now(),
+			Reason:             string(apiv2.ConditionReasonInvalidSpec),
+			Message:            err.Error(),
+		})
+		return ctrl.Result{}, err
+	}
+
 	// Sync the global rule to APISIX
 	if err := r.Provider.Update(ctx, tctx, &globalRule); err != nil {
 		r.Log.Error(err, "failed to sync global rule to provider")
@@ -140,6 +158,7 @@ func (r *ApisixGlobalRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			predicate.Or(
 				predicate.GenerationChangedPredicate{},
 				predicate.AnnotationChangedPredicate{},
+				predicate.NewPredicateFuncs(TypePredicate[*corev1.Secret]()),
 			),
 		).
 		Watches(
@@ -151,6 +170,9 @@ func (r *ApisixGlobalRuleReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		).
 		Watches(&v1alpha1.GatewayProxy{},
 			handler.EnqueueRequestsFromMapFunc(r.listGlobalRulesForGatewayProxy),
+		).
+		Watches(&corev1.Secret{},
+			handler.EnqueueRequestsFromMapFunc(r.listGlobalRulesForSecret),
 		).
 		Named("apisixglobalrule").
 		Complete(r)
@@ -183,6 +205,23 @@ func (r *ApisixGlobalRuleReconciler) listGlobalRulesForGatewayProxy(ctx context.
 	return listIngressClassRequestsForGatewayProxy(ctx, r.Client, obj, r.Log, r.listGlobalRulesForIngressClass)
 }
 
+func (r *ApisixGlobalRuleReconciler) listGlobalRulesForSecret(ctx context.Context, obj client.Object) []reconcile.Request {
+	secret, ok := obj.(*corev1.Secret)
+	if !ok {
+		return nil
+	}
+
+	return ListRequests(
+		ctx,
+		r.Client,
+		r.Log,
+		&apiv2.ApisixGlobalRuleList{},
+		client.MatchingFields{
+			indexer.SecretIndexRef: indexer.GenIndexKey(secret.GetNamespace(), secret.GetName()),
+		},
+	)
+}
+
 // updateStatus updates the ApisixGlobalRule status with the given condition
 func (r *ApisixGlobalRuleReconciler) updateStatus(globalRule *apiv2.ApisixGlobalRule, condition metav1.Condition) {
 	r.Updater.Update(status.Update{
@@ -199,4 +238,44 @@ func (r *ApisixGlobalRuleReconciler) updateStatus(globalRule *apiv2.ApisixGlobal
 			return grCopy
 		}),
 	})
+}
+
+// validatePlugins validates plugins and their secret references
+func (r *ApisixGlobalRuleReconciler) validatePlugins(tctx *provider.TranslateContext, in *apiv2.ApisixGlobalRule, plugins []apiv2.ApisixRoutePlugin) error {
+	// check secret
+	for _, plugin := range plugins {
+		if !plugin.Enable {
+			continue
+		}
+		// check secret
+		if err := r.validateSecrets(tctx, in, plugin.SecretRef); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateSecrets validates that the secret exists and adds it to the translate context
+func (r *ApisixGlobalRuleReconciler) validateSecrets(tctx *provider.TranslateContext, in *apiv2.ApisixGlobalRule, secretRef string) error {
+	if secretRef == "" {
+		return nil
+	}
+	var (
+		secret = corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      secretRef,
+				Namespace: in.Namespace,
+			},
+		}
+		secretNN = utils.NamespacedName(&secret)
+	)
+	if err := r.Get(tctx, secretNN, &secret); err != nil {
+		return types.ReasonError{
+			Reason:  string(apiv2.ConditionReasonInvalidSpec),
+			Message: fmt.Sprintf("failed to get Secret: %s", secretNN),
+		}
+	}
+
+	tctx.Secrets[utils.NamespacedName(&secret)] = &secret
+	return nil
 }

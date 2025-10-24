@@ -21,6 +21,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
@@ -29,7 +30,10 @@ import (
 	v2 "github.com/apache/apisix-ingress-controller/api/v2"
 )
 
-const DefaultIngressClassAnnotation = "ingressclass.kubernetes.io/is-default-class"
+const (
+	DefaultIngressClassAnnotation = "ingressclass.kubernetes.io/is-default-class"
+	IngressClassNameAnnotation    = "kubernetes.io/ingress.class"
+)
 
 const (
 	KindGateway              = "Gateway"
@@ -197,4 +201,13 @@ func GvkOf(obj any) schema.GroupVersionKind {
 	default:
 		return schema.GroupVersionKind{}
 	}
+}
+
+// GetEffectiveIngressClassName returns the effective ingress class name.
+// It first checks spec.IngressClassName, and falls back to the annotation if spec is empty.
+func GetEffectiveIngressClassName(ingress *netv1.Ingress) string {
+	if cls := ptr.Deref(ingress.Spec.IngressClassName, ""); cls != "" {
+		return cls
+	}
+	return ingress.GetAnnotations()[IngressClassNameAnnotation]
 }

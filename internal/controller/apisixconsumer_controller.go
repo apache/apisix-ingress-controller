@@ -209,10 +209,10 @@ func (r *ApisixConsumerReconciler) processSpec(ctx context.Context, tctx *provid
 	secret := &corev1.Secret{}
 	if err := r.Get(ctx, namespacedName, secret); err != nil {
 		if k8serrors.IsNotFound(err) {
-			r.Log.Info("secret not found", "secret", namespacedName.String())
+			r.Log.Info("secret not found", "secret", namespacedName)
 			return nil
 		} else {
-			r.Log.Error(err, "failed to get secret", "secret", namespacedName.String())
+			r.Log.Error(err, "failed to get secret", "secret", namespacedName)
 			return err
 		}
 	}

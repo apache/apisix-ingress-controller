@@ -1246,4 +1246,66 @@ spec:
 				Should(Equal("enabled"))
 		})
 	})
+
+	Context("Ingress with annotation-based IngressClass", func() {
+		const ingressClassSpec = `
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: %s
+spec:
+  controller: "%s"
+  parameters:
+    apiGroup: "apisix.apache.org"
+    kind: "GatewayProxy"
+    name: "apisix-proxy-config"
+    namespace: %s
+    scope: "Namespace"
+`
+		const ingressSpec = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: apisix-ingress-annotation
+  annotations:
+    kubernetes.io/ingress.class: %s
+spec:
+  rules:
+  - host: annotation.example.com
+    http:
+      paths:
+      - path: /get
+        pathType: Prefix
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
+
+		It("Ingress with kubernetes.io/ingress.class annotation", func() {
+			By("create GatewayProxy")
+			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			err := s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())
+			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
+			time.Sleep(5 * time.Second)
+
+			By("create IngressClass")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClassSpec, s.Namespace(), s.GetControllerName(), s.Namespace()), s.Namespace())
+			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
+
+			By("create Ingress with annotation")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressSpec, s.Namespace()), s.Namespace())
+			Expect(err).NotTo(HaveOccurred(), "creating Ingress with annotation")
+
+			By("verify Ingress with annotation works")
+			Eventually(func() int {
+				return s.NewAPISIXClient().
+					GET("/get").
+					WithHost("annotation.example.com").
+					Expect().Raw().StatusCode
+			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).
+				Should(Equal(http.StatusOK))
+		})
+	})
 })

@@ -302,5 +302,92 @@ spec:
 			finalResp.Header("X-Response-Type").IsEmpty()
 			finalResp.Body().NotContains(`"X-Global-Proxy": "test"`)
 		})
+
+		It("Test GlobalRule with plugin using secretRef", func() {
+			secretYaml := `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: echo-secret
+  namespace: %s
+type: Opaque
+stringData:
+  body: "GlobalRule with secret test"
+`
+
+			globalRuleWithSecretYaml := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixGlobalRule
+metadata:
+  name: test-global-rule-with-secret
+spec:
+  ingressClassName: %s
+  plugins:
+  - name: echo
+    enable: true
+    secretRef: echo-secret
+`
+
+			By("create Secret for GlobalRule")
+			err := s.CreateResourceFromString(fmt.Sprintf(secretYaml, s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "creating Secret for GlobalRule")
+
+			By("create ApisixGlobalRule with plugin secretRef")
+			err = s.CreateResourceFromString(fmt.Sprintf(globalRuleWithSecretYaml, s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "creating ApisixGlobalRule with secretRef")
+
+			By("verify ApisixGlobalRule status condition")
+			time.Sleep(5 * time.Second)
+			gryaml, err := s.GetResourceYaml("ApisixGlobalRule", "test-global-rule-with-secret")
+			Expect(err).NotTo(HaveOccurred(), "getting ApisixGlobalRule yaml")
+			Expect(gryaml).To(ContainSubstring(`status: "True"`))
+			Expect(gryaml).To(ContainSubstring("message: The global rule has been accepted and synced to APISIX"))
+
+			By("verify global rule with secret is applied")
+			resp := s.NewAPISIXClient().
+				GET("/get").
+				WithHost("globalrule.example.com").
+				Expect().
+				Status(http.StatusOK)
+			resp.Body().Contains("GlobalRule with secret test")
+
+			By("update Secret")
+			updatedSecretYaml := `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: echo-secret
+  namespace: %s
+type: Opaque
+stringData:
+  body: "GlobalRule with secret test updated"
+`
+			err = s.CreateResourceFromString(fmt.Sprintf(updatedSecretYaml, s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "updating Secret")
+			time.Sleep(5 * time.Second)
+
+			By("verify global rule with updated secret")
+			resp = s.NewAPISIXClient().
+				GET("/get").
+				WithHost("globalrule.example.com").
+				Expect().
+				Status(http.StatusOK)
+			resp.Body().Contains("GlobalRule with secret test updated")
+
+			By("delete Secret")
+			err = s.DeleteResource("Secret", "echo-secret")
+			Expect(err).NotTo(HaveOccurred(), "deleting Secret")
+			time.Sleep(5 * time.Second)
+
+			By("verify ApisixGlobalRule status shows error after secret deletion")
+			gryaml, err = s.GetResourceYaml("ApisixGlobalRule", "test-global-rule-with-secret")
+			Expect(err).NotTo(HaveOccurred(), "getting ApisixGlobalRule yaml")
+			Expect(gryaml).To(ContainSubstring(`status: "False"`))
+			Expect(gryaml).To(ContainSubstring("failed to get Secret"))
+
+			By("delete ApisixGlobalRule")
+			err = s.DeleteResource("ApisixGlobalRule", "test-global-rule-with-secret")
+			Expect(err).NotTo(HaveOccurred(), "deleting ApisixGlobalRule")
+		})
 	})
 })
