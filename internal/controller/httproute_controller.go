@@ -408,7 +408,10 @@ func (r *HTTPRouteReconciler) listHTTPRouteByHTTPRoutePolicy(ctx context.Context
 
 		var httpRoute gatewayv1.HTTPRoute
 		if err := r.Get(ctx, key, &httpRoute); err != nil {
-			r.Log.Error(err, "failed to get HTTPRoute by HTTPRoutePolicy targetRef", "namespace", key.Namespace, "name", key.Name)
+			r.Log.Error(errors.New("httproute not found"),
+				"failed to get HTTPRoute rule for HTTPRoutePolicy targetRef",
+				"httproute", key,
+			)
 			continue
 		}
 		if ref.SectionName != nil {
@@ -420,7 +423,11 @@ func (r *HTTPRouteReconciler) listHTTPRouteByHTTPRoutePolicy(ctx context.Context
 				}
 			}
 			if !matchRuleName {
-				r.Log.Error(errors.Errorf("failed to get HTTPRoute rule by HTTPRoutePolicy targetRef"), "namespace", key.Namespace, "name", key.Name, "sectionName", *ref.SectionName)
+				r.Log.Error(errors.New("httproute section name not found"),
+					"failed to get HTTPRoute rule by HTTPRoutePolicy targetRef",
+					"httproute", key,
+					"sectionName", *ref.SectionName,
+				)
 				continue
 			}
 		}
