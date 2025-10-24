@@ -46,7 +46,7 @@ func NewParser() annotations.IngressAnnotationsParser {
 }
 
 func (p *plugins) Parse(e annotations.Extractor) (any, error) {
-	plugins := make(adctypes.Plugins)
+	var plugins adctypes.Plugins
 	for _, handler := range _handlers {
 		out, err := handler.Handle(e)
 		if err != nil {
@@ -56,6 +56,9 @@ func (p *plugins) Parse(e annotations.Extractor) (any, error) {
 			continue
 		}
 		if out != nil {
+			if plugins == nil {
+				plugins = make(adctypes.Plugins)
+			}
 			plugins[handler.PluginName()] = out
 		}
 	}
