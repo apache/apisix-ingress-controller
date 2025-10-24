@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations"
+	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations/upstream"
 )
 
 type mockParser struct {
@@ -63,7 +64,10 @@ func TestTranslateAnnotations(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Set up mock parsers
+			orig := ingressAnnotationParsers
+			defer func() { ingressAnnotationParsers = orig }()
+
+			ingressAnnotationParsers = make(map[string]annotations.IngressAnnotationsParser)
 			for key, parser := range tt.parsers {
 				ingressAnnotationParsers[key] = parser
 			}
@@ -77,11 +81,94 @@ func TestTranslateAnnotations(t *testing.T) {
 				assert.NoError(t, err)
 			}
 			assert.Equal(t, tt.expected, dst)
+		})
+	}
+}
 
-			// Clean up mock parsers
-			for key := range tt.parsers {
-				delete(ingressAnnotationParsers, key)
-			}
+func TestTranslateIngressAnnotations(t *testing.T) {
+	tests := []struct {
+		name     string
+		anno     map[string]string
+		expected *IngressConfig
+	}{
+		{
+			name:     "no matching annotations",
+			anno:     map[string]string{"upstream": "value1"},
+			expected: &IngressConfig{},
+		},
+		{
+			name:     "invalid scheme",
+			anno:     map[string]string{annotations.AnnotationsUpstreamScheme: "invalid"},
+			expected: &IngressConfig{},
+		},
+		{
+			name: "http scheme",
+			anno: map[string]string{annotations.AnnotationsUpstreamScheme: "https"},
+			expected: &IngressConfig{
+				Upstream: upstream.Upstream{
+					Scheme: "https",
+				},
+			},
+		},
+		{
+			name: "retries",
+			anno: map[string]string{annotations.AnnotationsUpstreamRetry: "3"},
+			expected: &IngressConfig{
+				Upstream: upstream.Upstream{
+					Retries: 3,
+				},
+			},
+		},
+		{
+			name: "read timeout",
+			anno: map[string]string{
+				annotations.AnnotationsUpstreamTimeoutRead: "5s",
+			},
+			expected: &IngressConfig{
+				Upstream: upstream.Upstream{
+					TimeoutRead: 5,
+				},
+			},
+		},
+		{
+			name: "timeouts",
+			anno: map[string]string{
+				annotations.AnnotationsUpstreamTimeoutRead:    "5s",
+				annotations.AnnotationsUpstreamTimeoutSend:    "6s",
+				annotations.AnnotationsUpstreamTimeoutConnect: "7s",
+			},
+			expected: &IngressConfig{
+				Upstream: upstream.Upstream{
+					TimeoutRead:    5,
+					TimeoutSend:    6,
+					TimeoutConnect: 7,
+				},
+			},
+		},
+		{
+			name: "timeout/scheme/retries",
+			anno: map[string]string{
+				annotations.AnnotationsUpstreamTimeoutRead: "5s",
+				annotations.AnnotationsUpstreamScheme:      "http",
+				annotations.AnnotationsUpstreamRetry:       "2",
+			},
+			expected: &IngressConfig{
+				Upstream: upstream.Upstream{
+					TimeoutRead: 5,
+					Scheme:      "http",
+					Retries:     2,
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			translator := &Translator{}
+			result := translator.TranslateIngressAnnotations(tt.anno)
+
+			assert.NotNil(t, result)
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }

@@ -18,6 +18,7 @@
 package translator
 
 import (
+	"cmp"
 	"fmt"
 	"strings"
 
@@ -80,6 +81,10 @@ func (t *Translator) TranslateIngress(
 
 	labels := label.GenLabel(obj)
 
+	config := t.TranslateIngressAnnotations(obj.Annotations)
+
+	t.Log.V(1).Info("translating Ingress Annotations", "config", config)
+
 	// handle TLS configuration, convert to SSL objects
 	if err := t.translateIngressTLSSection(tctx, obj, result, labels); err != nil {
 		return nil, err
@@ -97,7 +102,8 @@ func (t *Translator) TranslateIngress(
 		}
 
 		for j, path := range rule.HTTP.Paths {
-			if svc := t.buildServiceFromIngressPath(tctx, obj, &path, i, j, hosts, labels); svc != nil {
+			index := fmt.Sprintf("%d-%d", i, j)
+			if svc := t.buildServiceFromIngressPath(tctx, obj, config, &path, index, hosts, labels); svc != nil {
 				result.Services = append(result.Services, svc)
 			}
 		}
@@ -135,8 +141,9 @@ func (t *Translator) translateIngressTLSSection(
 func (t *Translator) buildServiceFromIngressPath(
 	tctx *provider.TranslateContext,
 	obj *networkingv1.Ingress,
+	config *IngressConfig,
 	path *networkingv1.HTTPIngressPath,
-	ruleIndex, pathIndex int,
+	index string,
 	hosts []string,
 	labels map[string]string,
 ) *adctypes.Service {
@@ -146,15 +153,15 @@ func (t *Translator) buildServiceFromIngressPath(
 
 	service := adctypes.NewDefaultService()
 	service.Labels = labels
-	service.Name = adctypes.ComposeServiceNameWithRule(obj.Namespace, obj.Name, fmt.Sprintf("%d-%d", ruleIndex, pathIndex))
+	service.Name = adctypes.ComposeServiceNameWithRule(obj.Namespace, obj.Name, index)
 	service.ID = id.GenID(service.Name)
 	service.Hosts = hosts
 
 	upstream := adctypes.NewDefaultUpstream()
-	protocol := t.resolveIngressUpstream(tctx, obj, path.Backend.Service, upstream)
+	protocol := t.resolveIngressUpstream(tctx, obj, config, path.Backend.Service, upstream)
 	service.Upstream = upstream
 
-	route := buildRouteFromIngressPath(obj, path, ruleIndex, pathIndex, labels)
+	route := buildRouteFromIngressPath(obj, path, index, labels)
 	if protocol == internaltypes.AppProtocolWS || protocol == internaltypes.AppProtocolWSS {
 		route.EnableWebsocket = ptr.To(true)
 	}
@@ -167,11 +174,28 @@ func (t *Translator) buildServiceFromIngressPath(
 func (t *Translator) resolveIngressUpstream(
 	tctx *provider.TranslateContext,
 	obj *networkingv1.Ingress,
+	config *IngressConfig,
 	backendService *networkingv1.IngressServiceBackend,
 	upstream *adctypes.Upstream,
 ) string {
 	backendRef := convertBackendRef(obj.Namespace, backendService.Name, internaltypes.KindService)
 	t.AttachBackendTrafficPolicyToUpstream(backendRef, tctx.BackendTrafficPolicies, upstream)
+	if config != nil {
+		upConfig := config.Upstream
+		if upConfig.Scheme != "" {
+			upstream.Scheme = upConfig.Scheme
+		}
+		if upConfig.Retries > 0 {
+			upstream.Retries = ptr.To(int64(upConfig.Retries))
+		}
+		if upConfig.TimeoutConnect > 0 || upConfig.TimeoutRead > 0 || upConfig.TimeoutSend > 0 {
+			upstream.Timeout = &adctypes.Timeout{
+				Connect: cmp.Or(upConfig.TimeoutConnect, 60),
+				Read:    cmp.Or(upConfig.TimeoutRead, 60),
+				Send:    cmp.Or(upConfig.TimeoutSend, 60),
+			}
+		}
+	}
 	// determine service port/port name
 	var protocol string
 	var port intstr.IntOrString
@@ -224,11 +248,11 @@ func (t *Translator) resolveIngressUpstream(
 func buildRouteFromIngressPath(
 	obj *networkingv1.Ingress,
 	path *networkingv1.HTTPIngressPath,
-	ruleIndex, pathIndex int,
+	index string,
 	labels map[string]string,
 ) *adctypes.Route {
 	route := adctypes.NewDefaultRoute()
-	route.Name = adctypes.ComposeRouteName(obj.Namespace, obj.Name, fmt.Sprintf("%d-%d", ruleIndex, pathIndex))
+	route.Name = adctypes.ComposeRouteName(obj.Namespace, obj.Name, index)
 	route.ID = id.GenID(route.Name)
 	route.Labels = labels
 

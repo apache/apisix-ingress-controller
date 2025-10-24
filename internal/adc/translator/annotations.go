@@ -22,16 +22,24 @@ import (
 	"github.com/imdario/mergo"
 
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations"
+	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations/upstream"
 )
 
 // Structure extracted by Ingress Resource
-type Ingress struct{}
+type IngressConfig struct {
+	Upstream upstream.Upstream
+}
 
 // parsers registered for ingress annotations
-var ingressAnnotationParsers = map[string]annotations.IngressAnnotationsParser{}
+var ingressAnnotationParsers = map[string]annotations.IngressAnnotationsParser{
+	"upstream": upstream.NewParser(),
+}
 
-func (t *Translator) TranslateIngressAnnotations(anno map[string]string) *Ingress {
-	ing := &Ingress{}
+func (t *Translator) TranslateIngressAnnotations(anno map[string]string) *IngressConfig {
+	if len(anno) == 0 {
+		return nil
+	}
+	ing := &IngressConfig{}
 	if err := translateAnnotations(anno, ing); err != nil {
 		t.Log.Error(err, "failed to translate ingress annotations", "annotations", anno)
 	}

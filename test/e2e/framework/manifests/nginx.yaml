@@ -43,6 +43,14 @@ data:
           return 200 'Hello, World!';
         }
 
+        location /delay {
+          content_by_lua_block {
+            local delay = tonumber(ngx.var.arg_delay) or 0
+            ngx.sleep(delay)
+            ngx.say("Slept for ", delay, " seconds")
+          }
+        }
+
         location /ws {
           content_by_lua_block {
             local server = require "resty.websocket.server"
@@ -144,6 +152,10 @@ spec:
       protocol: TCP
       targetPort: 443
       appProtocol: https
+    - name: https-v2
+      port: 7443
+      protocol: TCP
+      targetPort: 443
     - name: ws
       port: 8080
       protocol: TCP
