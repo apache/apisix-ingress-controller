@@ -13,36 +13,33 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package annotations
+package plugins
 
 import (
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
+	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations"
 )
 
-type corsParser struct{}
+type cors struct{}
 
-// NewCorsParser creates a parser to convert CORS annotations
-// to APISIX cors plugin configuration.
-func NewCorsParser() IngressAnnotationsParser {
-	return &corsParser{}
+// NewCorsHandler creates a handler to convert annotations about
+// CORS to APISIX cors plugin.
+func NewCorsHandler() PluginAnnotationsHandler {
+	return &cors{}
 }
 
-func (c *corsParser) Parse(e Extractor) (any, error) {
-	if !e.GetBoolAnnotation(AnnotationsEnableCors) {
+func (c *cors) PluginName() string {
+	return "cors"
+}
+
+func (c *cors) Handle(e annotations.Extractor) (any, error) {
+	if !e.GetBoolAnnotation(annotations.AnnotationsEnableCors) {
 		return nil, nil
 	}
 
-	corsConfig := &adctypes.CorsConfig{
-		AllowOrigins: e.GetStringAnnotation(AnnotationsCorsAllowOrigin),
-		AllowMethods: e.GetStringAnnotation(AnnotationsCorsAllowMethods),
-		AllowHeaders: e.GetStringAnnotation(AnnotationsCorsAllowHeaders),
-	}
-
-	// Return nil if all fields are empty (only enable-cors is set)
-	if corsConfig.AllowOrigins == "" && corsConfig.AllowMethods == "" && corsConfig.AllowHeaders == "" {
-		// Use default CORS config with just enable flag
-		return corsConfig, nil
-	}
-
-	return corsConfig, nil
+	return &adctypes.CorsConfig{
+		AllowOrigins: e.GetStringAnnotation(annotations.AnnotationsCorsAllowOrigin),
+		AllowMethods: e.GetStringAnnotation(annotations.AnnotationsCorsAllowMethods),
+		AllowHeaders: e.GetStringAnnotation(annotations.AnnotationsCorsAllowHeaders),
+	}, nil
 }

@@ -167,27 +167,12 @@ func (t *Translator) buildServiceFromIngressPath(
 	}
 	service.Routes = []*adctypes.Route{route}
 
-	// Parse and apply annotations to service plugins
-	t.applyIngressAnnotations(obj, service)
+	if config != nil {
+		service.Plugins = config.Plugins.DeepCopy()
+	}
 
 	t.fillHTTPRoutePoliciesForIngress(tctx, service.Routes)
 	return service
-}
-
-func (t *Translator) applyIngressAnnotations(obj *networkingv1.Ingress, service *adctypes.Service) {
-	if len(obj.Annotations) == 0 {
-		return
-	}
-
-	ingress := t.TranslateIngressAnnotations(obj.Annotations)
-	if ingress == nil {
-		return
-	}
-
-	// Apply CORS plugin if configured
-	if ingress.Cors != nil {
-		service.Plugins[adctypes.PluginCORS] = ingress.Cors
-	}
 }
 
 func (t *Translator) resolveIngressUpstream(

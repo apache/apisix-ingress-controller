@@ -23,19 +23,20 @@ import (
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations"
+	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations/plugins"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations/upstream"
 )
 
 // Structure extracted by Ingress Resource
 type IngressConfig struct {
 	Upstream upstream.Upstream
-	Cors     *adctypes.CorsConfig `json:"cors,omitempty"`
+	Plugins  adctypes.Plugins
 }
 
 // parsers registered for ingress annotations
 var ingressAnnotationParsers = map[string]annotations.IngressAnnotationsParser{
-	"upstream": upstream.NewParser(),
-	"cors":     annotations.NewCorsParser(),
+	"Upstream": upstream.NewParser(),
+	"Plugins":  plugins.NewParser(),
 }
 
 func (t *Translator) TranslateIngressAnnotations(anno map[string]string) *IngressConfig {
