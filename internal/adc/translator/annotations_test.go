@@ -21,6 +21,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/apache/apisix-ingress-controller/api/adc"
+	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations/upstream"
 )
@@ -157,6 +159,34 @@ func TestTranslateIngressAnnotations(t *testing.T) {
 					TimeoutRead: 5,
 					Scheme:      "http",
 					Retries:     2,
+				},
+			},
+		},
+		{
+			name: "redirect to https",
+			anno: map[string]string{
+				annotations.AnnotationsHttpToHttps: "true",
+			},
+			expected: &IngressConfig{
+				Plugins: adctypes.Plugins{
+					"redirect": &adc.RedirectConfig{
+						HttpToHttps: true,
+					},
+				},
+			},
+		},
+		{
+			name: "redirect to specific uri",
+			anno: map[string]string{
+				annotations.AnnotationsHttpRedirect:     "/newpath",
+				annotations.AnnotationsHttpRedirectCode: "301",
+			},
+			expected: &IngressConfig{
+				Plugins: adctypes.Plugins{
+					"redirect": &adc.RedirectConfig{
+						URI:     "/newpath",
+						RetCode: 301,
+					},
 				},
 			},
 		},
