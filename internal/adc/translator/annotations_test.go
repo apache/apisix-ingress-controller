@@ -111,7 +111,7 @@ func TestTranslateIngressAnnotations(t *testing.T) {
 			},
 		},
 		{
-			name: "retrics",
+			name: "retries",
 			anno: map[string]string{annotations.AnnotationsUpstreamRetry: "3"},
 			expected: &IngressConfig{
 				Upstream: upstream.Upstream{
