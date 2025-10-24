@@ -21,6 +21,7 @@ import (
 
 	"github.com/imdario/mergo"
 
+	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations/upstream"
 )
@@ -28,11 +29,13 @@ import (
 // Structure extracted by Ingress Resource
 type IngressConfig struct {
 	Upstream upstream.Upstream
+	Cors     *adctypes.CorsConfig `json:"cors,omitempty"`
 }
 
 // parsers registered for ingress annotations
 var ingressAnnotationParsers = map[string]annotations.IngressAnnotationsParser{
 	"upstream": upstream.NewParser(),
+	"cors":     annotations.NewCorsParser(),
 }
 
 func (t *Translator) TranslateIngressAnnotations(anno map[string]string) *IngressConfig {
