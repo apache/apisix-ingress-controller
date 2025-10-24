@@ -451,10 +451,11 @@ func IngressClassIndexFunc(rawObj client.Object) []string {
 
 func IngressClassRefIndexFunc(rawObj client.Object) []string {
 	ingress := rawObj.(*networkingv1.Ingress)
-	if ingress.Spec.IngressClassName == nil {
+	ingressClassName := internaltypes.GetEffectiveIngressClassName(ingress)
+	if ingressClassName == "" {
 		return nil
 	}
-	return []string{*ingress.Spec.IngressClassName}
+	return []string{ingressClassName}
 }
 
 func IngressServiceIndexFunc(rawObj client.Object) []string {
