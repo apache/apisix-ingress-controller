@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations/upstream"
 )
@@ -157,6 +158,24 @@ func TestTranslateIngressAnnotations(t *testing.T) {
 					TimeoutRead: 5,
 					Scheme:      "http",
 					Retries:     2,
+				},
+			},
+		},
+		{
+			name: "cors plugin",
+			anno: map[string]string{
+				annotations.AnnotationsEnableCors:       "true",
+				annotations.AnnotationsCorsAllowOrigin:  "https://example.com",
+				annotations.AnnotationsCorsAllowHeaders: "header-a,header-b",
+				annotations.AnnotationsCorsAllowMethods: "GET,POST",
+			},
+			expected: &IngressConfig{
+				Plugins: adctypes.Plugins{
+					"cors": &adctypes.CorsConfig{
+						AllowOrigins: "https://example.com",
+						AllowHeaders: "header-a,header-b",
+						AllowMethods: "GET,POST",
+					},
 				},
 			},
 		},
