@@ -102,6 +102,28 @@ spec:
             port:
               number: 443
 `
+
+			ingressWebSocket = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: websocket
+  annotations:
+    k8s.apisix.apache.org/enable-websocket: "true"
+spec:
+  ingressClassName: %s
+  rules:
+  - host: nginx.example
+    http:
+      paths:
+      - path: /ws
+        pathType: Exact
+        backend:
+          service:
+            name: nginx
+            port:
+              number: 80
+`
 		)
 		BeforeEach(func() {
 			s.DeployNginx(framework.NginxOptions{
@@ -166,6 +188,14 @@ spec:
 			Expect(upstreams[0].Timeout.Read).To(Equal(2), "checking Upstream read timeout")
 			Expect(upstreams[0].Timeout.Send).To(Equal(3), "checking Upstream send timeout")
 			Expect(upstreams[0].Timeout.Connect).To(Equal(4), "checking Upstream connect timeout")
+		})
+		It("websocket", func() {
+			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressWebSocket, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
+
+			routes, err := s.DefaultDataplaneResource().Route().List(context.Background())
+			Expect(err).NotTo(HaveOccurred(), "listing Route")
+			Expect(routes).To(HaveLen(1), "checking Route length")
+			Expect(routes[0].EnableWebsocket).To(Equal(ptr.To(true)), "checking Route EnableWebsocket")
 		})
 	})
 })
