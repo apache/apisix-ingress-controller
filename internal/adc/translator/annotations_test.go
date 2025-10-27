@@ -19,6 +19,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/incubator4/go-resty-expr/expr"
 	"github.com/stretchr/testify/assert"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
@@ -214,6 +215,46 @@ func TestTranslateIngressAnnotations(t *testing.T) {
 			},
 			expected: &IngressConfig{
 				EnableWebsocket: true,
+			},
+		},
+		{
+			name: "fault injection by allowed http methods",
+			anno: map[string]string{
+				annotations.AnnotationsHttpAllowMethods: "GET,POST",
+			},
+			expected: &IngressConfig{
+				Plugins: adctypes.Plugins{
+					"fault-injection": &adctypes.FaultInjectionConfig{
+						Abort: &adctypes.FaultInjectionAbortConfig{
+							HTTPStatus: 405,
+							Vars: [][]expr.Expr{{
+								expr.StringExpr("request_method").Not().In(
+									expr.ArrayExpr(expr.ExprArrayFromStrings([]string{"GET", "POST"})...),
+								),
+							}},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "fault injection by blocked http methods",
+			anno: map[string]string{
+				annotations.AnnotationsHttpBlockMethods: "DELETE",
+			},
+			expected: &IngressConfig{
+				Plugins: adctypes.Plugins{
+					"fault-injection": &adctypes.FaultInjectionConfig{
+						Abort: &adctypes.FaultInjectionAbortConfig{
+							HTTPStatus: 405,
+							Vars: [][]expr.Expr{{
+								expr.StringExpr("request_method").In(
+									expr.ArrayExpr(expr.ExprArrayFromStrings([]string{"DELETE"})...),
+								),
+							}},
+						},
+					},
+				},
 			},
 		},
 	}

@@ -318,6 +318,49 @@ spec:
             port:
               number: 80
 `
+			allowMethods = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: allow-methods
+  annotations:
+    k8s.apisix.apache.org/http-allow-methods: "GET,POST"
+spec:
+  ingressClassName: %s
+  rules:
+  - host: httpbin.example
+    http:
+      paths:
+      - path: /anything
+        pathType: Exact
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
+
+			blockMethods = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: block-methods
+  annotations:
+    k8s.apisix.apache.org/http-block-methods: "DELETE"
+spec:
+  ingressClassName: %s
+  rules:
+  - host: httpbin2.example
+    http:
+      paths:
+      - path: /anything
+        pathType: Exact
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
 		)
 		BeforeEach(func() {
 			By("create GatewayProxy")
@@ -358,6 +401,77 @@ spec:
 				Expect().
 				Status(http.StatusPermanentRedirect).
 				Header("Location").IsEqual("/anything/ip")
+		})
+		It("methods", func() {
+			Expect(s.CreateResourceFromString(fmt.Sprintf(allowMethods, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
+			Expect(s.CreateResourceFromString(fmt.Sprintf(blockMethods, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
+
+			tets := []*scaffold.RequestAssert{
+				{
+					Method: "GET",
+					Path:   "/anything",
+					Host:   "httpbin.example",
+					Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				},
+				{
+					Method: "POST",
+					Path:   "/anything",
+					Host:   "httpbin.example",
+					Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				},
+				{
+					Method: "PUT",
+					Path:   "/anything",
+					Host:   "httpbin.example",
+					Check:  scaffold.WithExpectedStatus(http.StatusMethodNotAllowed),
+				},
+				{
+					Method: "PATCH",
+					Path:   "/anything",
+					Host:   "httpbin.example",
+					Check:  scaffold.WithExpectedStatus(http.StatusMethodNotAllowed),
+				},
+				{
+					Method: "DELETE",
+					Path:   "/anything",
+					Host:   "httpbin.example",
+					Check:  scaffold.WithExpectedStatus(http.StatusMethodNotAllowed),
+				},
+				{
+					Method: "GET",
+					Path:   "/anything",
+					Host:   "httpbin2.example",
+					Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				},
+				{
+					Method: "POST",
+					Path:   "/anything",
+					Host:   "httpbin2.example",
+					Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				},
+				{
+					Method: "PUT",
+					Path:   "/anything",
+					Host:   "httpbin2.example",
+					Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				},
+				{
+					Method: "PATCH",
+					Path:   "/anything",
+					Host:   "httpbin2.example",
+					Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				},
+				{
+					Method: "DELETE",
+					Path:   "/anything",
+					Host:   "httpbin2.example",
+					Check:  scaffold.WithExpectedStatus(http.StatusMethodNotAllowed),
+				},
+			}
+
+			for _, test := range tets {
+				s.RequestAssert(test)
+			}
 		})
 	})
 })

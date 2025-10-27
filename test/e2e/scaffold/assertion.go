@@ -18,6 +18,7 @@
 package scaffold
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -62,25 +63,26 @@ type HTTPResponse struct {
 }
 
 type BasicAuth struct {
-	Username string
-	Password string
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 type RequestAssert struct {
-	Client    *httpexpect.Expect
-	Method    string
-	Path      string
-	Host      string
-	Query     map[string]any
-	Headers   map[string]string
-	Body      []byte
-	BasicAuth *BasicAuth
+	Method    string            `json:"method,omitempty"`
+	Path      string            `json:"path,omitempty"`
+	Host      string            `json:"host,omitempty"`
+	Query     map[string]any    `json:"query,omitempty"`
+	Headers   map[string]string `json:"headers,omitempty"`
+	Body      []byte            `json:"body,omitempty"`
+	BasicAuth *BasicAuth        `json:"basic_auth,omitempty"`
 
-	Timeout  time.Duration
-	Interval time.Duration
+	Client *httpexpect.Expect `json:"-"`
 
-	Check  ResponseCheckFunc
-	Checks []ResponseCheckFunc
+	Timeout  time.Duration `json:"-"`
+	Interval time.Duration `json:"-"`
+
+	Check  ResponseCheckFunc   `json:"-"`
+	Checks []ResponseCheckFunc `json:"-"`
 }
 
 func (c *RequestAssert) request(method, path string, body []byte) *httpexpect.Request {
@@ -308,7 +310,8 @@ func (s *Scaffold) RequestAssert(r *RequestAssert) bool {
 
 		for _, check := range r.Checks {
 			if err := check(resp); err != nil {
-				return fmt.Errorf("response check failed: %w", err)
+				req, _ := json.MarshalIndent(r, "", "  ")
+				return fmt.Errorf("response check failed for request %s: %v", string(req), err)
 			}
 		}
 		return nil

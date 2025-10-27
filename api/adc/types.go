@@ -659,6 +659,15 @@ type ResponseRewriteConfig struct {
 	Filters      []map[string]string `json:"filters,omitempty" yaml:"filters,omitempty"`
 }
 
+type FaultInjectionConfig struct {
+	Abort *FaultInjectionAbortConfig `json:"abort,omitempty" yaml:"abort,omitempty"`
+}
+
+type FaultInjectionAbortConfig struct {
+	HTTPStatus int           `json:"http_status" yaml:"http_status"`
+	Vars       [][]expr.Expr `json:"vars,omitempty" yaml:"vars,omitempty"`
+}
+
 type ResponseHeaders struct {
 	Set    map[string]string `json:"set,omitempty" yaml:"set,omitempty"`
 	Add    []string          `json:"add,omitempty" yaml:"add,omitempty"`
