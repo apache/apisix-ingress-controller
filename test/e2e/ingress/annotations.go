@@ -168,4 +168,92 @@ spec:
 			Expect(upstreams[0].Timeout.Connect).To(Equal(4), "checking Upstream connect timeout")
 		})
 	})
+
+	Context("Plugins", func() {
+		var (
+			tohttps = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tohttps
+  annotations:
+    k8s.apisix.apache.org/http-to-https: "true"
+spec:
+  ingressClassName: %s
+  rules:
+  - host: httpbin.example
+    http:
+      paths:
+      - path: /get
+        pathType: Exact
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
+			redirect = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: redirect
+  annotations:
+    k8s.apisix.apache.org/http-redirect: "/anything$uri"
+    k8s.apisix.apache.org/http-redirect-code: "308"
+spec:
+  ingressClassName: %s
+  rules:
+  - host: httpbin.example
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
+		)
+		BeforeEach(func() {
+			By("create GatewayProxy")
+			Expect(s.CreateResourceFromString(s.GetGatewayProxySpec())).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			By("create IngressClass")
+			err := s.CreateResourceFromStringWithNamespace(s.GetIngressClassYaml(), "")
+			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
+			time.Sleep(5 * time.Second)
+		})
+		It("redirect", func() {
+			Expect(s.CreateResourceFromString(fmt.Sprintf(tohttps, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
+			Expect(s.CreateResourceFromString(fmt.Sprintf(redirect, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.example",
+				Check:  scaffold.WithExpectedStatus(http.StatusMovedPermanently),
+			})
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/ip",
+				Host:   "httpbin.example",
+				Check:  scaffold.WithExpectedStatus(http.StatusPermanentRedirect),
+			})
+
+			_ = s.NewAPISIXClient().
+				GET("/get").
+				WithHost("httpbin.example").
+				Expect().
+				Status(http.StatusMovedPermanently).
+				Header("Location").IsEqual("https://httpbin.example:9443/get")
+
+			_ = s.NewAPISIXClient().
+				GET("/ip").
+				WithHost("httpbin.example").
+				Expect().
+				Status(http.StatusPermanentRedirect).
+				Header("Location").IsEqual("/anything/ip")
+		})
+	})
 })
