@@ -19,6 +19,7 @@ package ingress
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -102,6 +103,31 @@ spec:
             port:
               number: 443
 `
+
+			ingressCORS = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cors
+  annotations:
+    k8s.apisix.apache.org/enable-cors: "true"
+    k8s.apisix.apache.org/cors-allow-origin: "https://allowed.example"
+    k8s.apisix.apache.org/cors-allow-methods: "GET,POST"
+    k8s.apisix.apache.org/cors-allow-headers: "Origin,Authorization"
+spec:
+  ingressClassName: %s
+  rules:
+  - host: cors.example
+    http:
+      paths:
+      - path: /get
+        pathType: Exact
+        backend:
+          service:
+            name: nginx
+            port:
+              number: 80
+`
 		)
 		BeforeEach(func() {
 			s.DeployNginx(framework.NginxOptions{
@@ -166,6 +192,53 @@ spec:
 			Expect(upstreams[0].Timeout.Read).To(Equal(2), "checking Upstream read timeout")
 			Expect(upstreams[0].Timeout.Send).To(Equal(3), "checking Upstream send timeout")
 			Expect(upstreams[0].Timeout.Connect).To(Equal(4), "checking Upstream connect timeout")
+		})
+
+		It("cors annotations", func() {
+			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressCORS, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "cors.example",
+				Headers: map[string]string{
+					"Origin": "https://allowed.example",
+				},
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedHeaders(map[string]string{
+						"Access-Control-Allow-Origin":  "https://allowed.example",
+						"Access-Control-Allow-Methods": "GET,POST",
+						"Access-Control-Allow-Headers": "Origin,Authorization",
+					}),
+				},
+			})
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "cors.example",
+				Headers: map[string]string{
+					"Origin": "https://blocked.example",
+				},
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedNotHeader("Access-Control-Allow-Origin"),
+				},
+			})
+
+			routes, err := s.DefaultDataplaneResource().Route().List(context.Background())
+			Expect(err).NotTo(HaveOccurred(), "listing Service")
+			Expect(routes).To(HaveLen(1), "checking Route length")
+			Expect(routes[0].Plugins).To(HaveKey("cors"), "checking Route plugins")
+			jsonBytes, err := json.Marshal(routes[0].Plugins["cors"])
+			Expect(err).NotTo(HaveOccurred(), "marshalling cors plugin config")
+			var corsConfig map[string]any
+			err = json.Unmarshal(jsonBytes, &corsConfig)
+			Expect(err).NotTo(HaveOccurred(), "unmarshalling cors plugin config")
+			Expect(corsConfig["allow_origins"]).To(Equal("https://allowed.example"), "checking cors allow origins")
+			Expect(corsConfig["allow_methods"]).To(Equal("GET,POST"), "checking cors allow methods")
+			Expect(corsConfig["allow_headers"]).To(Equal("Origin,Authorization"), "checking cors allow headers")
 		})
 	})
 

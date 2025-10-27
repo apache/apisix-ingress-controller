@@ -189,6 +189,24 @@ func TestTranslateIngressAnnotations(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "cors plugin",
+			anno: map[string]string{
+				annotations.AnnotationsEnableCors:       "true",
+				annotations.AnnotationsCorsAllowOrigin:  "https://example.com",
+				annotations.AnnotationsCorsAllowHeaders: "header-a,header-b",
+				annotations.AnnotationsCorsAllowMethods: "GET,POST",
+			},
+			expected: &IngressConfig{
+				Plugins: adctypes.Plugins{
+					"cors": &adctypes.CorsConfig{
+						AllowOrigins: "https://example.com",
+						AllowHeaders: "header-a,header-b",
+						AllowMethods: "GET,POST",
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

@@ -37,6 +37,7 @@ var (
 
 	handlers = []PluginAnnotationsHandler{
 		NewRedirectHandler(),
+		NewCorsHandler(),
 	}
 )
 
