@@ -15,8 +15,7 @@
 package plugins
 
 import (
-	"github.com/api7/gopkg/pkg/log"
-	"go.uber.org/zap"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations"
@@ -34,7 +33,10 @@ type PluginAnnotationsHandler interface {
 }
 
 var (
-	_handlers = []PluginAnnotationsHandler{
+	log = logf.Log.WithName("annotations").WithName("plugins").WithName("parser")
+
+	handlers = []PluginAnnotationsHandler{
+		NewRedirectHandler(),
 		NewCorsHandler(),
 	}
 )
@@ -46,21 +48,19 @@ func NewParser() annotations.IngressAnnotationsParser {
 }
 
 func (p *plugins) Parse(e annotations.Extractor) (any, error) {
-	var plugins adctypes.Plugins
-	for _, handler := range _handlers {
+	plugins := make(adctypes.Plugins)
+	for _, handler := range handlers {
 		out, err := handler.Handle(e)
 		if err != nil {
-			log.Warnw("failed to handle annotations",
-				zap.Error(err),
-			)
+			log.Error(err, "Failed to handle annotation", "handler", handler.PluginName())
 			continue
 		}
 		if out != nil {
-			if plugins == nil {
-				plugins = make(adctypes.Plugins)
-			}
 			plugins[handler.PluginName()] = out
 		}
 	}
-	return plugins, nil
+	if len(plugins) > 0 {
+		return plugins, nil
+	}
+	return nil, nil
 }

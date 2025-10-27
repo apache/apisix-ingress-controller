@@ -162,6 +162,34 @@ func TestTranslateIngressAnnotations(t *testing.T) {
 			},
 		},
 		{
+			name: "redirect to https",
+			anno: map[string]string{
+				annotations.AnnotationsHttpToHttps: "true",
+			},
+			expected: &IngressConfig{
+				Plugins: adctypes.Plugins{
+					"redirect": &adctypes.RedirectConfig{
+						HttpToHttps: true,
+					},
+				},
+			},
+		},
+		{
+			name: "redirect to specific uri",
+			anno: map[string]string{
+				annotations.AnnotationsHttpRedirect:     "/newpath",
+				annotations.AnnotationsHttpRedirectCode: "301",
+			},
+			expected: &IngressConfig{
+				Plugins: adctypes.Plugins{
+					"redirect": &adctypes.RedirectConfig{
+						URI:     "/newpath",
+						RetCode: 301,
+					},
+				},
+			},
+		},
+		{
 			name: "cors plugin",
 			anno: map[string]string{
 				annotations.AnnotationsEnableCors:       "true",
