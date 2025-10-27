@@ -19,6 +19,7 @@ package ingress
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -101,6 +102,31 @@ spec:
             name: nginx
             port:
               number: 443
+`
+
+			ingressCORS = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cors
+  annotations:
+    k8s.apisix.apache.org/enable-cors: "true"
+    k8s.apisix.apache.org/cors-allow-origin: "https://allowed.example"
+    k8s.apisix.apache.org/cors-allow-methods: "GET,POST"
+    k8s.apisix.apache.org/cors-allow-headers: "Origin,Authorization"
+spec:
+  ingressClassName: %s
+  rules:
+  - host: cors.example
+    http:
+      paths:
+      - path: /get
+        pathType: Exact
+        backend:
+          service:
+            name: nginx
+            port:
+              number: 80
 `
 
 			ingressWebSocket = `
@@ -189,6 +215,54 @@ spec:
 			Expect(upstreams[0].Timeout.Send).To(Equal(3), "checking Upstream send timeout")
 			Expect(upstreams[0].Timeout.Connect).To(Equal(4), "checking Upstream connect timeout")
 		})
+
+		It("cors annotations", func() {
+			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressCORS, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "cors.example",
+				Headers: map[string]string{
+					"Origin": "https://allowed.example",
+				},
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedHeaders(map[string]string{
+						"Access-Control-Allow-Origin":  "https://allowed.example",
+						"Access-Control-Allow-Methods": "GET,POST",
+						"Access-Control-Allow-Headers": "Origin,Authorization",
+					}),
+				},
+			})
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "cors.example",
+				Headers: map[string]string{
+					"Origin": "https://blocked.example",
+				},
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedNotHeader("Access-Control-Allow-Origin"),
+				},
+			})
+
+			routes, err := s.DefaultDataplaneResource().Route().List(context.Background())
+			Expect(err).NotTo(HaveOccurred(), "listing Service")
+			Expect(routes).To(HaveLen(1), "checking Route length")
+			Expect(routes[0].Plugins).To(HaveKey("cors"), "checking Route plugins")
+			jsonBytes, err := json.Marshal(routes[0].Plugins["cors"])
+			Expect(err).NotTo(HaveOccurred(), "marshalling cors plugin config")
+			var corsConfig map[string]any
+			err = json.Unmarshal(jsonBytes, &corsConfig)
+			Expect(err).NotTo(HaveOccurred(), "unmarshalling cors plugin config")
+			Expect(corsConfig["allow_origins"]).To(Equal("https://allowed.example"), "checking cors allow origins")
+			Expect(corsConfig["allow_methods"]).To(Equal("GET,POST"), "checking cors allow methods")
+			Expect(corsConfig["allow_headers"]).To(Equal("Origin,Authorization"), "checking cors allow headers")
+		})
+
 		It("websocket", func() {
 			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressWebSocket, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
 
@@ -196,6 +270,94 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "listing Route")
 			Expect(routes).To(HaveLen(1), "checking Route length")
 			Expect(routes[0].EnableWebsocket).To(Equal(ptr.To(true)), "checking Route EnableWebsocket")
+		})
+	})
+
+	Context("Plugins", func() {
+		var (
+			tohttps = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tohttps
+  annotations:
+    k8s.apisix.apache.org/http-to-https: "true"
+spec:
+  ingressClassName: %s
+  rules:
+  - host: httpbin.example
+    http:
+      paths:
+      - path: /get
+        pathType: Exact
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
+			redirect = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: redirect
+  annotations:
+    k8s.apisix.apache.org/http-redirect: "/anything$uri"
+    k8s.apisix.apache.org/http-redirect-code: "308"
+spec:
+  ingressClassName: %s
+  rules:
+  - host: httpbin.example
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
+		)
+		BeforeEach(func() {
+			By("create GatewayProxy")
+			Expect(s.CreateResourceFromString(s.GetGatewayProxySpec())).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			By("create IngressClass")
+			err := s.CreateResourceFromStringWithNamespace(s.GetIngressClassYaml(), "")
+			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
+			time.Sleep(5 * time.Second)
+		})
+		It("redirect", func() {
+			Expect(s.CreateResourceFromString(fmt.Sprintf(tohttps, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
+			Expect(s.CreateResourceFromString(fmt.Sprintf(redirect, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.example",
+				Check:  scaffold.WithExpectedStatus(http.StatusMovedPermanently),
+			})
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/ip",
+				Host:   "httpbin.example",
+				Check:  scaffold.WithExpectedStatus(http.StatusPermanentRedirect),
+			})
+
+			_ = s.NewAPISIXClient().
+				GET("/get").
+				WithHost("httpbin.example").
+				Expect().
+				Status(http.StatusMovedPermanently).
+				Header("Location").IsEqual("https://httpbin.example:9443/get")
+
+			_ = s.NewAPISIXClient().
+				GET("/ip").
+				WithHost("httpbin.example").
+				Expect().
+				Status(http.StatusPermanentRedirect).
+				Header("Location").IsEqual("/anything/ip")
 		})
 	})
 })

@@ -21,7 +21,9 @@ import (
 
 	"github.com/imdario/mergo"
 
+	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations"
+	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations/plugins"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations/upstream"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations/websocket"
 )
@@ -29,12 +31,13 @@ import (
 // Structure extracted by Ingress Resource
 type IngressConfig struct {
 	Upstream        upstream.Upstream
+	Plugins         adctypes.Plugins
 	EnableWebsocket bool
 }
 
-// parsers registered for ingress annotations
 var ingressAnnotationParsers = map[string]annotations.IngressAnnotationsParser{
 	"upstream":        upstream.NewParser(),
+	"plugins":         plugins.NewParser(),
 	"EnableWebsocket": websocket.NewParser(),
 }
 

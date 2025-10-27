@@ -161,7 +161,7 @@ func (t *Translator) buildServiceFromIngressPath(
 	protocol := t.resolveIngressUpstream(tctx, obj, config, path.Backend.Service, upstream)
 	service.Upstream = upstream
 
-	route := buildRouteFromIngressPath(obj, path, index, labels)
+	route := buildRouteFromIngressPath(obj, path, config, index, labels)
 	// Check if websocket is enabled via annotation first, then fall back to appProtocol detection
 	if config != nil && config.EnableWebsocket {
 		route.EnableWebsocket = ptr.To(true)
@@ -251,6 +251,7 @@ func (t *Translator) resolveIngressUpstream(
 func buildRouteFromIngressPath(
 	obj *networkingv1.Ingress,
 	path *networkingv1.HTTPIngressPath,
+	config *IngressConfig,
 	index string,
 	labels map[string]string,
 ) *adctypes.Route {
@@ -277,6 +278,9 @@ func buildRouteFromIngressPath(
 		case networkingv1.PathTypeImplementationSpecific:
 			uris = []string{"/*"}
 		}
+	}
+	if config != nil && len(config.Plugins) > 0 {
+		route.Plugins = config.Plugins
 	}
 	route.Uris = uris
 	return route
