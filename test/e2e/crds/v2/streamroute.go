@@ -18,6 +18,7 @@
 package v2
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -86,6 +87,20 @@ spec:
 					scaffold.WithExpectedBodyContains("x-my-value"),
 				},
 			})
+
+			err = s.DeleteResourceFromString(fmt.Sprintf(apisixRoute, s.Namespace()))
+			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixRoute")
+
+			s.RetryAssertion(func() error {
+				svcs, err := s.DefaultDataplaneResource().Service().List(context.Background())
+				if err != nil {
+					return err
+				}
+				if len(svcs) != 0 {
+					return fmt.Errorf("expected 0 services, got %d", len(svcs))
+				}
+				return nil
+			}).ShouldNot(HaveOccurred(), "waiting for services to be deleted")
 		})
 	})
 
