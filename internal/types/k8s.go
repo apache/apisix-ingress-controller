@@ -99,7 +99,7 @@ func KindOf(obj any) string {
 	case *v2.ApisixPluginConfig:
 		return KindApisixPluginConfig
 	case *v2.ApisixUpstream:
-		return KindApisixUpstream 
+		return KindApisixUpstream
 	case *corev1.Pod:
 		return KindPod
 	case *v2.ApisixTls:
