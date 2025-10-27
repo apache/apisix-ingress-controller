@@ -167,10 +167,6 @@ func (t *Translator) buildServiceFromIngressPath(
 	}
 	service.Routes = []*adctypes.Route{route}
 
-	if config != nil {
-		service.Plugins = config.Plugins.DeepCopy()
-	}
-
 	t.fillHTTPRoutePoliciesForIngress(tctx, service.Routes)
 	return service
 }

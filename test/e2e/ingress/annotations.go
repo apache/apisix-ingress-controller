@@ -227,15 +227,14 @@ spec:
 				},
 			})
 
-			services, err := s.DefaultDataplaneResource().Service().List(context.Background())
+			routes, err := s.DefaultDataplaneResource().Route().List(context.Background())
 			Expect(err).NotTo(HaveOccurred(), "listing Service")
-			Expect(services).To(HaveLen(1), "checking Service length")
-			Expect(services[0].Plugins).To(HaveKey("cors"), "checking Service plugins")
-			data := services[0].Plugins["cors"]
-			corsConfigBytes, err := json.Marshal(data)
+			Expect(routes).To(HaveLen(1), "checking Route length")
+			Expect(routes[0].Plugins).To(HaveKey("cors"), "checking Route plugins")
+			jsonBytes, err := json.Marshal(routes[0].Plugins["cors"])
 			Expect(err).NotTo(HaveOccurred(), "marshalling cors plugin config")
 			var corsConfig map[string]any
-			err = json.Unmarshal(corsConfigBytes, &corsConfig)
+			err = json.Unmarshal(jsonBytes, &corsConfig)
 			Expect(err).NotTo(HaveOccurred(), "unmarshalling cors plugin config")
 			Expect(corsConfig["allow_origins"]).To(Equal("https://allowed.example"), "checking cors allow origins")
 			Expect(corsConfig["allow_methods"]).To(Equal("GET,POST"), "checking cors allow methods")
