@@ -162,7 +162,10 @@ func (t *Translator) buildServiceFromIngressPath(
 	service.Upstream = upstream
 
 	route := buildRouteFromIngressPath(obj, path, config, index, labels)
-	if protocol == internaltypes.AppProtocolWS || protocol == internaltypes.AppProtocolWSS {
+	// Check if websocket is enabled via annotation first, then fall back to appProtocol detection
+	if config != nil && config.EnableWebsocket {
+		route.EnableWebsocket = ptr.To(true)
+	} else if protocol == internaltypes.AppProtocolWS || protocol == internaltypes.AppProtocolWSS {
 		route.EnableWebsocket = ptr.To(true)
 	}
 	service.Routes = []*adctypes.Route{route}

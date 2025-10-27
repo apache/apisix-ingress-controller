@@ -128,6 +128,28 @@ spec:
             port:
               number: 80
 `
+
+			ingressWebSocket = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: websocket
+  annotations:
+    k8s.apisix.apache.org/enable-websocket: "true"
+spec:
+  ingressClassName: %s
+  rules:
+  - host: nginx.example
+    http:
+      paths:
+      - path: /ws
+        pathType: Exact
+        backend:
+          service:
+            name: nginx
+            port:
+              number: 80
+`
 		)
 		BeforeEach(func() {
 			s.DeployNginx(framework.NginxOptions{
@@ -239,6 +261,15 @@ spec:
 			Expect(corsConfig["allow_origins"]).To(Equal("https://allowed.example"), "checking cors allow origins")
 			Expect(corsConfig["allow_methods"]).To(Equal("GET,POST"), "checking cors allow methods")
 			Expect(corsConfig["allow_headers"]).To(Equal("Origin,Authorization"), "checking cors allow headers")
+		})
+
+		It("websocket", func() {
+			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressWebSocket, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
+
+			routes, err := s.DefaultDataplaneResource().Route().List(context.Background())
+			Expect(err).NotTo(HaveOccurred(), "listing Route")
+			Expect(routes).To(HaveLen(1), "checking Route length")
+			Expect(routes[0].EnableWebsocket).To(Equal(ptr.To(true)), "checking Route EnableWebsocket")
 		})
 	})
 

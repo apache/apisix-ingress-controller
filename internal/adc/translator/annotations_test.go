@@ -207,6 +207,15 @@ func TestTranslateIngressAnnotations(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "enable websocket",
+			anno: map[string]string{
+				annotations.AnnotationsEnableWebSocket: "true",
+			},
+			expected: &IngressConfig{
+				EnableWebsocket: true,
+			},
+		},
 	}
 
 	for _, tt := range tests {

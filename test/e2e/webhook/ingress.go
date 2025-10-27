@@ -58,7 +58,6 @@ metadata:
   namespace: %s
   annotations:
     k8s.apisix.apache.org/use-regex: "true"
-    k8s.apisix.apache.org/enable-websocket: "true"
 spec:
   ingressClassName: %s
   rules:
@@ -76,7 +75,6 @@ spec:
 
 			output, err := s.CreateResourceFromStringAndGetOutput(ingressYAML)
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(output).To(ContainSubstring(`Warning: Annotation 'k8s.apisix.apache.org/enable-websocket' is not supported`))
 			Expect(output).To(ContainSubstring(`Warning: Annotation 'k8s.apisix.apache.org/use-regex' is not supported`))
 
 			s.RequestAssert(&scaffold.RequestAssert{
