@@ -386,19 +386,8 @@ spec:
 			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressCSRF, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
 
 			time.Sleep(5 * time.Second)
-			// Verify CSRF plugin is configured in the route
-			routes, err := s.DefaultDataplaneResource().Route().List(context.Background())
-			Expect(err).NotTo(HaveOccurred(), "listing Route")
-			Expect(routes).To(HaveLen(1), "checking Route length")
-			Expect(routes[0].Plugins).To(HaveKey("csrf"), "checking Route plugins")
-			jsonBytes, err := json.Marshal(routes[0].Plugins["csrf"])
-			Expect(err).NotTo(HaveOccurred(), "marshalling csrf plugin config")
-			var csrfConfig map[string]any
-			err = json.Unmarshal(jsonBytes, &csrfConfig)
-			Expect(err).NotTo(HaveOccurred(), "unmarshalling csrf plugin config")
-			Expect(csrfConfig["key"]).To(Equal("foo-key"), "checking csrf key")
 
-			// Request without CSRF token should fail
+			By("Request without CSRF token should fail")
 			msg401 := s.NewAPISIXClient().
 				POST("/anything").
 				WithHeader("Host", "httpbin.example").
@@ -408,7 +397,7 @@ spec:
 				Raw()
 			Expect(msg401).To(ContainSubstring("no csrf token in headers"), "checking error message")
 
-			// GET request should succeed and return CSRF token in cookie
+			By("GET request should succeed and return CSRF token in cookie")
 			resp := s.NewAPISIXClient().
 				GET("/anything").
 				WithHeader("Host", "httpbin.example").
@@ -419,7 +408,7 @@ spec:
 			cookie := resp.Cookie("apisix-csrf-token")
 			token := cookie.Value().Raw()
 
-			// POST request with valid CSRF token should succeed
+			By("POST request with valid CSRF token should succeed")
 			_ = s.NewAPISIXClient().
 				POST("/anything").
 				WithHeader("Host", "httpbin.example").
@@ -428,6 +417,17 @@ spec:
 				Expect().
 				Status(http.StatusOK)
 
+			By("Verify CSRF plugin is configured in the route")
+			routes, err := s.DefaultDataplaneResource().Route().List(context.Background())
+			Expect(err).NotTo(HaveOccurred(), "listing Route")
+			Expect(routes).To(HaveLen(1), "checking Route length")
+			Expect(routes[0].Plugins).To(HaveKey("csrf"), "checking Route plugins")
+			jsonBytes, err := json.Marshal(routes[0].Plugins["csrf"])
+			Expect(err).NotTo(HaveOccurred(), "marshalling csrf plugin config")
+			var csrfConfig map[string]any
+			err = json.Unmarshal(jsonBytes, &csrfConfig)
+			Expect(err).NotTo(HaveOccurred(), "unmarshalling csrf plugin config")
+			Expect(csrfConfig["key"]).To(Equal("foo-key"), "checking csrf key")
 		})
 	})
 })
