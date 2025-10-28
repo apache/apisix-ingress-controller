@@ -281,7 +281,6 @@ func (t *Translator) buildRouteFromIngressPath(
 		}
 	}
 
-	// Load plugins from config
 	if config != nil {
 		// check if PluginConfig is specified
 		if config.PluginConfigName != "" {
@@ -310,7 +309,6 @@ func (t *Translator) loadPluginConfigPluginsForIngress(tctx *provider.TranslateC
 		Namespace: namespace,
 		Name:      pluginConfigName,
 	}
-
 	pc, ok := tctx.ApisixPluginConfigs[pcKey]
 	if !ok || pc == nil {
 		return plugins
@@ -320,7 +318,6 @@ func (t *Translator) loadPluginConfigPluginsForIngress(tctx *provider.TranslateC
 		if !plugin.Enable {
 			continue
 		}
-
 		config := t.buildPluginConfig(plugin, namespace, tctx.Secrets)
 		plugins[plugin.Name] = config
 	}

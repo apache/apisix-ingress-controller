@@ -426,7 +426,6 @@ func setupIngressIndexer(mgr ctrl.Manager) error {
 		return err
 	}
 
-	// create PluginConfig index for quick lookup of Ingresses using specific plugin configs
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
 		&networkingv1.Ingress{},
@@ -950,6 +949,6 @@ func IngressPluginConfigIndexFunc(rawObj client.Object) []string {
 	if pluginConfigName == "" {
 		return nil
 	}
-	// PluginConfig is in the same namespace as the Ingress
+
 	return []string{GenIndexKey(ingress.GetNamespace(), pluginConfigName)}
 }
