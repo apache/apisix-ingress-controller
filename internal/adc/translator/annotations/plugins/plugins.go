@@ -38,6 +38,7 @@ var (
 	handlers = []PluginAnnotationsHandler{
 		NewRedirectHandler(),
 		NewCorsHandler(),
+		NewCSRFHandler(),
 	}
 )
 
