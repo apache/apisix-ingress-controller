@@ -190,7 +190,8 @@ spec:
                             minimum: 0
                             type: integer
                           timeout:
-                            description: Timeout sets health check timeout in seconds.
+                            description: Timeout sets the number of timeouts to define
+                              an unhealthy target.
                             maximum: 254
                             minimum: 1
                             type: integer
@@ -252,7 +253,8 @@ spec:
                             minimum: 0
                             type: integer
                           timeout:
-                            description: Timeout sets health check timeout in seconds.
+                            description: Timeout sets the number of timeouts to define
+                              an unhealthy target.
                             maximum: 254
                             minimum: 1
                             type: integer
@@ -447,8 +449,8 @@ spec:
                                   minimum: 0
                                   type: integer
                                 timeout:
-                                  description: Timeout sets health check timeout in
-                                    seconds.
+                                  description: Timeout sets the number of timeouts
+                                    to define an unhealthy target.
                                   maximum: 254
                                   minimum: 1
                                   type: integer
@@ -510,8 +512,8 @@ spec:
                                   minimum: 0
                                   type: integer
                                 timeout:
-                                  description: Timeout sets health check timeout in
-                                    seconds.
+                                  description: Timeout sets the number of timeouts
+                                    to define an unhealthy target.
                                   maximum: 254
                                   minimum: 1
                                   type: integer

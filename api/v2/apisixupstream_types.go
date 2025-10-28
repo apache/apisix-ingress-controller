@@ -313,9 +313,9 @@ type PassiveHealthCheckUnhealthy struct {
 	// +kubebuilder:validation:Maximum=254
 	// TCPFailures define the number of TCP failures to define an unhealthy target.
 	TCPFailures int `json:"tcpFailures,omitempty" yaml:"tcpFailures,omitempty"`
-	// Timeout sets health check timeout in seconds.
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=254
+	// Timeout sets the number of timeouts to define an unhealthy target.
 	Timeouts int `json:"timeout,omitempty" yaml:"timeout,omitempty"`
 }
 
