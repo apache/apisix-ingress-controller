@@ -32,6 +32,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
+	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations"
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
 
@@ -421,6 +422,16 @@ func setupIngressIndexer(mgr ctrl.Manager) error {
 		&networkingv1.Ingress{},
 		TLSHostIndexRef,
 		IngressTLSHostIndexFunc,
+	); err != nil {
+		return err
+	}
+
+	// create PluginConfig index for quick lookup of Ingresses using specific plugin configs
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&networkingv1.Ingress{},
+		PluginConfigIndexRef,
+		IngressPluginConfigIndexFunc,
 	); err != nil {
 		return err
 	}
@@ -931,4 +942,14 @@ func ApisixGlobalRuleSecretIndexFunc(rawObj client.Object) []string {
 		}
 	}
 	return keys
+}
+
+func IngressPluginConfigIndexFunc(rawObj client.Object) []string {
+	ingress := rawObj.(*networkingv1.Ingress)
+	pluginConfigName := ingress.Annotations[annotations.AnnotationsPluginConfigName]
+	if pluginConfigName == "" {
+		return nil
+	}
+	// PluginConfig is in the same namespace as the Ingress
+	return []string{GenIndexKey(ingress.GetNamespace(), pluginConfigName)}
 }
