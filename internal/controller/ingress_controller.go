@@ -371,6 +371,36 @@ func (r *IngressReconciler) listIngressesBySecret(ctx context.Context, obj clien
 		}
 	}
 
+	// check if the secret is used by ApisixPluginConfig
+	var pluginConfigList apiv2.ApisixPluginConfigList
+	if err := r.List(ctx, &pluginConfigList, client.MatchingFields{
+		indexer.SecretIndexRef: indexer.GenIndexKey(namespace, name),
+	}); err != nil {
+		r.Log.Error(err, "failed to list plugin configs by secret", "secret", name)
+	} else {
+		// For each PluginConfig, find Ingresses that reference it
+		for _, pc := range pluginConfigList.Items {
+			var ingressList networkingv1.IngressList
+			if err := r.List(ctx, &ingressList, client.MatchingFields{
+				indexer.PluginConfigIndexRef: indexer.GenIndexKey(pc.GetNamespace(), pc.GetName()),
+			}); err != nil {
+				r.Log.Error(err, "failed to list ingresses by plugin config", "pluginconfig", pc.GetName())
+				continue
+			}
+
+			for _, ingress := range ingressList.Items {
+				if MatchesIngressClass(r.Client, r.Log, &ingress) {
+					requests = append(requests, reconcile.Request{
+						NamespacedName: client.ObjectKey{
+							Namespace: ingress.Namespace,
+							Name:      ingress.Name,
+						},
+					})
+				}
+			}
+		}
+	}
+
 	return distinctRequests(requests)
 }
 
