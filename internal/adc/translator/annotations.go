@@ -23,6 +23,7 @@ import (
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations"
+	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations/pluginconfig"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations/plugins"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations/upstream"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations/websocket"
@@ -30,15 +31,17 @@ import (
 
 // Structure extracted by Ingress Resource
 type IngressConfig struct {
-	Upstream        upstream.Upstream
-	Plugins         adctypes.Plugins
-	EnableWebsocket bool
+	Upstream         upstream.Upstream
+	Plugins          adctypes.Plugins
+	EnableWebsocket  bool
+	PluginConfigName string
 }
 
 var ingressAnnotationParsers = map[string]annotations.IngressAnnotationsParser{
-	"upstream":        upstream.NewParser(),
-	"plugins":         plugins.NewParser(),
-	"EnableWebsocket": websocket.NewParser(),
+	"upstream":         upstream.NewParser(),
+	"plugins":          plugins.NewParser(),
+	"EnableWebsocket":  websocket.NewParser(),
+	"PluginConfigName": pluginconfig.NewParser(),
 }
 
 func (t *Translator) TranslateIngressAnnotations(anno map[string]string) *IngressConfig {

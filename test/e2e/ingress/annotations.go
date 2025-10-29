@@ -429,5 +429,72 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "unmarshalling csrf plugin config")
 			Expect(csrfConfig["key"]).To(Equal("foo-key"), "checking csrf key")
 		})
+
+		It("plugin-config-name annotation", func() {
+			// Create ApisixPluginConfig
+			pluginConfig := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixPluginConfig
+metadata:
+  name: test-plugin-config
+spec:
+  ingressClassName: %s
+  plugins:
+  - name: echo
+    enable: true
+    config:
+      body: "hello from plugin config"
+`
+			Expect(s.CreateResourceFromString(fmt.Sprintf(pluginConfig, s.Namespace()))).ShouldNot(HaveOccurred(), "creating ApisixPluginConfig")
+
+			// Create Ingress with plugin-config-name annotation
+			ingressWithPluginConfig := `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: plugin-config-test
+  annotations:
+    k8s.apisix.apache.org/plugin-config-name: "test-plugin-config"
+spec:
+  ingressClassName: %s
+  rules:
+  - host: plugin-config.example
+    http:
+      paths:
+      - path: /get
+        pathType: Exact
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
+			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressWithPluginConfig, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "plugin-config.example",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedBodyContains("hello from plugin config"),
+				},
+			})
+
+			routes, err := s.DefaultDataplaneResource().Route().List(context.Background())
+			Expect(err).NotTo(HaveOccurred(), "listing Route")
+			Expect(routes).ToNot(BeEmpty(), "checking Route length")
+
+			Expect(routes).To(HaveLen(1), "checking Route length")
+			Expect(routes[0].Plugins).To(HaveKey("echo"), "checking Route has echo plugin from PluginConfig")
+
+			// Verify plugin config content
+			jsonBytes, err := json.Marshal(routes[0].Plugins["echo"])
+			Expect(err).NotTo(HaveOccurred(), "marshalling echo plugin config")
+			var echoConfig map[string]any
+			err = json.Unmarshal(jsonBytes, &echoConfig)
+			Expect(err).NotTo(HaveOccurred(), "unmarshalling echo plugin config")
+			Expect(echoConfig["body"]).To(Equal("hello from plugin config"), "checking echo plugin body")
+		})
 	})
 })
