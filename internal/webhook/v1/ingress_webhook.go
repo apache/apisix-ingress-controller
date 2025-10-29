@@ -57,8 +57,6 @@ var unsupportedAnnotations = []string{
 	"k8s.apisix.apache.org/auth-client-headers",
 	"k8s.apisix.apache.org/allowlist-source-range",
 	"k8s.apisix.apache.org/blocklist-source-range",
-	"k8s.apisix.apache.org/http-allow-methods",
-	"k8s.apisix.apache.org/http-block-methods",
 	"k8s.apisix.apache.org/auth-type",
 	"k8s.apisix.apache.org/svc-namespace",
 }

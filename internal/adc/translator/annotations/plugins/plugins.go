@@ -39,6 +39,7 @@ var (
 		NewRedirectHandler(),
 		NewCorsHandler(),
 		NewCSRFHandler(),
+		NewFaultInjectionHandler(),
 	}
 )
 
