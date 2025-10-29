@@ -1513,7 +1513,7 @@ spec:
 		It("access third-party service directly", func() {
 			upstreamName := s.Namespace()
 			routeName := s.Namespace()
-			createApisixUpstream(apiv2.ExternalTypeDomain, "httpbin.org", upstreamName)
+			createApisixUpstream(apiv2.ExternalTypeDomain, "httpbin-service-e2e-test", upstreamName)
 			createApisixRoute(routeName, upstreamName)
 			verifyAccess()
 		})
@@ -1521,7 +1521,7 @@ spec:
 		It("access third-party service with host rewrite", func() {
 			upstreamName := s.Namespace()
 			routeName := s.Namespace()
-			createApisixUpstream(apiv2.ExternalTypeDomain, "httpbin.org", upstreamName)
+			createApisixUpstream(apiv2.ExternalTypeDomain, "httpbin-service-e2e-test", upstreamName)
 			createApisixRouteWithHostRewrite(routeName, "httpbin.org", upstreamName)
 			verifyAccess()
 		})
@@ -1530,7 +1530,7 @@ spec:
 			externalServiceName := s.Namespace()
 			upstreamName := s.Namespace()
 			routeName := s.Namespace()
-			createExternalService("httpbin.org", externalServiceName)
+			createExternalService("httpbin-service-e2e-test", externalServiceName)
 			createApisixUpstream(apiv2.ExternalTypeService, externalServiceName, upstreamName)
 			createApisixRoute(routeName, upstreamName)
 			verifyAccess()
