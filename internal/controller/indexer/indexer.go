@@ -472,6 +472,10 @@ func IngressServiceIndexFunc(rawObj client.Object) []string {
 	ingress := rawObj.(*networkingv1.Ingress)
 	var services []string
 
+	ns := ingress.Namespace
+	if svcNs := ingress.Annotations[annotations.AnnotationsSvcNamespace]; svcNs != "" {
+		ns = svcNs
+	}
 	for _, rule := range ingress.Spec.Rules {
 		if rule.HTTP == nil {
 			continue
@@ -481,7 +485,7 @@ func IngressServiceIndexFunc(rawObj client.Object) []string {
 			if path.Backend.Service == nil {
 				continue
 			}
-			key := GenIndexKey(ingress.Namespace, path.Backend.Service.Name)
+			key := GenIndexKey(ns, path.Backend.Service.Name)
 			services = append(services, key)
 		}
 	}
