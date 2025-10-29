@@ -41,6 +41,8 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
+	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
@@ -106,6 +108,9 @@ func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		).
 		Watches(&v1alpha1.GatewayProxy{},
 			handler.EnqueueRequestsFromMapFunc(r.listIngressesForGatewayProxy),
+		).
+		Watches(&apiv2.ApisixPluginConfig{},
+			handler.EnqueueRequestsFromMapFunc(r.listIngressesForPluginConfig),
 		).
 		WatchesRawSource(
 			source.Channel(
@@ -180,6 +185,12 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// process backend services
 	if err := r.processBackends(tctx, ingress); err != nil {
 		r.Log.Error(err, "failed to process backend services", "ingress", ingress.Name)
+		return ctrl.Result{}, err
+	}
+
+	// process plugin config annotation
+	if err := r.processPluginConfig(tctx, ingress); err != nil {
+		r.Log.Error(err, "failed to process PluginConfig annotation", "ingress", ingress.Name)
 		return ctrl.Result{}, err
 	}
 
@@ -357,6 +368,36 @@ func (r *IngressReconciler) listIngressesBySecret(ctx context.Context, obj clien
 		}
 		for _, ingressClass := range ingressClassList.Items {
 			requests = append(requests, r.listIngressForIngressClass(ctx, &ingressClass)...)
+		}
+	}
+
+	// check if the secret is used by ApisixPluginConfig
+	var pluginConfigList apiv2.ApisixPluginConfigList
+	if err := r.List(ctx, &pluginConfigList, client.MatchingFields{
+		indexer.SecretIndexRef: indexer.GenIndexKey(namespace, name),
+	}); err != nil {
+		r.Log.Error(err, "failed to list plugin configs by secret", "secret", name)
+	} else {
+		// For each PluginConfig, find Ingresses that reference it
+		for _, pc := range pluginConfigList.Items {
+			var ingressList networkingv1.IngressList
+			if err := r.List(ctx, &ingressList, client.MatchingFields{
+				indexer.PluginConfigIndexRef: indexer.GenIndexKey(pc.GetNamespace(), pc.GetName()),
+			}); err != nil {
+				r.Log.Error(err, "failed to list ingresses by plugin config", "pluginconfig", pc.GetName())
+				continue
+			}
+
+			for _, ingress := range ingressList.Items {
+				if MatchesIngressClass(r.Client, r.Log, &ingress) {
+					requests = append(requests, reconcile.Request{
+						NamespacedName: client.ObjectKey{
+							Namespace: ingress.Namespace,
+							Name:      ingress.Name,
+						},
+					})
+				}
+			}
 		}
 	}
 
@@ -562,6 +603,73 @@ func (r *IngressReconciler) processBackendService(tctx *provider.TranslateContex
 	return nil
 }
 
+// processPluginConfig process the plugin config annotation of the ingress
+func (r *IngressReconciler) processPluginConfig(tctx *provider.TranslateContext, ingress *networkingv1.Ingress) error {
+	pluginConfigName := ingress.Annotations[annotations.AnnotationsPluginConfigName]
+	if pluginConfigName == "" {
+		return nil
+	}
+
+	var (
+		pc = apiv2.ApisixPluginConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      pluginConfigName,
+				Namespace: ingress.Namespace,
+			},
+		}
+		pcNN = utils.NamespacedName(&pc)
+	)
+
+	if err := r.Get(tctx, pcNN, &pc); err != nil {
+		r.Log.Error(err, "failed to get ApisixPluginConfig", "pluginconfig", pcNN)
+		return err
+	}
+
+	// Check if ApisixPluginConfig has IngressClassName and if it matches
+	if pc.Spec.IngressClassName != "" {
+		ingressClassName := internaltypes.GetEffectiveIngressClassName(ingress)
+		if ingressClassName != pc.Spec.IngressClassName {
+			var pcIC networkingv1.IngressClass
+			if err := r.Get(tctx, client.ObjectKey{Name: pc.Spec.IngressClassName}, &pcIC); err != nil {
+				r.Log.Error(err, "failed to get IngressClass for ApisixPluginConfig", "ingressclass", pc.Spec.IngressClassName, "pluginconfig", pcNN)
+				return nil
+			}
+			if !matchesController(pcIC.Spec.Controller) {
+				r.Log.V(1).Info("ApisixPluginConfig references IngressClass with non-matching controller", "pluginconfig", pcNN, "ingressclass", pc.Spec.IngressClassName)
+				return nil
+			}
+		}
+	}
+
+	tctx.ApisixPluginConfigs[pcNN] = &pc
+
+	// Also check secrets referenced by plugin config
+	for _, plugin := range pc.Spec.Plugins {
+		if !plugin.Enable {
+			continue
+		}
+		if plugin.SecretRef == "" {
+			continue
+		}
+		var (
+			secret = corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      plugin.SecretRef,
+					Namespace: ingress.Namespace,
+				},
+			}
+			secretNN = utils.NamespacedName(&secret)
+		)
+		if err := r.Get(tctx, secretNN, &secret); err != nil {
+			r.Log.Error(err, "failed to get Secret for ApisixPluginConfig", "secret", secretNN, "pluginconfig", pcNN)
+			continue
+		}
+		tctx.Secrets[secretNN] = &secret
+	}
+
+	return nil
+}
+
 // updateStatus update the status of the ingress
 func (r *IngressReconciler) updateStatus(ctx context.Context, tctx *provider.TranslateContext, ingress *networkingv1.Ingress, ingressClass *networkingv1.IngressClass) error {
 	var loadBalancerStatus networkingv1.IngressLoadBalancerStatus
@@ -643,4 +751,45 @@ func (r *IngressReconciler) updateStatus(ctx context.Context, tctx *provider.Tra
 // listIngressesForGatewayProxy list all ingresses that use a specific gateway proxy
 func (r *IngressReconciler) listIngressesForGatewayProxy(ctx context.Context, obj client.Object) []reconcile.Request {
 	return listIngressClassRequestsForGatewayProxy(ctx, r.Client, obj, r.Log, r.listIngressForIngressClass)
+}
+
+// listIngressesForPluginConfig list all ingresses that use a specific plugin config
+func (r *IngressReconciler) listIngressesForPluginConfig(ctx context.Context, obj client.Object) []reconcile.Request {
+	pc, ok := obj.(*apiv2.ApisixPluginConfig)
+	if !ok {
+		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to ApisixPluginConfig")
+		return nil
+	}
+
+	// First check if the ApisixPluginConfig has matching IngressClassName
+	if pc.Spec.IngressClassName != "" {
+		var ic networkingv1.IngressClass
+		if err := r.Get(ctx, client.ObjectKey{Name: pc.Spec.IngressClassName}, &ic); err != nil {
+			if client.IgnoreNotFound(err) != nil {
+				r.Log.Error(err, "failed to get IngressClass for ApisixPluginConfig", "pluginconfig", pc.Name)
+			}
+			return nil
+		}
+		if !matchesController(ic.Spec.Controller) {
+			return nil
+		}
+	}
+
+	var ingressList networkingv1.IngressList
+	if err := r.List(ctx, &ingressList, client.MatchingFields{
+		indexer.PluginConfigIndexRef: indexer.GenIndexKey(pc.GetNamespace(), pc.GetName()),
+	}); err != nil {
+		r.Log.Error(err, "failed to list ingresses by plugin config", "pluginconfig", pc.Name)
+		return nil
+	}
+
+	requests := make([]reconcile.Request, 0, len(ingressList.Items))
+	for _, ingress := range ingressList.Items {
+		if MatchesIngressClass(r.Client, r.Log, &ingress) {
+			requests = append(requests, reconcile.Request{
+				NamespacedName: utils.NamespacedName(&ingress),
+			})
+		}
+	}
+	return requests
 }

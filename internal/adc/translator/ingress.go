@@ -161,7 +161,7 @@ func (t *Translator) buildServiceFromIngressPath(
 	protocol := t.resolveIngressUpstream(tctx, obj, config, path.Backend.Service, upstream)
 	service.Upstream = upstream
 
-	route := buildRouteFromIngressPath(obj, path, config, index, labels)
+	route := t.buildRouteFromIngressPath(tctx, obj, path, config, index, labels)
 	// Check if websocket is enabled via annotation first, then fall back to appProtocol detection
 	if config != nil && config.EnableWebsocket {
 		route.EnableWebsocket = ptr.To(true)
@@ -248,7 +248,8 @@ func (t *Translator) resolveIngressUpstream(
 	return protocol
 }
 
-func buildRouteFromIngressPath(
+func (t *Translator) buildRouteFromIngressPath(
+	tctx *provider.TranslateContext,
 	obj *networkingv1.Ingress,
 	path *networkingv1.HTTPIngressPath,
 	config *IngressConfig,
@@ -279,11 +280,49 @@ func buildRouteFromIngressPath(
 			uris = []string{"/*"}
 		}
 	}
-	if config != nil && len(config.Plugins) > 0 {
-		route.Plugins = config.Plugins
+
+	if config != nil {
+		// check if PluginConfig is specified
+		if config.PluginConfigName != "" {
+			route.Plugins = t.loadPluginConfigPluginsForIngress(tctx, obj.Namespace, config.PluginConfigName)
+		}
+
+		// apply plugins from annotations
+		if len(config.Plugins) > 0 {
+			if route.Plugins == nil {
+				route.Plugins = make(adctypes.Plugins)
+			}
+			for k, v := range config.Plugins {
+				route.Plugins[k] = v
+			}
+		}
 	}
+
 	route.Uris = uris
 	return route
+}
+
+func (t *Translator) loadPluginConfigPluginsForIngress(tctx *provider.TranslateContext, namespace, pluginConfigName string) adctypes.Plugins {
+	plugins := make(adctypes.Plugins)
+
+	pcKey := types.NamespacedName{
+		Namespace: namespace,
+		Name:      pluginConfigName,
+	}
+	pc, ok := tctx.ApisixPluginConfigs[pcKey]
+	if !ok || pc == nil {
+		return plugins
+	}
+
+	for _, plugin := range pc.Spec.Plugins {
+		if !plugin.Enable {
+			continue
+		}
+		config := t.buildPluginConfig(plugin, namespace, tctx.Secrets)
+		plugins[plugin.Name] = config
+	}
+
+	return plugins
 }
 
 // translateEndpointSliceForIngress create upstream nodes from EndpointSlice

@@ -661,7 +661,7 @@ UpstreamActiveHealthCheckHealthy defines the conditions used to actively determi
 | `httpCodes` _integer array_ | HTTPCodes define a list of HTTP status codes that are considered unhealthy. |
 | `httpFailures` _integer_ | HTTPFailures define the number of HTTP failures to define an unhealthy target. |
 | `tcpFailures` _integer_ | TCPFailures define the number of TCP failures to define an unhealthy target. |
-| `timeout` _integer_ | Timeout sets health check timeout in seconds. |
+| `timeout` _integer_ | Timeout sets the number of timeouts to define an unhealthy target. |
 | `interval` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#duration-v1-meta)_ | Interval defines the time interval for checking targets, in seconds. |
 
 
@@ -1528,7 +1528,7 @@ UpstreamPassiveHealthCheckUnhealthy defines the conditions used to passively det
 | `httpCodes` _integer array_ | HTTPCodes define a list of HTTP status codes that are considered unhealthy. |
 | `httpFailures` _integer_ | HTTPFailures define the number of HTTP failures to define an unhealthy target. |
 | `tcpFailures` _integer_ | TCPFailures define the number of TCP failures to define an unhealthy target. |
-| `timeout` _integer_ | Timeout sets health check timeout in seconds. |
+| `timeout` _integer_ | Timeout sets the number of timeouts to define an unhealthy target. |
 
 
 _Appears in:_
