@@ -25,15 +25,18 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/api7/gopkg/pkg/log"
 	"github.com/gavv/httpexpect/v2"
+	"github.com/gorilla/websocket"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/gruntwork-io/terratest/modules/testing"
 	. "github.com/onsi/ginkgo/v2" //nolint:staticcheck
 	. "github.com/onsi/gomega"    //nolint:staticcheck
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
@@ -552,4 +555,43 @@ func (s *Scaffold) GetMetricsEndpoint() string {
 	}
 	s.addFinalizers(tunnel.Close)
 	return fmt.Sprintf("http://%s/metrics", tunnel.Endpoint())
+}
+
+func (s *Scaffold) NewWebsocketClient(tls *tls.Config, path string, headers http.Header) (*websocket.Conn, error) {
+	var host = s.ApisixHTTPEndpoint()
+	var scheme = "ws"
+	if tls != nil {
+		scheme = "wss"
+		host = s.GetAPISIXHTTPSEndpoint()
+	}
+
+	dialer := websocket.Dialer{
+		TLSClientConfig: tls,
+	}
+
+	u := url.URL{
+		Scheme: scheme,
+		Host:   host,
+		Path:   path,
+	}
+	var conn *websocket.Conn
+
+	err := wait.PollUntilContextTimeout(context.Background(), 2*time.Second, 12*time.Second, true, func(ctx context.Context) (bool, error) {
+		c, resp, err := dialer.Dial(u.String(), headers)
+		if err != nil {
+			return false, err
+		}
+		if resp == nil || resp.StatusCode != http.StatusSwitchingProtocols {
+			_ = c.Close()
+			return false, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		}
+		conn = c
+		return true, nil
+	})
+
+	if conn == nil {
+		return nil, fmt.Errorf("failed to connect websocket after retries: %v", err)
+	}
+
+	return conn, nil
 }
