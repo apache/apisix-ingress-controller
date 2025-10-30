@@ -659,13 +659,12 @@ spec:
 		It("proxy-rewrite with rewrite-target", func() {
 			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressRewriteTarget, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
 
-			time.Sleep(5 * time.Second)
-
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/test",
-				Host:   "httpbin.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				Method:  "GET",
+				Path:    "/test",
+				Host:    "httpbin.example",
+				Timeout: 60 * time.Second,
+				Check:   scaffold.WithExpectedStatus(http.StatusOK),
 			})
 
 			routes, err := s.DefaultDataplaneResource().Route().List(context.Background())
@@ -684,13 +683,12 @@ spec:
 		It("proxy-rewrite with regex", func() {
 			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressRewriteTargetRegex, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
 
-			time.Sleep(5 * time.Second)
-
 			s.RequestAssert(&scaffold.RequestAssert{
-				Method: "GET",
-				Path:   "/sample/get",
-				Host:   "httpbin-regex.example",
-				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				Method:  "GET",
+				Path:    "/sample/get",
+				Host:    "httpbin-regex.example",
+				Timeout: 60 * time.Second,
+				Check:   scaffold.WithExpectedStatus(http.StatusOK),
 			})
 
 			s.RequestAssert(&scaffold.RequestAssert{
