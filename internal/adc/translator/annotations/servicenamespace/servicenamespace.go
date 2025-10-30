@@ -25,6 +25,6 @@ func NewParser() annotations.IngressAnnotationsParser {
 	return &servicenamespace{}
 }
 
-func (w *servicenamespace) Parse(e annotations.Extractor) (interface{}, error) {
+func (w *servicenamespace) Parse(e annotations.Extractor) (any, error) {
 	return e.GetStringAnnotation(annotations.AnnotationsSvcNamespace), nil
 }
