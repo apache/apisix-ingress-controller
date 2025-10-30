@@ -32,7 +32,7 @@ func (b *basicAuth) PluginName() string {
 	return "basic-auth"
 }
 
-func (b *basicAuth) Handle(e annotations.Extractor) (interface{}, error) {
+func (b *basicAuth) Handle(e annotations.Extractor) (any, error) {
 	if e.GetStringAnnotation(annotations.AnnotationsAuthType) != "basicAuth" {
 		return nil, nil
 	}
@@ -52,7 +52,7 @@ func (k *keyAuth) PluginName() string {
 	return "key-auth"
 }
 
-func (k *keyAuth) Handle(e annotations.Extractor) (interface{}, error) {
+func (k *keyAuth) Handle(e annotations.Extractor) (any, error) {
 	if e.GetStringAnnotation(annotations.AnnotationsAuthType) != "keyAuth" {
 		return nil, nil
 	}

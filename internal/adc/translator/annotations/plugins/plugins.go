@@ -37,11 +37,13 @@ var (
 
 	handlers = []PluginAnnotationsHandler{
 		NewRedirectHandler(),
+		NewRewriteHandler(),
 		NewCorsHandler(),
 		NewCSRFHandler(),
 		NewFaultInjectionHandler(),
 		NewBasicAuthHandler(),
 		NewKeyAuthHandler(),
+		NewResponseRewriteHandler(),
 	}
 )
 
