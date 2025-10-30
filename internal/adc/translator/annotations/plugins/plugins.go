@@ -40,6 +40,7 @@ var (
 		NewCorsHandler(),
 		NewCSRFHandler(),
 		NewFaultInjectionHandler(),
+		NewResponseRewriteHandler(),
 	}
 )
 
