@@ -39,7 +39,6 @@ var ingresslog = logf.Log.WithName("ingress-resource")
 // unsupportedAnnotations contains all the APISIX Ingress annotations that are not supported in 2.0.0
 // ref: https://apisix.apache.org/docs/ingress-controller/upgrade-guide/#limited-support-for-ingress-annotations
 var unsupportedAnnotations = []string{
-	"k8s.apisix.apache.org/use-regex",
 	"k8s.apisix.apache.org/rewrite-target",
 	"k8s.apisix.apache.org/rewrite-target-regex",
 	"k8s.apisix.apache.org/rewrite-target-regex-template",
@@ -57,7 +56,6 @@ var unsupportedAnnotations = []string{
 	"k8s.apisix.apache.org/auth-client-headers",
 	"k8s.apisix.apache.org/allowlist-source-range",
 	"k8s.apisix.apache.org/blocklist-source-range",
-	"k8s.apisix.apache.org/auth-type",
 	"k8s.apisix.apache.org/svc-namespace",
 }
 

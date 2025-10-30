@@ -279,6 +279,15 @@ func TestTranslateIngressAnnotations(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "regex",
+			anno: map[string]string{
+				annotations.AnnotationsUseRegex: "true",
+			},
+			expected: &IngressConfig{
+				UseRegex: true,
+			},
+		},
 	}
 
 	for _, tt := range tests {
