@@ -383,6 +383,48 @@ spec:
             port:
               number: 80
 `
+			ingressKeyAuth = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: key-auth
+  annotations:
+    k8s.apisix.apache.org/auth-type: "keyAuth"
+spec:
+  ingressClassName: %s
+  rules:
+  - host: httpbin.example
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
+			ingressBasicAuth = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: basic-auth
+  annotations:
+    k8s.apisix.apache.org/auth-type: "basicAuth"
+spec:
+  ingressClassName: %s
+  rules:
+  - host: httpbin.example
+    http:
+      paths:
+      - path: /get
+        pathType: Exact
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
 		)
 		BeforeEach(func() {
 			By("create GatewayProxy")
@@ -607,6 +649,83 @@ spec:
 			}
 
 			for _, test := range tets {
+				s.RequestAssert(test)
+			}
+		})
+		It("authentication", func() {
+			var (
+				keyAuth = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: key
+spec:
+  ingressClassName: %s
+  authParameter:
+    keyAuth:
+      value:
+        key: test-key
+`
+				basicAuth = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: basic
+spec:
+  ingressClassName: %s
+  authParameter:
+    basicAuth:
+      value:
+        username: test-user
+        password: test-password
+`
+			)
+			Expect(s.CreateResourceFromString(fmt.Sprintf(keyAuth, s.Namespace()))).ShouldNot(HaveOccurred(), "creating ApisixConsumer for keyAuth")
+			Expect(s.CreateResourceFromString(fmt.Sprintf(basicAuth, s.Namespace()))).ShouldNot(HaveOccurred(), "creating ApisixConsumer for basicAuth")
+			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressKeyAuth, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
+			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressBasicAuth, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
+
+			tests := []*scaffold.RequestAssert{
+				{
+					Method: "GET",
+					Path:   "/get",
+					Host:   "httpbin.example",
+					BasicAuth: &scaffold.BasicAuth{
+						Username: "test-user",
+						Password: "test-password",
+					},
+					Check: scaffold.WithExpectedStatus(http.StatusOK),
+				},
+				{
+					Method: "GET",
+					Path:   "/get",
+					Host:   "httpbin.example",
+					BasicAuth: &scaffold.BasicAuth{
+						Username: "invalid-user",
+						Password: "invalid-password",
+					},
+					Check: scaffold.WithExpectedStatus(http.StatusUnauthorized),
+				},
+				{
+					Method: "GET",
+					Path:   "/ip",
+					Host:   "httpbin.example",
+					Headers: map[string]string{
+						"apikey": "test-key",
+					},
+					Check: scaffold.WithExpectedStatus(http.StatusOK),
+				},
+				{
+					Method: "GET",
+					Path:   "/ip",
+					Host:   "httpbin.example",
+					Headers: map[string]string{
+						"apikey": "invalid-key",
+					},
+					Check: scaffold.WithExpectedStatus(http.StatusUnauthorized),
+				},
+			}
+			for _, test := range tests {
 				s.RequestAssert(test)
 			}
 		})

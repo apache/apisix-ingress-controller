@@ -258,6 +258,28 @@ func TestTranslateIngressAnnotations(t *testing.T) {
 			},
 		},
 		{
+			name: "auth type basicAuth",
+			anno: map[string]string{
+				annotations.AnnotationsAuthType: "basicAuth",
+			},
+			expected: &IngressConfig{
+				Plugins: adctypes.Plugins{
+					"basic-auth": &adctypes.BasicAuthConfig{},
+				},
+			},
+		},
+		{
+			name: "auth type keyAuth",
+			anno: map[string]string{
+				annotations.AnnotationsAuthType: "keyAuth",
+			},
+			expected: &IngressConfig{
+				Plugins: adctypes.Plugins{
+					"key-auth": &adctypes.KeyAuthConfig{},
+				},
+			},
+		},
+		{
 			name: "service namespace",
 			anno: map[string]string{
 				annotations.AnnotationsSvcNamespace: "custom-namespace",
