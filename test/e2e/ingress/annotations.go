@@ -479,6 +479,57 @@ spec:
             port:
               number: 80
 `
+			responseRewrite = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: response-rewrite
+  annotations:
+    k8s.apisix.apache.org/enable-response-rewrite: "true"
+    k8s.apisix.apache.org/response-rewrite-status-code: "400"
+    k8s.apisix.apache.org/response-rewrite-body: "custom response body"
+    k8s.apisix.apache.org/response-rewrite-body-base64: "false"
+    k8s.apisix.apache.org/response-rewrite-set-header: "X-Custom-Header:custom-value"
+    k8s.apisix.apache.org/response-rewrite-add-header: "X-Add-Header:added-value"
+    k8s.apisix.apache.org/response-rewrite-remove-header: "Server"
+spec:
+  ingressClassName: %s
+  rules:
+  - host: httpbin.example
+    http:
+      paths:
+      - path: /get
+        pathType: Exact
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
+			responseRewriteBase64 = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: response-rewrite-base64
+  annotations:
+    k8s.apisix.apache.org/enable-response-rewrite: "true"
+    k8s.apisix.apache.org/response-rewrite-status-code: "400"
+    k8s.apisix.apache.org/response-rewrite-body: "Y3VzdG9tIHJlc3BvbnNlIGJvZHk="
+    k8s.apisix.apache.org/response-rewrite-body-base64: "true"
+spec:
+  ingressClassName: %s
+  rules:
+  - host: httpbin-base64.example
+    http:
+      paths:
+      - path: /get
+        pathType: Exact
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
 		)
 		BeforeEach(func() {
 			By("create GatewayProxy")
@@ -842,6 +893,63 @@ spec:
 			Expect(regexUri).To(HaveLen(2), "checking regex_uri length")
 			Expect(regexUri[0]).To(Equal("/sample/(.*)"), "checking regex pattern")
 			Expect(regexUri[1]).To(Equal("/$1"), "checking regex template")
+		})
+
+		It("response-rewrite", func() {
+			Expect(s.CreateResourceFromString(fmt.Sprintf(responseRewrite, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.example",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusBadRequest),
+					scaffold.WithExpectedBodyContains("custom response body"),
+					scaffold.WithExpectedHeader("X-Custom-Header", "custom-value"),
+					scaffold.WithExpectedHeader("X-Add-Header", "added-value"),
+				},
+			})
+
+			By("Verify response-rewrite plugin is configured in the route")
+			routes, err := s.DefaultDataplaneResource().Route().List(context.Background())
+			Expect(err).NotTo(HaveOccurred(), "listing Route")
+			Expect(routes).To(HaveLen(1), "checking Route length")
+			Expect(routes[0].Plugins).To(HaveKey("response-rewrite"), "checking Route plugins")
+
+			jsonBytes, err := json.Marshal(routes[0].Plugins["response-rewrite"])
+			Expect(err).NotTo(HaveOccurred(), "marshalling response-rewrite plugin config")
+			var rewriteConfig map[string]any
+			err = json.Unmarshal(jsonBytes, &rewriteConfig)
+			Expect(err).NotTo(HaveOccurred(), "unmarshalling response-rewrite plugin config")
+			Expect(rewriteConfig["status_code"]).To(Equal(float64(400)), "checking status code")
+			Expect(rewriteConfig["body"]).To(Equal("custom response body"), "checking body")
+		})
+
+		It("response-rewrite with base64", func() {
+			Expect(s.CreateResourceFromString(fmt.Sprintf(responseRewriteBase64, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin-base64.example",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusBadRequest),
+					scaffold.WithExpectedBodyContains("custom response body"),
+				},
+			})
+			By("Verify response-rewrite plugin is configured in the route")
+			routes, err := s.DefaultDataplaneResource().Route().List(context.Background())
+			Expect(err).NotTo(HaveOccurred(), "listing Route")
+			Expect(routes).To(HaveLen(1), "checking Route length")
+			Expect(routes[0].Plugins).To(HaveKey("response-rewrite"), "checking Route plugins")
+
+			jsonBytes, err := json.Marshal(routes[0].Plugins["response-rewrite"])
+			Expect(err).NotTo(HaveOccurred(), "marshalling response-rewrite plugin config")
+			var rewriteConfig map[string]any
+			err = json.Unmarshal(jsonBytes, &rewriteConfig)
+			Expect(err).NotTo(HaveOccurred(), "unmarshalling response-rewrite plugin config")
+			Expect(rewriteConfig["status_code"]).To(Equal(float64(400)), "checking status code")
+			Expect(rewriteConfig["body_base64"]).To(BeTrue(), "checking body_base64")
 		})
 	})
 })

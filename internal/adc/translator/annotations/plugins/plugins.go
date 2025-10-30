@@ -43,6 +43,7 @@ var (
 		NewFaultInjectionHandler(),
 		NewBasicAuthHandler(),
 		NewKeyAuthHandler(),
+		NewResponseRewriteHandler(),
 	}
 )
 
