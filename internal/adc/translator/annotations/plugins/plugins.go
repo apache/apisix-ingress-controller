@@ -40,6 +40,8 @@ var (
 		NewCorsHandler(),
 		NewCSRFHandler(),
 		NewFaultInjectionHandler(),
+		NewBasicAuthHandler(),
+		NewKeyAuthHandler(),
 	}
 )
 
