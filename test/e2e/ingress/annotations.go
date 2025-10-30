@@ -266,10 +266,19 @@ spec:
 		It("websocket", func() {
 			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressWebSocket, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
 
-			routes, err := s.DefaultDataplaneResource().Route().List(context.Background())
-			Expect(err).NotTo(HaveOccurred(), "listing Route")
-			Expect(routes).To(HaveLen(1), "checking Route length")
-			Expect(routes[0].EnableWebsocket).To(Equal(ptr.To(true)), "checking Route EnableWebsocket")
+			Eventually(func() bool {
+				routes, err := s.DefaultDataplaneResource().Route().List(context.Background())
+				if err != nil {
+					return false
+				}
+				if len(routes) != 1 {
+					return false
+				}
+				if routes[0].EnableWebsocket == nil || !*routes[0].EnableWebsocket {
+					return false
+				}
+				return true
+			}).WithTimeout(30 * time.Second).ProbeEvery(2 * time.Second).Should(BeTrue())
 		})
 	})
 
