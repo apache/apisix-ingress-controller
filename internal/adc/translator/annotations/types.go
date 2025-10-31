@@ -91,6 +91,10 @@ const (
 	AnnotationsSvcNamespace = AnnotationsPrefix + "svc-namespace"
 )
 
+const (
+	FalseString = "false"
+)
+
 // Handler abstracts the behavior so that the apisix-ingress-controller knows
 type IngressAnnotationsParser interface {
 	// Handle parses the target annotation and converts it to the type-agnostic structure.

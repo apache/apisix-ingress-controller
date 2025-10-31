@@ -33,10 +33,7 @@ func (i *forwardAuth) PluginName() string {
 
 func (i *forwardAuth) Handle(e annotations.Extractor) (any, error) {
 	uri := e.GetStringAnnotation(annotations.AnnotationsForwardAuthURI)
-	sslVerify := true
-	if e.GetStringAnnotation(annotations.AnnotationsForwardAuthSSLVerify) == "false" {
-		sslVerify = false
-	}
+	sslVerify := e.GetStringAnnotation(annotations.AnnotationsForwardAuthSSLVerify) != annotations.FalseString
 	if len(uri) > 0 {
 		return &adctypes.ForwardAuthConfig{
 			URI:             uri,
