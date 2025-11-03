@@ -410,6 +410,7 @@ func (r *IngressReconciler) listIngressForBackendTrafficPolicy(ctx context.Conte
 		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to BackendTrafficPolicy")
 		return nil
 	}
+
 	var namespacedNameMap = make(map[types.NamespacedName]struct{})
 	ingresses := []networkingv1.Ingress{}
 	for _, ref := range v.Spec.TargetRefs {
@@ -532,7 +533,11 @@ func (r *IngressReconciler) processBackends(tctx *provider.TranslateContext, ing
 				continue
 			}
 			service := path.Backend.Service
-			if err := r.processBackendService(tctx, ingress.Namespace, service); err != nil {
+			ns := ingress.Namespace
+			if svcNs := ingress.Annotations[annotations.AnnotationsSvcNamespace]; svcNs != "" {
+				ns = ingress.Annotations[annotations.AnnotationsSvcNamespace]
+			}
+			if err := r.processBackendService(tctx, ns, service); err != nil {
 				terr = err
 			}
 		}

@@ -952,4 +952,67 @@ spec:
 			Expect(rewriteConfig["body_base64"]).To(BeTrue(), "checking body_base64")
 		})
 	})
+
+	Context("Service Namespace", func() {
+		var (
+			ns  string
+			svc = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpbin-external-domain
+spec:
+  type: ExternalName
+  externalName: httpbin-service-e2e-test.%s.svc
+`
+			ingressSvcNamespace = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: retries
+  annotations:
+    k8s.apisix.apache.org/svc-namespace: %s
+spec:
+  ingressClassName: %s
+  rules:
+  - host: httpbin.example
+    http:
+      paths:
+      - path: /get
+        pathType: Exact
+        backend:
+          service:
+            name: httpbin-external-domain
+            port:
+              number: 80
+`
+		)
+		BeforeEach(func() {
+			ns = s.Namespace() + "-v2"
+			s.CreateNamespace(ns)
+			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(svc, s.Namespace()), ns)
+			Expect(err).NotTo(HaveOccurred(), "creating Service in custom namespace")
+
+			By("create GatewayProxy")
+			Expect(s.CreateResourceFromString(s.GetGatewayProxySpec())).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			By("create IngressClass")
+			err = s.CreateResourceFromStringWithNamespace(s.GetIngressClassYaml(), "")
+			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
+			time.Sleep(5 * time.Second)
+		})
+		AfterEach(func() {
+			s.DeleteNamespace(ns)
+		})
+		It("svc-namespace", func() {
+			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressSvcNamespace, ns, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.example",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+		})
+	})
 })
