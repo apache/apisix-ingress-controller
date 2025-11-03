@@ -46,7 +46,6 @@ var unsupportedAnnotations = []string{
 	"k8s.apisix.apache.org/auth-client-headers",
 	"k8s.apisix.apache.org/allowlist-source-range",
 	"k8s.apisix.apache.org/blocklist-source-range",
-	"k8s.apisix.apache.org/svc-namespace",
 }
 
 // checkUnsupportedAnnotations checks if the Ingress contains any unsupported annotations

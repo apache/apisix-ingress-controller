@@ -175,6 +175,16 @@ func (f *Framework) CreateNamespaceWithTestService(name string) {
 	}
 }
 
+func (f *Framework) CreateNamespace(name string) {
+	_, err := f.clientset.CoreV1().
+		Namespaces().
+		Create(f.Context, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: name}}, metav1.CreateOptions{})
+	if err != nil && !errors.IsAlreadyExists(err) {
+		f.GomegaT.Expect(err).ShouldNot(HaveOccurred(), "create namespace")
+		return
+	}
+}
+
 func (f *Framework) DeleteNamespace(name string) {
 	err := f.clientset.CoreV1().Namespaces().Delete(f.Context, name, metav1.DeleteOptions{})
 	if err == nil || errors.IsNotFound(err) {

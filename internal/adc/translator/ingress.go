@@ -182,7 +182,11 @@ func (t *Translator) resolveIngressUpstream(
 	backendService *networkingv1.IngressServiceBackend,
 	upstream *adctypes.Upstream,
 ) string {
-	backendRef := convertBackendRef(obj.Namespace, backendService.Name, internaltypes.KindService)
+	ns := obj.Namespace
+	if config != nil && config.ServiceNamespace != "" {
+		ns = config.ServiceNamespace
+	}
+	backendRef := convertBackendRef(ns, backendService.Name, internaltypes.KindService)
 	t.AttachBackendTrafficPolicyToUpstream(backendRef, tctx.BackendTrafficPolicies, upstream)
 	if config != nil {
 		upConfig := config.Upstream
@@ -210,7 +214,7 @@ func (t *Translator) resolveIngressUpstream(
 	}
 
 	getService := tctx.Services[types.NamespacedName{
-		Namespace: obj.Namespace,
+		Namespace: ns,
 		Name:      backendService.Name,
 	}]
 	if getService == nil {
@@ -239,7 +243,7 @@ func (t *Translator) resolveIngressUpstream(
 	}
 
 	endpointSlices := tctx.EndpointSlices[types.NamespacedName{
-		Namespace: obj.Namespace,
+		Namespace: ns,
 		Name:      backendService.Name,
 	}]
 	if len(endpointSlices) > 0 {

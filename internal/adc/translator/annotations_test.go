@@ -280,6 +280,15 @@ func TestTranslateIngressAnnotations(t *testing.T) {
 			},
 		},
 		{
+			name: "service namespace",
+			anno: map[string]string{
+				annotations.AnnotationsSvcNamespace: "custom-namespace",
+			},
+			expected: &IngressConfig{
+				ServiceNamespace: "custom-namespace",
+			},
+		},
+		{
 			name: "regex",
 			anno: map[string]string{
 				annotations.AnnotationsUseRegex: "true",
