@@ -280,6 +280,15 @@ func TestTranslateIngressAnnotations(t *testing.T) {
 			},
 		},
 		{
+			name: "service namespace",
+			anno: map[string]string{
+				annotations.AnnotationsSvcNamespace: "custom-namespace",
+			},
+			expected: &IngressConfig{
+				ServiceNamespace: "custom-namespace",
+			},
+		},
+		{
 			name: "forward auth",
 			anno: map[string]string{
 				annotations.AnnotationsForwardAuthURI:             "http://127.0.0.1:9080",
