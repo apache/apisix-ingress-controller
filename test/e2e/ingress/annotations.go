@@ -530,6 +530,50 @@ spec:
             port:
               number: 80
 `
+
+			ingressAllowlist = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: allowlist
+  annotations:
+    k8s.apisix.apache.org/allowlist-source-range: "10.0.5.0/16"
+spec:
+  ingressClassName: %s
+  rules:
+  - host: httpbin.example
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
+
+			ingressBlocklist = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: blocklist
+  annotations:
+    k8s.apisix.apache.org/blocklist-source-range: "127.0.0.1"
+spec:
+  ingressClassName: %s
+  rules:
+  - host: httpbin-block.example
+    http:
+      paths:
+      - path: /ip
+        pathType: Exact
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
 		)
 		BeforeEach(func() {
 			By("create GatewayProxy")
@@ -950,6 +994,28 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "unmarshalling response-rewrite plugin config")
 			Expect(rewriteConfig["status_code"]).To(Equal(float64(400)), "checking status code")
 			Expect(rewriteConfig["body_base64"]).To(BeTrue(), "checking body_base64")
+		})
+
+		It("ip-restriction", func() {
+			By("Test allowlist - create ingress with IP allowlist")
+			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressAllowlist, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress with allowlist")
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/ip",
+				Host:   "httpbin.example",
+				Check:  scaffold.WithExpectedStatus(http.StatusForbidden),
+			})
+
+			By("Test blocklist - create ingress with IP blocklist")
+			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressBlocklist, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress with blocklist")
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/ip",
+				Host:   "httpbin-block.example",
+				Check:  scaffold.WithExpectedStatus(http.StatusForbidden),
+			})
 		})
 	})
 
