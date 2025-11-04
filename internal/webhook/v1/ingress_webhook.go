@@ -40,8 +40,6 @@ var ingresslog = logf.Log.WithName("ingress-resource")
 // ref: https://apisix.apache.org/docs/ingress-controller/upgrade-guide/#limited-support-for-ingress-annotations
 var unsupportedAnnotations = []string{
 	"k8s.apisix.apache.org/use-regex",
-	"k8s.apisix.apache.org/allowlist-source-range",
-	"k8s.apisix.apache.org/blocklist-source-range",
 	"k8s.apisix.apache.org/auth-type",
 }
 
