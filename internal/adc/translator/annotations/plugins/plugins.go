@@ -45,6 +45,7 @@ var (
 		NewKeyAuthHandler(),
 		NewResponseRewriteHandler(),
 		NewIPRestrictionHandler(),
+		NewForwardAuthHandler(),
 	}
 )
 

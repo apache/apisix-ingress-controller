@@ -574,6 +574,30 @@ spec:
             port:
               number: 80
 `
+			ingressForwardAuth = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: forward-auth
+  annotations:
+    k8s.apisix.apache.org/auth-uri: %s
+    k8s.apisix.apache.org/auth-request-headers: Authorization
+    k8s.apisix.apache.org/auth-upstream-headers: X-User-ID
+    k8s.apisix.apache.org/auth-client-headers: Location
+spec:
+  ingressClassName: %s
+  rules:
+  - host: httpbin.example
+    http:
+      paths:
+      - path: /get
+        pathType: Exact
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
 		)
 		BeforeEach(func() {
 			By("create GatewayProxy")
@@ -1016,6 +1040,45 @@ spec:
 				Host:   "httpbin-block.example",
 				Check:  scaffold.WithExpectedStatus(http.StatusForbidden),
 			})
+		})
+		It("forward-auth", func() {
+			s.DeployNginx(framework.NginxOptions{
+				Namespace: s.Namespace(),
+				Replicas:  ptr.To(int32(1)),
+			})
+
+			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressForwardAuth, "http://nginx/auth", s.Namespace()))).
+				ShouldNot(HaveOccurred(), "creating ApisixConsumer for forwardAuth")
+
+			tests := []*scaffold.RequestAssert{
+				{
+					Method: "GET",
+					Path:   "/get",
+					Host:   "httpbin.example",
+					Headers: map[string]string{
+						"Authorization": "123",
+					},
+					Checks: []scaffold.ResponseCheckFunc{
+						scaffold.WithExpectedStatus(http.StatusOK),
+						scaffold.WithExpectedBodyContains(`"X-User-Id": "user-123"`),
+					},
+				},
+				{
+					Method: "GET",
+					Path:   "/get",
+					Host:   "httpbin.example",
+					Headers: map[string]string{
+						"Authorization": "456",
+					},
+					Checks: []scaffold.ResponseCheckFunc{
+						scaffold.WithExpectedStatus(http.StatusUnauthorized),
+						scaffold.WithExpectedHeader("Location", "http://example.com/auth"),
+					},
+				},
+			}
+			for _, test := range tests {
+				s.RequestAssert(test)
+			}
 		})
 	})
 

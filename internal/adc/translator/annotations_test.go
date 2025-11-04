@@ -288,6 +288,47 @@ func TestTranslateIngressAnnotations(t *testing.T) {
 				ServiceNamespace: "custom-namespace",
 			},
 		},
+		{
+			name: "forward auth",
+			anno: map[string]string{
+				annotations.AnnotationsForwardAuthURI:             "http://127.0.0.1:9080",
+				annotations.AnnotationsForwardAuthRequestHeaders:  "Authorization",
+				annotations.AnnotationsForwardAuthClientHeaders:   "Location",
+				annotations.AnnotationsForwardAuthUpstreamHeaders: "X-User-ID",
+			},
+			expected: &IngressConfig{
+				Plugins: adctypes.Plugins{
+					"forward-auth": &adctypes.ForwardAuthConfig{
+						URI:             "http://127.0.0.1:9080",
+						SSLVerify:       true,
+						RequestHeaders:  []string{"Authorization"},
+						UpstreamHeaders: []string{"X-User-ID"},
+						ClientHeaders:   []string{"Location"},
+					},
+				},
+			},
+		},
+		{
+			name: "forward auth with ssl-verify false",
+			anno: map[string]string{
+				annotations.AnnotationsForwardAuthURI:             "http://127.0.0.1:9080",
+				annotations.AnnotationsForwardAuthSSLVerify:       "false",
+				annotations.AnnotationsForwardAuthRequestHeaders:  "Authorization",
+				annotations.AnnotationsForwardAuthClientHeaders:   "Location",
+				annotations.AnnotationsForwardAuthUpstreamHeaders: "X-User-ID",
+			},
+			expected: &IngressConfig{
+				Plugins: adctypes.Plugins{
+					"forward-auth": &adctypes.ForwardAuthConfig{
+						URI:             "http://127.0.0.1:9080",
+						SSLVerify:       false,
+						RequestHeaders:  []string{"Authorization"},
+						UpstreamHeaders: []string{"X-User-ID"},
+						ClientHeaders:   []string{"Location"},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
