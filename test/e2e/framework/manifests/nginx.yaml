@@ -51,6 +51,19 @@ data:
           }
         }
 
+        location /auth {
+          content_by_lua_block {
+            local auth = ngx.req.get_headers()["Authorization"]
+            if auth == "123" then
+              ngx.header["X-User-ID"] = "user-123"
+              ngx.exit(200)
+            else
+              ngx.header["Location"] = "http://example.com/auth"
+              ngx.exit(401)
+            end
+          }
+        }
+
         location /ws {
           content_by_lua_block {
             local server = require "resty.websocket.server"

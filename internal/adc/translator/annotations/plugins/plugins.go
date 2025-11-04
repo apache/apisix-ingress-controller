@@ -44,6 +44,8 @@ var (
 		NewBasicAuthHandler(),
 		NewKeyAuthHandler(),
 		NewResponseRewriteHandler(),
+		NewIPRestrictionHandler(),
+		NewForwardAuthHandler(),
 	}
 )
 
