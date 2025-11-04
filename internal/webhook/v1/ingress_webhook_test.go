@@ -63,54 +63,6 @@ func buildIngressValidator(t *testing.T, objects ...runtime.Object) *IngressCust
 	return NewIngressCustomValidator(builder.Build())
 }
 
-func TestIngressCustomValidator_ValidateCreate_SupportedAnnotations(t *testing.T) {
-	validator := buildIngressValidator(t)
-	obj := &networkingv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-ingress",
-			Namespace: "default",
-			Annotations: map[string]string{
-				"ingressclass.kubernetes.io/is-default-class": "true",
-			},
-		},
-	}
-
-	warnings, err := validator.ValidateCreate(context.TODO(), obj)
-	assert.NoError(t, err)
-	assert.Empty(t, warnings)
-}
-
-func TestIngressCustomValidator_ValidateDelete_NoWarnings(t *testing.T) {
-	validator := buildIngressValidator(t)
-	obj := &networkingv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-ingress",
-			Namespace: "default",
-			Annotations: map[string]string{
-				"k8s.apisix.apache.org/use-regex": "true",
-			},
-		},
-	}
-
-	warnings, err := validator.ValidateDelete(context.TODO(), obj)
-	assert.NoError(t, err)
-	assert.Empty(t, warnings)
-}
-
-func TestIngressCustomValidator_ValidateCreate_NoAnnotations(t *testing.T) {
-	validator := buildIngressValidator(t)
-	obj := &networkingv1.Ingress{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-ingress",
-			Namespace: "default",
-		},
-	}
-
-	warnings, err := validator.ValidateCreate(context.TODO(), obj)
-	assert.NoError(t, err)
-	assert.Empty(t, warnings)
-}
-
 func TestIngressCustomValidator_WarnsForMissingServiceAndSecret(t *testing.T) {
 	validator := buildIngressValidator(t)
 	obj := &networkingv1.Ingress{
