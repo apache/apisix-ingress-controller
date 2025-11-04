@@ -18,7 +18,6 @@ package v1
 import (
 	"context"
 	"fmt"
-	"slices"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -35,36 +34,6 @@ import (
 )
 
 var ingresslog = logf.Log.WithName("ingress-resource")
-
-// unsupportedAnnotations contains all the APISIX Ingress annotations that are not supported in 2.0.0
-// ref: https://apisix.apache.org/docs/ingress-controller/upgrade-guide/#limited-support-for-ingress-annotations
-var unsupportedAnnotations = []string{
-	"k8s.apisix.apache.org/use-regex",
-	"k8s.apisix.apache.org/auth-type",
-}
-
-// checkUnsupportedAnnotations checks if the Ingress contains any unsupported annotations
-// and returns appropriate warnings
-func checkUnsupportedAnnotations(ingress *networkingv1.Ingress) admission.Warnings {
-	var warnings admission.Warnings
-
-	if len(ingress.Annotations) == 0 {
-		return warnings
-	}
-
-	for annotation := range ingress.Annotations {
-		if slices.Contains(unsupportedAnnotations, annotation) {
-			warningMsg := fmt.Sprintf("Annotation '%s' is not supported in APISIX Ingress Controller 2.0.0.", annotation)
-			warnings = append(warnings, warningMsg)
-			ingresslog.Info("Detected unsupported annotation",
-				"ingress", ingress.GetName(),
-				"namespace", ingress.GetNamespace(),
-				"annotation", annotation)
-		}
-	}
-
-	return warnings
-}
 
 // SetupIngressWebhookWithManager registers the webhook for Ingress in the manager.
 func SetupIngressWebhookWithManager(mgr ctrl.Manager) error {
@@ -113,10 +82,7 @@ func (v *IngressCustomValidator) ValidateCreate(ctx context.Context, obj runtime
 		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
 	}
 
-	// Check for unsupported annotations and generate warnings
-	warnings := checkUnsupportedAnnotations(ingress)
-	warnings = append(warnings, v.collectReferenceWarnings(ctx, ingress)...)
-
+	warnings := v.collectReferenceWarnings(ctx, ingress)
 	return warnings, nil
 }
 
@@ -137,9 +103,7 @@ func (v *IngressCustomValidator) ValidateUpdate(ctx context.Context, oldObj, new
 		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
 	}
 
-	// Check for unsupported annotations and generate warnings
-	warnings := checkUnsupportedAnnotations(ingress)
-	warnings = append(warnings, v.collectReferenceWarnings(ctx, ingress)...)
+	warnings := v.collectReferenceWarnings(ctx, ingress)
 	return warnings, nil
 }
 

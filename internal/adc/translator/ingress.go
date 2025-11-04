@@ -30,6 +30,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
+	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/id"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
@@ -281,7 +282,24 @@ func (t *Translator) buildRouteFromIngressPath(
 			prefix := strings.TrimSuffix(path.Path, "/") + "/*"
 			uris = append(uris, prefix)
 		case networkingv1.PathTypeImplementationSpecific:
-			uris = []string{"/*"}
+			if config.UseRegex {
+				uris = []string{"/*"}
+				vars := apiv2.ApisixRouteHTTPMatchExprs{
+					apiv2.ApisixRouteHTTPMatchExpr{
+						Subject: apiv2.ApisixRouteHTTPMatchExprSubject{
+							Scope: apiv2.ScopePath,
+						},
+						Op:    apiv2.OpRegexMatch,
+						Value: &path.Path,
+					},
+				}
+				routeVars, err := vars.ToVars()
+				if err != nil {
+					t.Log.Error(err, "failed to convert regex match exprs to vars", "exprs", vars)
+				} else {
+					route.Vars = append(route.Vars, routeVars...)
+				}
+			}
 		}
 	}
 

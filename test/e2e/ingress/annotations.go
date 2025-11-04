@@ -1144,4 +1144,85 @@ spec:
 			})
 		})
 	})
+
+	Context("Route", func() {
+		var (
+			ingressRegex = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: regex
+  annotations:
+    k8s.apisix.apache.org/use-regex: "true"
+spec:
+  ingressClassName: %s
+  rules:
+  - host: httpbin.example
+    http:
+      paths:
+      - path: /anything/.*/ok
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
+		)
+		BeforeEach(func() {
+			By("create GatewayProxy")
+			Expect(s.CreateResourceFromString(s.GetGatewayProxySpec())).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			By("create IngressClass")
+			err := s.CreateResourceFromStringWithNamespace(s.GetIngressClassYaml(), "")
+			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
+			time.Sleep(5 * time.Second)
+		})
+		It("regex match", func() {
+			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressRegex, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
+
+			tests := []*scaffold.RequestAssert{
+				{
+					Method: "GET",
+					Path:   "/anything/test/ok",
+					Host:   "httpbin.example",
+					Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				},
+				{
+					Method: "GET",
+					Path:   "/anything/ip/ok",
+					Host:   "httpbin.example",
+					Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				},
+				{
+					Method: "GET",
+					Path:   "/test/notok",
+					Host:   "httpbin.example",
+					Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+				},
+
+				{
+					Method: "GET",
+					Path:   "/anything",
+					Host:   "httpbin.example",
+					Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+				},
+				{
+					Method: "GET",
+					Path:   "/anything/test/notok",
+					Host:   "httpbin.example",
+					Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+				},
+				{
+					Method: "GET",
+					Path:   "/anything/ok",
+					Host:   "httpbin.example",
+					Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+				},
+			}
+			for _, test := range tests {
+				s.RequestAssert(test)
+			}
+		})
+	})
 })
