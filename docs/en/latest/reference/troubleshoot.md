@@ -29,7 +29,7 @@ Once the debug API is enabled, you can access it by forwarding the controller po
 kubectl port-forward pod/<your-apisix-ingress-controller-pod-name> 9092:9092 &
 ```
 
-You can now access the debug API in browser at [`127.0.0.1:9092/debug`](http://127.0.0.1:9092/debug/) and inspect the translated resources by resource type, such as routes and services.
+You can now access the debug API in browser at `127.0.0.1:9092/debug` and inspect the translated resources by resource type, such as routes and services.
 
 ## Inspect Synchronized Gateway Configurations
 
