@@ -84,7 +84,7 @@ spec:
 
 ### Response Rewrite
 
-These annotations enable you to modify the response returned from the upstream service before it is sent to the client. They correspond to the functionality of the [`response-rewrite`](/hub/response-rewrite/) plugin in APISIX.
+These annotations enable you to modify the response returned from the upstream service before it is sent to the client. They correspond to the functionality of the `response-rewrite` plugin in APISIX.
 
 | Annotation | Description |
 |-------------|-------------|
@@ -127,7 +127,7 @@ spec:
 
 ### IP Restriction
 
-These annotations control client access based on IP address ranges. They correspond to the functionality of the [`ip-restriction`](/hub/ip-restriction) plugin in APISIX.
+These annotations control client access based on IP address ranges. They correspond to the functionality of the `ip-restriction` plugin in APISIX.
 
 | Annotation | Description |
 |-------------|-------------|
@@ -159,7 +159,7 @@ spec:
 
 ### Forward Auth
 
-These annotations configure an external authentication endpoint that validates incoming requests before they reach the backend service. They correspond to the functionality of the [`forward-auth`](/hub/forward-auth/) plugin in APISIX.
+These annotations configure an external authentication endpoint that validates incoming requests before they reach the backend service. They correspond to the functionality of the `forward-auth` plugin in APISIX.
 
 | Annotation | Description |
 |-------------|-------------|
@@ -290,7 +290,7 @@ spec:
 
 ### Proxy Rewrite
 
-These annotations allow you to rewrite request paths before forwarding them to the upstream service. They correspond to the functionality of the [`proxy-rewrite`](/hub/proxy-rewrite/) plugin in APISIX.
+These annotations allow you to rewrite request paths before forwarding them to the upstream service. They correspond to the functionality of the `proxy-rewrite` plugin in APISIX.
 
 | Annotation | Description |
 |------------|-------------|
@@ -388,7 +388,7 @@ spec:
 
 ### CSRF
 
-These annotations enable CSRF (Cross-Site Request Forgery) protection for an Ingress. They correspond to the [`csrf`](https://apisix.apache.org/docs/apisix/plugins/csrf/) plugin in APISIX.
+These annotations enable CSRF (Cross-Site Request Forgery) protection for an Ingress. They correspond to the `csrf` plugin in APISIX.
 
 | Annotation | Description |
 |------------|-------------|
@@ -480,7 +480,7 @@ spec:
 
 ### Redirect
 
-These annotations configure HTTP-to-HTTPS redirection or custom HTTP redirects for an Ingress. They correspond to the [`redirect`](https://apisix.apache.org/docs/apisix/plugins/redirect) plugin in APISIX.
+These annotations configure HTTP-to-HTTPS redirection or custom HTTP redirects for an Ingress. They correspond to the `redirect` plugin in APISIX.
 
 | Annotation | Description |
 |------------|-------------|
@@ -537,7 +537,7 @@ spec:
 
 ### CORS
 
-These annotations configure Cross-Origin Resource Sharing (CORS) for an Ingress. They correspond to the [`cors`](/hub/cors) plugin in APISIX.
+These annotations configure Cross-Origin Resource Sharing (CORS) for an Ingress. They correspond to the `cors` plugin in APISIX.
 
 | Annotation | Description |
 |------------|-------------|
