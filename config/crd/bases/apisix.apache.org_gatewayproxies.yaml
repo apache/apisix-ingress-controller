@@ -127,6 +127,9 @@ spec:
                           type: string
                         minItems: 1
                         type: array
+                      mode:
+                        description: Type specifies the type of control plane provider.
+                        type: string
                       service:
                         properties:
                           name:
@@ -150,6 +153,8 @@ spec:
                     type: object
                     x-kubernetes-validations:
                     - rule: has(self.endpoints) != has(self.service)
+                    - message: mode is immutable
+                      rule: self.mode == oldSelf.mode
                   type:
                     description: Type specifies the type of provider. Can only be
                       `ControlPlane`.

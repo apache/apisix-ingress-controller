@@ -33,6 +33,9 @@ var (
 const (
 	ProviderTypeAPISIX           = "apisix"
 	ProviderTypeAPISIXStandalone = "apisix-standalone"
+
+	ConfigProviderTypeYaml = "yaml"
+	ConfigProviderTypeEtcd = "etcd"
 )
 
 var (

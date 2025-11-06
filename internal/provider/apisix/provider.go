@@ -72,11 +72,11 @@ type apisixProvider struct {
 func New(log logr.Logger, updater status.Updater, readier readiness.ReadinessManager, opts ...provider.Option) (provider.Provider, error) {
 	o := provider.Options{}
 	o.ApplyOptions(opts)
-	if o.BackendMode == "" {
-		o.BackendMode = ProviderTypeAPISIX
+	if o.DefaultBackendMode == "" {
+		o.DefaultBackendMode = ProviderTypeAPISIX
 	}
 
-	cli, err := adcclient.New(log, o.BackendMode, o.SyncTimeout)
+	cli, err := adcclient.New(log, o.SyncTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +239,7 @@ func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 func (d *apisixProvider) buildConfig(tctx *provider.TranslateContext, nnk types.NamespacedNameKind) (map[types.NamespacedNameKind]adctypes.Config, error) {
 	configs := make(map[types.NamespacedNameKind]adctypes.Config, len(tctx.ResourceParentRefs[nnk]))
 	for _, gp := range tctx.GatewayProxies {
-		config, err := d.translator.TranslateGatewayProxyToConfig(tctx, &gp, d.ResolveEndpoints)
+		config, err := d.translator.TranslateGatewayProxyToConfig(tctx, &gp, d.DefaultResolveEndpoints)
 		if err != nil {
 			return nil, err
 		}
@@ -307,7 +307,7 @@ func (d *apisixProvider) NeedLeaderElection() bool {
 
 // updateConfigForGatewayProxy update config for all referrers of the GatewayProxy
 func (d *apisixProvider) updateConfigForGatewayProxy(tctx *provider.TranslateContext, gp *v1alpha1.GatewayProxy) error {
-	config, err := d.translator.TranslateGatewayProxyToConfig(tctx, gp, d.ResolveEndpoints)
+	config, err := d.translator.TranslateGatewayProxyToConfig(tctx, gp, d.DefaultResolveEndpoints)
 	if err != nil {
 		return err
 	}

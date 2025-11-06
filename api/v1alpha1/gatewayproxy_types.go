@@ -119,7 +119,12 @@ type ControlPlaneAuth struct {
 
 // ControlPlaneProvider defines configuration for control plane provider.
 // +kubebuilder:validation:XValidation:rule="has(self.endpoints) != has(self.service)"
+// +kubebuilder:validation:XValidation:rule="self.mode == oldSelf.mode",message="mode is immutable"
 type ControlPlaneProvider struct {
+	// Type specifies the type of control plane provider.
+	//
+	// +kubebuilder:validation:Optional
+	Mode string `json:"mode,omitempty"`
 	// Endpoints specifies the list of control plane endpoints.
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:MinItems=1

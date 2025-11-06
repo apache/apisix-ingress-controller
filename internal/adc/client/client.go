@@ -41,8 +41,7 @@ type Client struct {
 	mu     sync.Mutex
 	*cache.Store
 
-	executor    ADCExecutor
-	BackendMode string
+	executor ADCExecutor
 
 	ConfigManager    *common.ConfigManager[types.NamespacedNameKind, adctypes.Config]
 	ADCDebugProvider *common.ADCDebugProvider
@@ -50,7 +49,7 @@ type Client struct {
 	log logr.Logger
 }
 
-func New(log logr.Logger, mode string, timeout time.Duration) (*Client, error) {
+func New(log logr.Logger, timeout time.Duration) (*Client, error) {
 	serverURL := os.Getenv("ADC_SERVER_URL")
 	if serverURL == "" {
 		serverURL = defaultHTTPADCExecutorAddr
@@ -59,12 +58,11 @@ func New(log logr.Logger, mode string, timeout time.Duration) (*Client, error) {
 	configManager := common.NewConfigManager[types.NamespacedNameKind, adctypes.Config]()
 
 	logger := log.WithName("client")
-	logger.Info("ADC client initialized", "mode", mode)
+	logger.Info("ADC client initialized")
 
 	return &Client{
 		Store:            store,
 		executor:         NewHTTPADCExecutor(log, serverURL, timeout),
-		BackendMode:      mode,
 		ConfigManager:    configManager,
 		ADCDebugProvider: common.NewADCDebugProvider(store, configManager),
 		log:              logger,
@@ -78,6 +76,7 @@ type Task struct {
 	Configs       map[types.NamespacedNameKind]adctypes.Config
 	ResourceTypes []string
 	Resources     *adctypes.Resources
+	BackendType   string
 }
 
 type StoreDelta struct {
@@ -255,7 +254,7 @@ func (c *Client) sync(ctx context.Context, task Task) error {
 			resourceType = "all"
 		}
 
-		err := c.executor.Execute(ctx, c.BackendMode, config, args)
+		err := c.executor.Execute(ctx, config, args)
 		duration := time.Since(startTime).Seconds()
 
 		status := adctypes.StatusSuccess
