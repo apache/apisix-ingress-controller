@@ -46,10 +46,12 @@ type Client struct {
 	ConfigManager    *common.ConfigManager[types.NamespacedNameKind, adctypes.Config]
 	ADCDebugProvider *common.ADCDebugProvider
 
+	defaultMode string
+
 	log logr.Logger
 }
 
-func New(log logr.Logger, timeout time.Duration) (*Client, error) {
+func New(log logr.Logger, defaultMode string, timeout time.Duration) (*Client, error) {
 	serverURL := os.Getenv("ADC_SERVER_URL")
 	if serverURL == "" {
 		serverURL = defaultHTTPADCExecutorAddr
@@ -66,6 +68,7 @@ func New(log logr.Logger, timeout time.Duration) (*Client, error) {
 		ConfigManager:    configManager,
 		ADCDebugProvider: common.NewADCDebugProvider(store, configManager),
 		log:              logger,
+		defaultMode:      defaultMode,
 	}, nil
 }
 
@@ -76,7 +79,6 @@ type Task struct {
 	Configs       map[types.NamespacedNameKind]adctypes.Config
 	ResourceTypes []string
 	Resources     *adctypes.Resources
-	BackendType   string
 }
 
 type StoreDelta struct {
@@ -252,6 +254,9 @@ func (c *Client) sync(ctx context.Context, task Task) error {
 		resourceType := strings.Join(task.ResourceTypes, ",")
 		if resourceType == "" {
 			resourceType = "all"
+		}
+		if config.BakcnedType == "" {
+			config.BakcnedType = c.defaultMode
 		}
 
 		err := c.executor.Execute(ctx, config, args)

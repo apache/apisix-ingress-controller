@@ -229,6 +229,7 @@ ControlPlaneProvider defines configuration for control plane provider.
 
 | Field | Description |
 | --- | --- |
+| `mode` _string_ | Type specifies the type of control plane provider. |
 | `endpoints` _string array_ | Endpoints specifies the list of control plane endpoints. |
 | `service` _[ProviderService](#providerservice)_ |  |
 | `tlsVerify` _boolean_ | TlsVerify specifies whether to verify the TLS certificate of the control plane. |
