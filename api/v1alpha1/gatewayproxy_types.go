@@ -119,9 +119,10 @@ type ControlPlaneAuth struct {
 
 // ControlPlaneProvider defines configuration for control plane provider.
 // +kubebuilder:validation:XValidation:rule="has(self.endpoints) != has(self.service)"
-// +kubebuilder:validation:XValidation:rule="self.mode == oldSelf.mode",message="mode is immutable"
+// +kubebuilder:validation:XValidation:rule="oldSelf == null || (!has(self.mode) && !has(oldSelf.mode)) || self.mode == oldSelf.mode",message="mode is immutable"
 type ControlPlaneProvider struct {
-	// Type specifies the type of control plane provider.
+	// Type specifies the mode of control plane provider.
+	// Can be `apisix` or `apisix-standalone`.
 	//
 	// +kubebuilder:validation:Optional
 	Mode string `json:"mode,omitempty"`
