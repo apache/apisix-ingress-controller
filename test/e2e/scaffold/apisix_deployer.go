@@ -324,55 +324,7 @@ func (s *APISIXDeployer) closeAdminTunnel() {
 }
 
 func (s *APISIXDeployer) CreateAdditionalGateway(namePrefix string) (string, *corev1.Service, error) {
-	// Create a new namespace for this additional gateway
-	additionalNS := fmt.Sprintf("%s-%d", namePrefix, time.Now().Unix())
-
-	k8s.CreateNamespace(s.t, s.kubectlOptions, additionalNS)
-
-	// Create new kubectl options for the new namespace
-	kubectlOpts := &k8s.KubectlOptions{
-		ConfigPath: s.runtimeOpts.Kubeconfig,
-		Namespace:  additionalNS,
-	}
-
-	s.Logf("additional gateway in namespace %s", additionalNS)
-
-	// Use the same admin key as the main gateway
-	adminKey := s.runtimeOpts.APISIXAdminAPIKey
-	s.Logf("additional gateway admin api key: %s", adminKey)
-
-	// Store gateway resources info
-	resources := &GatewayResources{
-		Namespace:   additionalNS,
-		AdminAPIKey: adminKey,
-	}
-
-	// Deploy dataplane for this additional gateway
-	opts := APISIXDeployOptions{
-		Namespace:        additionalNS,
-		AdminKey:         adminKey,
-		ServiceHTTPPort:  9080,
-		ServiceHTTPSPort: 9443,
-	}
-	svc := s.deployDataplane(&opts)
-
-	resources.DataplaneService = svc
-
-	// Create tunnels for the dataplane
-	tunnels, err := s.createDataplaneTunnels(svc, kubectlOpts, svc.Name)
-	if err != nil {
-		return "", nil, err
-	}
-
-	resources.Tunnels = tunnels
-
-	// Use namespace as identifier for APISIX deployments
-	identifier := additionalNS
-
-	// Store in the map
-	s.additionalGateways[identifier] = resources
-
-	return identifier, svc, nil
+	return s.CreateAdditionalGatewayWithOptions(namePrefix, DeployDataplaneOptions{})
 }
 
 func (s *APISIXDeployer) CreateAdditionalGatewayWithOptions(namePrefix string, opts DeployDataplaneOptions) (string, *corev1.Service, error) {
