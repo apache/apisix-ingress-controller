@@ -49,7 +49,7 @@ func (t *Translator) TranslateGatewayProxyToConfig(tctx *provider.TranslateConte
 
 	cfg := types.Config{
 		Name:        utils.NamespacedNameKind(gatewayProxy).String(),
-		BakcnedType: cp.Mode,
+		BackendType: cp.Mode,
 	}
 
 	if cp.TlsVerify != nil {
@@ -84,6 +84,8 @@ func (t *Translator) TranslateGatewayProxyToConfig(tctx *provider.TranslateConte
 		return &cfg, nil
 	}
 
+	// If Mode is empty, use the default static configuration.
+	// If Mode is set, resolve endpoints only when the ControlPlane is in standalone mode.
 	if cp.Mode != "" {
 		resolveEndpoints = cp.Mode == string(config.ProviderTypeStandalone)
 	}

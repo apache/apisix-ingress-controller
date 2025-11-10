@@ -407,16 +407,16 @@ func (s *APISIXDeployer) CreateAdditionalGatewayWithOptions(namePrefix string, o
 		ServiceHTTPSPort: 9443,
 	}
 	if opts.Namespace != "" {
-		o.Namespace = additionalNS
+		o.Namespace = opts.Namespace
 	}
 	if opts.AdminKey != "" {
-		o.AdminKey = adminKey
+		o.AdminKey = opts.AdminKey
 	}
 	if opts.ServiceHTTPPort != 0 {
-		o.ServiceHTTPPort = 9080
+		o.ServiceHTTPPort = opts.ServiceHTTPPort
 	}
-	if opts.ServiceHTTPSPort == 0 {
-		o.ServiceHTTPSPort = 9443
+	if opts.ServiceHTTPSPort != 0 {
+		o.ServiceHTTPSPort = opts.ServiceHTTPSPort
 	}
 	if opts.ProviderType != "" {
 		if opts.ProviderType == framework.ProviderTypeAPISIX {

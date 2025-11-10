@@ -95,7 +95,7 @@ func (e *DefaultADCExecutor) runForSingleServer(ctx context.Context, serverAddr 
 
 	cmdArgs = append(cmdArgs, "--timeout", "15s")
 
-	env := e.prepareEnv(serverAddr, config.BakcnedType, config.Token)
+	env := e.prepareEnv(serverAddr, config.BackendType, config.Token)
 
 	var stdout, stderr bytes.Buffer
 	cmd := exec.CommandContext(ctx, "adc", cmdArgs...)
@@ -261,7 +261,7 @@ func (e *HTTPADCExecutor) runHTTPSync(ctx context.Context, config adctypes.Confi
 	}
 
 	serverAddrs := func() []string {
-		if config.BakcnedType == "apisix-standalone" {
+		if config.BackendType == "apisix-standalone" {
 			return []string{strings.Join(config.ServerAddrs, ",")}
 		}
 		return config.ServerAddrs
@@ -385,7 +385,7 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr strin
 	reqBody := ADCServerRequest{
 		Task: ADCServerTask{
 			Opts: ADCServerOpts{
-				Backend:             config.BakcnedType,
+				Backend:             config.BackendType,
 				Server:              strings.Split(serverAddr, ","),
 				Token:               config.Token,
 				LabelSelector:       labels,
@@ -407,7 +407,7 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr strin
 	e.log.V(1).Info("sending HTTP request to ADC Server",
 		"url", e.serverURL+"/sync",
 		"server", serverAddr,
-		"mode", config.BakcnedType,
+		"mode", config.BackendType,
 		"cacheKey", config.Name,
 		"labelSelector", labels,
 		"includeResourceType", types,

@@ -255,8 +255,8 @@ func (c *Client) sync(ctx context.Context, task Task) error {
 		if resourceType == "" {
 			resourceType = "all"
 		}
-		if config.BakcnedType == "" {
-			config.BakcnedType = c.defaultMode
+		if config.BackendType == "" {
+			config.BackendType = c.defaultMode
 		}
 
 		err := c.executor.Execute(ctx, config, args)

@@ -779,7 +779,7 @@ type Config struct {
 	ServerAddrs []string
 	Token       string
 	TlsVerify   bool
-	BakcnedType string
+	BackendType string
 }
 
 // MarshalJSON implements custom JSON marshaling for adcConfig
