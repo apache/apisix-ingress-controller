@@ -129,7 +129,7 @@ spec:
                         type: array
                       mode:
                         description: |-
-                          Type specifies the mode of control plane provider.
+                          Mode specifies the mode of control plane provider.
                           Can be `apisix` or `apisix-standalone`.
                         type: string
                       service:
