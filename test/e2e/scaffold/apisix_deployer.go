@@ -420,9 +420,9 @@ func (s *APISIXDeployer) CreateAdditionalGatewayWithOptions(namePrefix string, o
 	}
 	if opts.ProviderType != "" {
 		if opts.ProviderType == framework.ProviderTypeAPISIX {
-			o.ConfigProvider = "etcd"
+			o.ConfigProvider = framework.ConfigProviderTypeEtcd
 		} else {
-			o.ConfigProvider = "yaml"
+			o.ConfigProvider = framework.ConfigProviderTypeYaml
 		}
 	}
 	svc := s.deployDataplane(&o)
