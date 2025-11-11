@@ -69,7 +69,7 @@ kubectl config set-context --current --namespace=ingress-apisix
 Install the Gateway API CRDs, [APISIX Standalone API-driven mode](https://apisix.apache.org/docs/apisix/deployment-modes/#api-driven-experimental), and APISIX Ingress Controller:
 
 ```bash
-helm repo add apisix https://charts.apiseven.com
+helm repo add apisix https://apache.github.io/apisix-helm-chart
 helm repo update
 
 helm install apisix \
