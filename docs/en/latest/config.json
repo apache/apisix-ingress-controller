@@ -39,7 +39,8 @@
             "items": [
                 "reference/api-reference",
                 "reference/example",
-                "reference/configuration-file"
+                "reference/configuration-file",
+                "reference/ingress-annotation"
             ]
         },
         {
