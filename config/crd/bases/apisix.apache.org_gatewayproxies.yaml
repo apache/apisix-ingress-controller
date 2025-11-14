@@ -127,6 +127,11 @@ spec:
                           type: string
                         minItems: 1
                         type: array
+                      mode:
+                        description: |-
+                          Mode specifies the mode of control plane provider.
+                          Can be `apisix` or `apisix-standalone`.
+                        type: string
                       service:
                         properties:
                           name:
@@ -150,6 +155,9 @@ spec:
                     type: object
                     x-kubernetes-validations:
                     - rule: has(self.endpoints) != has(self.service)
+                    - message: mode is immutable
+                      rule: oldSelf == null || (!has(self.mode) && !has(oldSelf.mode))
+                        || self.mode == oldSelf.mode
                   type:
                     description: Type specifies the type of provider. Can only be
                       `ControlPlane`.

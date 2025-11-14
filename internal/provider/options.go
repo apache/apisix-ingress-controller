@@ -26,11 +26,11 @@ type Option interface {
 }
 
 type Options struct {
-	SyncTimeout      time.Duration
-	SyncPeriod       time.Duration
-	InitSyncDelay    time.Duration
-	BackendMode      string
-	ResolveEndpoints bool
+	SyncTimeout             time.Duration
+	SyncPeriod              time.Duration
+	InitSyncDelay           time.Duration
+	DefaultBackendMode      string
+	DefaultResolveEndpoints bool
 }
 
 func (o *Options) ApplyToList(lo *Options) {
@@ -43,11 +43,11 @@ func (o *Options) ApplyToList(lo *Options) {
 	if o.InitSyncDelay > 0 {
 		lo.InitSyncDelay = o.InitSyncDelay
 	}
-	if o.BackendMode != "" {
-		lo.BackendMode = o.BackendMode
+	if o.DefaultBackendMode != "" {
+		lo.DefaultBackendMode = o.DefaultBackendMode
 	}
-	if o.ResolveEndpoints {
-		lo.ResolveEndpoints = o.ResolveEndpoints
+	if o.DefaultResolveEndpoints {
+		lo.DefaultResolveEndpoints = o.DefaultResolveEndpoints
 	}
 }
 
@@ -58,22 +58,22 @@ func (o *Options) ApplyOptions(opts []Option) *Options {
 	return o
 }
 
-type backendModeOption string
+type defaultBackendModeOption string
 
-func (b backendModeOption) ApplyToList(o *Options) {
-	o.BackendMode = string(b)
+func (b defaultBackendModeOption) ApplyToList(o *Options) {
+	o.DefaultBackendMode = string(b)
 }
 
-func WithBackendMode(mode string) Option {
-	return backendModeOption(mode)
+func WithDefaultBackendMode(mode string) Option {
+	return defaultBackendModeOption(mode)
 }
 
-type resolveEndpointsOption bool
+type defaultResolveEndpointsOption bool
 
-func (r resolveEndpointsOption) ApplyToList(o *Options) {
-	o.ResolveEndpoints = bool(r)
+func (r defaultResolveEndpointsOption) ApplyToList(o *Options) {
+	o.DefaultResolveEndpoints = bool(r)
 }
 
-func WithResolveEndpoints() Option {
-	return resolveEndpointsOption(true)
+func WithDefaultResolveEndpoints() Option {
+	return defaultResolveEndpointsOption(true)
 }

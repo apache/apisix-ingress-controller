@@ -31,6 +31,7 @@ import (
 
 	types "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
@@ -44,18 +45,20 @@ func (t *Translator) TranslateGatewayProxyToConfig(tctx *provider.TranslateConte
 	if provider.Type != v1alpha1.ProviderTypeControlPlane || provider.ControlPlane == nil {
 		return nil, nil
 	}
+	cp := provider.ControlPlane
 
-	config := types.Config{
-		Name: utils.NamespacedNameKind(gatewayProxy).String(),
+	cfg := types.Config{
+		Name:        utils.NamespacedNameKind(gatewayProxy).String(),
+		BackendType: cp.Mode,
 	}
 
-	if provider.ControlPlane.TlsVerify != nil {
-		config.TlsVerify = *provider.ControlPlane.TlsVerify
+	if cp.TlsVerify != nil {
+		cfg.TlsVerify = *cp.TlsVerify
 	}
 
-	if provider.ControlPlane.Auth.Type == v1alpha1.AuthTypeAdminKey && provider.ControlPlane.Auth.AdminKey != nil {
-		if provider.ControlPlane.Auth.AdminKey.ValueFrom != nil && provider.ControlPlane.Auth.AdminKey.ValueFrom.SecretKeyRef != nil {
-			secretRef := provider.ControlPlane.Auth.AdminKey.ValueFrom.SecretKeyRef
+	if cp.Auth.Type == v1alpha1.AuthTypeAdminKey && cp.Auth.AdminKey != nil {
+		if cp.Auth.AdminKey.ValueFrom != nil && cp.Auth.AdminKey.ValueFrom.SecretKeyRef != nil {
+			secretRef := cp.Auth.AdminKey.ValueFrom.SecretKeyRef
 			secret, ok := tctx.Secrets[k8stypes.NamespacedName{
 				// we should use gateway proxy namespace
 				Namespace: gatewayProxy.GetNamespace(),
@@ -63,28 +66,34 @@ func (t *Translator) TranslateGatewayProxyToConfig(tctx *provider.TranslateConte
 			}]
 			if ok {
 				if token, ok := secret.Data[secretRef.Key]; ok {
-					config.Token = string(token)
+					cfg.Token = string(token)
 				}
 			}
-		} else if provider.ControlPlane.Auth.AdminKey.Value != "" {
-			config.Token = provider.ControlPlane.Auth.AdminKey.Value
+		} else if cp.Auth.AdminKey.Value != "" {
+			cfg.Token = cp.Auth.AdminKey.Value
 		}
 	}
 
-	if config.Token == "" {
+	if cfg.Token == "" {
 		return nil, errors.New("no token found")
 	}
 
-	endpoints := provider.ControlPlane.Endpoints
+	endpoints := cp.Endpoints
 	if len(endpoints) > 0 {
-		config.ServerAddrs = endpoints
-		return &config, nil
+		cfg.ServerAddrs = endpoints
+		return &cfg, nil
 	}
 
-	if provider.ControlPlane.Service != nil {
+	// If Mode is empty, use the default static configuration.
+	// If Mode is set, resolve endpoints only when the ControlPlane is in standalone mode.
+	if cp.Mode != "" {
+		resolveEndpoints = cp.Mode == string(config.ProviderTypeStandalone)
+	}
+
+	if cp.Service != nil {
 		namespacedName := k8stypes.NamespacedName{
 			Namespace: gatewayProxy.Namespace,
-			Name:      provider.ControlPlane.Service.Name,
+			Name:      cp.Service.Name,
 		}
 		svc, ok := tctx.Services[namespacedName]
 		if !ok {
@@ -100,9 +109,9 @@ func (t *Translator) TranslateGatewayProxyToConfig(tctx *provider.TranslateConte
 			}
 			upstreamNodes, _, err := t.TranslateBackendRefWithFilter(tctx, gatewayv1.BackendRef{
 				BackendObjectReference: gatewayv1.BackendObjectReference{
-					Name:      gatewayv1.ObjectName(provider.ControlPlane.Service.Name),
+					Name:      gatewayv1.ObjectName(cp.Service.Name),
 					Namespace: (*gatewayv1.Namespace)(&gatewayProxy.Namespace),
-					Port:      ptr.To(gatewayv1.PortNumber(provider.ControlPlane.Service.Port)),
+					Port:      ptr.To(gatewayv1.PortNumber(cp.Service.Port)),
 				},
 			}, func(endpoint *discoveryv1.Endpoint) bool {
 				if endpoint.Conditions.Terminating != nil && *endpoint.Conditions.Terminating {
@@ -115,21 +124,21 @@ func (t *Translator) TranslateGatewayProxyToConfig(tctx *provider.TranslateConte
 				return nil, err
 			}
 			for _, node := range upstreamNodes {
-				config.ServerAddrs = append(config.ServerAddrs, "http://"+net.JoinHostPort(node.Host, strconv.Itoa(node.Port)))
+				cfg.ServerAddrs = append(cfg.ServerAddrs, "http://"+net.JoinHostPort(node.Host, strconv.Itoa(node.Port)))
 			}
 		} else {
-			refPort := provider.ControlPlane.Service.Port
+			refPort := cp.Service.Port
 			var serverAddr string
 			if svc.Spec.Type == corev1.ServiceTypeExternalName {
 				serverAddr = fmt.Sprintf("http://%s:%d", svc.Spec.ExternalName, refPort)
 			} else {
-				serverAddr = fmt.Sprintf("http://%s.%s.svc:%d", provider.ControlPlane.Service.Name, gatewayProxy.Namespace, refPort)
+				serverAddr = fmt.Sprintf("http://%s.%s.svc:%d", cp.Service.Name, gatewayProxy.Namespace, refPort)
 			}
-			config.ServerAddrs = []string{serverAddr}
+			cfg.ServerAddrs = []string{serverAddr}
 		}
 
-		t.Log.V(1).Info("add server address to config.ServiceAddrs", "config.ServerAddrs", config.ServerAddrs)
+		t.Log.V(1).Info("add server address to config.ServiceAddrs", "config.ServerAddrs", cfg.ServerAddrs)
 	}
 
-	return &config, nil
+	return &cfg, nil
 }
