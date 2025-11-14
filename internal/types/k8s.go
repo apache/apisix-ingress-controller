@@ -104,6 +104,8 @@ func KindOf(obj any) string {
 		return KindApisixTls
 	case *v2.ApisixConsumer:
 		return KindApisixConsumer
+	case *v2.ApisixUpstream:
+		return KindApisixUpstream
 	case *v1alpha1.HTTPRoutePolicy:
 		return KindHTTPRoutePolicy
 	case *v1alpha1.BackendTrafficPolicy:
