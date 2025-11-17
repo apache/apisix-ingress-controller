@@ -229,6 +229,7 @@ ControlPlaneProvider defines configuration for control plane provider.
 
 | Field | Description |
 | --- | --- |
+| `mode` _string_ | Mode specifies the mode of control plane provider. Can be `apisix` or `apisix-standalone`. |
 | `endpoints` _string array_ | Endpoints specifies the list of control plane endpoints. |
 | `service` _[ProviderService](#providerservice)_ |  |
 | `tlsVerify` _boolean_ | TlsVerify specifies whether to verify the TLS certificate of the control plane. |

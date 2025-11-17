@@ -29,7 +29,8 @@ type Deployer interface {
 	ScaleDataplane(replicas int)
 	BeforeEach()
 	AfterEach()
-	CreateAdditionalGateway(namePrefix string) (string, *corev1.Service, error)
+	CreateAdditionalGateway(namePrefix string) (identifier string, svc *corev1.Service, err error)
+	CreateAdditionalGatewayWithOptions(namePrefix string, opts DeployDataplaneOptions) (identifier string, svc *corev1.Service, err error)
 	CleanupAdditionalGateway(identifier string) error
 	GetAdminEndpoint(...*corev1.Service) string
 	GetAdminServiceName() string
@@ -46,4 +47,5 @@ type DeployDataplaneOptions struct {
 	ServiceHTTPSPort  int
 	Replicas          *int
 	AdminKey          string
+	ProviderType      string
 }
