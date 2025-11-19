@@ -23,7 +23,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -1070,25 +1069,14 @@ spec:
 			createSecret(s, _secretName)
 			By("create Ingress")
 			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressWithWSS, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
-			time.Sleep(6 * time.Second)
 
 			By("verify wss connection")
-			u := url.URL{
-				Scheme: "wss",
-				Host:   s.GetAPISIXHTTPSEndpoint(),
-				Path:   "/ws",
-			}
-			headers := http.Header{"Host": []string{"api6.com"}}
-			dialer := websocket.Dialer{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-					ServerName:         "api6.com",
-				},
-			}
-
-			conn, resp, err := dialer.Dial(u.String(), headers)
-			Expect(err).ShouldNot(HaveOccurred(), "WebSocket handshake")
-			Expect(resp.StatusCode).Should(Equal(http.StatusSwitchingProtocols))
+			hostname := "api6.com"
+			conn, err := s.NewWebsocketClient(&tls.Config{
+				InsecureSkipVerify: true,
+				ServerName:         hostname,
+			}, "/ws", http.Header{"Host": []string{hostname}})
+			Expect(err).ShouldNot(HaveOccurred(), "creating WebSocket client")
 
 			defer func() {
 				_ = conn.Close()
