@@ -5,7 +5,7 @@
 // (the "License"); you may not use this file except in compliance with
 // the License.  You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,6 +17,7 @@ package kube
 import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/util/flowcontrol"
 	gatewayclientset "sigs.k8s.io/gateway-api/pkg/client/clientset/gateway/versioned"
 	gatewayexternalversions "sigs.k8s.io/gateway-api/pkg/client/informers/gateway/externalversions"
 
@@ -43,6 +44,9 @@ func NewKubeClient(cfg *config.Config) (*KubeClient, error) {
 	if err != nil {
 		return nil, err
 	}
+	restConfig.RateLimiter = flowcontrol.NewFakeAlwaysRateLimiter()
+	restConfig.QPS = 0
+	restConfig.Burst = 0
 	kubeClient, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err

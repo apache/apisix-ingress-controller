@@ -32,12 +32,11 @@ RUN if [ "$ENABLE_PROXY" = "true" ] ; then go env -w GOPROXY=https://goproxy.cn,
 COPY . .
 RUN make build
 
-FROM centos:centos7
-LABEL maintainer="gxthrj@163.com"
+FROM alpine:3.17
 
 WORKDIR /ingress-apisix
-RUN yum -y install ca-certificates libc6-compat \
-    && update-ca-trust \
+RUN apk add --no-cache ca-certificates libc6-compat \
+    && update-ca-certificates \
     && echo "hosts: files dns" > /etc/nsswitch.conf
 
 COPY --from=build-env /build/apisix-ingress-controller .
