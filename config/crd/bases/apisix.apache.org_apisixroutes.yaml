@@ -47,7 +47,7 @@ spec:
     name: v2
     schema:
       openAPIV3Schema:
-        description: ApisixRoute is defines configuration for HTTP and stream routes.
+        description: ApisixRoute defines configuration for HTTP and stream routes.
         properties:
           apiVersion:
             description: |-

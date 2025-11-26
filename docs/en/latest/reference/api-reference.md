@@ -561,7 +561,7 @@ ApisixPluginConfig defines a reusable set of plugin configuration that can be re
 ### ApisixRoute
 
 
-ApisixRoute is defines configuration for HTTP and stream routes.
+ApisixRoute defines configuration for HTTP and stream routes.
 
 <!-- ApisixRoute resource -->
 
