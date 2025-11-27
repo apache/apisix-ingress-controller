@@ -204,13 +204,17 @@ func (s *APISIXDeployer) deployDataplane(opts *APISIXDeployOptions) *corev1.Serv
 	if opts.ServiceHTTPSPort == 0 {
 		opts.ServiceHTTPSPort = 443
 	}
-	opts.ConfigProvider = "yaml"
 
 	kubectlOpts := k8s.NewKubectlOptions("", "", opts.Namespace)
 
-	if framework.ProviderType == framework.ProviderTypeAPISIX {
-		opts.ConfigProvider = "etcd"
-		// deploy etcd
+	if opts.ConfigProvider == "" {
+		opts.ConfigProvider = framework.ConfigProviderTypeYaml
+		if framework.ProviderType == framework.ProviderTypeAPISIX {
+			opts.ConfigProvider = framework.ConfigProviderTypeEtcd
+		}
+	}
+
+	if opts.ConfigProvider == framework.ConfigProviderTypeEtcd {
 		k8s.KubectlApplyFromString(s.GinkgoT, kubectlOpts, framework.EtcdSpec)
 		err := framework.WaitPodsAvailable(s.GinkgoT, kubectlOpts, metav1.ListOptions{
 			LabelSelector: "app=etcd",
@@ -320,6 +324,10 @@ func (s *APISIXDeployer) closeAdminTunnel() {
 }
 
 func (s *APISIXDeployer) CreateAdditionalGateway(namePrefix string) (string, *corev1.Service, error) {
+	return s.CreateAdditionalGatewayWithOptions(namePrefix, DeployDataplaneOptions{})
+}
+
+func (s *APISIXDeployer) CreateAdditionalGatewayWithOptions(namePrefix string, opts DeployDataplaneOptions) (string, *corev1.Service, error) {
 	// Create a new namespace for this additional gateway
 	additionalNS := fmt.Sprintf("%s-%d", namePrefix, time.Now().Unix())
 
@@ -344,13 +352,32 @@ func (s *APISIXDeployer) CreateAdditionalGateway(namePrefix string) (string, *co
 	}
 
 	// Deploy dataplane for this additional gateway
-	opts := APISIXDeployOptions{
+	o := APISIXDeployOptions{
 		Namespace:        additionalNS,
 		AdminKey:         adminKey,
 		ServiceHTTPPort:  9080,
 		ServiceHTTPSPort: 9443,
 	}
-	svc := s.deployDataplane(&opts)
+	if opts.Namespace != "" {
+		o.Namespace = opts.Namespace
+	}
+	if opts.AdminKey != "" {
+		o.AdminKey = opts.AdminKey
+	}
+	if opts.ServiceHTTPPort != 0 {
+		o.ServiceHTTPPort = opts.ServiceHTTPPort
+	}
+	if opts.ServiceHTTPSPort != 0 {
+		o.ServiceHTTPSPort = opts.ServiceHTTPSPort
+	}
+	if opts.ProviderType != "" {
+		if opts.ProviderType == framework.ProviderTypeAPISIX {
+			o.ConfigProvider = framework.ConfigProviderTypeEtcd
+		} else {
+			o.ConfigProvider = framework.ConfigProviderTypeYaml
+		}
+	}
+	svc := s.deployDataplane(&o)
 
 	resources.DataplaneService = svc
 

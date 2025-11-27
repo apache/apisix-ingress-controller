@@ -98,6 +98,8 @@ func KindOf(obj any) string {
 		return KindApisixGlobalRule
 	case *v2.ApisixPluginConfig:
 		return KindApisixPluginConfig
+	case *v2.ApisixUpstream:
+		return KindApisixUpstream
 	case *corev1.Pod:
 		return KindPod
 	case *v2.ApisixTls:

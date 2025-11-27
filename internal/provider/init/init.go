@@ -34,8 +34,8 @@ func init() {
 			readinessManager readiness.ReadinessManager,
 			opts ...provider.Option,
 		) (provider.Provider, error) {
-			opts = append(opts, provider.WithBackendMode("apisix-standalone"))
-			opts = append(opts, provider.WithResolveEndpoints())
+			opts = append(opts, provider.WithDefaultBackendMode("apisix-standalone"))
+			opts = append(opts, provider.WithDefaultResolveEndpoints())
 			return apisix.New(log, statusUpdater, readinessManager, opts...)
 		})
 }

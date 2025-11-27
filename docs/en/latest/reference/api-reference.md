@@ -229,6 +229,7 @@ ControlPlaneProvider defines configuration for control plane provider.
 
 | Field | Description |
 | --- | --- |
+| `mode` _string_ | Mode specifies the mode of control plane provider. Can be `apisix` or `apisix-standalone`. |
 | `endpoints` _string array_ | Endpoints specifies the list of control plane endpoints. |
 | `service` _[ProviderService](#providerservice)_ |  |
 | `tlsVerify` _boolean_ | TlsVerify specifies whether to verify the TLS certificate of the control plane. |
@@ -560,7 +561,7 @@ ApisixPluginConfig defines a reusable set of plugin configuration that can be re
 ### ApisixRoute
 
 
-ApisixRoute is defines configuration for HTTP and stream routes.
+ApisixRoute defines configuration for HTTP and stream routes.
 
 <!-- ApisixRoute resource -->
 
@@ -1187,7 +1188,7 @@ _Appears in:_
 #### ApisixRouteStream
 
 
-ApisixRouteStream defines the configuration for a Layer 4 (TCP/UDP) route. Currently not supported.
+ApisixRouteStream defines the configuration for a Layer 4 (TCP/UDP) route.
 
 
 

@@ -43,7 +43,7 @@ Before installing APISIX ingress controller, ensure you have:
 Make sure to update the Helm repositories:
 
 ```bash
-helm repo add apisix https://charts.apiseven.com
+helm repo add apisix https://apache.github.io/apisix-helm-chart
 helm repo add bitnami https://charts.bitnami.com/bitnami
 helm repo update
 ```

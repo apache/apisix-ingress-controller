@@ -44,7 +44,7 @@ const (
 )
 
 type ADCExecutor interface {
-	Execute(ctx context.Context, mode string, config adctypes.Config, args []string) error
+	Execute(ctx context.Context, config adctypes.Config, args []string) error
 }
 
 type DefaultADCExecutor struct {
@@ -52,17 +52,17 @@ type DefaultADCExecutor struct {
 	log logr.Logger
 }
 
-func (e *DefaultADCExecutor) Execute(ctx context.Context, mode string, config adctypes.Config, args []string) error {
-	return e.runADC(ctx, mode, config, args)
+func (e *DefaultADCExecutor) Execute(ctx context.Context, config adctypes.Config, args []string) error {
+	return e.runADC(ctx, config, args)
 }
 
-func (e *DefaultADCExecutor) runADC(ctx context.Context, mode string, config adctypes.Config, args []string) error {
+func (e *DefaultADCExecutor) runADC(ctx context.Context, config adctypes.Config, args []string) error {
 	var execErrs = types.ADCExecutionError{
 		Name: config.Name,
 	}
 
 	for _, addr := range config.ServerAddrs {
-		if err := e.runForSingleServerWithTimeout(ctx, addr, mode, config, args); err != nil {
+		if err := e.runForSingleServerWithTimeout(ctx, addr, config, args); err != nil {
 			e.log.Error(err, "failed to run adc for server", "server", addr)
 			var execErr types.ADCExecutionServerAddrError
 			if errors.As(err, &execErr) {
@@ -81,13 +81,13 @@ func (e *DefaultADCExecutor) runADC(ctx context.Context, mode string, config adc
 	return nil
 }
 
-func (e *DefaultADCExecutor) runForSingleServerWithTimeout(ctx context.Context, serverAddr, mode string, config adctypes.Config, args []string) error {
+func (e *DefaultADCExecutor) runForSingleServerWithTimeout(ctx context.Context, serverAddr string, config adctypes.Config, args []string) error {
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
-	return e.runForSingleServer(ctx, serverAddr, mode, config, args)
+	return e.runForSingleServer(ctx, serverAddr, config, args)
 }
 
-func (e *DefaultADCExecutor) runForSingleServer(ctx context.Context, serverAddr, mode string, config adctypes.Config, args []string) error {
+func (e *DefaultADCExecutor) runForSingleServer(ctx context.Context, serverAddr string, config adctypes.Config, args []string) error {
 	cmdArgs := append([]string{}, args...)
 	if !config.TlsVerify {
 		cmdArgs = append(cmdArgs, "--tls-skip-verify")
@@ -95,7 +95,7 @@ func (e *DefaultADCExecutor) runForSingleServer(ctx context.Context, serverAddr,
 
 	cmdArgs = append(cmdArgs, "--timeout", "15s")
 
-	env := e.prepareEnv(serverAddr, mode, config.Token)
+	env := e.prepareEnv(serverAddr, config.BackendType, config.Token)
 
 	var stdout, stderr bytes.Buffer
 	cmd := exec.CommandContext(ctx, "adc", cmdArgs...)
@@ -250,26 +250,26 @@ func NewHTTPADCExecutor(log logr.Logger, serverURL string, timeout time.Duration
 }
 
 // Execute implements the ADCExecutor interface using HTTP calls
-func (e *HTTPADCExecutor) Execute(ctx context.Context, mode string, config adctypes.Config, args []string) error {
-	return e.runHTTPSync(ctx, mode, config, args)
+func (e *HTTPADCExecutor) Execute(ctx context.Context, config adctypes.Config, args []string) error {
+	return e.runHTTPSync(ctx, config, args)
 }
 
 // runHTTPSync performs HTTP sync to ADC Server for each server address
-func (e *HTTPADCExecutor) runHTTPSync(ctx context.Context, mode string, config adctypes.Config, args []string) error {
+func (e *HTTPADCExecutor) runHTTPSync(ctx context.Context, config adctypes.Config, args []string) error {
 	var execErrs = types.ADCExecutionError{
 		Name: config.Name,
 	}
 
 	serverAddrs := func() []string {
-		if mode == "apisix-standalone" {
+		if config.BackendType == "apisix-standalone" {
 			return []string{strings.Join(config.ServerAddrs, ",")}
 		}
 		return config.ServerAddrs
 	}()
-	e.log.V(1).Info("running http sync", "serverAddrs", serverAddrs, "mode", mode)
+	e.log.V(1).Info("running http sync", "serverAddrs", serverAddrs)
 
 	for _, addr := range serverAddrs {
-		if err := e.runHTTPSyncForSingleServer(ctx, addr, mode, config, args); err != nil {
+		if err := e.runHTTPSyncForSingleServer(ctx, addr, config, args); err != nil {
 			e.log.Error(err, "failed to run http sync for server", "server", addr)
 			var execErr types.ADCExecutionServerAddrError
 			if errors.As(err, &execErr) {
@@ -289,7 +289,7 @@ func (e *HTTPADCExecutor) runHTTPSync(ctx context.Context, mode string, config a
 }
 
 // runHTTPSyncForSingleServer performs HTTP sync to a single ADC Server
-func (e *HTTPADCExecutor) runHTTPSyncForSingleServer(ctx context.Context, serverAddr, mode string, config adctypes.Config, args []string) error {
+func (e *HTTPADCExecutor) runHTTPSyncForSingleServer(ctx context.Context, serverAddr string, config adctypes.Config, args []string) error {
 	ctx, cancel := context.WithTimeout(ctx, e.httpClient.Timeout)
 	defer cancel()
 
@@ -306,7 +306,7 @@ func (e *HTTPADCExecutor) runHTTPSyncForSingleServer(ctx context.Context, server
 	}
 
 	// Build HTTP request
-	req, err := e.buildHTTPRequest(ctx, serverAddr, mode, config, labels, types, resources)
+	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, types, resources)
 	if err != nil {
 		return fmt.Errorf("failed to build HTTP request: %w", err)
 	}
@@ -379,13 +379,13 @@ func (e *HTTPADCExecutor) loadResourcesFromFile(filePath string) (*adctypes.Reso
 }
 
 // buildHTTPRequest builds the HTTP request for ADC Server
-func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr, mode string, config adctypes.Config, labels map[string]string, types []string, resources *adctypes.Resources) (*http.Request, error) {
+func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr string, config adctypes.Config, labels map[string]string, types []string, resources *adctypes.Resources) (*http.Request, error) {
 	// Prepare request body
 	tlsVerify := config.TlsVerify
 	reqBody := ADCServerRequest{
 		Task: ADCServerTask{
 			Opts: ADCServerOpts{
-				Backend:             mode,
+				Backend:             config.BackendType,
 				Server:              strings.Split(serverAddr, ","),
 				Token:               config.Token,
 				LabelSelector:       labels,
@@ -407,7 +407,7 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr, mode
 	e.log.V(1).Info("sending HTTP request to ADC Server",
 		"url", e.serverURL+"/sync",
 		"server", serverAddr,
-		"mode", mode,
+		"mode", config.BackendType,
 		"cacheKey", config.Name,
 		"labelSelector", labels,
 		"includeResourceType", types,

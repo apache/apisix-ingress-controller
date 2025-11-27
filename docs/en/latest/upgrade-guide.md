@@ -152,51 +152,6 @@ In apisix >= 3.11, most of the hmac-auth related configuration has been deprecat
 
 Currently supports networking.k8s.io/v1 only. Support for other Ingress API versions (networking.k8s.io/v1beta1 and extensions/v1beta1) is not yet available in 2.0.0.
 
-##### Limited Support for Ingress Annotations
-
-The following Ingress annotations supported in version 1.x.x are not supported in the current version (2.0.0-rc*). They will be supported in the 2.0.0 final release. If your existing setup relies on any of the following annotations, validate compatibility or consider delaying the upgrade.
-
-| Ingress Annotations                                    |
-| ------------------------------------------------------ |
-| `k8s.apisix.apache.org/use-regex`                      |
-| `k8s.apisix.apache.org/enable-websocket`               |
-| `k8s.apisix.apache.org/plugin-config-name`             |
-| `k8s.apisix.apache.org/upstream-scheme`                |
-| `k8s.apisix.apache.org/upstream-retries`               |
-| `k8s.apisix.apache.org/upstream-connect-timeout`       |
-| `k8s.apisix.apache.org/upstream-read-timeout`          |
-| `k8s.apisix.apache.org/upstream-send-timeout`          |
-| `k8s.apisix.apache.org/enable-cors`                    |
-| `k8s.apisix.apache.org/cors-allow-origin`              |
-| `k8s.apisix.apache.org/cors-allow-headers`             |
-| `k8s.apisix.apache.org/cors-allow-methods`             |
-| `k8s.apisix.apache.org/enable-csrf`                    |
-| `k8s.apisix.apache.org/csrf-key`                       |
-| `k8s.apisix.apache.org/http-to-https`                  |
-| `k8s.apisix.apache.org/http-redirect`                  |
-| `k8s.apisix.apache.org/http-redirect-code`             |
-| `k8s.apisix.apache.org/rewrite-target`                 |
-| `k8s.apisix.apache.org/rewrite-target-regex`           |
-| `k8s.apisix.apache.org/rewrite-target-regex-template`  |
-| `k8s.apisix.apache.org/enable-response-rewrite`        |
-| `k8s.apisix.apache.org/response-rewrite-status-code`   |
-| `k8s.apisix.apache.org/response-rewrite-body`          |
-| `k8s.apisix.apache.org/response-rewrite-body-base64`   |
-| `k8s.apisix.apache.org/response-rewrite-add-header`    |
-| `k8s.apisix.apache.org/response-rewrite-set-header`    |
-| `k8s.apisix.apache.org/response-rewrite-remove-header` |
-| `k8s.apisix.apache.org/auth-uri`                       |
-| `k8s.apisix.apache.org/auth-ssl-verify`                |
-| `k8s.apisix.apache.org/auth-request-headers`           |
-| `k8s.apisix.apache.org/auth-upstream-headers`          |
-| `k8s.apisix.apache.org/auth-client-headers`            |
-| `k8s.apisix.apache.org/allowlist-source-range`         |
-| `k8s.apisix.apache.org/blocklist-source-range`         |
-| `k8s.apisix.apache.org/http-allow-methods`             |
-| `k8s.apisix.apache.org/http-block-methods`             |
-| `k8s.apisix.apache.org/auth-type`                      |
-| `k8s.apisix.apache.org/svc-namespace`                  |
-
 ### Summary
 
 | Category         | Description                                                                                                                       |
