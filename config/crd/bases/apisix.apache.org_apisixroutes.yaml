@@ -360,7 +360,7 @@ spec:
                   Each rule specifies conditions to match TCP/UDP traffic and how to forward them.
                 items:
                   description: ApisixRouteStream defines the configuration for a Layer
-                    4 (TCP/UDP) route. Currently not supported.
+                    4 (TCP/UDP) route.
                   properties:
                     backend:
                       description: Backend specifies the destination service to which
