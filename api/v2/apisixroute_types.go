@@ -61,7 +61,7 @@ type ApisixRouteStatus = ApisixStatus
 // +kubebuilder:printcolumn:name="Target Service (TCP)",type="string",JSONPath=".spec.tcp[].match.backend.serviceName",description="Backend Service for TCP",priority=1
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp",description="Creation time",priority=0
 
-// ApisixRoute is defines configuration for HTTP and stream routes.
+// ApisixRoute defines configuration for HTTP and stream routes.
 type ApisixRoute struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -112,7 +112,7 @@ type ApisixRouteHTTP struct {
 	Authentication ApisixRouteAuthentication `json:"authentication,omitempty" yaml:"authentication,omitempty"`
 }
 
-// ApisixRouteStream defines the configuration for a Layer 4 (TCP/UDP) route. Currently not supported.
+// ApisixRouteStream defines the configuration for a Layer 4 (TCP/UDP) route.
 type ApisixRouteStream struct {
 	// Name is a unique identifier for the route. This field must not be empty.
 	Name string `json:"name" yaml:"name"`
