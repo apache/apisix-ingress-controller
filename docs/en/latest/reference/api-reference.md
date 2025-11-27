@@ -1188,7 +1188,7 @@ _Appears in:_
 #### ApisixRouteStream
 
 
-ApisixRouteStream defines the configuration for a Layer 4 (TCP/UDP) route. Currently not supported.
+ApisixRouteStream defines the configuration for a Layer 4 (TCP/UDP) route.
 
 
 
