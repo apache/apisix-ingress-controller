@@ -27,7 +27,7 @@ IMG ?= apache/apisix-ingress-controller:$(IMAGE_TAG)
 ENVTEST_K8S_VERSION = 1.30.0
 KIND_NAME ?= apisix-ingress-cluster
 
-ADC_VERSION ?= 0.21.2
+ADC_VERSION ?= 0.22.1
 
 DIR := $(shell pwd)
 
@@ -152,6 +152,10 @@ conformance-test:
 		--supported-features=$(SUPPORTED_EXTENDED_FEATURES) \
 		--conformance-profiles=$(CONFORMANCE_PROFILES) \
 		--report-output=$(CONFORMANCE_TEST_REPORT_OUTPUT)
+
+.PHONY: benchmark-test
+benchmark-test:
+	go test -v ./test/benchmark -test.timeout=$(TEST_TIMEOUT) -v -ginkgo.v
 
 .PHONY: lint
 lint: sort-import golangci-lint ## Run golangci-lint linter

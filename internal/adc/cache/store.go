@@ -40,7 +40,7 @@ func NewStore(log logr.Logger) *Store {
 	return &Store{
 		cacheMap:          make(map[string]Cache),
 		pluginMetadataMap: make(map[string]adctypes.PluginMetadata),
-		log:               log,
+		log:               log.WithName("store"),
 	}
 }
 

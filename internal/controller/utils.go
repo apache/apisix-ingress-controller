@@ -1311,7 +1311,7 @@ func ProcessIngressClassParameters(tctx *provider.TranslateContext, c client.Cli
 			return err
 		}
 
-		log.Info("found GatewayProxy for IngressClass", "ingressClass", ingressClass.Name, "gatewayproxy", gatewayProxy.Name)
+		log.V(1).Info("found GatewayProxy for IngressClass", "ingressClass", ingressClass.Name, "gatewayproxy", gatewayProxy.Name)
 		tctx.GatewayProxies[ingressClassKind] = *gatewayProxy
 		tctx.ResourceParentRefs[objKind] = append(tctx.ResourceParentRefs[objKind], ingressClassKind)
 
