@@ -16,7 +16,7 @@
 #
 default: help
 
-VERSION ?= 1.4.1
+VERSION ?= 1.4.1-patch3
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 LOCAL_REGISTRY="localhost:5000"
 IMAGE_TAG ?= dev
