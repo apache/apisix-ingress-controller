@@ -20,11 +20,13 @@ package scaffold
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/api7/gopkg/pkg/log"
 	"github.com/gavv/httpexpect/v2"
@@ -32,9 +34,12 @@ import (
 	"github.com/gruntwork-io/terratest/modules/testing"
 	. "github.com/onsi/ginkgo/v2" //nolint:staticcheck
 	. "github.com/onsi/gomega"    //nolint:staticcheck
+	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 
+	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 )
@@ -552,4 +557,106 @@ func (s *Scaffold) GetMetricsEndpoint() string {
 	}
 	s.addFinalizers(tunnel.Close)
 	return fmt.Sprintf("http://%s/metrics", tunnel.Endpoint())
+}
+
+func (s *Scaffold) ControlAPIClient() (ControlAPIClient, error) {
+	tunnel := k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, "apisix-control-api", 9090, 9090)
+	if err := tunnel.ForwardPortE(s.t); err != nil {
+		return nil, err
+	}
+	s.addFinalizers(tunnel.Close)
+
+	return &controlAPI{
+		client: NewClient("http", tunnel.Endpoint()),
+	}, nil
+}
+
+func (s *Scaffold) EnsureNumService(controlAPIClient ControlAPIClient, matcher func(result int) bool) error {
+	times := 0
+	return wait.PollUntilContextTimeout(context.Background(), 100*time.Millisecond, 10*time.Minute, true, func(ctx context.Context) (done bool, err error) {
+		times++
+		results, _, err := controlAPIClient.ListServices()
+		if err != nil {
+			log.Errorw("failed to ListServices", zap.Error(err))
+			return false, nil
+		}
+		if !matcher(len(results)) {
+			log.Debugw("number of effective services", zap.Int("number", len(results)), zap.Int("times", times))
+			return false, nil
+		}
+		return true, nil
+	})
+}
+
+func (s *Scaffold) ExpectUpstream(controlAPIClient ControlAPIClient, name string, matcher func(upstream adctypes.Upstream) bool) error {
+	times := 0
+	return wait.PollUntilContextTimeout(context.Background(), 1*time.Second, 10*time.Minute, true, func(ctx context.Context) (done bool, err error) {
+		times++
+		//upstreams, err := s.Deployer.DefaultDataplaneResource().Upstream().List(context.Background())
+		upstreams, _, err := controlAPIClient.ListUpstreams()
+		if err != nil {
+			log.Errorw("failed to ListServices", zap.Error(err))
+			return false, nil
+		}
+		for _, upstream := range upstreams {
+			upsValue := upstream.(map[string]any)
+			data, err := json.Marshal(upsValue["value"])
+			if err != nil {
+				return false, fmt.Errorf("failed to marshal upstream: %v", err)
+			}
+
+			var ups adctypes.Upstream
+			if err := json.Unmarshal(data, &ups); err != nil {
+				return false, fmt.Errorf("failed to unmarshal upstream: %v", err)
+			}
+			if name != "" && ups.Name != name {
+				continue
+			}
+			if ok := matcher(ups); !ok {
+				return false, nil
+			}
+		}
+		return true, nil
+	})
+}
+
+func (s *Scaffold) EnsureNumUpstreamNodes(controlAPIClient ControlAPIClient, name string, number int) error {
+	return s.ExpectUpstream(controlAPIClient, name, func(upstream adctypes.Upstream) bool {
+		if len(upstream.Nodes) != number {
+			log.Warnf("expect upstream: [%s] nodes num to be %d, but got %d", upstream.Name, number, len(upstream.Nodes))
+			return false
+		}
+		return true
+	})
+}
+
+type ControlAPIClient interface {
+	ListServices() ([]any, int64, error)
+	ListUpstreams() ([]any, int64, error)
+}
+
+type controlAPI struct {
+	client *httpexpect.Expect
+}
+
+func (c *controlAPI) ListUpstreams() (result []any, total int64, err error) {
+	resp := c.client.Request(http.MethodGet, "/v1/upstreams").Expect()
+	if resp.Raw().StatusCode != http.StatusOK {
+		return nil, 0, fmt.Errorf("unexpected status code: %v, message: %s", resp.Raw().StatusCode, resp.Body().Raw())
+	}
+	if err = json.Unmarshal([]byte(resp.Body().Raw()), &result); err != nil {
+		return nil, 0, fmt.Errorf("failed to unmarshal response body: %w", err)
+	}
+	return result, int64(len(result)), err
+}
+
+func (c *controlAPI) ListServices() (result []any, total int64, err error) {
+	resp := c.client.Request(http.MethodGet, "/v1/services").Expect()
+	if resp.Raw().StatusCode != http.StatusOK {
+		return nil, 0, fmt.Errorf("unexpected status code: %v, message: %s", resp.Raw().StatusCode, resp.Body().Raw())
+	}
+	if err = json.Unmarshal([]byte(resp.Body().Raw()), &result); err != nil {
+		return nil, 0, fmt.Errorf("failed to unmarshal response body: %w", err)
+	}
+	return result, int64(len(result)), err
 }
