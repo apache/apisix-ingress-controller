@@ -5,7 +5,7 @@
 // (the "License"); you may not use this file except in compliance with
 // the License.  You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -349,8 +349,8 @@ func (c *Controller) Run(stop chan struct{}) error {
 	}
 	cfg := leaderelection.LeaderElectionConfig{
 		Lock:          lock,
-		LeaseDuration: 15 * time.Second,
-		RenewDeadline: 5 * time.Second,
+		LeaseDuration: 60 * time.Second,
+		RenewDeadline: 20 * time.Second,
 		RetryPeriod:   2 * time.Second,
 		Callbacks: leaderelection.LeaderCallbacks{
 			OnStartedLeading: c.run,
@@ -444,11 +444,6 @@ func (c *Controller) run(ctx context.Context) {
 
 	// list namesapce and init watchingNamespace
 	if err := c.initWatchingNamespaceByLabels(ctx); err != nil {
-		ctx.Done()
-		return
-	}
-	// compare resources of k8s with objects of APISIX
-	if err = c.CompareResources(ctx); err != nil {
 		ctx.Done()
 		return
 	}

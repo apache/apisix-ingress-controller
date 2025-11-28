@@ -15,7 +15,6 @@
 # limitations under the License.
 #
 FROM golang:1.16 AS build-env
-LABEL maintainer="gxthrj@163.com"
 
 ARG ENABLE_PROXY=false
 
@@ -33,12 +32,13 @@ COPY . .
 RUN make build
 
 FROM centos:centos7
-LABEL maintainer="gxthrj@163.com"
 
 WORKDIR /ingress-apisix
-RUN yum -y install ca-certificates libc6-compat \
-    && update-ca-trust \
-    && echo "hosts: files dns" > /etc/nsswitch.conf
+RUN sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/*.repo \
+    && sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/*.repo \
+    && sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/*.repo \
+    && yum -y install ca-certificates libc6-compat \
+    && update-ca-trust
 
 COPY --from=build-env /build/apisix-ingress-controller .
 COPY --from=build-env /usr/share/zoneinfo/Hongkong /etc/localtime
