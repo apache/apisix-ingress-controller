@@ -288,12 +288,8 @@ func (d *apisixProvider) Start(ctx context.Context) error {
 }
 
 func (d *apisixProvider) sync(ctx context.Context) error {
-	now := time.Now()
-	d.log.Info("starting to sync ADC configs", "time", now)
-	_, err := d.client.Sync(ctx)
-	d.log.Info("finished syncing ADC configs", "duration", time.Since(now))
-	// statusesMap, err := d.client.Sync(ctx)
-	//d.handleADCExecutionErrors(statusesMap)
+	statusesMap, err := d.client.Sync(ctx)
+	d.handleADCExecutionErrors(statusesMap)
 	return err
 }
 
