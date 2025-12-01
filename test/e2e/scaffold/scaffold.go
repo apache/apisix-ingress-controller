@@ -592,7 +592,6 @@ func (s *Scaffold) ExpectUpstream(controlAPIClient ControlAPIClient, name string
 	times := 0
 	return wait.PollUntilContextTimeout(context.Background(), 1*time.Second, 10*time.Minute, true, func(ctx context.Context) (done bool, err error) {
 		times++
-		//upstreams, err := s.Deployer.DefaultDataplaneResource().Upstream().List(context.Background())
 		upstreams, _, err := controlAPIClient.ListUpstreams()
 		if err != nil {
 			log.Errorw("failed to ListServices", zap.Error(err))

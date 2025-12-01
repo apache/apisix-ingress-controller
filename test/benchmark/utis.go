@@ -22,7 +22,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/api7/gopkg/pkg/log"
 	"github.com/olekukonko/tablewriter"
+	"go.uber.org/zap"
 )
 
 type TestResult struct {
@@ -41,14 +43,18 @@ func (r *BenchmarkReport) PrintTable() {
 	table.Header([]string{"Scenario", "Case", "Cost", "IsRequestGateway"})
 
 	for _, res := range r.Results {
-		table.Append([]any{
+		if err := table.Append([]any{
 			res.Scenario,
 			res.CaseName,
 			res.CostTime.String(),
 			res.IsRequestGateway,
-		})
+		}); err != nil {
+			log.Errorw("failed to append row to table", zap.Error(err))
+		}
 	}
-	table.Render()
+	if err := table.Render(); err != nil {
+		log.Errorw("failed to render table", zap.Error(err))
+	}
 }
 
 func (r *BenchmarkReport) PrintJSON() {

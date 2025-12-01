@@ -21,9 +21,15 @@ on:
   push:
     branches:
       - master
+<<<<<<< HEAD
   pull_request:
     branches:
       - master
+=======
+      - benchmark-test
+    tags:
+      - '*'
+>>>>>>> benchmark-test
   workflow_dispatch:
     inputs:
       routes:

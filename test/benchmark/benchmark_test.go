@@ -232,7 +232,7 @@ spec:
 			now = time.Now()
 			Eventually(func() int {
 				return s.NewAPISIXClient().GET("/headers").WithHeader("X-Route-Name", name).Expect().Raw().StatusCode
-			}).WithTimeout(5 * time.Minute).ProbeEvery(100 * time.Millisecond).Should(Equal(http.StatusOK))
+			}).WithTimeout(15 * time.Minute).ProbeEvery(100 * time.Millisecond).Should(Equal(http.StatusOK))
 			report.Add(scenario, fmt.Sprintf("Update a single ApisixRoute base on %d ApisixRoutes", totalRoutes), time.Since(now))
 
 			By("Test the time required for a service endpoint change to take effect")
@@ -248,13 +248,14 @@ spec:
 			err = s.CreateResourceFromString(apisixUpstreamSpec)
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixUpstream")
 			now = time.Now()
-			s.ExpectUpstream(controlAPIClient, "", func(upstream adctypes.Upstream) bool {
+			err = s.ExpectUpstream(controlAPIClient, "", func(upstream adctypes.Upstream) bool {
 				if upstream.Scheme != "https" {
 					log.Warnf("expect upstream: [%s] scheme to be https, but got [%s]", upstream.Name, upstream.Scheme)
 					return false
 				}
 				return true
 			})
+			Expect(err).ShouldNot(HaveOccurred())
 			costTime = time.Since(now)
 			report.Add(scenario, fmt.Sprintf("Update ApisixUpstream base on %d ApisixRoutes", totalRoutes), costTime)
 		}

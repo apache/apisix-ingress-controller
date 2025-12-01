@@ -42,6 +42,9 @@ data:
     nginx_config:
       worker_processes: 2
       error_log_level: info
+      meta:
+        lua_shared_dict:
+          standalone-config: 50m
     apisix:
       proxy_mode: http&stream      
       stream_proxy:                 # TCP/UDP proxy

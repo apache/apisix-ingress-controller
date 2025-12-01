@@ -37,7 +37,7 @@ import (
 	pkgmetrics "github.com/apache/apisix-ingress-controller/pkg/metrics"
 )
 
-const UpdateChannelBufferSize = 50000
+const UpdateChannelBufferSize = 10000
 
 type Update struct {
 	NamespacedName k8stypes.NamespacedName
@@ -140,10 +140,11 @@ func (u *UpdateHandler) Start(ctx context.Context) error {
 		case update := <-u.updateChannel:
 			// Decrement queue length after removing item from queue
 			pkgmetrics.DecStatusQueueLength()
-			u.log.V(1).Info("received a status update", "namespace", update.NamespacedName.Namespace,
+			u.log.Info("received a status update", "namespace", update.NamespacedName.Namespace,
 				"name", update.NamespacedName.Name,
 				"kind", types.KindOf(update.Resource),
 			)
+			u.apply(ctx, update)
 		}
 	}
 }
