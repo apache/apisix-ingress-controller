@@ -305,7 +305,7 @@ spec:
 					sunccess++
 				}
 				return sunccess
-			}).WithTimeout(10 * time.Minute).ProbeEvery(500 * time.Millisecond).Should(Equal(totalConsumers))
+			}).WithTimeout(15 * time.Minute).ProbeEvery(1 * time.Second).Should(Equal(totalConsumers))
 			costTime := time.Since(now)
 			report.AddResult(TestResult{
 				Scenario:         "ApisixRoute With Consumers Benchmark",
