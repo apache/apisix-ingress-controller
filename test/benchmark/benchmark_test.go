@@ -294,17 +294,17 @@ spec:
 
 			now := time.Now()
 			Eventually(func() int {
-				sunccess := 0
+				success := 0
 				for i := 0; i < totalConsumers; i++ {
 					consumerName := getConsumerName(i)
 					if s.NewAPISIXClient().GET("/get").
 						WithHeader("apikey", consumerName).
 						Expect().Raw().StatusCode != http.StatusOK {
-						return sunccess
+						return success
 					}
-					sunccess++
+					success++
 				}
-				return sunccess
+				return success
 			}).WithTimeout(15 * time.Minute).ProbeEvery(1 * time.Second).Should(Equal(totalConsumers))
 			costTime := time.Since(now)
 			report.AddResult(TestResult{
