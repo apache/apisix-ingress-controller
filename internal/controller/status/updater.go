@@ -119,9 +119,10 @@ func (u *UpdateHandler) updateStatus(ctx context.Context, update Update) error {
 
 	newObj.SetUID(obj.GetUID())
 
-	u.log.Info("updating status", "name", update.NamespacedName.Name,
+	u.log.V(1).Info("updating status", "name", update.NamespacedName.Name,
 		"namespace", update.NamespacedName.Namespace,
 		"kind", types.KindOf(newObj),
+		"object", newObj,
 	)
 
 	return u.client.Status().Update(ctx, newObj)

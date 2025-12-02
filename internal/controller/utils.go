@@ -38,6 +38,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -376,7 +377,7 @@ func ParseRouteParentRefs(
 				}
 			}
 
-			if !routeMatchesListenerType(route, listener) {
+			if ok, _ := routeMatchesListenerType(route, listener); !ok {
 				continue
 			}
 
@@ -475,8 +476,8 @@ func checkRouteAcceptedByListener(
 			return false, gatewayv1.RouteReasonNoMatchingParent, nil
 		}
 	}
-	if !routeMatchesListenerType(route, listener) {
-		return false, gatewayv1.RouteReasonNoMatchingParent, nil
+	if ok, err := routeMatchesListenerType(route, listener); !ok {
+		return false, gatewayv1.RouteReasonNoMatchingParent, err
 	}
 	if !routeHostnamesIntersectsWithListenerHostname(route, listener) {
 		return false, gatewayv1.RouteReasonNoMatchingListenerHostname, nil
@@ -649,71 +650,99 @@ func isRouteNamespaceAllowed(
 	}
 }
 
-func routeMatchesListenerType(route client.Object, listener gatewayv1.Listener) bool {
+func routeMatchesListenerType(route client.Object, listener gatewayv1.Listener) (bool, error) {
 	switch route.(type) {
 	case *gatewayv1.HTTPRoute, *gatewayv1.GRPCRoute:
 		if listener.Protocol != gatewayv1.HTTPProtocolType && listener.Protocol != gatewayv1.HTTPSProtocolType {
-			return false
+			return false, nil
 		}
 
 		if listener.Protocol == gatewayv1.HTTPSProtocolType {
 			if listener.TLS == nil {
-				return false
+				return false, nil
 			}
 
 			if listener.TLS.Mode != nil && *listener.TLS.Mode != gatewayv1.TLSModeTerminate {
-				return false
+				return false, nil
 			}
 		}
 	case *gatewayv1alpha2.TCPRoute:
 		if listener.Protocol != gatewayv1.TCPProtocolType {
-			return false
+			return false, nil
 		}
 	case *gatewayv1alpha2.UDPRoute:
 		if listener.Protocol != gatewayv1.UDPProtocolType {
-			return false
+			return false, nil
 		}
 	case *gatewayv1alpha2.TLSRoute:
 		if listener.Protocol != gatewayv1.TLSProtocolType {
-			return false
+			return false, nil
 		}
 	default:
-		return false
+		return false, fmt.Errorf("unsupported route type %T", route)
 	}
-	return true
+	return true, nil
 }
 
 func getAttachedRoutesForListener(ctx context.Context, mgrc client.Client, gateway gatewayv1.Gateway, listener gatewayv1.Listener) (int32, error) {
-	httpRouteList := gatewayv1.HTTPRouteList{}
-	if err := mgrc.List(ctx, &httpRouteList); err != nil {
-		return 0, err
+	routes := []types.RouteAdapter{}
+	routeList := []client.ObjectList{}
+
+	listOption := client.MatchingFields{
+		indexer.ParentRefs: indexer.GenIndexKey(gateway.Namespace, gateway.Name),
 	}
+	if listener.AllowedRoutes != nil && listener.AllowedRoutes.Kinds != nil {
+		for _, rgk := range listener.AllowedRoutes.Kinds {
+			if rgk.Group != nil && *rgk.Group != gatewayv1.GroupName {
+				continue
+			}
+			switch rgk.Kind {
+			case types.KindHTTPRoute:
+				routeList = append(routeList, &gatewayv1.HTTPRouteList{})
+			case types.KindGRPCRoute:
+				routeList = append(routeList, &gatewayv1.GRPCRouteList{})
+			case types.KindTCPRoute:
+				routeList = append(routeList, &gatewayv1alpha2.TCPRouteList{})
+			case types.KindUDPRoute:
+				routeList = append(routeList, &gatewayv1alpha2.UDPRouteList{})
+			case types.KindTLSRoute:
+				routeList = append(routeList, &gatewayv1alpha2.TLSRouteList{})
+			}
+		}
+	} else {
+		switch listener.Protocol {
+		case gatewayv1.HTTPProtocolType, gatewayv1.HTTPSProtocolType:
+			routeList = append(routeList, &gatewayv1.HTTPRouteList{}, &gatewayv1.GRPCRouteList{})
+		case gatewayv1.TCPProtocolType:
+			routeList = append(routeList, &gatewayv1alpha2.TCPRouteList{})
+		case gatewayv1.UDPProtocolType:
+			routeList = append(routeList, &gatewayv1alpha2.UDPRouteList{})
+		case gatewayv1.TLSProtocolType:
+			routeList = append(routeList, &gatewayv1alpha2.TLSRouteList{})
+		}
+	}
+
+	for _, rl := range routeList {
+		if err := mgrc.List(ctx, rl, listOption); err != nil {
+			return 0, fmt.Errorf("failed to list %T: %w", rl, err)
+		}
+		routes = append(routes, types.NewRouteListAdapter(rl)...)
+	}
+
 	var attachedRoutes int32
-	for _, route := range httpRouteList.Items {
-		route := route
-		acceptedByGateway := lo.ContainsBy(route.Status.Parents, func(parentStatus gatewayv1.RouteParentStatus) bool {
-			parentRef := parentStatus.ParentRef
-			if parentRef.Group != nil && *parentRef.Group != gatewayv1.GroupName {
-				return false
-			}
-			if parentRef.Kind != nil && *parentRef.Kind != KindGateway {
-				return false
-			}
-			gatewayNamespace := route.Namespace
-			if parentRef.Namespace != nil {
-				gatewayNamespace = string(*parentRef.Namespace)
-			}
-			return gateway.Namespace == gatewayNamespace && gateway.Name == string(parentRef.Name)
-		})
-		if !acceptedByGateway {
+	ctrl.Log.Info("found routes for gateway listener", "routes", len(routes), "gateway", gateway.Name, "listener", listener.Name)
+	for _, route := range routes {
+		if !checkStatusParent(route.GetParentStatuses(), route.GetNamespace(), gateway) {
 			continue
 		}
 
-		for _, parentRef := range route.Spec.ParentRefs {
+		ctrl.Log.Info("checking route for gateway listener", "route", route.GetName())
+
+		for _, parentRef := range route.GetParentRefs() {
 			ok, _, err := checkRouteAcceptedByListener(
 				ctx,
 				mgrc,
-				&route,
+				route.GetObject(),
 				gateway,
 				listener,
 				parentRef,
@@ -721,6 +750,7 @@ func getAttachedRoutesForListener(ctx context.Context, mgrc client.Client, gatew
 			if err != nil {
 				return 0, err
 			}
+			ctrl.Log.Info("route check result for gateway listener", "route", route.GetName(), "accepted", ok)
 			if ok {
 				attachedRoutes++
 			}
@@ -729,13 +759,29 @@ func getAttachedRoutesForListener(ctx context.Context, mgrc client.Client, gatew
 	return attachedRoutes, nil
 }
 
+func checkStatusParent(parents []gatewayv1.RouteParentStatus, routeNamespace string, gateway gatewayv1.Gateway) bool {
+	return lo.ContainsBy(parents, func(parentStatus gatewayv1.RouteParentStatus) bool {
+		parentRef := parentStatus.ParentRef
+		if parentRef.Group != nil && *parentRef.Group != gatewayv1.GroupName {
+			return false
+		}
+		if parentRef.Kind != nil && *parentRef.Kind != KindGateway {
+			return false
+		}
+		gatewayNamespace := routeNamespace
+		if parentRef.Namespace != nil {
+			gatewayNamespace = string(*parentRef.Namespace)
+		}
+		return gateway.Namespace == gatewayNamespace && gateway.Name == string(parentRef.Name)
+	})
+}
+
 func getListenerStatus(
 	ctx context.Context,
 	mrgc client.Client,
 	gateway *gatewayv1.Gateway,
 ) ([]gatewayv1.ListenerStatus, error) {
-	statuses := make(map[gatewayv1.SectionName]gatewayv1.ListenerStatus, len(gateway.Spec.Listeners))
-
+	statusArray := make([]gatewayv1.ListenerStatus, 0, len(gateway.Spec.Listeners))
 	for i, listener := range gateway.Spec.Listeners {
 		attachedRoutes, err := getAttachedRoutesForListener(ctx, mrgc, *gateway, listener)
 		if err != nil {
@@ -776,10 +822,35 @@ func getListenerStatus(
 		)
 
 		if listener.AllowedRoutes == nil || listener.AllowedRoutes.Kinds == nil {
-			supportedKinds = []gatewayv1.RouteGroupKind{
-				{
-					Kind: KindHTTPRoute,
-				},
+			group := gatewayv1.Group(gatewayv1.GroupName)
+			supportedKinds = []gatewayv1.RouteGroupKind{}
+			switch listener.Protocol {
+			case gatewayv1.TLSProtocolType:
+				supportedKinds = append(supportedKinds, gatewayv1.RouteGroupKind{
+					Group: &group,
+					Kind:  types.KindTLSRoute,
+				})
+			case gatewayv1.TCPProtocolType:
+				supportedKinds = append(supportedKinds, gatewayv1.RouteGroupKind{
+					Group: &group,
+					Kind:  types.KindTCPRoute,
+				})
+			case gatewayv1.UDPProtocolType:
+				supportedKinds = append(supportedKinds, gatewayv1.RouteGroupKind{
+					Group: &group,
+					Kind:  types.KindUDPRoute,
+				})
+			case gatewayv1.HTTPProtocolType, gatewayv1.HTTPSProtocolType:
+				supportedKinds = append(supportedKinds, []gatewayv1.RouteGroupKind{
+					{
+						Group: &group,
+						Kind:  types.KindGRPCRoute,
+					},
+					{
+						Group: &group,
+						Kind:  types.KindHTTPRoute,
+					},
+				}...)
 			}
 		} else {
 			for _, kind := range listener.AllowedRoutes.Kinds {
@@ -789,7 +860,7 @@ func getListenerStatus(
 					continue
 				}
 				switch kind.Kind {
-				case KindHTTPRoute:
+				case KindHTTPRoute, types.KindGRPCRoute, types.KindTLSRoute, types.KindTCPRoute, types.KindUDPRoute:
 					supportedKinds = append(supportedKinds, kind)
 				default:
 					conditionResolvedRefs.Status = metav1.ConditionFalse
@@ -892,17 +963,9 @@ func getListenerStatus(
 			changed = true
 		}
 
-		if changed {
-			statuses[listener.Name] = status
-		} else {
-			statuses[listener.Name] = gateway.Status.Listeners[i]
+		if !changed {
+			status = gateway.Status.Listeners[i]
 		}
-	}
-
-	// check for conflicts
-
-	statusArray := []gatewayv1.ListenerStatus{}
-	for _, status := range statuses {
 		statusArray = append(statusArray, status)
 	}
 
