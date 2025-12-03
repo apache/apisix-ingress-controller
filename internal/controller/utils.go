@@ -38,7 +38,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	k8stypes "k8s.io/apimachinery/pkg/types"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -730,14 +729,10 @@ func getAttachedRoutesForListener(ctx context.Context, mgrc client.Client, gatew
 	}
 
 	var attachedRoutes int32
-	ctrl.Log.Info("found routes for gateway listener", "routes", len(routes), "gateway", gateway.Name, "listener", listener.Name)
 	for _, route := range routes {
 		if !checkStatusParent(route.GetParentStatuses(), route.GetNamespace(), gateway) {
 			continue
 		}
-
-		ctrl.Log.Info("checking route for gateway listener", "route", route.GetName())
-
 		for _, parentRef := range route.GetParentRefs() {
 			ok, _, err := checkRouteAcceptedByListener(
 				ctx,
@@ -750,7 +745,6 @@ func getAttachedRoutesForListener(ctx context.Context, mgrc client.Client, gatew
 			if err != nil {
 				return 0, err
 			}
-			ctrl.Log.Info("route check result for gateway listener", "route", route.GetName(), "accepted", ok)
 			if ok {
 				attachedRoutes++
 			}
