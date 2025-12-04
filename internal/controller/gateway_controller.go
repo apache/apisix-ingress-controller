@@ -62,7 +62,10 @@ func (r *GatewayReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(
 			&gatewayv1.Gateway{},
 			builder.WithPredicates(
-				predicate.NewPredicateFuncs(r.checkGatewayClass),
+				predicate.And(
+					predicate.NewPredicateFuncs(r.checkGatewayClass),
+					predicate.GenerationChangedPredicate{},
+				),
 			),
 		).
 		Watches(
