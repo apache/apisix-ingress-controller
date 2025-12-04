@@ -46,7 +46,7 @@ func SetupIngressClassWebhookWithManager(mgr ctrl.Manager) error {
 
 // NOTE: The 'path' attribute must follow a specific pattern and should not be modified directly here.
 // Modifying the path for an invalid path can cause API server errors; failing to locate the webhook.
-// +kubebuilder:webhook:path=/validate-networking-k8s-io-v1-ingressclass,mutating=false,failurePolicy=fail,sideEffects=None,groups=networking.k8s.io,resources=ingressclasses,verbs=create;update,versions=v1,name=vingressclass-v1.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-networking-k8s-io-v1-ingressclass,mutating=false,failurePolicy=fail,sideEffects=None,groups=networking.k8s.io,resources=ingressclasses,verbs=create;update,versions=v1,name=vingressclass-v1.kb.io,admissionReviewVersions=v1,failurePolicy=Ignore
 
 // IngressClassCustomValidator struct is responsible for validating the IngressClass resource
 // when it is created, updated, or deleted.

@@ -42,7 +42,7 @@ func SetupApisixTlsWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/validate-apisix-apache-org-v2-apisixtls,mutating=false,failurePolicy=fail,sideEffects=None,groups=apisix.apache.org,resources=apisixtlses,verbs=create;update,versions=v2,name=vapisixtls-v2.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-apisix-apache-org-v2-apisixtls,mutating=false,failurePolicy=fail,sideEffects=None,groups=apisix.apache.org,resources=apisixtlses,verbs=create;update,versions=v2,name=vapisixtls-v2.kb.io,admissionReviewVersions=v1,failurePolicy=Ignore
 
 type ApisixTlsCustomValidator struct {
 	Client  client.Client

@@ -41,7 +41,7 @@ func SetupApisixRouteWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/validate-apisix-apache-org-v2-apisixroute,mutating=false,failurePolicy=fail,sideEffects=None,groups=apisix.apache.org,resources=apisixroutes,verbs=create;update,versions=v2,name=vapisixroute-v2.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-apisix-apache-org-v2-apisixroute,mutating=false,failurePolicy=fail,sideEffects=None,groups=apisix.apache.org,resources=apisixroutes,verbs=create;update,versions=v2,name=vapisixroute-v2.kb.io,admissionReviewVersions=v1,failurePolicy=Ignore
 
 type ApisixRouteCustomValidator struct {
 	Client  client.Client

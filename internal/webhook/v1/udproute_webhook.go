@@ -42,7 +42,7 @@ func SetupUDPRouteWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/validate-gateway-networking-k8s-io-v1alpha2-udproute,mutating=false,failurePolicy=fail,sideEffects=None,groups=gateway.networking.k8s.io,resources=udproutes,verbs=create;update,versions=v1alpha2,name=vudproute-v1alpha2.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-gateway-networking-k8s-io-v1alpha2-udproute,mutating=false,failurePolicy=fail,sideEffects=None,groups=gateway.networking.k8s.io,resources=udproutes,verbs=create;update,versions=v1alpha2,name=vudproute-v1alpha2.kb.io,admissionReviewVersions=v1,failurePolicy=Ignore
 
 type UDPRouteCustomValidator struct {
 	Client  client.Client
