@@ -96,7 +96,7 @@ func SetupAPIv2Indexer(mgr ctrl.Manager) error {
 }
 
 func SetupGatewayAPIIndexer(mgr ctrl.Manager) error {
-	setupLog := ctrl.LoggerFrom(context.Background()).WithName("indexer").WithName("gateway-api")
+	setupLog := ctrl.LoggerFrom(context.Background()).WithName("indexer").WithName("gatewayapi")
 
 	for resource, setup := range map[client.Object]func(ctrl.Manager) error{
 		&gatewayv1.Gateway{}:        setupGatewayIndexer,

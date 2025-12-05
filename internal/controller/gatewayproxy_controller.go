@@ -39,6 +39,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
+	pkgutils "github.com/apache/apisix-ingress-controller/pkg/utils"
 )
 
 // GatewayProxyController reconciles a GatewayProxy object.
@@ -48,9 +49,14 @@ type GatewayProxyController struct {
 	Scheme   *runtime.Scheme
 	Log      logr.Logger
 	Provider provider.Provider
+
+	disableGatewayAPI bool
 }
 
 func (r *GatewayProxyController) SetupWithManager(mrg ctrl.Manager) error {
+	if config.ControllerConfig.DisableGatewayAPI || !pkgutils.HasAPIResource(mrg, &gatewayv1.Gateway{}) {
+		r.disableGatewayAPI = true
+	}
 	builder := ctrl.NewControllerManagedBy(mrg).
 		For(&v1alpha1.GatewayProxy{}).
 		WithEventFilter(
@@ -71,7 +77,7 @@ func (r *GatewayProxyController) SetupWithManager(mrg ctrl.Manager) error {
 		Watches(&networkingv1.IngressClass{},
 			handler.EnqueueRequestsFromMapFunc(r.listGatewayProxiesForIngressClass),
 		)
-	if !config.ControllerConfig.DisableGatewayAPI {
+	if !r.disableGatewayAPI {
 		builder.Watches(&gatewayv1.Gateway{},
 			handler.EnqueueRequestsFromMapFunc(r.listGatewayProxiesByGateway),
 		)
@@ -134,7 +140,7 @@ func (r *GatewayProxyController) Reconcile(ctx context.Context, req ctrl.Request
 		indexKey         = indexer.GenIndexKey(gp.GetNamespace(), gp.GetName())
 	)
 
-	if !config.ControllerConfig.DisableGatewayAPI {
+	if !r.disableGatewayAPI {
 		if err := r.List(ctx, &gatewayList, client.MatchingFields{indexer.ParametersRef: indexKey}); err != nil {
 			r.Log.Error(err, "failed to list GatewayList")
 			return ctrl.Result{}, nil

@@ -105,10 +105,6 @@ type Controller interface {
 	SetupWithManager(mgr manager.Manager) error
 }
 
-var requiredAPIResources = []client.Object{
-	&v1alpha1.GatewayProxy{},
-}
-
 func setupControllers(ctx context.Context, mgr manager.Manager, pro provider.Provider, updater status.Updater, readier readiness.ReadinessManager) ([]Controller, error) {
 	setupLog := ctrl.LoggerFrom(ctx).WithName("setup")
 
