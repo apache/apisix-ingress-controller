@@ -198,6 +198,7 @@ func (c *Client) Sync(ctx context.Context) (map[string]types.ADCExecutionErrors,
 		if resources == nil {
 			continue
 		}
+		c.log.Info("syncing resources for config", "service_number", len(resources.Services))
 
 		if err := c.sync(ctx, Task{
 			Name: name + "-sync",

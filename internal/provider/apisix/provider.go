@@ -76,7 +76,9 @@ func New(log logr.Logger, updater status.Updater, readier readiness.ReadinessMan
 		o.DefaultBackendMode = ProviderTypeAPISIX
 	}
 
-	cli, err := adcclient.New(log, o.DefaultBackendMode, o.SyncTimeout)
+	logger := log.WithName("provider")
+
+	cli, err := adcclient.New(logger, o.DefaultBackendMode, o.SyncTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -88,7 +90,7 @@ func New(log logr.Logger, updater status.Updater, readier readiness.ReadinessMan
 		updater:    updater,
 		readier:    readier,
 		syncCh:     make(chan struct{}, 1),
-		log:        log.WithName("provider"),
+		log:        logger,
 	}, nil
 }
 
@@ -249,7 +251,10 @@ func (d *apisixProvider) buildConfig(tctx *provider.TranslateContext, nnk types.
 }
 
 func (d *apisixProvider) Start(ctx context.Context) error {
+	d.log.Info("starting provider, waiting for readiness")
 	d.readier.WaitReady(ctx, 5*time.Minute)
+	d.log.Info("Ready detected, starting sync loop")
+
 	initalSyncDelay := d.InitSyncDelay
 	if initalSyncDelay > 0 {
 		time.AfterFunc(initalSyncDelay, d.syncNotify)

@@ -42,6 +42,9 @@ data:
     nginx_config:
       worker_processes: 2
       error_log_level: info
+      meta:
+        lua_shared_dict:
+          standalone-config: 50m
     apisix:
       proxy_mode: http&stream      
       stream_proxy:                 # TCP/UDP proxy
@@ -168,3 +171,20 @@ spec:
   selector:
     app.kubernetes.io/name: apisix 
   type: {{ .ServiceType | default "NodePort" }}
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: apisix-control-api
+  labels:
+    app.kubernetes.io/name: apisix-control-api
+spec:
+  ports:
+    - port: 9090
+      name: control
+      protocol: TCP
+      targetPort: 9090
+  selector:
+    app.kubernetes.io/name: apisix

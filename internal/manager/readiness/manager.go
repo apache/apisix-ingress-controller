@@ -125,7 +125,8 @@ func (r *readinessManager) Start(ctx context.Context) error {
 					})
 				}
 				if len(expected) > 0 {
-					r.log.V(1).Info("registering readiness state", "gvk", gvk, "expected", expected)
+					r.log.Info("registering readiness state", "gvk", gvk, "registered_count", len(expected))
+					r.log.V(1).Info("registered resources for readiness", "gvk", gvk, "resources", expected)
 					r.registerState(gvk, expected)
 				}
 			}
@@ -135,13 +136,12 @@ func (r *readinessManager) Start(ctx context.Context) error {
 			r.isReady.Store(true)
 			close(r.done)
 		}
+		r.log.Info("readiness manager started")
 	})
 	return err
 }
 
 func (r *readinessManager) registerState(gvk schema.GroupVersionKind, list []k8stypes.NamespacedName) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
 	if _, ok := r.state[gvk]; !ok {
 		r.state[gvk] = make(map[k8stypes.NamespacedName]struct{})
 	}
@@ -155,9 +155,12 @@ func (r *readinessManager) Done(obj client.Object, nn k8stypes.NamespacedName) {
 	if r.IsReady() {
 		return
 	}
+	<-r.started
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	gvk := types.GvkOf(obj)
+	r.log.Info("marking resource as done", "gvk", gvk, "name", nn, "state_count", len(r.state[gvk]))
 	if _, ok := r.state[gvk]; !ok {
 		return
 	}
@@ -191,7 +194,7 @@ func (r *readinessManager) WaitReady(ctx context.Context, timeout time.Duration)
 	case <-ctx.Done():
 		return false
 	case <-time.After(timeout):
-		return true
+		return false
 	case <-r.done:
 		return true
 	}
