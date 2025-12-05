@@ -36,12 +36,16 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
+	client "sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 
+	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 )
 
@@ -365,4 +369,19 @@ func (s *Scaffold) SetupWebhookResources() error {
 	}
 
 	return s.CreateResourceFromStringWithNamespace(buf.String(), "")
+}
+
+func (s *Scaffold) GetKubeClient() client.Client {
+	if s.client == nil {
+		scheme := runtime.NewScheme()
+		_ = apiv2.AddToScheme(scheme)
+		_ = corev1.AddToScheme(scheme)
+		_ = gatewayv1.Install(scheme)
+		_ = v1alpha2.Install(scheme)
+		cfg, err := clientcmd.BuildConfigFromFlags("", s.opts.Kubeconfig)
+		Expect(err).NotTo(HaveOccurred(), "building kubeconfig")
+		s.client, err = client.New(cfg, client.Options{Scheme: scheme})
+		Expect(err).NotTo(HaveOccurred(), "building controller-runtime client")
+	}
+	return s.client
 }

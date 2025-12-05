@@ -34,6 +34,7 @@ import (
 	. "github.com/onsi/gomega"    //nolint:staticcheck
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
@@ -74,6 +75,8 @@ type Scaffold struct {
 
 	runtimeOpts Options
 	Deployer    Deployer
+
+	client client.Client
 }
 
 type Tunnels struct {

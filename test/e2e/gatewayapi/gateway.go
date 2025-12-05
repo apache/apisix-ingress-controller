@@ -26,6 +26,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
+	k8stypes "k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
@@ -313,6 +316,227 @@ spec:
 				}
 				return tls[0].Certificates[0].Certificate
 			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(framework.TestCert))
+		})
+	})
+
+	Context("Gateway Status", func() {
+		var gatewaySpec = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: %s
+spec:
+  gatewayClassName: %s
+  listeners:
+  - name: http
+    protocol: HTTP
+    port: 80
+  - name: tcp
+    protocol: TCP
+    port: 9000
+    allowedRoutes:
+      kinds:
+      - kind: TCPRoute
+  - name: udp
+    protocol: UDP
+    port: 80
+    allowedRoutes:
+      kinds:
+      - kind: UDPRoute
+  infrastructure:
+    parametersRef:
+      group: apisix.apache.org
+      kind: GatewayProxy
+      name: apisix-proxy-config
+`
+		var httprouteSpec = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: %s
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - httpbin.org
+  rules:
+  - matches: 
+    - path:
+        type: Exact
+        value: /get
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
+		var grpcrouteSpec = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: %s
+spec:
+  parentRefs:
+  - name: %s
+  rules:
+  - backendRefs:
+    - name: grpc-infra-backend-v1
+      port: 8080
+`
+		var tcpRouteSpec = `
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: TCPRoute
+metadata:
+  name: %s
+spec:
+  parentRefs:
+  - name: %s
+    sectionName: tcp
+  rules:
+  - backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
+		var udpRoute = `
+apiVersion: gateway.networking.k8s.io/v1alpha2
+kind: UDPRoute
+metadata:
+  name: %s
+spec:
+  parentRefs:
+  - name: %s
+    sectionName: udp
+  rules:
+  - backendRefs:
+    - name: %s
+      port: %d
+`
+		var (
+			dnsName string
+			dnsPort int32
+		)
+
+		BeforeEach(func() {
+			dnsSvc := s.NewCoreDNSService()
+			dnsName = dnsSvc.Name
+			dnsPort = dnsSvc.Spec.Ports[0].Port
+
+			By("deploy grpc backend")
+			s.DeployGRPCBackend()
+
+			By("create GatewayProxy")
+			Expect(s.CreateResourceFromString(s.GetGatewayProxySpec())).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			By("create GatewayClass")
+			Expect(s.CreateResourceFromString(s.GetGatewayClassYaml())).NotTo(HaveOccurred(), "creating GatewayClass")
+
+			s.RetryAssertion(func() string {
+				gcyaml, _ := s.GetResourceYaml("GatewayClass", s.Namespace())
+				return gcyaml
+			}).Should(
+				And(
+					ContainSubstring(`status: "True"`),
+					ContainSubstring("message: the gatewayclass has been accepted by the apisix-ingress-controller"),
+				),
+				"check GatewayClass condition",
+			)
+
+			By("create Gateway")
+			gateway := fmt.Sprintf(gatewaySpec, s.Namespace(), s.Namespace())
+			Expect(s.CreateResourceFromString(gateway)).NotTo(HaveOccurred(), "creating Gateway")
+
+			s.RetryAssertion(func() string {
+				gcyaml, _ := s.GetResourceYaml("Gateway", s.Namespace())
+				return gcyaml
+			}).Should(
+				And(
+					ContainSubstring(`status: "True"`),
+					ContainSubstring("message: the gateway has been accepted by the apisix-ingress-controller"),
+				),
+				"check Gateway condition status",
+			)
+		})
+		getStatusLintener := func(listenerName string) (*gatewayv1.ListenerStatus, error) {
+			var gateway gatewayv1.Gateway
+			if err := s.GetKubeClient().Get(context.Background(), k8stypes.NamespacedName{
+				Name:      s.Namespace(),
+				Namespace: s.Namespace(),
+			}, &gateway); err != nil {
+				return nil, err
+			}
+			for _, listener := range gateway.Status.Listeners {
+				if string(listener.Name) == listenerName {
+					return &listener, nil
+				}
+			}
+			return nil, fmt.Errorf("listener %s not found", listenerName)
+		}
+		expectListenerAttachedRoutes := func(listenerName string, accectedRoutes int) {
+			s.RetryAssertion(func() error {
+				listener, err := getStatusLintener(listenerName)
+				if err != nil {
+					return err
+				}
+				if listener.AttachedRoutes != int32(accectedRoutes) {
+					return fmt.Errorf("expected listener %s attached routes to be %d, got %d", listener.Name, accectedRoutes, listener.AttachedRoutes)
+				}
+				return nil
+			}).ShouldNot(HaveOccurred(), "check listener attached routes")
+		}
+		It("check attachedRoutes and supportedkinds to gateway status", func() {
+			By("check HTTPRoute/GRPCRoute attachedRoutes and supportedkinds to gateway status")
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(httprouteSpec, "httpbin", s.Namespace()), 1)
+			expectListenerAttachedRoutes("http", 1)
+			for i := 0; i < 10; i++ {
+				name := fmt.Sprintf("httpbin-%d", i)
+				s.ResourceApplied("HTTPRoute", name, fmt.Sprintf(httprouteSpec, name, s.Namespace()), 1)
+			}
+			expectListenerAttachedRoutes("http", 11)
+			for i := 0; i < 10; i++ {
+				name := fmt.Sprintf("grcproute-%d", i)
+				s.ResourceApplied("GRPCRoute", name, fmt.Sprintf(grpcrouteSpec, name, s.Namespace()), 1)
+			}
+			expectListenerAttachedRoutes("http", 21)
+
+			listenner, err := getStatusLintener("http")
+			Expect(err).NotTo(HaveOccurred(), "get http listener status")
+			Expect(listenner.SupportedKinds).To(HaveLen(2), "http listener supported kinds length")
+			Expect(listenner.SupportedKinds).To(ContainElements(
+				gatewayv1.RouteGroupKind{
+					Group: ptr.To(gatewayv1.Group(gatewayv1.GroupName)),
+					Kind:  "HTTPRoute",
+				},
+				gatewayv1.RouteGroupKind{
+					Group: ptr.To(gatewayv1.Group(gatewayv1.GroupName)),
+					Kind:  "GRPCRoute",
+				},
+			), "http listener supported kinds content")
+
+			By("check TCPRoute attachedRoutes and supportedkinds to gateway status")
+			name := "tcp-route"
+			s.ResourceApplied("TCPRoute", name, fmt.Sprintf(tcpRouteSpec, name, s.Namespace()), 1)
+			expectListenerAttachedRoutes("tcp", 1)
+			for i := 0; i < 10; i++ {
+				name := fmt.Sprintf("tcp-route-%d", i)
+				s.ResourceApplied("TCPRoute", name, fmt.Sprintf(tcpRouteSpec, name, s.Namespace()), 1)
+			}
+			expectListenerAttachedRoutes("tcp", 11)
+			getListener, err := getStatusLintener("tcp")
+			Expect(err).NotTo(HaveOccurred(), "get tcp listener status")
+			Expect(getListener.SupportedKinds).To(HaveLen(1), "tcp listener supported kinds length")
+			Expect(string(getListener.SupportedKinds[0].Kind)).To(Equal("TCPRoute"), "tcp listener supported kind content")
+
+			By("check UDPRoute attachedRoutes and supportedkinds to gateway status")
+			name = "udp-route"
+			s.ResourceApplied("UDPRoute", name, fmt.Sprintf(udpRoute, name, s.Namespace(), dnsName, dnsPort), 1)
+			expectListenerAttachedRoutes("udp", 1)
+			for i := 0; i < 10; i++ {
+				name := fmt.Sprintf("udp-route-%d", i)
+				s.ResourceApplied("UDPRoute", name, fmt.Sprintf(udpRoute, name, s.Namespace(), dnsName, dnsPort), 1)
+			}
+			expectListenerAttachedRoutes("udp", 11)
+			getListener, err = getStatusLintener("udp")
+			Expect(err).NotTo(HaveOccurred(), "get udp listener status")
+			Expect(getListener.SupportedKinds).To(HaveLen(1), "udp listener supported kinds length")
+			Expect(string(getListener.SupportedKinds[0].Kind)).To(Equal("UDPRoute"), "udp listener supported kind content")
 		})
 	})
 })

@@ -21,7 +21,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -35,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
@@ -62,13 +62,10 @@ func (r *GatewayReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(
 			&gatewayv1.Gateway{},
 			builder.WithPredicates(
-				predicate.NewPredicateFuncs(r.checkGatewayClass),
-			),
-		).
-		WithEventFilter(
-			predicate.Or(
-				predicate.GenerationChangedPredicate{},
-				predicate.NewPredicateFuncs(TypePredicate[*corev1.Secret]()),
+				predicate.And(
+					predicate.NewPredicateFuncs(r.checkGatewayClass),
+					predicate.GenerationChangedPredicate{},
+				),
 			),
 		).
 		Watches(
@@ -80,7 +77,23 @@ func (r *GatewayReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		).
 		Watches(
 			&gatewayv1.HTTPRoute{},
-			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForHTTPRoute),
+			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForStatusParentRefs),
+		).
+		Watches(
+			&gatewayv1.GRPCRoute{},
+			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForStatusParentRefs),
+		).
+		Watches(
+			&gatewayv1alpha2.TCPRoute{},
+			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForStatusParentRefs),
+		).
+		Watches(
+			&gatewayv1alpha2.TLSRoute{},
+			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForStatusParentRefs),
+		).
+		Watches(
+			&gatewayv1alpha2.UDPRoute{},
+			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForStatusParentRefs),
 		).
 		Watches(
 			&v1alpha1.GatewayProxy{},
@@ -300,19 +313,11 @@ func (r *GatewayReconciler) listGatewaysForGatewayProxy(ctx context.Context, obj
 	return recs
 }
 
-func (r *GatewayReconciler) listGatewaysForHTTPRoute(ctx context.Context, obj client.Object) []reconcile.Request {
-	httpRoute, ok := obj.(*gatewayv1.HTTPRoute)
-	if !ok {
-		r.Log.Error(
-			fmt.Errorf("unexpected object type"),
-			"HTTPRoute watch predicate received unexpected object type",
-			"expected", "*gatewayapi.HTTPRoute", "found", reflect.TypeOf(obj),
-		)
-		return nil
-	}
-	recs := []reconcile.Request{}
-	for _, routeParentStatus := range httpRoute.Status.Parents {
-		gatewayNamespace := httpRoute.GetNamespace()
+func (r *GatewayReconciler) listGatewaysForStatusParentRefs(ctx context.Context, obj client.Object) []reconcile.Request {
+	route := internaltypes.NewRouteAdapter(obj)
+	reqs := []reconcile.Request{}
+	for _, routeParentStatus := range route.GetParentStatuses() {
+		gatewayNamespace := route.GetNamespace()
 		parentRef := routeParentStatus.ParentRef
 		if parentRef.Group != nil && *parentRef.Group != gatewayv1.GroupName {
 			continue
@@ -336,14 +341,14 @@ func (r *GatewayReconciler) listGatewaysForHTTPRoute(ctx context.Context, obj cl
 			continue
 		}
 
-		recs = append(recs, reconcile.Request{
+		reqs = append(reqs, reconcile.Request{
 			NamespacedName: client.ObjectKey{
 				Namespace: gatewayNamespace,
 				Name:      string(parentRef.Name),
 			},
 		})
 	}
-	return recs
+	return reqs
 }
 
 func (r *GatewayReconciler) listGatewaysForSecret(ctx context.Context, obj client.Object) (requests []reconcile.Request) {
