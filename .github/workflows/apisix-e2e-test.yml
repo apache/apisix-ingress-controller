@@ -87,9 +87,15 @@ jobs:
         run: |
           make kind-load-images
 
-      - name: Install Gateway API And CRDs
+      - name: Install Gateway API
+        if: ${{ matrix.cases_subset == 'webhook' || matrix.cases_subset == 'apisix.apache.org' }}
         run: |
-          make install
+          make install-gateway-api
+
+      - name: Install CRDs
+        if: ${{ matrix.cases_subset == 'webhook' || matrix.cases_subset == 'apisix.apache.org' }}
+        run: |
+          make install-crds
 
       - name: Extract adc binary
         if: ${{ env.ADC_VERSION == 'dev' }}
