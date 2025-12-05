@@ -296,17 +296,15 @@ func setupAPIv2Controllers(ctx context.Context, mgr manager.Manager, pro provide
 
 func registerReadiness(mgr manager.Manager, readier readiness.ReadinessManager) {
 	log := ctrl.LoggerFrom(context.Background()).WithName("readiness")
-	ctx := context.Background()
 
-	registerAPIv2ForReadiness(ctx, mgr, log, readier)
+	registerAPIv2ForReadiness(mgr, log, readier)
 	if !config.ControllerConfig.DisableGatewayAPI {
-		registerGatewayAPIForReadiness(ctx, mgr, log, readier)
+		registerGatewayAPIForReadiness(mgr, log, readier)
 	}
-	registerAPIv1alpha1ForReadiness(ctx, mgr, log, readier)
+	registerAPIv1alpha1ForReadiness(mgr, log, readier)
 }
 
 func registerGatewayAPIForReadiness(
-	ctx context.Context,
 	mgr manager.Manager,
 	log logr.Logger,
 	readier readiness.ReadinessManager,
@@ -334,7 +332,6 @@ func registerGatewayAPIForReadiness(
 }
 
 func registerAPIv2ForReadiness(
-	ctx context.Context,
 	mgr manager.Manager,
 	log logr.Logger,
 	readier readiness.ReadinessManager,
@@ -365,14 +362,13 @@ func registerAPIv2ForReadiness(
 		GVKs: installed,
 		Filter: readiness.GVKFilter(func(obj *unstructured.Unstructured) bool {
 			icName, _, _ := unstructured.NestedString(obj.Object, "spec", "ingressClassName")
-			ingressClass, _ := controller.FindMatchingIngressClassByName(ctx, mgr.GetClient(), log, icName)
+			ingressClass, _ := controller.FindMatchingIngressClassByName(context.Background(), mgr.GetClient(), log, icName)
 			return ingressClass != nil
 		}),
 	})
 }
 
 func registerAPIv1alpha1ForReadiness(
-	ctx context.Context,
 	mgr manager.Manager,
 	log logr.Logger,
 	readier readiness.ReadinessManager,
@@ -399,7 +395,7 @@ func registerAPIv1alpha1ForReadiness(
 			if err := runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, consumer); err != nil {
 				return false
 			}
-			return controller.MatchConsumerGatewayRef(ctx, mgr.GetClient(), log, consumer)
+			return controller.MatchConsumerGatewayRef(context.Background(), mgr.GetClient(), log, consumer)
 		}),
 	})
 }

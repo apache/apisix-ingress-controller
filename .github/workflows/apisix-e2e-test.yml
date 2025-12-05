@@ -88,7 +88,7 @@ jobs:
           make kind-load-images
 
       - name: Install Gateway API
-        if: ${{ matrix.cases_subset == 'webhook' || matrix.cases_subset == 'apisix.apache.org' }}
+        if: ${{ matrix.cases_subset == 'webhook' || matrix.cases_subset == 'networking.k8s.io' }}
         run: |
           make install-gateway-api
 
