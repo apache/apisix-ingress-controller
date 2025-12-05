@@ -42,7 +42,7 @@ func SetupGatewayProxyWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/validate-apisix-apache-org-v1alpha1-gatewayproxy,mutating=false,failurePolicy=fail,sideEffects=None,groups=apisix.apache.org,resources=gatewayproxies,verbs=create;update,versions=v1alpha1,name=vgatewayproxy-v1alpha1.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-apisix-apache-org-v1alpha1-gatewayproxy,mutating=false,failurePolicy=fail,sideEffects=None,groups=apisix.apache.org,resources=gatewayproxies,verbs=create;update,versions=v1alpha1,name=vgatewayproxy-v1alpha1.kb.io,admissionReviewVersions=v1,failurePolicy=Ignore
 
 type GatewayProxyCustomValidator struct {
 	Client  client.Client

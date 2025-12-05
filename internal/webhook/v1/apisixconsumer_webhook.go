@@ -42,7 +42,7 @@ func SetupApisixConsumerWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/validate-apisix-apache-org-v2-apisixconsumer,mutating=false,failurePolicy=fail,sideEffects=None,groups=apisix.apache.org,resources=apisixconsumers,verbs=create;update,versions=v2,name=vapisixconsumer-v2.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-apisix-apache-org-v2-apisixconsumer,mutating=false,failurePolicy=fail,sideEffects=None,groups=apisix.apache.org,resources=apisixconsumers,verbs=create;update,versions=v2,name=vapisixconsumer-v2.kb.io,admissionReviewVersions=v1,failurePolicy=Ignore
 
 type ApisixConsumerCustomValidator struct {
 	Client  client.Client
