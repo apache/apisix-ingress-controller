@@ -42,7 +42,7 @@ func SetupTCPRouteWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/validate-gateway-networking-k8s-io-v1alpha2-tcproute,mutating=false,failurePolicy=fail,sideEffects=None,groups=gateway.networking.k8s.io,resources=tcproutes,verbs=create;update,versions=v1alpha2,name=vtcproute-v1alpha2.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-gateway-networking-k8s-io-v1alpha2-tcproute,mutating=false,failurePolicy=fail,sideEffects=None,groups=gateway.networking.k8s.io,resources=tcproutes,verbs=create;update,versions=v1alpha2,name=vtcproute-v1alpha2.kb.io,admissionReviewVersions=v1,failurePolicy=Ignore
 
 type TCPRouteCustomValidator struct {
 	Client  client.Client

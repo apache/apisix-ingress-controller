@@ -11,7 +11,7 @@ webhooks:
       name: webhook-service
       namespace: system
       path: /validate-apisix-apache-org-v2-apisixconsumer
-  failurePolicy: Fail
+  failurePolicy: Ignore
   name: vapisixconsumer-v2.kb.io
   rules:
   - apiGroups:
@@ -31,7 +31,7 @@ webhooks:
       name: webhook-service
       namespace: system
       path: /validate-apisix-apache-org-v2-apisixroute
-  failurePolicy: Fail
+  failurePolicy: Ignore
   name: vapisixroute-v2.kb.io
   rules:
   - apiGroups:
@@ -51,7 +51,7 @@ webhooks:
       name: webhook-service
       namespace: system
       path: /validate-apisix-apache-org-v2-apisixtls
-  failurePolicy: Fail
+  failurePolicy: Ignore
   name: vapisixtls-v2.kb.io
   rules:
   - apiGroups:
@@ -71,7 +71,7 @@ webhooks:
       name: webhook-service
       namespace: system
       path: /validate-apisix-apache-org-v1alpha1-consumer
-  failurePolicy: Fail
+  failurePolicy: Ignore
   name: vconsumer-v1alpha1.kb.io
   rules:
   - apiGroups:
@@ -91,7 +91,7 @@ webhooks:
       name: webhook-service
       namespace: system
       path: /validate-gateway-networking-k8s-io-v1-gateway
-  failurePolicy: Fail
+  failurePolicy: Ignore
   name: vgateway-v1.kb.io
   rules:
   - apiGroups:
@@ -111,7 +111,7 @@ webhooks:
       name: webhook-service
       namespace: system
       path: /validate-apisix-apache-org-v1alpha1-gatewayproxy
-  failurePolicy: Fail
+  failurePolicy: Ignore
   name: vgatewayproxy-v1alpha1.kb.io
   rules:
   - apiGroups:
@@ -131,7 +131,7 @@ webhooks:
       name: webhook-service
       namespace: system
       path: /validate-gateway-networking-k8s-io-v1-grpcroute
-  failurePolicy: Fail
+  failurePolicy: Ignore
   name: vgrpcroute-v1.kb.io
   rules:
   - apiGroups:
@@ -151,7 +151,7 @@ webhooks:
       name: webhook-service
       namespace: system
       path: /validate-gateway-networking-k8s-io-v1-httproute
-  failurePolicy: Fail
+  failurePolicy: Ignore
   name: vhttproute-v1.kb.io
   rules:
   - apiGroups:
@@ -171,7 +171,7 @@ webhooks:
       name: webhook-service
       namespace: system
       path: /validate-networking-k8s-io-v1-ingress
-  failurePolicy: Fail
+  failurePolicy: Ignore
   name: vingress-v1.kb.io
   rules:
   - apiGroups:
@@ -191,7 +191,7 @@ webhooks:
       name: webhook-service
       namespace: system
       path: /validate-networking-k8s-io-v1-ingressclass
-  failurePolicy: Fail
+  failurePolicy: Ignore
   name: vingressclass-v1.kb.io
   rules:
   - apiGroups:
@@ -211,7 +211,7 @@ webhooks:
       name: webhook-service
       namespace: system
       path: /validate-gateway-networking-k8s-io-v1alpha2-tcproute
-  failurePolicy: Fail
+  failurePolicy: Ignore
   name: vtcproute-v1alpha2.kb.io
   rules:
   - apiGroups:
@@ -231,7 +231,7 @@ webhooks:
       name: webhook-service
       namespace: system
       path: /validate-gateway-networking-k8s-io-v1alpha2-udproute
-  failurePolicy: Fail
+  failurePolicy: Ignore
   name: vudproute-v1alpha2.kb.io
   rules:
   - apiGroups:
