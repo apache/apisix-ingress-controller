@@ -44,6 +44,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
+	pkgutils "github.com/apache/apisix-ingress-controller/pkg/utils"
 )
 
 // ConsumerReconciler  reconciles a Gateway object.
@@ -60,6 +61,10 @@ type ConsumerReconciler struct { //nolint:revive
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ConsumerReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	if config.ControllerConfig.DisableGatewayAPI || !pkgutils.HasAPIResource(mgr, &gatewayv1.Gateway{}) {
+		r.Log.Info("skipping Consumer controller setup as Gateway API is not available")
+		return nil
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&v1alpha1.Consumer{},
 			builder.WithPredicates(

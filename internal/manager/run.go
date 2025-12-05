@@ -165,7 +165,7 @@ func Run(ctx context.Context, logger logr.Logger) error {
 	}
 
 	readier := readiness.NewReadinessManager(mgr.GetClient(), logger)
-	registerReadinessGVK(mgr.GetClient(), readier)
+	registerReadiness(mgr, readier)
 
 	if err := mgr.Add(readier); err != nil {
 		setupLog.Error(err, "unable to add readiness manager")

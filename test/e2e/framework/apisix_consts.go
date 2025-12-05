@@ -27,7 +27,8 @@ import (
 )
 
 var (
-	ProviderType = cmp.Or(os.Getenv("PROVIDER_TYPE"), "apisix")
+	ProviderType      = cmp.Or(os.Getenv("PROVIDER_TYPE"), "apisix")
+	DisableGatewayAPI = os.Getenv("DISABLE_GATEWAY_API") == "true"
 )
 
 const (

@@ -32,6 +32,8 @@ secure_metrics: false                   # The secure metrics configuration.
 
 exec_adc_timeout: 15s                   # The timeout for the ADC to execute.
                                         # The default value is 15 seconds.
+disable_gateway_api: false              # Whether to disable the Gateway API support.
+                                        # The default value is false.
 
 provider:
   type: "apisix"                        # Provider type.

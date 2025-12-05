@@ -281,6 +281,7 @@ data:
     log_level: "debug"
     controller_name: {{ .ControllerName | default "apisix.apache.org/apisix-ingress-controller" }}
     leader_election_id: "apisix-ingress-controller-leader"
+    disable_gateway_api: {{ .DisableGatewayAPI | default false }}
     leader_election:
       lease_duration: 10s                   # lease_duration is the duration that non-leader candidates will wait
                                             # after observing a leadership renewal until attempting to acquire leadership of a

@@ -53,6 +53,7 @@ type IngressDeployOpts struct {
 	InitSyncDelay      time.Duration
 	WebhookEnable      bool
 	WebhookPort        int
+	DisableGatewayAPI  bool
 }
 
 func (f *Framework) DeployIngress(opts IngressDeployOpts) {
