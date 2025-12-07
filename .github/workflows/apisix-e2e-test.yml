@@ -32,73 +32,73 @@ concurrency:
 env:
   ADC_VERSION: dev
 
-common_setup: &common_setup
-  - name: Checkout
-    uses: actions/checkout@v4
-    with:
-      submodules: recursive
-
-  - name: Setup Go Env
-    uses: actions/setup-go@v4
-    with:
-      go-version: "1.24"
-
-  - name: Setup Node.js
-    uses: actions/setup-node@v3
-    with:
-      node-version: "*"
-
-  - name: Install ginkgo
-    run: make install-ginkgo
-
-
-common_build_and_kind: &common_build_and_kind
-  - name: Install kind
-    run: go install sigs.k8s.io/kind@v0.23.0
-
-  - name: Build images
-    env:
-      TAG: dev
-      ARCH: amd64
-      ENABLE_PROXY: "false"
-      BASE_IMAGE_TAG: "debug"
-    run: |
-      echo "building images..."
-      make build-image
-
-  - name: Launch Kind Cluster
-    run: make kind-up
-
-  - name: Loading Docker Image to Kind Cluster
-    run: make kind-load-images
-
-common_extract_adc: &common_extract_adc
-  - name: Extract adc binary
-    if: ${{ env.ADC_VERSION == 'dev' }}
-    run: |
-      docker create --name adc-temp ghcr.io/api7/adc:dev
-      docker cp adc-temp:main.js adc.js
-      docker rm adc-temp
-      node $(pwd)/adc.js -v
-      echo "ADC_BIN=node $(pwd)/adc.js" >> $GITHUB_ENV
-
 jobs:
   e2e-test:
     strategy:
       matrix:
-        provider_type: [ apisix-standalone, apisix ]
-        cases_subset: [ apisix.apache.org, networking.k8s.io, webhook ]
+        provider_type:
+        - apisix-standalone
+        - apisix
+        cases_subset:
+        - apisix.apache.org
+        - networking.k8s.io
+        - webhook
       fail-fast: false
-
     runs-on: ubuntu-latest
-
     steps:
-      *common_setup
-      *common_build_and_kind
-      *common_extract_adc
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-      - name: Install Gateway API and CRDs
-        run: make install
+      - name: Setup Go Env
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.24"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "*"
+
+      - name: Install kind
+        run: |
+          go install sigs.k8s.io/kind@v0.23.0
+
+      - name: Install ginkgo
+        run: |
+            make install-ginkgo
+
+      - name: Build images
+        env:
+          TAG: dev
+          ARCH: amd64
+          ENABLE_PROXY: "false"
+          BASE_IMAGE_TAG: "debug"
+        run: |
+          echo "building images..."
+          make build-image
+
+      - name: Launch Kind Cluster
+        run: |
+          make kind-up
+
+      - name: Loading Docker Image to Kind Cluster
+        run: |
+          make kind-load-images
+
+      - name: Install Gateway API And CRDs
+        run: |
+          make install
+
+      - name: Extract adc binary
+        if: ${{ env.ADC_VERSION == 'dev' }}
+        run: |
+          docker create --name adc-temp ghcr.io/api7/adc:dev
+          docker cp adc-temp:main.js adc.js
+          docker rm adc-temp
+          node $(pwd)/adc.js -v
+          echo "ADC_BIN=node $(pwd)/adc.js" >> $GITHUB_ENV
 
       - name: Start OpenLDAP server
         run: make e2e-ldap
@@ -119,11 +119,56 @@ jobs:
 
   disable-gateway-api:
     runs-on: ubuntu-latest
-
     steps:
-      *common_setup
-      *common_build_and_kind
-      *common_extract_adc
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Go Env
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.24"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "*"
+
+      - name: Install kind
+        run: |
+          go install sigs.k8s.io/kind@v0.23.0
+
+      - name: Install ginkgo
+        run: |
+            make install-ginkgo
+
+      - name: Build images
+        env:
+          TAG: dev
+          ARCH: amd64
+          ENABLE_PROXY: "false"
+          BASE_IMAGE_TAG: "debug"
+        run: |
+          echo "building images..."
+          make build-image
+
+      - name: Launch Kind Cluster
+        run: |
+          make kind-up
+
+      - name: Loading Docker Image to Kind Cluster
+        run: |
+          make kind-load-images
+
+      - name: Extract adc binary
+        if: ${{ env.ADC_VERSION == 'dev' }}
+        run: |
+          docker create --name adc-temp ghcr.io/api7/adc:dev
+          docker cp adc-temp:main.js adc.js
+          docker rm adc-temp
+          node $(pwd)/adc.js -v
+          echo "ADC_BIN=node $(pwd)/adc.js" >> $GITHUB_ENV
 
       - name: Install CRDs
         run: make install-crds
@@ -133,5 +178,5 @@ jobs:
         env:
           TEST_DIR: "./test/e2e/apisix/"
           TEST_ENV: CI
-          TEST_FOCUS: "Test ApisixRoute"
-        run: make ginkgo-e2e-test
+          TEST_FOCUS: "Test ApisixRoute Basic tests"
+        run: make e2e-test
