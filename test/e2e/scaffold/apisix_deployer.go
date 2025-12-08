@@ -278,6 +278,7 @@ func (s *APISIXDeployer) DeployIngress() {
 		Namespace:          s.namespace,
 		Replicas:           ptr.To(1),
 		WebhookEnable:      s.runtimeOpts.EnableWebhook,
+		DisableGatewayAPI:  framework.DisableGatewayAPI,
 	})
 }
 
@@ -288,6 +289,7 @@ func (s *APISIXDeployer) ScaleIngress(replicas int) {
 		ProviderSyncPeriod: 1 * time.Hour,
 		Namespace:          s.namespace,
 		Replicas:           ptr.To(replicas),
+		DisableGatewayAPI:  framework.DisableGatewayAPI,
 	})
 }
 

@@ -39,6 +39,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
+	pkgutils "github.com/apache/apisix-ingress-controller/pkg/utils"
 )
 
 // GatewayProxyController reconciles a GatewayProxy object.
@@ -48,10 +49,15 @@ type GatewayProxyController struct {
 	Scheme   *runtime.Scheme
 	Log      logr.Logger
 	Provider provider.Provider
+
+	disableGatewayAPI bool
 }
 
 func (r *GatewayProxyController) SetupWithManager(mrg ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mrg).
+	if config.ControllerConfig.DisableGatewayAPI || !pkgutils.HasAPIResource(mrg, &gatewayv1.Gateway{}) {
+		r.disableGatewayAPI = true
+	}
+	builder := ctrl.NewControllerManagedBy(mrg).
 		For(&v1alpha1.GatewayProxy{}).
 		WithEventFilter(
 			predicate.Or(
@@ -68,13 +74,15 @@ func (r *GatewayProxyController) SetupWithManager(mrg ctrl.Manager) error {
 		Watches(&corev1.Secret{},
 			handler.EnqueueRequestsFromMapFunc(r.listGatewayProxiesForSecret),
 		).
-		Watches(&gatewayv1.Gateway{},
-			handler.EnqueueRequestsFromMapFunc(r.listGatewayProxiesByGateway),
-		).
 		Watches(&networkingv1.IngressClass{},
 			handler.EnqueueRequestsFromMapFunc(r.listGatewayProxiesForIngressClass),
-		).
-		Complete(r)
+		)
+	if !r.disableGatewayAPI {
+		builder.Watches(&gatewayv1.Gateway{},
+			handler.EnqueueRequestsFromMapFunc(r.listGatewayProxiesByGateway),
+		)
+	}
+	return builder.Complete(r)
 }
 
 func (r *GatewayProxyController) Reconcile(ctx context.Context, req ctrl.Request) (reconcile.Result, error) {
@@ -131,19 +139,32 @@ func (r *GatewayProxyController) Reconcile(ctx context.Context, req ctrl.Request
 		ingressClassList networkingv1.IngressClassList
 		indexKey         = indexer.GenIndexKey(gp.GetNamespace(), gp.GetName())
 	)
-	if err := r.List(ctx, &gatewayList, client.MatchingFields{indexer.ParametersRef: indexKey}); err != nil {
-		r.Log.Error(err, "failed to list GatewayList")
-		return ctrl.Result{}, nil
-	}
 
-	var gatewayclassList gatewayv1.GatewayClassList
-	if err := r.List(ctx, &gatewayclassList, client.MatchingFields{indexer.ControllerName: config.GetControllerName()}); err != nil {
-		r.Log.Error(err, "failed to list GatewayClassList")
-		return ctrl.Result{}, nil
-	}
-	gcMatched := make(map[string]*gatewayv1.GatewayClass)
-	for _, item := range gatewayclassList.Items {
-		gcMatched[item.Name] = &item
+	if !r.disableGatewayAPI {
+		if err := r.List(ctx, &gatewayList, client.MatchingFields{indexer.ParametersRef: indexKey}); err != nil {
+			r.Log.Error(err, "failed to list GatewayList")
+			return ctrl.Result{}, nil
+		}
+		var gatewayclassList gatewayv1.GatewayClassList
+		if err := r.List(ctx, &gatewayclassList, client.MatchingFields{indexer.ControllerName: config.GetControllerName()}); err != nil {
+			r.Log.Error(err, "failed to list GatewayClassList")
+			return ctrl.Result{}, nil
+		}
+		gcMatched := make(map[string]*gatewayv1.GatewayClass)
+		for _, item := range gatewayclassList.Items {
+			gcMatched[item.Name] = &item
+		}
+		// append referrers to translate context
+		for _, item := range gatewayList.Items {
+			gcName := string(item.Spec.GatewayClassName)
+			if gcName == "" {
+				continue
+			}
+			if _, ok := gcMatched[gcName]; ok {
+				tctx.GatewayProxyReferrers[req.NamespacedName] = append(tctx.GatewayProxyReferrers[req.NamespacedName], utils.NamespacedNameKind(&item))
+			}
+		}
+		r.Log.V(1).Info("found Gateways for GatewayProxy", "gatewayproxy", req.String(), "gateways", len(gatewayList.Items), "gatewayclasses", len(gatewayclassList.Items), "ingressclasses", len(ingressClassList.Items))
 	}
 
 	// list IngressClasses that reference the GatewayProxy
@@ -152,23 +173,12 @@ func (r *GatewayProxyController) Reconcile(ctx context.Context, req ctrl.Request
 		return reconcile.Result{}, err
 	}
 
-	// append referrers to translate context
-	for _, item := range gatewayList.Items {
-		gcName := string(item.Spec.GatewayClassName)
-		if gcName == "" {
-			continue
-		}
-		if _, ok := gcMatched[gcName]; ok {
-			tctx.GatewayProxyReferrers[req.NamespacedName] = append(tctx.GatewayProxyReferrers[req.NamespacedName], utils.NamespacedNameKind(&item))
-		}
-	}
 	for _, item := range ingressClassList.Items {
 		if item.Spec.Controller != config.GetControllerName() {
 			continue
 		}
 		tctx.GatewayProxyReferrers[req.NamespacedName] = append(tctx.GatewayProxyReferrers[req.NamespacedName], utils.NamespacedNameKind(&item))
 	}
-	r.Log.V(1).Info("found Gateways for GatewayProxy", "gatewayproxy", req.String(), "gateways", len(gatewayList.Items), "gatewayclasses", len(gatewayclassList.Items), "ingressclasses", len(ingressClassList.Items))
 
 	if len(tctx.GatewayProxyReferrers[req.NamespacedName]) == 0 {
 		return ctrl.Result{}, nil

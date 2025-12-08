@@ -27,7 +27,7 @@ IMG ?= apache/apisix-ingress-controller:$(IMAGE_TAG)
 ENVTEST_K8S_VERSION = 1.30.0
 KIND_NAME ?= apisix-ingress-cluster
 
-ADC_VERSION ?= 0.21.2
+ADC_VERSION ?= 0.23.1
 
 DIR := $(shell pwd)
 
@@ -56,6 +56,9 @@ SUPPORTED_EXTENDED_FEATURES = "HTTPRouteDestinationPortMatching,HTTPRouteMethodM
 CONFORMANCE_TEST_REPORT_OUTPUT ?= $(DIR)/apisix-ingress-controller-conformance-report.yaml
 ## https://github.com/kubernetes-sigs/gateway-api/blob/v1.3.0/conformance/utils/suite/profiles.go
 CONFORMANCE_PROFILES ?= GATEWAY-HTTP,GATEWAY-GRPC,GATEWAY-TLS
+
+TEST_EXCLUDES ?= /e2e /conformance /benchmark
+TEST_PACKAGES = $(shell go list ./... $(foreach p,$(TEST_EXCLUDES),| grep -v $(p)))
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -128,7 +131,7 @@ vet: ## Run go vet against code.
 
 .PHONY: test
 test: manifests generate fmt vet envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e | grep -v /conformance) -coverprofile cover.out
+	KUBEBUILDER_ASSETS="$$( $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path )" go test $(TEST_PACKAGES) -coverprofile cover.out
 
 .PHONY: kind-e2e-test
 kind-e2e-test: kind-up build-image kind-load-images e2e-test
@@ -152,6 +155,10 @@ conformance-test:
 		--supported-features=$(SUPPORTED_EXTENDED_FEATURES) \
 		--conformance-profiles=$(CONFORMANCE_PROFILES) \
 		--report-output=$(CONFORMANCE_TEST_REPORT_OUTPUT)
+
+.PHONY: benchmark-test
+benchmark-test:
+	go test -v ./test/benchmark -test.timeout=$(TEST_TIMEOUT) -v -ginkgo.v
 
 .PHONY: lint
 lint: sort-import golangci-lint ## Run golangci-lint linter
@@ -290,7 +297,10 @@ uninstall-gateway-api: ## Uninstall Gateway API CRDs from the K8s cluster specif
 	kubectl delete -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEAY_API_VERSION)/experimental-install.yaml
 
 .PHONY: install
-install: manifests kustomize install-gateway-api ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+install: manifests kustomize install-gateway-api install-crds ## Install CRDs and Gateway API into the K8s cluster specified in ~/.kube/config.
+
+.PHONY: install-crds
+install-crds: manifests kustomize ## Install CRDs into the K8s cluster specified
 	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply -f -
 
 .PHONY: uninstall
