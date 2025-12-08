@@ -27,7 +27,7 @@ IMG ?= apache/apisix-ingress-controller:$(IMAGE_TAG)
 ENVTEST_K8S_VERSION = 1.30.0
 KIND_NAME ?= apisix-ingress-cluster
 
-ADC_VERSION ?= 0.22.1
+ADC_VERSION ?= 0.23.1
 
 DIR := $(shell pwd)
 

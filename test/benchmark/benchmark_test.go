@@ -19,6 +19,7 @@ package benchmark
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -293,19 +294,16 @@ spec:
 			s.Deployer.ScaleIngress(1)
 
 			now := time.Now()
-			Eventually(func() int {
-				success := 0
-				for i := 0; i < totalConsumers; i++ {
-					consumerName := getConsumerName(i)
-					if s.NewAPISIXClient().GET("/get").
-						WithHeader("apikey", consumerName).
-						Expect().Raw().StatusCode != http.StatusOK {
-						return success
-					}
-					success++
+			Eventually(func() error {
+				consumer, err := s.DefaultDataplaneResource().Consumer().List(context.Background())
+				if err != nil {
+					return err
 				}
-				return success
-			}).WithTimeout(15 * time.Minute).ProbeEvery(1 * time.Second).Should(Equal(totalConsumers))
+				if len(consumer) != totalConsumers {
+					return fmt.Errorf("expect %d consumers, but got %d", totalConsumers, len(consumer))
+				}
+				return nil
+			}).WithTimeout(15*time.Minute).ProbeEvery(1*time.Second).ShouldNot(HaveOccurred(), "waiting for all consumers to be synced to APISIX")
 			costTime := time.Since(now)
 			report.AddResult(TestResult{
 				Scenario:         "ApisixRoute With Consumers Benchmark",
