@@ -22,7 +22,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -2504,28 +2503,14 @@ spec:
 
 		It("WSS backend", func() {
 			s.ResourceApplied("HTTPRoute", "nginx-wss", fmt.Sprintf(httprouteWithWSS, s.Namespace()), 1)
-			time.Sleep(6 * time.Second)
 
 			By("verify wss connection")
-			u := url.URL{
-				Scheme: "wss",
-				Host:   s.GetAPISIXHTTPSEndpoint(),
-				Path:   "/ws",
-			}
-			headers := http.Header{"Host": []string{"api6.com"}}
-
 			hostname := "api6.com"
-
-			dialer := websocket.Dialer{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-					ServerName:         hostname,
-				},
-			}
-
-			conn, resp, err := dialer.Dial(u.String(), headers)
-			Expect(err).ShouldNot(HaveOccurred(), "WebSocket handshake")
-			Expect(resp.StatusCode).Should(Equal(http.StatusSwitchingProtocols))
+			conn, err := s.NewWebsocketClient(&tls.Config{
+				InsecureSkipVerify: true,
+				ServerName:         hostname,
+			}, "/ws", http.Header{"Host": []string{hostname}})
+			Expect(err).ShouldNot(HaveOccurred(), "creating WebSocket client")
 
 			defer func() {
 				_ = conn.Close()

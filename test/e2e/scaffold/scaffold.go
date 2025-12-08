@@ -28,6 +28,7 @@ import (
 
 	"github.com/api7/gopkg/pkg/log"
 	"github.com/gavv/httpexpect/v2"
+	"github.com/gorilla/websocket"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	"github.com/gruntwork-io/terratest/modules/testing"
 	. "github.com/onsi/ginkgo/v2" //nolint:staticcheck
@@ -555,4 +556,38 @@ func (s *Scaffold) GetMetricsEndpoint() string {
 	}
 	s.addFinalizers(tunnel.Close)
 	return fmt.Sprintf("http://%s/metrics", tunnel.Endpoint())
+}
+
+func (s *Scaffold) NewWebsocketClient(tls *tls.Config, path string, headers http.Header) (*websocket.Conn, error) {
+	var host = s.ApisixHTTPEndpoint()
+	var scheme = "ws"
+	if tls != nil {
+		scheme = "wss"
+		host = s.GetAPISIXHTTPSEndpoint()
+	}
+
+	dialer := websocket.Dialer{
+		TLSClientConfig: tls,
+	}
+
+	u := url.URL{
+		Scheme: scheme,
+		Host:   host,
+		Path:   path,
+	}
+	var conn *websocket.Conn
+
+	s.RetryAssertion(func() error {
+		c, resp, err := dialer.Dial(u.String(), headers)
+		if err != nil {
+			return err
+		}
+		if resp == nil || resp.StatusCode != http.StatusSwitchingProtocols {
+			_ = c.Close()
+			return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		}
+		conn = c
+		return nil
+	}).ShouldNot(HaveOccurred(), "establishing websocket connection")
+	return conn, nil
 }
