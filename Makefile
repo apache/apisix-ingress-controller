@@ -290,7 +290,10 @@ uninstall-gateway-api: ## Uninstall Gateway API CRDs from the K8s cluster specif
 	kubectl delete -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEAY_API_VERSION)/experimental-install.yaml
 
 .PHONY: install
-install: manifests kustomize install-gateway-api ## Install CRDs into the K8s cluster specified in ~/.kube/config.
+install: manifests kustomize install-gateway-api install-crds ## Install CRDs and Gateway API into the K8s cluster specified in ~/.kube/config.
+
+.PHONY: install-crds
+install-crds: manifests kustomize ## Install CRDs into the K8s cluster specified
 	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply -f -
 
 .PHONY: uninstall

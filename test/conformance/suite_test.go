@@ -170,6 +170,7 @@ func TestMain(m *testing.M) {
 		InitSyncDelay:      20 * time.Minute,
 		ProviderType:       framework.ProviderType,
 		ProviderSyncPeriod: 1 * time.Hour,
+		DisableGatewayAPI:  framework.DisableGatewayAPI,
 	})
 
 	adminEndpoint := fmt.Sprintf("http://%s.%s:9180", svc.Name, namespace)
