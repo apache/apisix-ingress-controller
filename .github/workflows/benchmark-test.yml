@@ -1,0 +1,113 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: Benchmark Test
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
+    inputs:
+      routes:
+        description: "Number of routes for benchmark test"
+        required: false
+        default: "2000"
+      consumers:
+        description: "Number of consumers for benchmark test"
+        required: false
+        default: "2000"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  ADC_VERSION: dev
+  BENCHMARK_ROUTES: ${{ github.event.inputs.routes }}
+  BENCHMARK_CONSUMERS: ${{ github.event.inputs.consumers }}
+
+jobs:
+  e2e-test:
+    strategy:
+      matrix:
+        provider_type:
+        - apisix-standalone
+        - apisix
+      fail-fast: false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Go Env
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.24"
+
+      - name: Install kind
+        run: |
+          go install sigs.k8s.io/kind@v0.23.0
+
+      - name: Install ginkgo
+        run: |
+            make install-ginkgo
+
+      - name: Build images
+        env:
+          TAG: dev
+          ARCH: amd64
+          ENABLE_PROXY: "false"
+          BASE_IMAGE_TAG: "debug"
+        run: |
+          echo "building images..."
+          make build-image
+
+      - name: Launch Kind Cluster
+        run: |
+          make kind-up
+
+      - name: Loading Docker Image to Kind Cluster
+        run: |
+          make kind-load-images
+
+      - name: Install Gateway API And CRDs
+        run: |
+          make install
+
+      - name: Extract adc binary
+        if: ${{ env.ADC_VERSION == 'dev' }}
+        run: |
+          docker create --name adc-temp ghcr.io/api7/adc:dev
+          docker cp adc-temp:main.js adc.js
+          docker rm adc-temp
+          node $(pwd)/adc.js -v
+          echo "ADC_BIN=node $(pwd)/adc.js" >> $GITHUB_ENV
+
+      - name: Run Benchmark Test
+        shell: bash
+        env:
+          PROVIDER_TYPE: ${{ matrix.provider_type }}
+          TEST_LABEL: ${{ matrix.cases_subset }}
+          TEST_ENV: CI
+        run: |
+          make benchmark-test
