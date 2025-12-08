@@ -558,7 +558,7 @@ func (s *Scaffold) GetMetricsEndpoint() string {
 	return fmt.Sprintf("http://%s/metrics", tunnel.Endpoint())
 }
 
-func (s *Scaffold) NewWebsocketClient(tls *tls.Config, path string, headers http.Header) (*websocket.Conn, error) {
+func (s *Scaffold) NewWebsocketClient(tls *tls.Config, path string, headers http.Header) *websocket.Conn {
 	var host = s.ApisixHTTPEndpoint()
 	var scheme = "ws"
 	if tls != nil {
@@ -589,5 +589,5 @@ func (s *Scaffold) NewWebsocketClient(tls *tls.Config, path string, headers http
 		conn = c
 		return nil
 	}).ShouldNot(HaveOccurred(), "establishing websocket connection")
-	return conn, nil
+	return conn
 }

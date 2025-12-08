@@ -2146,11 +2146,10 @@ spec:
 
 			By("verify wss connection")
 			hostname := "api6.com"
-			conn, err := s.NewWebsocketClient(&tls.Config{
+			conn := s.NewWebsocketClient(&tls.Config{
 				InsecureSkipVerify: true,
 				ServerName:         hostname,
 			}, "/ws", http.Header{"Host": []string{hostname}})
-			Expect(err).ShouldNot(HaveOccurred(), "creating WebSocket client")
 
 			defer func() {
 				_ = conn.Close()
