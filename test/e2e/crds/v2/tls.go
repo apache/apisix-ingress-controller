@@ -175,6 +175,27 @@ spec:
 				WithHost("api6.com").
 				Expect().
 				Status(200)
+
+			err = s.NewKubeTlsSecret("test-tls-secret", framework.TestCert, framework.TestKey)
+			Expect(err).NotTo(HaveOccurred(), "updating TLS secret")
+
+			Eventually(func() error {
+				tlss, err := s.DefaultDataplaneResource().SSL().List(context.Background())
+				if err != nil {
+					return err
+				}
+				if len(tlss) != 1 {
+					return fmt.Errorf("expected 1 tls, got %d", len(tls))
+				}
+				certs := tlss[0].Certificates
+				if len(certs) != 1 {
+					return fmt.Errorf("expected 1 certificate, got %d", len(certs))
+				}
+				if !strings.Contains(certs[0].Certificate, framework.TestCert) {
+					return fmt.Errorf("certificate not updated yet")
+				}
+				return nil
+			}).WithTimeout(30*time.Second).ProbeEvery(1*time.Second).ShouldNot(HaveOccurred(), "tls secret updated in dataplane")
 		})
 
 		It("ApisixTls with mTLS test", func() {

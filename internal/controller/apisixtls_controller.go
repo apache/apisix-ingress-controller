@@ -236,7 +236,7 @@ func (r *ApisixTlsReconciler) listApisixTlsForSecret(ctx context.Context, obj cl
 		ctx,
 		r.Client,
 		r.Log,
-		&apiv2.ApisixConsumerList{},
+		&apiv2.ApisixTlsList{},
 		client.MatchingFields{
 			indexer.SecretIndexRef: indexer.GenIndexKey(secret.GetNamespace(), secret.GetName()),
 		},
