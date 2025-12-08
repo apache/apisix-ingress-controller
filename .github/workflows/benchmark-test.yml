@@ -94,6 +94,15 @@ jobs:
         run: |
           make install
 
+      - name: Extract adc binary
+        if: ${{ env.ADC_VERSION == 'dev' }}
+        run: |
+          docker create --name adc-temp ghcr.io/api7/adc:dev
+          docker cp adc-temp:main.js adc.js
+          docker rm adc-temp
+          node $(pwd)/adc.js -v
+          echo "ADC_BIN=node $(pwd)/adc.js" >> $GITHUB_ENV
+
       - name: Run Benchmark Test
         shell: bash
         env:
