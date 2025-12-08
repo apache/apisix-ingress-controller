@@ -111,6 +111,14 @@ func (s *APISIXDeployer) AfterEach() {
 		if output != "" {
 			_, _ = fmt.Fprintln(GinkgoWriter, output)
 		}
+
+		if framework.ProviderType == framework.ProviderTypeAPISIXStandalone && s.adminTunnel != nil {
+			client := NewClient("http", s.adminTunnel.Endpoint())
+			reporter := &ErrorReporter{}
+			body := client.GET("/apisix/admin/configs").WithHeader("X-API-KEY", s.AdminKey()).WithReporter(reporter).Expect().Body().Raw()
+			_, _ = fmt.Fprintln(GinkgoWriter, "Dumping APISIX configs:")
+			_, _ = fmt.Fprintln(GinkgoWriter, body)
+		}
 	}
 
 	// Delete all additional gateways
