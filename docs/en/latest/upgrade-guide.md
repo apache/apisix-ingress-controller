@@ -154,10 +154,10 @@ Currently supports networking.k8s.io/v1 only. Support for other Ingress API vers
 
 ### Summary
 
-| Category         | Description                                                                                                                       |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Architecture     | The `mock-etcd` component has been removed. Configuration is now centralized through the Controller.                              |
-| Configuration    | Static configuration fields have been removed. Use `GatewayProxy` CRD to configure the data plane.                                |
+| Category         | Description                                                                                                                                  |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Architecture     | The `mock-etcd` component has been removed. Configuration is now centralized through the Controller.                                         |
+| Configuration    | Static configuration fields have been removed. Use `GatewayProxy` CRD to configure the data plane.                                           |
 | Data Plane       | The Admin API configuration method is still supported. Support for the Standalone API-driven mode was introduced in APISIX 3.13.0 and later. |
-| API              | Some fields in `Ingress Annotations` and `ApisixUpstream` are not yet supported.                                                  |
-| Upgrade Strategy | Blue-green deployment or canary release is recommended before full switchover.                                                    |
+| API              | Removed `ApisixClusterConfig`                                                                                                                |
+| Upgrade Strategy | Blue-green deployment or canary release is recommended before full switchover.                                                               |

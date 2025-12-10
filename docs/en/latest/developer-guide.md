@@ -82,6 +82,20 @@ To build a Docker image for APISIX Ingress controller, you can use the following
 make build-image IMG=apache/apisix-ingress-controller:dev
 ```
 
+## Deploying the Controller
+
+To deploy the controller to your Kubernetes cluster, you can use the following command:
+
+```shell
+make deploy IMG=apache/apisix-ingress-controller:dev
+```
+
+To undeploy the controller from the cluster:
+
+```shell
+make undeploy
+```
+
 ## Running tests
 
 ### Unit Tests

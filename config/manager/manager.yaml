@@ -49,7 +49,7 @@ spec:
       #             values:
       #               - linux
       securityContext:
-        runAsNonRoot: true
+        fsGroup: 2000   
         # TODO(user): For common cases that do not require escalating privileges
         # it is recommended to ensure that all your Pods/Containers are restrictive.
         # More info: https://kubernetes.io/docs/concepts/security/pod-security-standards/#restricted
@@ -73,6 +73,8 @@ spec:
         - name: config-volume
           mountPath: /app/conf/config.yaml
           subPath: config.yaml
+        - name: socket-volume
+          mountPath: /sockets
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -99,9 +101,46 @@ spec:
           requests:
             cpu: 10m
             memory: 64Mi
+      - image: sidecar:latest
+        env:
+        - name: ADC_RUNNING_MODE
+          value: ingress
+        - name: ADC_EXPERIMENTAL_FEATURE_FLAGS 
+          value: remote-state-file,parallel-backend-request
+        - name: ADC_INGRESS_LOG_LEVEL
+          value: info
+        name: adc-server
+        args:
+        - "server"
+        - "--listen"
+        - "unix:/sockets/adc.sock"
+        - "--listen-status"
+        - "3001"
+        ports:
+        - name: http-status
+          containerPort: 3001
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /healthz/ready
+            port: 3001
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz/ready
+            port: 3001
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: socket-volume
+          mountPath: /sockets
       volumes:
       - name: config-volume
         configMap:
           name: controller-config
+      - name: socket-volume
+        emptyDir: {}
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
