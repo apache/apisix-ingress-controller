@@ -1,0 +1,84 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# commit to be tagged for new release
+commit = "HEAD"
+
+# project_name is used to refer to the project in the notes
+project_name = "apisix-ingress-controller"
+
+# github_repo is the github project, only github is currently supported
+github_repo = "apache/apisix-ingress-controller"
+
+# match_deps is a pattern to determine which dependencies should be included
+# as part of this release. The changelog will also include changes for these
+# dependencies based on the change in the dependency's version.
+match_deps = "^github.com/(apache/[a-zA-Z0-9-]+)$"
+
+# previous release of this project for determining changes
+previous = "2.0.0-rc5"
+
+# pre_release is whether to include a disclaimer about being a pre-release
+pre_release = false
+
+# preface is the description of the release which precedes the author list
+# and changelog. This description could include highlights as well as any
+# description of changes. Use markdown formatting.
+preface = """\
+
+## Highlights
+
+- **Ingress Annotation System Greatly Expanded**: All ingress annotations supported in previous releases have now been fully implemented with a consistent and robust design, ensuring complete backward compatibility.
+- **Multi-Data-Plane Deployment Mode**: Introduced flexible deployment options supporting **multiple data plane modes**, enabling more scalable and customized environments.
+- **Configurable Gateway API Enable/Disable**: Added the ability to **toggle Gateway API support**, offering better control for deployments that do not rely on Gateway API.
+
+---
+
+## Features
+
+* feat: support benchmark test [#2663](https://github.com/apache/apisix-ingress-controller/pull/2663)
+* feat: support disable gateway-api [#2672](https://github.com/apache/apisix-ingress-controller/pull/2672)
+* feat: support deployment of multiple data plane modes [#2647](https://github.com/apache/apisix-ingress-controller/pull/2647)
+* feat: support regex route for ingress annotations [#2640](https://github.com/apache/apisix-ingress-controller/pull/2640)
+* feat: support forward-auth for ingress annotations [#2641](https://github.com/apache/apisix-ingress-controller/pull/2641)
+* feat: support ip restriction for ingress annotations [#2642](https://github.com/apache/apisix-ingress-controller/pull/2642)
+* feat: support cross-namespace access service for ingress annotations [#2634](https://github.com/apache/apisix-ingress-controller/pull/2634)
+* feat: support response rewrite annotations for ingress [#2638](https://github.com/apache/apisix-ingress-controller/pull/2638)
+* feat: support proxy rewrite annotations for ingress [#2632](https://github.com/apache/apisix-ingress-controller/pull/2632)
+* feat: support auth-type for ingress annotations [#2636](https://github.com/apache/apisix-ingress-controller/pull/2636)
+* feat: support allow/block http_methods for ingress annotations [#2623](https://github.com/apache/apisix-ingress-controller/pull/2623)
+* feat: support plugin config annotations for ingress [#2627](https://github.com/apache/apisix-ingress-controller/pull/2627)
+* feat: support csrf annotations for ingress [#2626](https://github.com/apache/apisix-ingress-controller/pull/2626)
+* feat: support websocket annotations for ingress [#2621](https://github.com/apache/apisix-ingress-controller/pull/2621)
+* feat: support cors annotations for ingress [#2618](https://github.com/apache/apisix-ingress-controller/pull/2618)
+* feat: support redirect for ingress annotations [#2619](https://github.com/apache/apisix-ingress-controller/pull/2619)
+* feat: support kubernetes.io/ingress.class annotations [#2615](https://github.com/apache/apisix-ingress-controller/pull/2615)
+* feat: support upstream scheme/retries/timeouts via ingress annotations [#2614](https://github.com/apache/apisix-ingress-controller/pull/2614)
+
+---
+
+## Bug Fixes
+
+* fix: wss related tests are unstable [#2675](https://github.com/apache/apisix-ingress-controller/pull/2675)
+* fix(atls): apply updated certificates when TLS secrets change [#2674](https://github.com/apache/apisix-ingress-controller/pull/2674)
+* fix: record attachedRoutes and supportedkinds for gateway status [#2670](https://github.com/apache/apisix-ingress-controller/pull/2670)
+* fix: allow webhook calls to fail [#2671](https://github.com/apache/apisix-ingress-controller/pull/2671)
+* fix(ApisixUpstream): cannot recognize kind [#2622](https://github.com/apache/apisix-ingress-controller/pull/2622)
+* fix(ApisixRoute): failed to delete stream_route [#2624](https://github.com/apache/apisix-ingress-controller/pull/2624)
+* fix: incorrect parameters in log message [#2613](https://github.com/apache/apisix-ingress-controller/pull/2613)
+* fix: apisix global rule support plugins secret reference [#2612](https://github.com/apache/apisix-ingress-controller/pull/2612)
+
+"""

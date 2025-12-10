@@ -19,6 +19,7 @@
 
 # Table of Contents
 
+- [2.0.0](#200)
 - [2.0.0-rc5](#200-rc5)
 - [2.0.0-rc4](#200-rc4)
 - [2.0.0-rc3](#200-rc3)
@@ -43,6 +44,126 @@
 - [0.3.0](#030)
 - [0.2.0](#020)
 - [0.1.0](#010)
+
+# 2.0.0
+
+apisix-ingress-controller 2.0.0
+
+Welcome to the 2.0.0 release of apisix-ingress-controller!
+
+## Highlights
+
+- **Ingress Annotation System Greatly Expanded**: All ingress annotations supported in previous releases have now been fully implemented with a consistent and robust design, ensuring complete backward compatibility.
+- **Multi-Data-Plane Deployment Mode**: Introduced flexible deployment options supporting **multiple data plane modes**, enabling more scalable and customized environments.
+- **Configurable Gateway API Enable/Disable**: Added the ability to **toggle Gateway API support**, offering better control for deployments that do not rely on Gateway API.
+
+---
+
+## Features
+
+* feat: support benchmark test [#2663](https://github.com/apache/apisix-ingress-controller/pull/2663)
+* feat: support disable gateway-api [#2672](https://github.com/apache/apisix-ingress-controller/pull/2672)
+* feat: support deployment of multiple data plane modes [#2647](https://github.com/apache/apisix-ingress-controller/pull/2647)
+* feat: support regex route for ingress annotations [#2640](https://github.com/apache/apisix-ingress-controller/pull/2640)
+* feat: support forward-auth for ingress annotations [#2641](https://github.com/apache/apisix-ingress-controller/pull/2641)
+* feat: support ip restriction for ingress annotations [#2642](https://github.com/apache/apisix-ingress-controller/pull/2642)
+* feat: support cross-namespace access service for ingress annotations [#2634](https://github.com/apache/apisix-ingress-controller/pull/2634)
+* feat: support response rewrite annotations for ingress [#2638](https://github.com/apache/apisix-ingress-controller/pull/2638)
+* feat: support proxy rewrite annotations for ingress [#2632](https://github.com/apache/apisix-ingress-controller/pull/2632)
+* feat: support auth-type for ingress annotations [#2636](https://github.com/apache/apisix-ingress-controller/pull/2636)
+* feat: support allow/block http_methods for ingress annotations [#2623](https://github.com/apache/apisix-ingress-controller/pull/2623)
+* feat: support plugin config annotations for ingress [#2627](https://github.com/apache/apisix-ingress-controller/pull/2627)
+* feat: support csrf annotations for ingress [#2626](https://github.com/apache/apisix-ingress-controller/pull/2626)
+* feat: support websocket annotations for ingress [#2621](https://github.com/apache/apisix-ingress-controller/pull/2621)
+* feat: support cors annotations for ingress [#2618](https://github.com/apache/apisix-ingress-controller/pull/2618)
+* feat: support redirect for ingress annotations [#2619](https://github.com/apache/apisix-ingress-controller/pull/2619)
+* feat: support kubernetes.io/ingress.class annotations [#2615](https://github.com/apache/apisix-ingress-controller/pull/2615)
+* feat: support upstream scheme/retries/timeouts via ingress annotations [#2614](https://github.com/apache/apisix-ingress-controller/pull/2614)
+
+---
+
+## Bug Fixes
+
+* fix: wss related tests are unstable [#2675](https://github.com/apache/apisix-ingress-controller/pull/2675)
+* fix(atls): apply updated certificates when TLS secrets change [#2674](https://github.com/apache/apisix-ingress-controller/pull/2674)
+* fix: record attachedRoutes and supportedkinds for gateway status [#2670](https://github.com/apache/apisix-ingress-controller/pull/2670)
+* fix: allow webhook calls to fail [#2671](https://github.com/apache/apisix-ingress-controller/pull/2671)
+* fix(ApisixUpstream): cannot recognize kind [#2622](https://github.com/apache/apisix-ingress-controller/pull/2622)
+* fix(ApisixRoute): failed to delete stream_route [#2624](https://github.com/apache/apisix-ingress-controller/pull/2624)
+* fix: incorrect parameters in log message [#2613](https://github.com/apache/apisix-ingress-controller/pull/2613)
+* fix: apisix global rule support plugins secret reference [#2612](https://github.com/apache/apisix-ingress-controller/pull/2612)
+
+Please try out the release binaries and report any issues at
+https://github.com/apache/apisix-ingress-controller/issues.
+
+### Contributors
+
+* AlinsRan
+* Ashing Zheng
+* Traky Deng
+
+### Changes
+<details><summary>40 commits</summary>
+<p>
+
+  * [`b70e22eb`](https://github.com/apache/apisix-ingress-controller/commit/b70e22ebac75a4e790d770cd49fbfba9730c1664) fix: wss related tests are unstable (#2675)
+  * [`0c0c5f95`](https://github.com/apache/apisix-ingress-controller/commit/0c0c5f95f0274c673afe3cf4212253d760c59b15) feat: support benchmark test (#2663)
+  * [`ad223606`](https://github.com/apache/apisix-ingress-controller/commit/ad223606d292bae50bbfaada1ad5d1e32cc11001) fix(atls): apply updated certificates when TLS secrets change (#2674)
+  * [`4f9cd000`](https://github.com/apache/apisix-ingress-controller/commit/4f9cd000ce62b4db72b3746dd8a0f67aa4c17ded) feat: support disable gateway-api (#2672)
+  * [`2bab77aa`](https://github.com/apache/apisix-ingress-controller/commit/2bab77aa9403993bb637ae48987194aadb47280d) fix: record attachedRoutes and supportedkinds for gateway status (#2670)
+  * [`466ea420`](https://github.com/apache/apisix-ingress-controller/commit/466ea420ba9995e88271618d8516c42999e475c1) fix: allow webhook calls to fail (#2671)
+  * [`6a282419`](https://github.com/apache/apisix-ingress-controller/commit/6a282419a935c41f0bc5316a9748191c139523c1) docs: remove allowedRoutes from unsupported resource (#2659)
+  * [`bc2fe905`](https://github.com/apache/apisix-ingress-controller/commit/bc2fe905391b00f0b9bae94cdd5bf1a4d71d40bf) docs: add configuration troubleshooting reference docs (#2646)
+  * [`ea34713d`](https://github.com/apache/apisix-ingress-controller/commit/ea34713dc09e8b9c2563418f396faaa2527b8da5) docs: update ApisixRoute stream support and fix typo (#2662)
+  * [`a9513d2a`](https://github.com/apache/apisix-ingress-controller/commit/a9513d2a5208ecfe3c60777c5467e2dff1913e0b) feat: support deployment of multiple data plane modes (#2647)
+  * [`6f0e78cf`](https://github.com/apache/apisix-ingress-controller/commit/6f0e78cfe8a702ef66fa8c448ee5381f8422e430) fix(ApisixUpstream): cannot recognize kind (#2622)
+  * [`0d8e880d`](https://github.com/apache/apisix-ingress-controller/commit/0d8e880d8660deb29f9f28149804daeb23c5cff1) docs: update ingress annotation docs (#2645)
+  * [`5a5729ca`](https://github.com/apache/apisix-ingress-controller/commit/5a5729cac39e3672b858215c1cd3ff84bea616c5) docs: update apisix ingress controller docs helm repo (#2649)
+  * [`b21b6e9d`](https://github.com/apache/apisix-ingress-controller/commit/b21b6e9d77cd36cc314aa58b7fd884e7966304b5) feat: support regex route for ingress annotations (#2640)
+  * [`e7d192b6`](https://github.com/apache/apisix-ingress-controller/commit/e7d192b6f8c2b754584cb7d6e63f907ea59202a7) feat: support forward-auth for ingress annotations (#2641)
+  * [`d3bc2a53`](https://github.com/apache/apisix-ingress-controller/commit/d3bc2a53f3787725e357773d7cfde2f9e5243ac6) feat: support ip restriction for ingress annotations (#2642)
+  * [`0c7d37f7`](https://github.com/apache/apisix-ingress-controller/commit/0c7d37f79498642e4d31bd7dd17e7709e0551020) docs: fix link to gateway api reference in doc (#2635)
+  * [`9baf472c`](https://github.com/apache/apisix-ingress-controller/commit/9baf472c58d8932e7a2ceff4c40d9933e0d0c566) feat: support cross-namespace access service for ingress annotations (#2634)
+  * [`9be64b6a`](https://github.com/apache/apisix-ingress-controller/commit/9be64b6abf273e3912f708012e712236050dd5fd) feat: support response rewrite annotations for ingress (#2638)
+  * [`d1abfd59`](https://github.com/apache/apisix-ingress-controller/commit/d1abfd59e51d4c442daa47b6c6a27441c5312acc) test: fix unstable websocket annotation test (#2637)
+  * [`9d4accd5`](https://github.com/apache/apisix-ingress-controller/commit/9d4accd50dc45423c23416bbeca6a1cd28ec7844) feat: support proxy rewrite annotations for ingress (#2632)
+  * [`4cd10056`](https://github.com/apache/apisix-ingress-controller/commit/4cd100568558e482b96f8fcdd5d91a3bbeb18d0d) feat: support auth-type for ingress annotations (#2636)
+  * [`f4181872`](https://github.com/apache/apisix-ingress-controller/commit/f4181872634e81eb8050e8fe1115e5d0dc073357) test: use internal service instead of third party service (#2629)
+  * [`ee561f73`](https://github.com/apache/apisix-ingress-controller/commit/ee561f73d1ed9723a86ca8d9c9682b9f38b05a20) feat: support allow/block http_methods for ingress annotations (#2623)
+  * [`36a3196e`](https://github.com/apache/apisix-ingress-controller/commit/36a3196e58e14bcdcd643f99f3a3477eee76be46) fix(ApisixRoute): failed to delete stream_route (#2624)
+  * [`15932856`](https://github.com/apache/apisix-ingress-controller/commit/159328561d2e61091247a26a6df7eae31c02035a) feat: support plugin config annotations for ingress (#2627)
+  * [`1af0dc74`](https://github.com/apache/apisix-ingress-controller/commit/1af0dc746ea8d1dcf9771f8a37c4a30a5f770dbb) docs: correct health check unhealthy timeout description (#2625)
+  * [`b25c4b41`](https://github.com/apache/apisix-ingress-controller/commit/b25c4b41b9d0c243e3a977e4d47b3c41574fcc8c) feat: support csrf annotations for ingress (#2626)
+  * [`f554569c`](https://github.com/apache/apisix-ingress-controller/commit/f554569cf19ecafba3191bb0e747e78a0ecbb8c0) feat: support websocket annotations for ingress (#2621)
+  * [`6b708576`](https://github.com/apache/apisix-ingress-controller/commit/6b7085765c99815a9fef3f1838cea85dcecee747) feat: support cors annotations for ingress (#2618)
+  * [`d6cf0eaa`](https://github.com/apache/apisix-ingress-controller/commit/d6cf0eaaad1858e89f95fff9300c13a241ab270a) feat: support redirect for ingress annotations (#2619)
+  * [`e3c2f816`](https://github.com/apache/apisix-ingress-controller/commit/e3c2f816cb06c29455384899cefa2af6e2242b9b) chore(e2e-test): optimize the startup speed of OpenResty/Nginx (#2617)
+  * [`cbfa0389`](https://github.com/apache/apisix-ingress-controller/commit/cbfa038979158331de65b20aeb489b478b581697) feat: support kubernetes.io/ingress.class annotations (#2615)
+  * [`2dc7ae60`](https://github.com/apache/apisix-ingress-controller/commit/2dc7ae601eed1e00b551b5be427ce8156a7be1b8) feat: support upstream scheme/retries/timeouts via ingress annotations (#2614)
+  * [`16f43280`](https://github.com/apache/apisix-ingress-controller/commit/16f43280defa01186e3b88d94638cfa9b15bbf43) fix: incorrect parameters in log message (#2613)
+  * [`50dda249`](https://github.com/apache/apisix-ingress-controller/commit/50dda249d48f2483b5cebea310bab0a2b0ec4a0a) docs: update reference configuration examples (#2606)
+  * [`06e00cd3`](https://github.com/apache/apisix-ingress-controller/commit/06e00cd31d4bd6aad1c06858e691da1618810e97) fix: apisix global rule support plugins secret reference (#2612)
+  * [`0f702bd9`](https://github.com/apache/apisix-ingress-controller/commit/0f702bd99d1124fff7ba0799732ffe0fb0239ffb) docs: remove a link from CRD docs (#2611)
+  * [`37a0b075`](https://github.com/apache/apisix-ingress-controller/commit/37a0b0756a017aae65a68e85877a126a213d5260) chore: add annotations extractor interface (#2610)
+  * [`3bee9ac2`](https://github.com/apache/apisix-ingress-controller/commit/3bee9ac20098aa88a8ea7895c03c0aa80e5271e6) chore(e2e-test): update adc to 0.21.1 (#2609)
+</p>
+</details>
+
+### Dependency Changes
+
+* **github.com/clipperhouse/displaywidth**  v0.3.1 **_new_**
+* **github.com/clipperhouse/stringish**     v0.1.1 **_new_**
+* **github.com/clipperhouse/uax29/v2**      v2.2.0 **_new_**
+* **github.com/mattn/go-runewidth**         v0.0.19 **_new_**
+* **github.com/olekukonko/cat**             50322a0618f6 **_new_**
+* **github.com/olekukonko/errors**          v1.1.0 **_new_**
+* **github.com/olekukonko/ll**              v0.1.2 **_new_**
+* **github.com/olekukonko/tablewriter**     v1.1.1 **_new_**
+* **github.com/panjf2000/ants/v2**          v2.11.3 **_new_**
+* **k8s.io/code-generator**                 v0.32.3 **_new_**
+* **k8s.io/gengo/v2**                       2b36238f13e9 **_new_**
+
+Previous release can be found at [2.0.0-rc5](https://github.com/apache/apisix-ingress-controller/releases/tag/2.0.0-rc5)
 
 # 2.0.0-rc5
 
