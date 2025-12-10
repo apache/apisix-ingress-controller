@@ -6,3 +6,6 @@ images:
 - name: controller
   newName: apache/apisix-ingress-controller
   newTag: dev
+- name: sidecar
+  newName: ghcr.io/api7/adc
+  newTag: 0.23.1
