@@ -69,9 +69,11 @@ func GatewayTLSHostIndexFunc(rawObj client.Object) []string {
 		}
 	}
 
-	tlsHostIndexLogger.Info("GatewayTLSHostIndexFunc", "hosts", hostSetToSlice(hosts), "len", len(hostSetToSlice(hosts)))
+	hostsSlice := hostSetToSlice(hosts)
 
-	return hostSetToSlice(hosts)
+	tlsHostIndexLogger.V(1).Info("GatewayTLSHostIndexFunc", "hosts", hostsSlice)
+
+	return hostsSlice
 }
 
 // IngressTLSHostIndexFunc indexes Ingresses by their TLS SNI hosts.
