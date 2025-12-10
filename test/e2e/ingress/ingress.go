@@ -23,7 +23,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -944,14 +943,13 @@ spec:
 			By("create Ingress")
 			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingress, s.Namespace()), s.Namespace())
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress")
-			time.Sleep(5 * time.Second)
 
 			By("verify Ingress works")
-			s.NewAPISIXClient().
-				GET("/get").
-				WithHost("ingress.example.com").
-				Expect().
-				Status(200)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Host:   "ingress.example.com",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
 
 			By("create additional gateway group to get new admin key")
 			additionalGatewayGroupID, _, err = s.Deployer.CreateAdditionalGateway("gateway-proxy-update")
@@ -1070,25 +1068,13 @@ spec:
 			createSecret(s, _secretName)
 			By("create Ingress")
 			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressWithWSS, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
-			time.Sleep(6 * time.Second)
 
 			By("verify wss connection")
-			u := url.URL{
-				Scheme: "wss",
-				Host:   s.GetAPISIXHTTPSEndpoint(),
-				Path:   "/ws",
-			}
-			headers := http.Header{"Host": []string{"api6.com"}}
-			dialer := websocket.Dialer{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-					ServerName:         "api6.com",
-				},
-			}
-
-			conn, resp, err := dialer.Dial(u.String(), headers)
-			Expect(err).ShouldNot(HaveOccurred(), "WebSocket handshake")
-			Expect(resp.StatusCode).Should(Equal(http.StatusSwitchingProtocols))
+			hostname := "api6.com"
+			conn := s.NewWebsocketClient(&tls.Config{
+				InsecureSkipVerify: true,
+				ServerName:         hostname,
+			}, "/ws", http.Header{"Host": []string{hostname}})
 
 			defer func() {
 				_ = conn.Close()
@@ -1096,7 +1082,7 @@ spec:
 
 			By("send and receive message through WebSocket")
 			testMessage := "hello, this is APISIX"
-			err = conn.WriteMessage(websocket.TextMessage, []byte(testMessage))
+			err := conn.WriteMessage(websocket.TextMessage, []byte(testMessage))
 			Expect(err).ShouldNot(HaveOccurred(), "writing WebSocket message")
 
 			// Then our echo

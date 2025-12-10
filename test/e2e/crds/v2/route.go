@@ -2145,22 +2145,11 @@ spec:
 			time.Sleep(6 * time.Second)
 
 			By("verify wss connection")
-			u := url.URL{
-				Scheme: "wss",
-				Host:   s.GetAPISIXHTTPSEndpoint(),
-				Path:   "/ws",
-			}
-			headers := http.Header{"Host": []string{"api6.com"}}
-			dialer := websocket.Dialer{
-				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: true,
-					ServerName:         "api6.com",
-				},
-			}
-
-			conn, resp, err := dialer.Dial(u.String(), headers)
-			Expect(err).ShouldNot(HaveOccurred(), "WebSocket handshake")
-			Expect(resp.StatusCode).Should(Equal(http.StatusSwitchingProtocols))
+			hostname := "api6.com"
+			conn := s.NewWebsocketClient(&tls.Config{
+				InsecureSkipVerify: true,
+				ServerName:         hostname,
+			}, "/ws", http.Header{"Host": []string{hostname}})
 
 			defer func() {
 				_ = conn.Close()

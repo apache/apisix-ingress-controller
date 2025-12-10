@@ -66,15 +66,18 @@ metadata:
   name: apisix
   labels:
     app.kubernetes.io/name: apisix
+    app: apisix
 spec:
   replicas: {{ default 1 .Replicas }}
   selector:
     matchLabels:
       app.kubernetes.io/name: apisix
+      app: apisix
   template:
     metadata:
       labels:
         app.kubernetes.io/name: apisix
+        app: apisix
     spec:
       initContainers:
         - name: config-setup

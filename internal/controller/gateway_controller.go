@@ -140,6 +140,10 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 		return ctrl.Result{}, err
 	}
+	if !r.checkGatewayClass(gateway) {
+		return ctrl.Result{}, nil
+	}
+
 	conditionProgrammedStatus, conditionProgrammedMsg := true, "Programmed"
 
 	r.Log.Info("gateway has been accepted", "gateway", gateway.GetName())

@@ -124,13 +124,19 @@ spec:
       containers:
         - livenessProbe:
             failureThreshold: 3
-            initialDelaySeconds: 1
-            periodSeconds: 5
+            initialDelaySeconds: 10
+            periodSeconds: 15
             successThreshold: 1
             httpGet:
               path: /healthz
               port: 80
             timeoutSeconds: 2
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
           image: "openresty/openresty:1.27.1.2-4-bullseye-fat"
           imagePullPolicy: IfNotPresent
           name: nginx
