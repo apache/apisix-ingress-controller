@@ -485,7 +485,6 @@ release-src:
 	--exclude docs \
 	--exclude examples \
 	--exclude scripts \
-	--exclude samples \
 	--exclude test \
 	--exclude release \
 	--exclude $(RELEASE_SRC).tgz \
