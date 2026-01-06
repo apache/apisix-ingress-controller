@@ -536,9 +536,9 @@ func (r *ApisixRouteReconciler) listApisixRoutesForService(ctx context.Context, 
 		serviceName = endpointSlice.Labels[discoveryv1.LabelServiceName]
 		arList      apiv2.ApisixRouteList
 	)
-	
+
 	r.Log.V(1).Info("EndpointSlice changed, listing ApisixRoutes for service", "namespace", namespace, "service", serviceName, "endpointslice", endpointSlice.Name)
-	
+
 	if err := r.List(ctx, &arList, client.MatchingFields{
 		indexer.ServiceIndexRef: indexer.GenIndexKey(namespace, serviceName),
 	}); err != nil {
