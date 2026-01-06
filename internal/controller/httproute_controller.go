@@ -267,6 +267,8 @@ func (r *HTTPRouteReconciler) listHTTPRoutesByServiceRef(ctx context.Context, ob
 	namespace := endpointSlice.GetNamespace()
 	serviceName := endpointSlice.Labels[discoveryv1.LabelServiceName]
 
+	r.Log.V(1).Info("EndpointSlice changed, listing HTTPRoutes for service", "namespace", namespace, "service", serviceName, "endpointslice", endpointSlice.Name)
+
 	hrList := &gatewayv1.HTTPRouteList{}
 	if err := r.List(ctx, hrList, client.MatchingFields{
 		indexer.ServiceIndexRef: indexer.GenIndexKey(namespace, serviceName),
@@ -276,6 +278,7 @@ func (r *HTTPRouteReconciler) listHTTPRoutesByServiceRef(ctx context.Context, ob
 	}
 	requests := make([]reconcile.Request, 0, len(hrList.Items))
 	for _, hr := range hrList.Items {
+		r.Log.V(1).Info("Triggering reconcile for HTTPRoute due to EndpointSlice change", "httproute", client.ObjectKey{Namespace: hr.Namespace, Name: hr.Name}, "service", serviceName)
 		requests = append(requests, reconcile.Request{
 			NamespacedName: client.ObjectKey{
 				Namespace: hr.Namespace,
@@ -283,6 +286,7 @@ func (r *HTTPRouteReconciler) listHTTPRoutesByServiceRef(ctx context.Context, ob
 			},
 		})
 	}
+	r.Log.V(1).Info("Triggered reconciles for HTTPRoutes", "count", len(requests), "service", serviceName)
 	return requests
 }
 

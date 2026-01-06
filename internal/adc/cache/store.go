@@ -69,12 +69,24 @@ func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.
 			if err != nil {
 				return err
 			}
+			s.log.V(1).Info("Found existing services to update", "count", len(services), "selector", selector)
 			for _, service := range services {
+				s.log.V(1).Info("Deleting existing service", "service_id", service.ID, "service_name", service.Name)
 				if err := targetCache.DeleteService(service); err != nil {
 					return err
 				}
 			}
 			for _, service := range resources.Services {
+				// Log upstream nodes for debugging
+				if service.Upstream != nil && len(service.Upstream.Nodes) > 0 {
+					nodesInfo := make([]string, 0, len(service.Upstream.Nodes))
+					for _, node := range service.Upstream.Nodes {
+						nodesInfo = append(nodesInfo, fmt.Sprintf("%s:%d", node.Host, node.Port))
+					}
+					s.log.V(1).Info("Inserting service with upstream nodes", "service_id", service.ID, "service_name", service.Name, "nodes", nodesInfo)
+				} else {
+					s.log.V(1).Info("Inserting service without upstream nodes", "service_id", service.ID, "service_name", service.Name)
+				}
 				if err := targetCache.InsertService(service); err != nil {
 					return err
 				}

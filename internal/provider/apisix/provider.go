@@ -19,6 +19,7 @@ package apisix
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -183,6 +184,20 @@ func (d *apisixProvider) Update(ctx context.Context, tctx *provider.TranslateCon
 			Consumers:      result.Consumers,
 		},
 	}
+
+	// Log service upstream nodes for debugging
+	for _, service := range result.Services {
+		if service.Upstream != nil && len(service.Upstream.Nodes) > 0 {
+			nodesInfo := make([]string, 0, len(service.Upstream.Nodes))
+			for _, node := range service.Upstream.Nodes {
+				nodesInfo = append(nodesInfo, fmt.Sprintf("%s:%d", node.Host, node.Port))
+			}
+			d.log.V(1).Info("Updating service with upstream nodes", "service_id", service.ID, "service_name", service.Name, "nodes", nodesInfo, "object", rk)
+		} else {
+			d.log.V(1).Info("Updating service without upstream nodes", "service_id", service.ID, "service_name", service.Name, "object", rk)
+		}
+	}
+
 	d.log.V(1).Info("updating config", "task", task)
 
 	return d.client.UpdateConfig(ctx, task)

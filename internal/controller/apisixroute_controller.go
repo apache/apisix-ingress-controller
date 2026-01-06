@@ -471,7 +471,23 @@ func (r *ApisixRouteReconciler) validateHTTPBackend(tctx *provider.TranslateCont
 	// backend.subset specifies a subset of upstream nodes.
 	// It specifies that the target pod's label should be a superset of the subset labels of the ApisixUpstream of the serviceName
 	subsetLabels := r.getSubsetLabels(tctx, serviceNN, backend.Subset)
-	tctx.EndpointSlices[serviceNN] = r.filterEndpointSlicesBySubsetLabels(tctx, endpoints.Items, subsetLabels)
+	filteredEndpoints := r.filterEndpointSlicesBySubsetLabels(tctx, endpoints.Items, subsetLabels)
+	tctx.EndpointSlices[serviceNN] = filteredEndpoints
+
+	// Log endpoint information for debugging
+	if len(filteredEndpoints) > 0 {
+		endpointIPs := make([]string, 0)
+		for _, epSlice := range filteredEndpoints {
+			for _, ep := range epSlice.Endpoints {
+				for _, addr := range ep.Addresses {
+					endpointIPs = append(endpointIPs, addr)
+				}
+			}
+		}
+		r.Log.V(1).Info("Updated EndpointSlices for service", "service", serviceNN, "endpoint_count", len(filteredEndpoints), "endpoint_ips", endpointIPs)
+	} else {
+		r.Log.V(1).Info("No endpoints found for service", "service", serviceNN)
+	}
 
 	return nil
 }
@@ -520,6 +536,9 @@ func (r *ApisixRouteReconciler) listApisixRoutesForService(ctx context.Context, 
 		serviceName = endpointSlice.Labels[discoveryv1.LabelServiceName]
 		arList      apiv2.ApisixRouteList
 	)
+	
+	r.Log.V(1).Info("EndpointSlice changed, listing ApisixRoutes for service", "namespace", namespace, "service", serviceName, "endpointslice", endpointSlice.Name)
+	
 	if err := r.List(ctx, &arList, client.MatchingFields{
 		indexer.ServiceIndexRef: indexer.GenIndexKey(namespace, serviceName),
 	}); err != nil {
@@ -528,8 +547,10 @@ func (r *ApisixRouteReconciler) listApisixRoutesForService(ctx context.Context, 
 	}
 	requests := make([]reconcile.Request, 0, len(arList.Items))
 	for _, ar := range arList.Items {
+		r.Log.V(1).Info("Triggering reconcile for ApisixRoute due to EndpointSlice change", "apisixroute", utils.NamespacedName(&ar), "service", serviceName)
 		requests = append(requests, reconcile.Request{NamespacedName: utils.NamespacedName(&ar)})
 	}
+	r.Log.V(1).Info("Triggered reconciles for ApisixRoutes", "count", len(requests), "service", serviceName)
 	return pkgutils.DedupComparable(requests)
 }
 
