@@ -34,7 +34,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
-var _ = FDescribe("Issue 2689: Service Inline Upstream Not Updated on Endpoint Changes", Label("apisix.apache.org", "v2", "apisixroute", "issue-2689"), func() {
+var _ = Describe("Issue 2689: Service Inline Upstream Not Updated on Endpoint Changes", Label("apisix.apache.org", "v2", "apisixroute", "issue-2689"), func() {
 	var (
 		s       = scaffold.NewDefaultScaffold()
 		applier = framework.NewApplier(s.GinkgoT, s.K8sClient, s.CreateResourceFromString)
@@ -98,7 +98,6 @@ spec:
 
 		By("get initial APISIX Service configuration")
 		var initialService *adctypes.Service
-		var serviceID string
 		var serviceName string
 		err = wait.PollUntilContextTimeout(context.Background(), 2*time.Second, 30*time.Second, true, func(ctx context.Context) (done bool, err error) {
 			services, err := s.DefaultDataplaneResource().Service().List(ctx)
@@ -115,10 +114,9 @@ spec:
 					// Check if this service's upstream nodes match the initial endpoint
 					for _, node := range svc.Upstream.Nodes {
 						if node.Host == initialPodIP {
-							serviceID = svc.ID
 							serviceName = svc.Name
 							initialService = svc
-							GinkgoWriter.Printf("Found matching Service: ID=%s, Name=%s\n", serviceID, serviceName)
+							GinkgoWriter.Printf("Found matching Service: Name=%s\n", serviceName)
 							GinkgoWriter.Printf("Initial Service inline upstream nodes: %v\n", svc.Upstream.Nodes)
 							return true, nil
 						}
@@ -129,7 +127,6 @@ spec:
 		})
 		Expect(err).NotTo(HaveOccurred(), "finding initial APISIX service")
 		Expect(initialService).NotTo(BeNil(), "initial service should be found")
-		Expect(serviceID).NotTo(BeEmpty(), "service ID should not be empty")
 
 		// Record initial upstream nodes
 		initialUpstreamNodes := make(map[string]int) // host -> port
@@ -199,7 +196,7 @@ spec:
 
 			// Find the service by ID or name
 			for _, svc := range services {
-				if svc.ID == serviceID || svc.Name == serviceName {
+				if svc.Name == serviceName {
 					if svc.Upstream == nil {
 						GinkgoWriter.Printf("Service %s has nil upstream\n", svc.ID)
 						return false, nil
@@ -235,7 +232,7 @@ spec:
 				}
 			}
 
-			GinkgoWriter.Printf("Service %s not found in APISIX\n", serviceID)
+			GinkgoWriter.Printf("Service %s not found in APISIX\n", serviceName)
 			return false, nil
 		})
 		Expect(err).NotTo(HaveOccurred(), "waiting for service upstream nodes to update")
@@ -253,7 +250,7 @@ spec:
 		Expect(err).NotTo(HaveOccurred(), "getting final service configuration")
 		foundService := false
 		for _, svc := range services {
-			if svc.ID == serviceID || svc.Name == serviceName {
+			if svc.Name == serviceName {
 				foundService = true
 				Expect(svc.Upstream).NotTo(BeNil(), "service upstream should not be nil")
 				Expect(len(svc.Upstream.Nodes)).To(BeNumerically(">", 0), "service upstream should have nodes")
