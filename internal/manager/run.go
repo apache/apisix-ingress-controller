@@ -55,6 +55,11 @@ var (
 	scheme = runtime.NewScheme()
 )
 
+var (
+	// set value during compilation
+	_minK8sVersion string
+)
+
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
@@ -261,8 +266,7 @@ func Run(ctx context.Context, logger logr.Logger) error {
 }
 
 func checkK8sVersion(mgr ctrl.Manager, logger logr.Logger) {
-	const minVersion = "1.26.0"
-	minV, err := version.ParseSemantic(minVersion)
+	minV, err := version.ParseSemantic(_minK8sVersion)
 	if err != nil {
 		logger.Info("failed to parse minimum version", "error", err)
 		return
