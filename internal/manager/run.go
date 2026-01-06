@@ -290,7 +290,6 @@ func checkK8sVersion(mgr ctrl.Manager, logger logr.Logger) {
 		logger.Info("WARNING: Kubernetes cluster version does not meet minimum requirement",
 			"currentVersion", currentVersion.String(),
 			"minimumVersion", minV.String(),
-			"reason", "APISIX Ingress Controller requires Kubernetes 1.26+.",
 		)
 	}
 }
