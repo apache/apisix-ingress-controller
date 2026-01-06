@@ -2166,4 +2166,75 @@ spec:
 			Expect(string(msg)).To(Equal(testMessage), "message content verification")
 		})
 	})
+
+	Context("Test ApisixRoute with multiple backends", func() {
+		It("create ApisixRoute with multiple backends", func() {
+			var httpService = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpbin-service-e2e-test2
+spec:
+  selector:
+    app: httpbin-deployment-e2e-test
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  type: ClusterIP
+`
+			err := s.CreateResourceFromString(httpService)
+			Expect(err).ShouldNot(HaveOccurred())
+			s.EnsureNumEndpointsReady(GinkgoT(), "httpbin-service-e2e-test2", 1)
+
+			const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: httpbin
+spec:
+  ingressClassName: %s
+  http:
+    - name: get
+      match:
+        paths:
+          - /get
+      backends:
+        - serviceName: httpbin-service-e2e-test
+          servicePort: 80
+        - serviceName: httpbin-service-e2e-test2
+          servicePort: 80
+    - name: ip
+      match:
+        paths:
+          - /ip
+      backends:
+        - serviceName: httpbin-service-e2e-test
+          servicePort: 80
+        - serviceName: httpbin-service-e2e-test2
+          servicePort: 80
+`
+			By("apply ApisixRoute")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"},
+				&apiv2.ApisixRoute{}, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
+
+			By("check upstreams")
+			upstreams, err := s.DefaultDataplaneResource().Upstream().List(context.Background())
+			Expect(err).ShouldNot(HaveOccurred())
+			Expect(upstreams).Should(HaveLen(4))
+
+			By("verify ApisixRoute works")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/ip",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
+		})
+	})
 })
