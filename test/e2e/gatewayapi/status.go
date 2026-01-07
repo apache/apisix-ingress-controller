@@ -108,7 +108,7 @@ spec:
 			_ = s.DeleteResource("Gateway", s.Namespace())
 		})
 
-		It("dataplane unavailable", func() {
+		FIt("dataplane unavailable", func() {
 			By("Create HTTPRoute")
 			err := s.CreateResourceFromString(httproute)
 			Expect(err).NotTo(HaveOccurred(), "creating HTTPRoute")

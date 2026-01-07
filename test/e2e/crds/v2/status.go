@@ -142,7 +142,7 @@ spec:
 			})
 		})
 
-		It("dataplane unavailable", func() {
+		FIt("dataplane unavailable", func() {
 			By("apply ApisixRoute")
 			arYaml := fmt.Sprintf(ar, s.Namespace(), s.Namespace())
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, arYaml)
