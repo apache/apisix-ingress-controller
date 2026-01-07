@@ -119,13 +119,34 @@ func (e *DefaultADCExecutor) runForSingleServer(ctx context.Context, serverAddr 
 			"stderr", stderr.String())
 		return fmt.Errorf("failed to handle adc output: %w", err)
 	}
-	if result.FailedCount > 0 && len(result.Failed) > 0 {
-		reason := result.Failed[0].Reason
-		e.log.Error(fmt.Errorf("adc sync failed: %s", reason), "adc sync failed", "result", result)
-		return types.ADCExecutionServerAddrError{
-			ServerAddr:     serverAddr,
-			Err:            reason,
-			FailedStatuses: result.Failed,
+	// Check for sync failures
+	// For apisix-standalone mode: Failed is always empty, check EndpointStatus instead
+	if result.FailedCount > 0 {
+		if len(result.Failed) > 0 {
+			reason := result.Failed[0].Reason
+			e.log.Error(fmt.Errorf("adc sync failed: %s", reason), "adc sync failed", "result", result)
+			return types.ADCExecutionServerAddrError{
+				ServerAddr:     serverAddr,
+				Err:            reason,
+				FailedStatuses: result.Failed,
+			}
+		} else if len(result.EndpointStatus) > 0 {
+			// apisix-standalone mode: use EndpointStatus
+			var failedEndpoints []string
+			for _, ep := range result.EndpointStatus {
+				if !ep.Success {
+					failedEndpoints = append(failedEndpoints, fmt.Sprintf("%s: %s", ep.Server, ep.Reason))
+				}
+			}
+			if len(failedEndpoints) > 0 {
+				reason := strings.Join(failedEndpoints, "; ")
+				e.log.Error(fmt.Errorf("adc sync failed (standalone mode): %s", reason), "adc sync failed", "result", result)
+				return types.ADCExecutionServerAddrError{
+					ServerAddr:       serverAddr,
+					Err:              reason,
+					EndpointStatuses: result.EndpointStatus,
+				}
+			}
 		}
 	}
 	e.log.V(1).Info("adc sync success", "result", result)
@@ -452,13 +473,33 @@ func (e *HTTPADCExecutor) handleHTTPResponse(resp *http.Response, serverAddr str
 	}
 
 	// Check for sync failures
-	if result.FailedCount > 0 && len(result.Failed) > 0 {
-		reason := result.Failed[0].Reason
-		e.log.Error(fmt.Errorf("ADC Server sync failed: %s", reason), "ADC Server sync failed", "result", result)
-		return types.ADCExecutionServerAddrError{
-			ServerAddr:     serverAddr,
-			Err:            reason,
-			FailedStatuses: result.Failed,
+	// For apisix-standalone mode: Failed is always empty, check EndpointStatus instead
+	if result.FailedCount > 0 {
+		if len(result.Failed) > 0 {
+			reason := result.Failed[0].Reason
+			e.log.Error(fmt.Errorf("ADC Server sync failed: %s", reason), "ADC Server sync failed", "result", result)
+			return types.ADCExecutionServerAddrError{
+				ServerAddr:     serverAddr,
+				Err:            reason,
+				FailedStatuses: result.Failed,
+			}
+		} else if len(result.EndpointStatus) > 0 {
+			// apisix-standalone mode: use EndpointStatus
+			var failedEndpoints []string
+			for _, ep := range result.EndpointStatus {
+				if !ep.Success {
+					failedEndpoints = append(failedEndpoints, fmt.Sprintf("%s: %s", ep.Server, ep.Reason))
+				}
+			}
+			if len(failedEndpoints) > 0 {
+				reason := strings.Join(failedEndpoints, "; ")
+				e.log.Error(fmt.Errorf("ADC Server sync failed (standalone mode): %s", reason), "ADC Server sync failed", "result", result)
+				return types.ADCExecutionServerAddrError{
+					ServerAddr:       serverAddr,
+					Err:              reason,
+					EndpointStatuses: result.EndpointStatus,
+				}
+			}
 		}
 	}
 

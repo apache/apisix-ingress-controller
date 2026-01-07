@@ -84,9 +84,10 @@ func (e ADCExecutionError) Error() string {
 }
 
 type ADCExecutionServerAddrError struct {
-	Err            string
-	ServerAddr     string
-	FailedStatuses []adc.SyncStatus
+	Err              string
+	ServerAddr       string
+	FailedStatuses   []adc.SyncStatus
+	EndpointStatuses []adc.EndpointStatus
 }
 
 func (e ADCExecutionServerAddrError) Error() string {
