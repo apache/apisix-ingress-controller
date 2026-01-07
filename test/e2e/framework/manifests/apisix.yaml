@@ -81,7 +81,7 @@ spec:
     spec:
       initContainers:
         - name: config-setup
-          image: apache/apisix:dev
+          image: apache/apisix:3.11.0-debian
           command:
             - sh
             - -c
@@ -99,7 +99,7 @@ spec:
               mountPath: /tmp/apisix-conf
       containers:
         - name: apisix
-          image: apache/apisix:dev
+          image: apache/apisix:3.11.0-debian
           ports:
             - name: http
               containerPort: 9080

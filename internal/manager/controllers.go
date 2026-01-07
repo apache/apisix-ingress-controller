@@ -20,6 +20,7 @@ package manager
 import (
 	"context"
 
+	"github.com/go-logr/logr"
 	netv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -40,7 +41,6 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	types "github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/pkg/utils"
-	"github.com/go-logr/logr"
 )
 
 // K8s
