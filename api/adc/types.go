@@ -706,10 +706,9 @@ type SyncResult struct {
 // This is only used in apisix-standalone mode where endpoint-level status is reported
 // instead of resource-level status.
 type EndpointStatus struct {
-	Server      string    `json:"server"`
-	Success     bool      `json:"success"`
-	Reason      string    `json:"reason,omitempty"`
-	RequestedAt time.Time `json:"requested_at,omitempty"`
+	Server  string `json:"server"`
+	Success bool   `json:"success"`
+	Reason  string `json:"reason,omitempty"`
 }
 
 type SyncStatus struct {

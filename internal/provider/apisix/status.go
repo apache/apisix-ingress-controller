@@ -259,10 +259,7 @@ func (d *apisixProvider) resolveADCExecutionErrors(
 	for configName, execErrors := range statusesMap {
 		for _, execErr := range execErrors.Errors {
 			for _, failedStatus := range execErr.FailedErrors {
-				// For apisix-standalone mode: EndpointStatuses is used instead of FailedStatuses
-				if len(failedStatus.EndpointStatuses) > 0 {
-					d.handleEndpointStatuses(configName, failedStatus, statusUpdateMap)
-				} else if len(failedStatus.FailedStatuses) == 0 {
+				if len(failedStatus.FailedStatuses) == 0 {
 					d.handleEmptyFailedStatuses(configName, failedStatus, statusUpdateMap)
 				} else {
 					d.handleDetailedFailedStatuses(configName, failedStatus, statusUpdateMap)
@@ -304,61 +301,6 @@ func (d *apisixProvider) handleEmptyFailedStatuses(
 	}
 	for _, rule := range globalRules {
 		d.addResourceToStatusUpdateMap(rule.GetLabels(), failedStatus.Error(), statusUpdateMap)
-	}
-}
-
-// handleEndpointStatuses handles the endpoint status for apisix-standalone mode.
-// In this mode, the sync result contains endpoint-level status instead of resource-level status.
-// All resources in the config are marked as failed with the endpoint error information.
-func (d *apisixProvider) handleEndpointStatuses(
-	configName string,
-	failedStatus types.ADCExecutionServerAddrError,
-	statusUpdateMap map[types.NamespacedNameKind][]string,
-) {
-	// Build error message from failed endpoints
-	var failedEndpointMsgs []string
-	for _, ep := range failedStatus.EndpointStatuses {
-		if !ep.Success {
-			failedEndpointMsgs = append(failedEndpointMsgs, fmt.Sprintf("%s: %s", ep.Server, ep.Reason))
-		}
-	}
-	errorMsg := fmt.Sprintf("Endpoint sync failed: %s", strings.Join(failedEndpointMsgs, "; "))
-
-	// Mark all resources in the config as failed
-	d.markAllResourcesAsFailed(configName, errorMsg, statusUpdateMap)
-}
-
-// markAllResourcesAsFailed marks all resources in the config as failed with the given error message.
-func (d *apisixProvider) markAllResourcesAsFailed(
-	configName string,
-	errorMsg string,
-	statusUpdateMap map[types.NamespacedNameKind][]string,
-) {
-	resource, err := d.client.GetResources(configName)
-	if err != nil {
-		d.log.Error(err, "failed to get resources from store", "configName", configName)
-		return
-	}
-
-	for _, obj := range resource.Services {
-		d.addResourceToStatusUpdateMap(obj.GetLabels(), errorMsg, statusUpdateMap)
-	}
-
-	for _, obj := range resource.Consumers {
-		d.addResourceToStatusUpdateMap(obj.GetLabels(), errorMsg, statusUpdateMap)
-	}
-
-	for _, obj := range resource.SSLs {
-		d.addResourceToStatusUpdateMap(obj.GetLabels(), errorMsg, statusUpdateMap)
-	}
-
-	globalRules, err := d.client.ListGlobalRules(configName)
-	if err != nil {
-		d.log.Error(err, "failed to list global rules", "configName", configName)
-		return
-	}
-	for _, rule := range globalRules {
-		d.addResourceToStatusUpdateMap(rule.GetLabels(), errorMsg, statusUpdateMap)
 	}
 }
 
