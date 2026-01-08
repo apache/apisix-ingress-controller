@@ -72,7 +72,7 @@ func (t *Translator) translateHTTPRule(tctx *provider.TranslateContext, ar *apiv
 
 	var enableWebsocket *bool
 	service := t.buildService(ar, rule, ruleIndex)
-	t.buildUpstream(tctx, service, ar, rule, &enableWebsocket)
+	t.buildUpstream(tctx, service, ar, rule, ruleIndex, &enableWebsocket)
 	t.buildRoute(ar, service, rule, plugins, timeout, vars, &enableWebsocket)
 	return service, nil
 }
@@ -205,13 +205,13 @@ func (t *Translator) buildRoute(ar *apiv2.ApisixRoute, service *adc.Service, rul
 	service.Routes = []*adc.Route{route}
 }
 
-func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc.Service, ar *apiv2.ApisixRoute, rule apiv2.ApisixRouteHTTP, enableWebsocket **bool) {
+func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc.Service, ar *apiv2.ApisixRoute, rule apiv2.ApisixRouteHTTP, ruleIndex int, enableWebsocket **bool) {
 	var (
 		upstreams         = make([]*adc.Upstream, 0)
 		weightedUpstreams = make([]adc.TrafficSplitConfigRuleWeightedUpstream, 0)
 	)
 
-	for _, backend := range rule.Backends {
+	for backendIndex, backend := range rule.Backends {
 		// try to get the apisixupstream with the same name as the backend service to be upstream config.
 		// err is ignored because it does not care about the externalNodes of the apisixupstream.
 		upstream, err := t.translateApisixRouteHTTPBackend(tctx, ar, backend, enableWebsocket)
@@ -220,7 +220,7 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 			continue
 		}
 
-		upstreamName := adc.ComposeUpstreamName(ar.Namespace, backend.ServiceName, backend.Subset, backend.ServicePort, backend.ResolveGranularity)
+		upstreamName := adc.ComposeUpstreamName(ar.Namespace, ar.Name, fmt.Sprintf("%d", ruleIndex), fmt.Sprintf("%d", backendIndex))
 		upstream.Name = upstreamName
 		upstream.ID = id.GenID(upstreamName)
 		upstreams = append(upstreams, upstream)
