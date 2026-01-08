@@ -692,12 +692,22 @@ const (
 )
 
 type SyncResult struct {
-	Status         string       `json:"status"`
-	TotalResources int          `json:"total_resources"`
-	SuccessCount   int          `json:"success_count"`
-	FailedCount    int          `json:"failed_count"`
-	Success        []SyncStatus `json:"success"`
-	Failed         []SyncStatus `json:"failed"`
+	Status         string           `json:"status"`
+	TotalResources int              `json:"total_resources"`
+	SuccessCount   int              `json:"success_count"`
+	FailedCount    int              `json:"failed_count"`
+	Success        []SyncStatus     `json:"success"`
+	Failed         []SyncStatus     `json:"failed"`
+	EndpointStatus []EndpointStatus `json:"endpoint_status,omitempty"`
+}
+
+// EndpointStatus represents the synchronization status of an APISIX standalone endpoint.
+// This is only used in apisix-standalone mode where endpoint-level status is reported
+// instead of resource-level status.
+type EndpointStatus struct {
+	Server  string `json:"server"`
+	Success bool   `json:"success"`
+	Reason  string `json:"reason,omitempty"`
 }
 
 type SyncStatus struct {
