@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/incubator4/go-resty-expr/expr"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const (
@@ -816,22 +815,11 @@ var (
 	}
 )
 
-// ComposeUpstreamName uses namespace, name, subset (optional), port, resolveGranularity info to compose
+// ComposeUpstreamName uses namespace, name, ruleIndex, backendIndex, serviceName info to compose
 // the upstream name.
-// the resolveGranularity is not composited in the upstream name when it is endpoint.
-// ref: https://github.com/apache/apisix-ingress-controller/blob/10059afe3e84b693cc61e6df7a0040890a9d16eb/pkg/types/apisix/v1/types.go#L595-L598
-func ComposeUpstreamName(namespace, name, subset string, port intstr.IntOrString, resolveGranularity string) string {
-	pstr := port.String()
-	// FIXME Use sync.Pool to reuse this buffer if the upstream
-	// name composing code path is hot.
+func ComposeUpstreamName(namespace, name, ruleIndex, backendIndex string) string {
 	var p []byte
-	plen := len(namespace) + len(name) + len(pstr) + 2
-	if subset != "" {
-		plen = plen + len(subset) + 1
-	}
-	if resolveGranularity == ResolveGranularity.Service {
-		plen = plen + len(resolveGranularity) + 1
-	}
+	plen := len(namespace) + len(name) + len(ruleIndex) + len(backendIndex) + 3
 
 	p = make([]byte, 0, plen)
 	buf := bytes.NewBuffer(p)
@@ -839,15 +827,9 @@ func ComposeUpstreamName(namespace, name, subset string, port intstr.IntOrString
 	buf.WriteByte('_')
 	buf.WriteString(name)
 	buf.WriteByte('_')
-	if subset != "" {
-		buf.WriteString(subset)
-		buf.WriteByte('_')
-	}
-	buf.WriteString(pstr)
-	if resolveGranularity == ResolveGranularity.Service {
-		buf.WriteByte('_')
-		buf.WriteString(resolveGranularity)
-	}
+	buf.WriteString(ruleIndex)
+	buf.WriteByte('_')
+	buf.WriteString(backendIndex)
 
 	return buf.String()
 }
