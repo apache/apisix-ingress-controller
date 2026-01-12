@@ -54,7 +54,13 @@ Welcome to the 2.0.1 release of apisix-ingress-controller!
 
 ## Highlights
 
-This is a patch release that includes bug fixes and dependency updates.
+This is a patch release that includes a new feature, bug fixes and dependency updates.
+
+---
+
+## Features
+
+* feat: support custom gatewayproxy namespace for ingressclass [#2701](https://github.com/apache/apisix-ingress-controller/pull/2701)
 
 ---
 
@@ -91,7 +97,7 @@ https://github.com/apache/apisix-ingress-controller/issues.
 <details><summary>8 commits</summary>
 <p>
 
-  * [`87bca9c0`](https://github.com/apache/apisix-ingress-controller/commit/87bca9c0e0bea466b5f436ac4f7827f08c01a576) chore: v2.0.1 release
+  * [`b52c26c8`](https://github.com/apache/apisix-ingress-controller/commit/b52c26c8519389600c968c497533c6a6cf9d485d) feat: support custom gatewayproxy namespace for ingressclass (#2701)
   * [`d23f7bf9`](https://github.com/apache/apisix-ingress-controller/commit/d23f7bf93b5a1ff50afa83478894d202a57f7f60) chore: update deps (#2698)
   * [`80585882`](https://github.com/apache/apisix-ingress-controller/commit/80585882b8460619bd123f85efa61d0465b1b218) fix: modify upstream name generation method (#2694)
   * [`a979e253`](https://github.com/apache/apisix-ingress-controller/commit/a979e253ce16c53539dc4d6d6386db8ea87a78b2) fix: adjust apisix standalone mode adc sync result (#2697)
