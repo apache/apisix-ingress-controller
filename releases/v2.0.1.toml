@@ -1,0 +1,74 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# commit to be tagged for new release
+commit = "HEAD"
+
+# project_name is used to refer to the project in the notes
+project_name = "apisix-ingress-controller"
+
+# github_repo is the github project, only github is currently supported
+github_repo = "apache/apisix-ingress-controller"
+
+# match_deps is a pattern to determine which dependencies should be included
+# as part of this release. The changelog will also include changes for these
+# dependencies based on the change in the dependency's version.
+match_deps = "^github.com/(apache/[a-zA-Z0-9-]+)$"
+
+# previous release of this project for determining changes
+previous = "2.0.0"
+
+# pre_release is whether to include a disclaimer about being a pre-release
+pre_release = false
+
+# preface is the description of the release which precedes the author list
+# and changelog. This description could include highlights as well as any
+# description of changes. Use markdown formatting.
+preface = """\
+
+## Highlights
+
+This is a patch release that includes a new feature, bug fixes and dependency updates.
+
+---
+
+## Features
+
+* feat: support custom gatewayproxy namespace for ingressclass [#2701](https://github.com/apache/apisix-ingress-controller/pull/2701)
+
+---
+
+## Bug Fixes
+
+* fix: modify upstream name generation method [#2694](https://github.com/apache/apisix-ingress-controller/pull/2694)
+* fix: adjust apisix standalone mode adc sync result [#2697](https://github.com/apache/apisix-ingress-controller/pull/2697)
+
+---
+
+## Chores
+
+* chore: update deps [#2698](https://github.com/apache/apisix-ingress-controller/pull/2698)
+* chore: log when kubernetes cluster version does not meet minimum requirement [#2693](https://github.com/apache/apisix-ingress-controller/pull/2693)
+
+---
+
+## Documentation
+
+* docs: update k8s cluster version in README [#2688](https://github.com/apache/apisix-ingress-controller/pull/2688)
+* docs: update plugin metadata APISIX CRD example [#2687](https://github.com/apache/apisix-ingress-controller/pull/2687)
+* docs: mismatched namespace example of gatewayproxy [#2682](https://github.com/apache/apisix-ingress-controller/pull/2682)
+
+"""
