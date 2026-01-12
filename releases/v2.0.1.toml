@@ -41,7 +41,13 @@ preface = """\
 
 ## Highlights
 
-This is a patch release that includes bug fixes and dependency updates.
+This is a patch release that includes a new feature, bug fixes and dependency updates.
+
+---
+
+## Features
+
+* feat: support custom gatewayproxy namespace for ingressclass [#2701](https://github.com/apache/apisix-ingress-controller/pull/2701)
 
 ---
 
