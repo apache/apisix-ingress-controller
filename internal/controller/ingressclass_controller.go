@@ -187,10 +187,7 @@ func (r *IngressClassReconciler) processInfrastructure(tctx *provider.TranslateC
 		return nil
 	}
 
-	namespace := ingressClass.Namespace
-	if ingressClass.Spec.Parameters.Namespace != nil {
-		namespace = *ingressClass.Spec.Parameters.Namespace
-	}
+	namespace := utils.GetIngressClassParametersNamespace(*ingressClass)
 
 	gatewayProxy := new(v1alpha1.GatewayProxy)
 	if err := r.Get(context.Background(), client.ObjectKey{

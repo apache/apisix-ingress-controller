@@ -31,6 +31,7 @@ import (
 	v1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
+	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
 // nolint:unused
@@ -106,10 +107,7 @@ func (v *IngressClassCustomValidator) warnIfMissingGatewayProxyForIngressClass(c
 		return nil
 	}
 
-	ns := ingressClass.GetNamespace()
-	if params.Namespace != nil && *params.Namespace != "" {
-		ns = *params.Namespace
-	}
+	ns := utils.GetIngressClassParametersNamespace(*ingressClass)
 	name := params.Name
 
 	var gp v1alpha1.GatewayProxy
