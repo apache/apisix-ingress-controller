@@ -19,6 +19,7 @@
 
 # Table of Contents
 
+- [2.0.1](#201)
 - [2.0.0](#200)
 - [2.0.0-rc5](#200-rc5)
 - [2.0.0-rc4](#200-rc4)
@@ -44,6 +45,82 @@
 - [0.3.0](#030)
 - [0.2.0](#020)
 - [0.1.0](#010)
+
+# 2.0.1
+
+apisix-ingress-controller 2.0.1
+
+Welcome to the 2.0.1 release of apisix-ingress-controller!
+
+## Highlights
+
+This is a patch release that includes a new feature, bug fixes and dependency updates.
+
+---
+
+## Features
+
+* feat: support custom gatewayproxy namespace for ingressclass [#2701](https://github.com/apache/apisix-ingress-controller/pull/2701)
+
+---
+
+## Bug Fixes
+
+* fix: modify upstream name generation method [#2694](https://github.com/apache/apisix-ingress-controller/pull/2694)
+* fix: adjust apisix standalone mode adc sync result [#2697](https://github.com/apache/apisix-ingress-controller/pull/2697)
+
+---
+
+## Chores
+
+* chore: update deps [#2698](https://github.com/apache/apisix-ingress-controller/pull/2698)
+* chore: log when kubernetes cluster version does not meet minimum requirement [#2693](https://github.com/apache/apisix-ingress-controller/pull/2693)
+
+---
+
+## Documentation
+
+* docs: update k8s cluster version in README [#2688](https://github.com/apache/apisix-ingress-controller/pull/2688)
+* docs: update plugin metadata APISIX CRD example [#2687](https://github.com/apache/apisix-ingress-controller/pull/2687)
+* docs: mismatched namespace example of gatewayproxy [#2682](https://github.com/apache/apisix-ingress-controller/pull/2682)
+
+Please try out the release binaries and report any issues at
+https://github.com/apache/apisix-ingress-controller/issues.
+
+### Contributors
+
+* Ashing Zheng
+* Traky Deng
+* Zeping Bai
+
+### Changes
+<details><summary>8 commits</summary>
+<p>
+
+  * [`b52c26c8`](https://github.com/apache/apisix-ingress-controller/commit/b52c26c8519389600c968c497533c6a6cf9d485d) feat: support custom gatewayproxy namespace for ingressclass (#2701)
+  * [`d23f7bf9`](https://github.com/apache/apisix-ingress-controller/commit/d23f7bf93b5a1ff50afa83478894d202a57f7f60) chore: update deps (#2698)
+  * [`80585882`](https://github.com/apache/apisix-ingress-controller/commit/80585882b8460619bd123f85efa61d0465b1b218) fix: modify upstream name generation method (#2694)
+  * [`a979e253`](https://github.com/apache/apisix-ingress-controller/commit/a979e253ce16c53539dc4d6d6386db8ea87a78b2) fix: adjust apisix standalone mode adc sync result (#2697)
+  * [`b274316e`](https://github.com/apache/apisix-ingress-controller/commit/b274316e75e2e9bfb21ebde30a9ef61746fb9639) chore: log when kubernetes cluster version does not meet minimum requirement (#2693)
+  * [`01fa72f9`](https://github.com/apache/apisix-ingress-controller/commit/01fa72f9f45ec702579803ea499dd63e07300e30) docs: update k8s cluster version in README (#2688)
+  * [`68c072ea`](https://github.com/apache/apisix-ingress-controller/commit/68c072ea3825b6177abc5ecf506e2844a6acf4cc) docs: update plugin metadata APISIX CRD example (#2687)
+  * [`dcf3b593`](https://github.com/apache/apisix-ingress-controller/commit/dcf3b593333e2b326a5ab76272a0dee2ac2e6b48) docs: mismatched namespace example of gatewayproxy (#2682)
+</p>
+</details>
+
+### Dependency Changes
+
+* **github.com/eclipse/paho.mqtt.golang**  v1.5.0 -> v1.5.1
+* **golang.org/x/crypto**                  v0.37.0 -> v0.45.0
+* **golang.org/x/mod**                     v0.23.0 -> v0.29.0
+* **golang.org/x/net**                     v0.39.0 -> v0.47.0
+* **golang.org/x/sync**                    v0.13.0 -> v0.18.0
+* **golang.org/x/sys**                     v0.32.0 -> v0.38.0
+* **golang.org/x/term**                    v0.31.0 -> v0.37.0
+* **golang.org/x/text**                    v0.24.0 -> v0.31.0
+* **golang.org/x/tools**                   v0.30.0 -> v0.38.0
+
+Previous release can be found at [2.0.0](https://github.com/apache/apisix-ingress-controller/releases/tag/2.0.0)
 
 # 2.0.0
 
