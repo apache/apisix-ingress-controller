@@ -1354,10 +1354,7 @@ func ProcessIngressClassParameters(tctx *provider.TranslateContext, c client.Cli
 	parameters := ingressClass.Spec.Parameters
 	// check if the parameters reference GatewayProxy
 	if parameters.APIGroup != nil && *parameters.APIGroup == v1alpha1.GroupVersion.Group && parameters.Kind == KindGatewayProxy {
-		ns := object.GetNamespace()
-		if parameters.Namespace != nil {
-			ns = *parameters.Namespace
-		}
+		ns := utils.GetIngressClassParametersNamespace(*ingressClass)
 
 		gatewayProxy := &v1alpha1.GatewayProxy{}
 		if err := c.Get(tctx, client.ObjectKey{
@@ -1553,10 +1550,7 @@ func GetGatewayProxyByIngressClass(ctx context.Context, r client.Client, ingress
 		return nil, nil
 	}
 
-	namespace := ingressClass.Namespace
-	if ingressClass.Spec.Parameters.Namespace != nil {
-		namespace = *ingressClass.Spec.Parameters.Namespace
-	}
+	namespace := utils.GetIngressClassParametersNamespace(*ingressClass)
 
 	gatewayProxy := new(v1alpha1.GatewayProxy)
 	if err := r.Get(ctx, client.ObjectKey{

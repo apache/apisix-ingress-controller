@@ -17,7 +17,7 @@
 
 # Image URL to use all building/pushing image targets
 
-VERSION ?= 2.0.0
+VERSION ?= 2.0.1
 
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 
@@ -47,7 +47,9 @@ CRD_DOCS_TEMPLATE ?= docs/assets/template
 VERSYM="github.com/apache/apisix-ingress-controller/internal/version._buildVersion"
 GITSHASYM="github.com/apache/apisix-ingress-controller/internal/version._buildGitRevision"
 BUILDOSSYM="github.com/apache/apisix-ingress-controller/internal/version._buildOS"
-GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM)=$(OSNAME)/$(OSARCH)"
+MINK8SVERSYM="github.com/apache/apisix-ingress-controller/internal/manager._minK8sVersion"
+MIN_K8S_VERSION ?= 1.26.0
+GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM)=$(OSNAME)/$(OSARCH) -X=$(MINK8SVERSYM)=$(MIN_K8S_VERSION)"
 
 # gateway-api
 GATEAY_API_VERSION ?= v1.3.0

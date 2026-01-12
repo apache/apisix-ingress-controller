@@ -37,6 +37,8 @@ Before installing APISIX ingress controller, ensure you have:
 1. A working Kubernetes cluster (version 1.26+)
    - Production: TKE, EKS, AKS, or other cloud-managed clusters
    - Development: minikube, kind, or k3s
+
+   Kubernetes 1.26+ is required because the controller uses CEL (Common Expression Language) validation rules in CRDs, IngressClass Namespaced Params support, and EndpointSlice terminating conditions.
 2. [kubectl](https://kubernetes.io/docs/tasks/tools/) installed and configured to access your cluster
 3. [Helm](https://helm.sh/) (version 3.8+) installed
 
