@@ -51,6 +51,7 @@ This document describes all available annotations and their uses.
 | `k8s.apisix.apache.org/http-block-methods`             |
 | `k8s.apisix.apache.org/auth-type`                      |
 | `k8s.apisix.apache.org/svc-namespace`                  |
+| `apisix.apache.org/parameters-namespace`               |
 
 ## Annotation Details
 
@@ -272,8 +273,9 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: cross-namespace-ingress
+  namespace: aic # Ingress is in aic namespace
   annotations:
-    k8s.apisix.apache.org/svc-namespace: "other-namespace"
+    k8s.apisix.apache.org/svc-namespace: "other-namespace"  # Service is in other-namespace
 spec:
   ingressClassName: apisix
   rules:
@@ -286,6 +288,30 @@ spec:
             name: backend-service
             port:
               number: 80
+```
+
+### Cross Namespace GatewayProxy Access
+
+The `apisix.apache.org/parameters-namespace` annotation allows you to specify a custom namespace for GatewayProxy resources referenced by IngressClass. This is useful when your GatewayProxy resources are in a different namespace than your IngressClass.
+
+The annotation takes precedence over the `parameters.namespace` field in the IngressClass spec. If neither is specified, it defaults to the `default` namespace.
+
+For example:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: apisix
+  namespace: aic  # IngressClass is in aic namespace
+  annotations:
+    apisix.apache.org/parameters-namespace: apisix-system  # GatewayProxy is in apisix-system namespace
+spec:
+  controller: apisix.apache.org/ingress-controller
+  parameters:
+    apiGroup: apisix.apache.org
+    kind: GatewayProxy
+    name: apisix-config
 ```
 
 ### Proxy Rewrite
