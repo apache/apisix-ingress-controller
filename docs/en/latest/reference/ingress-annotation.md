@@ -290,9 +290,9 @@ spec:
               number: 80
 ```
 
-### Cross Namespace GatewayProxy Access
+### GatewayProxy Namespace Specification
 
-The `apisix.apache.org/parameters-namespace` annotation allows you to specify a custom namespace for GatewayProxy resources referenced by IngressClass. This is useful when your GatewayProxy resources are in a different namespace than your IngressClass.
+The `apisix.apache.org/parameters-namespace` annotation enables the specification of a custom namespace for GatewayProxy resources referenced by an IngressClass. This is used when a GatewayProxy resource resides in a specific namespace, as IngressClass is cluster-scoped and requires the namespace to locate the resource.
 
 The annotation takes precedence over the `parameters.namespace` field in the IngressClass spec. If neither is specified, it defaults to the `default` namespace.
 
@@ -303,9 +303,8 @@ apiVersion: networking.k8s.io/v1
 kind: IngressClass
 metadata:
   name: apisix
-  namespace: aic  # IngressClass is in aic namespace
   annotations:
-    apisix.apache.org/parameters-namespace: apisix-system  # GatewayProxy is in apisix-system namespace
+    apisix.apache.org/parameters-namespace: apisix-system
 spec:
   controller: apisix.apache.org/ingress-controller
   parameters:
