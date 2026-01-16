@@ -2701,7 +2701,7 @@ spec:
 			routeMain := fmt.Sprintf(routeForMainListener, gatewayName)
 			s.ResourceApplied("HTTPRoute", "route-main", routeMain, 1)
 
-			By("create HTTPRoute targeting http-alt listener (port 9100)")
+			By("create HTTPRoute targeting http-alt listener (port 9081)")
 			routeAlt := fmt.Sprintf(routeForAltListener, gatewayName)
 			s.ResourceApplied("HTTPRoute", "route-alt", routeAlt, 1)
 

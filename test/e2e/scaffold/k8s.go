@@ -279,7 +279,7 @@ func (s *Scaffold) RunCurlFromK8s(args ...string) (string, error) {
 		"--rm",
 		"--restart=Never",
 		"--image-pull-policy=IfNotPresent",
-		"--image=alpine/curl:flattened",
+		"--image=alpine/curl:latest",
 		"--",
 		"curl",
 	}
