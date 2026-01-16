@@ -41,7 +41,7 @@
                 "reference/example",
                 "reference/troubleshoot",
                 "reference/configuration-file",
-                "reference/ingress-annotation"
+                "reference/annotations"
             ]
         },
         {

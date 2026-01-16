@@ -1,14 +1,14 @@
 ---
-title: Ingress Annotations
+title: Annotations
 slug: /reference/apisix-ingress-controller/annotation
-description: Learn how annotations extend the functionality of Kubernetes Ingress resource in APISIX Ingress Controller to configure routing, security, and gateway behaviors.
+description: Learn how annotations extend the functionality of Kubernetes Ingress and IngressClass resource in APISIX Ingress Controller to configure routing, security, and gateway behaviors.
 ---
 
-Annotations are key-value pairs that allow controllers to configure functionalities that are not available through standard Kubernetes resource fields. In APISIX Ingress Controller, annotations are commonly used with Ingress resources to configure gateway behaviors, routing rules, upstream settings, plugins, and other features. Alternatively, you can use APISIX CRDs to configure these features for a better experience.
+Annotations are key-value pairs that allow controllers to configure functionalities that are not available through standard Kubernetes resource fields. In APISIX Ingress Controller, annotations are commonly used to configure gateway behaviors, routing rules, upstream settings, plugins, and other features. Alternatively, you can use APISIX CRDs to configure these features for a better experience.
 
 This document describes all available annotations and their uses.
 
-## All Annotations
+## Ingress Annotations
 
 | Annotation                                             |
 | ------------------------------------------------------ |
@@ -51,6 +51,12 @@ This document describes all available annotations and their uses.
 | `k8s.apisix.apache.org/http-block-methods`             |
 | `k8s.apisix.apache.org/auth-type`                      |
 | `k8s.apisix.apache.org/svc-namespace`                  |
+
+## IngressClass Annotations
+
+| Annotation                                             |
+| ------------------------------------------------------ |
+| `apisix.apache.org/parameters-namespace`               |
 
 ## Annotation Details
 
@@ -272,8 +278,9 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: cross-namespace-ingress
+  namespace: aic # Ingress is in aic namespace
   annotations:
-    k8s.apisix.apache.org/svc-namespace: "other-namespace"
+    k8s.apisix.apache.org/svc-namespace: "other-namespace"  # Service is in other-namespace
 spec:
   ingressClassName: apisix
   rules:
@@ -609,4 +616,27 @@ spec:
             name: httpbin
             port:
               number: 80
+```
+
+### GatewayProxy Namespace Specification
+
+The `apisix.apache.org/parameters-namespace` annotation enables the specification of a custom namespace for GatewayProxy resources referenced by an IngressClass. This is used when a GatewayProxy resource resides in a specific namespace, as IngressClass is cluster-scoped and requires the namespace to locate the resource.
+
+The annotation takes precedence over the `parameters.namespace` field in the IngressClass spec. If neither is specified, it defaults to the `default` namespace.
+
+For example:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: apisix
+  annotations:
+    apisix.apache.org/parameters-namespace: "apisix-system"
+spec:
+  controller: apisix.apache.org/ingress-controller
+  parameters:
+    apiGroup: apisix.apache.org
+    kind: GatewayProxy
+    name: apisix-config
 ```
