@@ -2666,7 +2666,9 @@ spec:
 				return 0, "", err
 			}
 			statusCode := 0
-			fmt.Sscanf(output, "%d", &statusCode)
+			if _, err := fmt.Sscanf(output, "%d", &statusCode); err != nil {
+				return 0, output, err
+			}
 			return statusCode, output, nil
 		}
 
