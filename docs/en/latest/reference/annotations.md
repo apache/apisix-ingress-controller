@@ -52,7 +52,7 @@ This document describes all available annotations and their uses.
 | `k8s.apisix.apache.org/auth-type`                      |
 | `k8s.apisix.apache.org/svc-namespace`                  |
 
-## IngressClass Annotation
+## IngressClass Annotations
 
 | Annotation                                             |
 | ------------------------------------------------------ |
