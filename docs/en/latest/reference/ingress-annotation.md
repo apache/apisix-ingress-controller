@@ -632,7 +632,7 @@ kind: IngressClass
 metadata:
   name: apisix
   annotations:
-    apisix.apache.org/parameters-namespace: apisix-system
+    apisix.apache.org/parameters-namespace: "apisix-system"
 spec:
   controller: apisix.apache.org/ingress-controller
   parameters:
