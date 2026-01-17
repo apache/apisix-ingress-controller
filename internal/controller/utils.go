@@ -362,6 +362,10 @@ func ParseRouteParentRefs(
 		reason := gatewayv1.RouteReasonNoMatchingParent
 		var listenerName string
 		var matchedListener gatewayv1.Listener
+		var matchedListeners []gatewayv1.Listener
+
+		// Track if sectionName was explicitly specified
+		sectionNameSpecified := parentRef.SectionName != nil && *parentRef.SectionName != ""
 
 		for _, listener := range gateway.Spec.Listeners {
 			if parentRef.SectionName != nil {
@@ -400,9 +404,19 @@ func ParseRouteParentRefs(
 
 			// TODO: check if the listener status is programmed
 
+			if !matched {
+				// First match - store for backward compatibility
+				matchedListener = listener
+			}
+
+			// Always add to the list of matched listeners
+			matchedListeners = append(matchedListeners, listener)
 			matched = true
-			matchedListener = listener
-			break
+
+			// Only break if sectionName was explicitly specified
+			if sectionNameSpecified {
+				break
+			}
 		}
 
 		if matched {
@@ -410,6 +424,7 @@ func ParseRouteParentRefs(
 				Gateway:      &gateway,
 				ListenerName: listenerName,
 				Listener:     &matchedListener,
+				Listeners:    matchedListeners,
 				Conditions: []metav1.Condition{{
 					Type:               string(gatewayv1.RouteConditionAccepted),
 					Status:             metav1.ConditionTrue,
@@ -422,6 +437,7 @@ func ParseRouteParentRefs(
 				Gateway:      &gateway,
 				ListenerName: listenerName,
 				Listener:     &matchedListener,
+				Listeners:    matchedListeners,
 				Conditions: []metav1.Condition{{
 					Type:               string(gatewayv1.RouteConditionAccepted),
 					Status:             metav1.ConditionFalse,

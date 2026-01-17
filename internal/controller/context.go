@@ -27,6 +27,7 @@ type RouteParentRefContext struct {
 
 	ListenerName string
 	Listener     *gatewayv1.Listener
+	Listeners    []gatewayv1.Listener
 
 	Conditions []metav1.Condition
 }

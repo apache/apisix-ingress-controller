@@ -313,6 +313,43 @@ func (s *Scaffold) NewAPISIXClientWithTLSProxy(host string) *httpexpect.Expect {
 	})
 }
 
+// NewAPISIXClientForPort creates an HTTP client for a specific APISIX port.
+// Uses existing tunnels if available, otherwise creates a new one.
+func (s *Scaffold) NewAPISIXClientForPort(port int) (*httpexpect.Expect, error) {
+	// Check if we can reuse existing tunnels
+	switch port {
+	case 80:
+		return s.NewAPISIXClient(), nil
+	case 443:
+		return s.NewAPISIXHttpsClient(""), nil
+	case 9100:
+		return s.NewAPISIXClientOnTCPPort(), nil
+	}
+
+	// Create new tunnel for custom port
+	serviceName := s.dataplaneService.Name
+	tunnel := k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, serviceName, 0, port)
+	if err := tunnel.ForwardPortE(s.t); err != nil {
+		return nil, fmt.Errorf("failed to create tunnel for port %d: %w", port, err)
+	}
+	s.addFinalizers(tunnel.Close)
+
+	u := url.URL{
+		Scheme: "http",
+		Host:   tunnel.Endpoint(),
+	}
+	return httpexpect.WithConfig(httpexpect.Config{
+		BaseURL: u.String(),
+		Client: &http.Client{
+			Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
+			Timeout:   3 * time.Second,
+		},
+		Reporter: httpexpect.NewAssertReporter(
+			httpexpect.NewAssertReporter(GinkgoT()),
+		),
+	}), nil
+}
+
 func (s *Scaffold) DefaultDataplaneResource() DataplaneResource {
 	return s.Deployer.DefaultDataplaneResource()
 }

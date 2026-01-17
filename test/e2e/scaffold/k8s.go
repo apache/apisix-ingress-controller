@@ -268,6 +268,25 @@ func (s *Scaffold) RunDigDNSClientFromK8s(args ...string) (string, error) {
 	return s.RunKubectlAndGetOutput(kubectlArgs...)
 }
 
+// RunCurlFromK8s runs a curl command from a temporary pod inside the cluster.
+// This is useful for making HTTP requests from within the cluster, avoiding
+// port-forward limitations where server_port variables may not work correctly.
+func (s *Scaffold) RunCurlFromK8s(args ...string) (string, error) {
+	kubectlArgs := []string{
+		"run",
+		"curl-test",
+		"-i",
+		"--rm",
+		"--restart=Never",
+		"--image-pull-policy=IfNotPresent",
+		"--image=alpine/curl:latest",
+		"--",
+		"curl",
+	}
+	kubectlArgs = append(kubectlArgs, args...)
+	return s.RunKubectlAndGetOutput(kubectlArgs...)
+}
+
 func (s *Scaffold) GetGatewayProxySpec() string {
 	var gatewayProxyYaml = `
 apiVersion: apisix.apache.org/v1alpha1
