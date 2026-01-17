@@ -353,16 +353,15 @@ func TestTranslateIngressAnnotations(t *testing.T) {
 
 func TestAddServerPortVars(t *testing.T) {
 	tests := []struct {
-		name             string
-		route            *adctypes.Route
-		ports            map[int32]struct{}
-		expected         adctypes.Vars
-		expectedPortList []string // For tests with non-deterministic ordering
+		name     string
+		route    *adctypes.Route
+		ports    map[int32]struct{}
+		expected adctypes.Vars
 	}{
 		{
-			name:  "empty ports map - no vars added",
-			route: &adctypes.Route{},
-			ports: map[int32]struct{}{},
+			name:     "empty ports map - no vars added",
+			route:    &adctypes.Route{},
+			ports:    map[int32]struct{}{},
 			expected: adctypes.Vars(nil),
 		},
 		{
@@ -386,20 +385,37 @@ func TestAddServerPortVars(t *testing.T) {
 				9080: {},
 				9081: {},
 			},
-			// Note: Map iteration order is non-deterministic in Go
-			expectedPortList: []string{"9080", "9081"},
+			expected: adctypes.Vars{
+				{
+					{StrVal: "server_port"},
+					{StrVal: "in"},
+					{SliceVal: []adctypes.StringOrSlice{
+						{StrVal: "9080"},
+						{StrVal: "9081"},
+					}},
+				},
+			},
 		},
 		{
-		name: "three ports - uses 'in' operator",
-		route: &adctypes.Route{},
-		ports: map[int32]struct{}{
-			80:   {},
-			443:  {},
-			9080: {},
+			name:  "three ports - uses 'in' operator",
+			route: &adctypes.Route{},
+			ports: map[int32]struct{}{
+				80:   {},
+				443:  {},
+				9080: {},
+			},
+			expected: adctypes.Vars{
+				{
+					{StrVal: "server_port"},
+					{StrVal: "in"},
+					{SliceVal: []adctypes.StringOrSlice{
+						{StrVal: "80"},
+						{StrVal: "443"},
+						{StrVal: "9080"},
+					}},
+				},
+			},
 		},
-		// Note: Map iteration order is non-deterministic in Go
-		expectedPortList: []string{"80", "443", "9080"},
-	},
 		{
 			name: "vars are appended - preserves existing vars",
 			route: &adctypes.Route{
@@ -432,23 +448,7 @@ func TestAddServerPortVars(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			addServerPortVars(tt.route, tt.ports)
-			if tt.expectedPortList != nil {
-				// For tests with non-deterministic ordering, check structure and contents separately
-				// Verify structure: ["server_port", "in", [...]]
-				assert.Len(t, tt.route.Vars, 1, "should have exactly one var entry")
-				assert.Len(t, tt.route.Vars[0], 3, "var entry should have 3 elements")
-				assert.Equal(t, "server_port", tt.route.Vars[0][0].StrVal)
-				assert.Equal(t, "in", tt.route.Vars[0][1].StrVal)
-				assert.Empty(t, tt.route.Vars[0][2].StrVal, "StrVal should be empty when SliceVal is used")
-				// Verify all expected ports are present regardless of order
-				var portStrings []string
-				for _, s := range tt.route.Vars[0][2].SliceVal {
-					portStrings = append(portStrings, s.StrVal)
-				}
-				assert.ElementsMatch(t, tt.expectedPortList, portStrings, "port list should contain all expected ports")
-			} else {
-				assert.Equal(t, tt.expected, tt.route.Vars)
-			}
+			assert.Equal(t, tt.expected, tt.route.Vars)
 		})
 	}
 }

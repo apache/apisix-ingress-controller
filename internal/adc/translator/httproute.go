@@ -20,6 +20,7 @@ package translator
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -882,8 +883,15 @@ func addServerPortVars(route *adctypes.Route, ports map[int32]struct{}) {
 	}
 
 	// For multiple ports, use "in" operator
-	portList := make([]adctypes.StringOrSlice, 0, len(ports))
+	// Sort ports for deterministic output
+	sortedPorts := make([]int, 0, len(ports))
 	for port := range ports {
+		sortedPorts = append(sortedPorts, int(port))
+	}
+	sort.Ints(sortedPorts)
+
+	portList := make([]adctypes.StringOrSlice, 0, len(ports))
+	for _, port := range sortedPorts {
 		portList = append(portList, adctypes.StringOrSlice{StrVal: fmt.Sprintf("%d", port)})
 	}
 	portVar := []adctypes.StringOrSlice{
