@@ -183,6 +183,14 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			acceptStatus.status = false
 			acceptStatus.msg = err.Error()
 		}
+		// Populate listeners for port-based routing
+		// Use Listeners slice if available (multiple listener support)
+		if len(gateway.Listeners) > 0 {
+			tctx.Listeners = append(tctx.Listeners, gateway.Listeners...)
+		} else if gateway.Listener != nil {
+			// Fallback for backward compatibility
+			tctx.Listeners = append(tctx.Listeners, *gateway.Listener)
+		}
 	}
 
 	var backendRefErr error

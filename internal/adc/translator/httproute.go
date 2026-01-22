@@ -20,6 +20,7 @@ package translator
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -701,6 +702,20 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 
 			routes = append(routes, route)
 		}
+
+		// Collect unique listener ports for port-based routing
+		listenerPorts := make(map[int32]struct{})
+		for _, listener := range tctx.Listeners {
+			listenerPorts[int32(listener.Port)] = struct{}{}
+		}
+
+		// If we have specific listener ports, add server_port matching
+		if len(listenerPorts) > 0 {
+			for _, route := range routes {
+				addServerPortVars(route, listenerPorts)
+			}
+		}
+
 		t.fillHTTPRoutePoliciesForHTTPRoute(tctx, routes, rule)
 		service.Routes = routes
 
@@ -849,4 +864,42 @@ func appProtocolToUpstreamScheme(appProtocol string) string {
 	default:
 		return ""
 	}
+}
+
+func addServerPortVars(route *adctypes.Route, ports map[int32]struct{}) {
+	if len(ports) == 0 {
+		return
+	}
+
+	// For single port, use exact match
+	if len(ports) == 1 {
+		for port := range ports {
+			portVar := []adctypes.StringOrSlice{
+				{StrVal: "server_port"},
+				{StrVal: "=="},
+				{StrVal: fmt.Sprintf("%d", port)},
+			}
+			route.Vars = append(route.Vars, portVar)
+			return
+		}
+	}
+
+	// For multiple ports, use "in" operator
+	// Sort ports for deterministic output
+	sortedPorts := make([]int, 0, len(ports))
+	for port := range ports {
+		sortedPorts = append(sortedPorts, int(port))
+	}
+	sort.Ints(sortedPorts)
+
+	portList := make([]adctypes.StringOrSlice, 0, len(ports))
+	for _, port := range sortedPorts {
+		portList = append(portList, adctypes.StringOrSlice{StrVal: fmt.Sprintf("%d", port)})
+	}
+	portVar := []adctypes.StringOrSlice{
+		{StrVal: "server_port"},
+		{StrVal: "in"},
+		{SliceVal: portList},
+	}
+	route.Vars = append(route.Vars, portVar)
 }

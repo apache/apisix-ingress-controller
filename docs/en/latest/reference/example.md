@@ -96,7 +96,7 @@ spec:
 
 ❶ The controller name should be customized if you are running multiple distinct instances of the APISIX Ingress Controller in the same cluster (not a single instance with multiple replicas). Each ingress controller instance must use a unique controllerName in its [configuration file](configuration-file.md), and the corresponding GatewayClass should reference that value.
 
-❷ The `port` in the Gateway listener is required but ignored. This is due to limitations in the data plane: it cannot dynamically open new ports. Since the Ingress Controller does not manage the data plane deployment, it cannot automatically update the configuration or restart the data plane to apply port changes.
+❷ The `port` in the Gateway listener is used for routing matching. However, the controller cannot dynamically open new ports on the data plane. You must ensure that the APISIX data plane is configured to listen on this port.
 
 ❸ API group of the referenced resource.
 

@@ -185,9 +185,10 @@ kind-down:
 
 .PHONY: kind-load-images
 kind-load-images: pull-infra-images kind-load-ingress-image kind-load-adc-image
-	@kind load docker-image kennethreitz/httpbin:latest --name $(KIND_NAME) 
+	@kind load docker-image kennethreitz/httpbin:latest --name $(KIND_NAME)
 	@kind load docker-image jmalloc/echo-server:latest --name $(KIND_NAME)
 	@kind load docker-image openresty/openresty:1.27.1.2-4-bullseye-fat --name $(KIND_NAME)
+	@kind load docker-image alpine/curl:latest --name $(KIND_NAME)
 
 .PHONY: kind-load-ingress-image
 kind-load-ingress-image:
@@ -204,6 +205,7 @@ pull-infra-images:
 	@docker pull kennethreitz/httpbin:latest
 	@docker pull jmalloc/echo-server:latest
 	@docker pull openresty/openresty:1.27.1.2-4-bullseye-fat
+	@docker pull alpine/curl:latest
 
 ##@ Build
 
