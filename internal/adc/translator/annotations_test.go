@@ -21,6 +21,7 @@ import (
 
 	"github.com/incubator4/go-resty-expr/expr"
 	"github.com/stretchr/testify/assert"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations"
@@ -449,6 +450,60 @@ func TestAddServerPortVars(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			addServerPortVars(tt.route, tt.ports)
 			assert.Equal(t, tt.expected, tt.route.Vars)
+		})
+	}
+}
+
+func TestShouldInjectServerPortVars(t *testing.T) {
+	sectionName := gatewayv1.SectionName("http-main")
+
+	tests := []struct {
+		name       string
+		parentRefs []gatewayv1.ParentReference
+		ports      map[int32]struct{}
+		expected   bool
+	}{
+		{
+			name:     "empty listener ports",
+			ports:    map[int32]struct{}{},
+			expected: false,
+		},
+		{
+			name: "single port without sectionName",
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw"},
+			},
+			ports: map[int32]struct{}{
+				9080: {},
+			},
+			expected: false,
+		},
+		{
+			name: "single port with sectionName",
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", SectionName: &sectionName},
+			},
+			ports: map[int32]struct{}{
+				9080: {},
+			},
+			expected: true,
+		},
+		{
+			name: "multiple ports without sectionName",
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw"},
+			},
+			ports: map[int32]struct{}{
+				9080: {},
+				9081: {},
+			},
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, shouldInjectServerPortVars(tt.parentRefs, tt.ports))
 		})
 	}
 }

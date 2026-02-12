@@ -389,7 +389,6 @@ func ParseRouteParentRefs(
 				continue
 			}
 
-			listenerName = string(listener.Name)
 			ok, err := routeMatchesListenerAllowedRoutes(ctx, mgrc, route, listener.AllowedRoutes, gateway.Namespace, parentRef.Namespace)
 			if err != nil {
 				log.Error(err, "failed matching listener to a route for gateway",
@@ -403,6 +402,10 @@ func ParseRouteParentRefs(
 			}
 
 			// TODO: check if the listener status is programmed
+
+			if sectionNameSpecified {
+				listenerName = string(listener.Name)
+			}
 
 			if !matched {
 				// First match - store for backward compatibility
@@ -436,7 +439,7 @@ func ParseRouteParentRefs(
 			gateways = append(gateways, RouteParentRefContext{
 				Gateway:      &gateway,
 				ListenerName: listenerName,
-				Listener:     &matchedListener,
+				Listener:     nil,
 				Listeners:    matchedListeners,
 				Conditions: []metav1.Condition{{
 					Type:               string(gatewayv1.RouteConditionAccepted),
@@ -1119,29 +1122,15 @@ func getUnionOfGatewayHostnames(gateways []RouteParentRefContext) ([]gatewayv1.H
 	hostnames := make([]gatewayv1.Hostname, 0)
 
 	for _, gateway := range gateways {
-		if gateway.ListenerName != "" {
-			// If a listener name is specified, only check that listener
-			for _, listener := range gateway.Gateway.Spec.Listeners {
-				if string(listener.Name) == gateway.ListenerName {
-					// If a listener does not specify a hostname, it can match any hostname
-					if listener.Hostname == nil {
-						return nil, true
-					}
-					hostnames = append(hostnames, *listener.Hostname)
-					break
-				}
+		for _, listener := range listenersForGatewayContext(gateway) {
+			// Only consider listeners that can effectively configure hostnames (HTTP, HTTPS, or TLS).
+			if !isListenerHostnameEffective(listener) {
+				continue
 			}
-		} else {
-			// Otherwise, check all listeners
-			for _, listener := range gateway.Gateway.Spec.Listeners {
-				// Only consider listeners that can effectively configure hostnames (HTTP, HTTPS, or TLS)
-				if isListenerHostnameEffective(listener) {
-					if listener.Hostname == nil {
-						return nil, true
-					}
-					hostnames = append(hostnames, *listener.Hostname)
-				}
+			if listener.Hostname == nil {
+				return nil, true
 			}
+			hostnames = append(hostnames, *listener.Hostname)
 		}
 	}
 
@@ -1156,24 +1145,30 @@ func getUnionOfGatewayHostnames(gateways []RouteParentRefContext) ([]gatewayv1.H
 // - If none of the above, return an empty string
 func getMinimumHostnameIntersection(gateways []RouteParentRefContext, hostname gatewayv1.Hostname) gatewayv1.Hostname {
 	for _, gateway := range gateways {
-		for _, listener := range gateway.Gateway.Spec.Listeners {
-			// If a listener name is specified, only check that listener
-			// If the listener name is not specified, check all listeners
-			if gateway.ListenerName == "" || gateway.ListenerName == string(listener.Name) {
-				if listener.Hostname == nil || *listener.Hostname == "" {
-					return hostname
-				}
-				if HostnamesMatch(string(*listener.Hostname), string(hostname)) {
-					return hostname
-				}
-				if HostnamesMatch(string(hostname), string(*listener.Hostname)) {
-					return *listener.Hostname
-				}
+		for _, listener := range listenersForGatewayContext(gateway) {
+			if listener.Hostname == nil || *listener.Hostname == "" {
+				return hostname
+			}
+			if HostnamesMatch(string(*listener.Hostname), string(hostname)) {
+				return hostname
+			}
+			if HostnamesMatch(string(hostname), string(*listener.Hostname)) {
+				return *listener.Hostname
 			}
 		}
 	}
 
 	return ""
+}
+
+func listenersForGatewayContext(gw RouteParentRefContext) []gatewayv1.Listener {
+	if len(gw.Listeners) > 0 {
+		return gw.Listeners
+	}
+	if gw.Listener != nil {
+		return []gatewayv1.Listener{*gw.Listener}
+	}
+	return nil
 }
 
 // isListenerHostnameEffective checks if a listener can specify a hostname to match the hostname in the request

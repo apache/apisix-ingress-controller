@@ -2649,19 +2649,69 @@ spec:
       port: 80
 `
 
+		var multiListenerGatewayWithHostnames = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: %s
+spec:
+  gatewayClassName: %s
+  listeners:
+    - name: http-main
+      protocol: HTTP
+      port: 9080
+      hostname: api-main.example.com
+    - name: http-alt
+      protocol: HTTP
+      port: 9081
+      hostname: api-alt.example.com
+  infrastructure:
+    parametersRef:
+      group: apisix.apache.org
+      kind: GatewayProxy
+      name: apisix-proxy-config
+`
+
+		var routeNoSectionNameWithHostnames = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: route-no-section-hostnames
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - api-main.example.com
+  - api-alt.example.com
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /get
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
+
 		// Get the APISIX service name from the deployer
 		getApisixServiceName := func() string {
 			// The APISIX service is named "apisix" (from framework.ProviderType)
 			return "apisix"
 		}
 
-		// Run curl from within the cluster to the specified port
-		curlInCluster := func(port int, path string) (int, string, error) {
+		// Run curl with explicit Host header from within the cluster.
+		curlInClusterWithHost := func(port int, path, host string) (int, string, error) {
 			url := fmt.Sprintf("http://%s.%s.svc.cluster.local:%d%s",
 				getApisixServiceName(), s.Namespace(), port, path)
 
+			args := []string{"-s", "-o", "/dev/null", "-w", "%{http_code}"}
+			if host != "" {
+				args = append(args, "-H", fmt.Sprintf("Host: %s", host))
+			}
+			args = append(args, url)
+
 			// Note: curlimages/curl image already has curl as entrypoint, so we don't pass "curl" again
-			output, err := s.RunCurlFromK8s("-s", "-o", "/dev/null", "-w", "%{http_code}", url)
+			output, err := s.RunCurlFromK8s(args...)
 			if err != nil {
 				return 0, "", err
 			}
@@ -2670,6 +2720,11 @@ spec:
 				return 0, output, err
 			}
 			return statusCode, output, nil
+		}
+
+		// Run curl from within the cluster to the specified port.
+		curlInCluster := func(port int, path string) (int, string, error) {
+			return curlInClusterWithHost(port, path, "")
 		}
 
 		BeforeEach(func() {
@@ -2773,6 +2828,37 @@ spec:
 				return statusCode, err
 			}).WithTimeout(30*time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK),
 				"route should be accessible on port 9081")
+		})
+
+		It("should keep all matched hostnames when sectionName is omitted", func() {
+			gatewayName := s.Namespace()
+
+			By("create Gateway with two listeners and distinct hostnames")
+			gateway := fmt.Sprintf(multiListenerGatewayWithHostnames, gatewayName, s.Namespace())
+			Expect(s.CreateResourceFromString(gateway)).NotTo(HaveOccurred())
+
+			s.RetryAssertion(func() string {
+				yaml, _ := s.GetResourceYaml("Gateway", gatewayName)
+				return yaml
+			}).Should(ContainSubstring(`status: "True"`))
+
+			By("create HTTPRoute WITHOUT sectionName and with both hostnames")
+			route := fmt.Sprintf(routeNoSectionNameWithHostnames, gatewayName)
+			s.ResourceApplied("HTTPRoute", "route-no-section-hostnames", route, 1)
+
+			By("verify first hostname is routable")
+			Eventually(func() (int, error) {
+				statusCode, _, err := curlInClusterWithHost(9080, "/get", "api-main.example.com")
+				return statusCode, err
+			}).WithTimeout(30*time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK),
+				"api-main.example.com should be routable")
+
+			By("verify second hostname is routable")
+			Eventually(func() (int, error) {
+				statusCode, _, err := curlInClusterWithHost(9081, "/get", "api-alt.example.com")
+				return statusCode, err
+			}).WithTimeout(30*time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK),
+				"api-alt.example.com should be routable")
 		})
 
 		It("should not route traffic when sectionName references non-existent listener", func() {

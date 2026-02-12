@@ -19,6 +19,7 @@ package gatewayapi
 
 import (
 	"fmt"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -280,6 +281,108 @@ spec:
 		/*
 			It("GRPCRoute RequestMirror", func() {})
 		*/
+	})
+
+	Context("GRPCRoute with sectionName targeting different listeners", func() {
+		var multiListenerGateway = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: %s
+spec:
+  gatewayClassName: %s
+  listeners:
+    - name: http-main
+      protocol: HTTP
+      port: 9080
+    - name: http-alt
+      protocol: HTTP
+      port: 9081
+  infrastructure:
+    parametersRef:
+      group: apisix.apache.org
+      kind: GatewayProxy
+      name: apisix-proxy-config
+`
+
+		var routeForMainListener = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: grpc-route-main
+spec:
+  parentRefs:
+  - name: %s
+    sectionName: http-main
+  rules:
+  - backendRefs:
+    - name: grpc-infra-backend-v1
+      port: 8080
+`
+
+		var routeForAltListener = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: grpc-route-alt
+spec:
+  parentRefs:
+  - name: %s
+    sectionName: http-alt
+  rules:
+  - backendRefs:
+    - name: grpc-infra-backend-v1
+      port: 8080
+`
+
+		It("routes to the configured listener ports when sectionName is set", func() {
+			gatewayName := "grpc-multi-listener"
+
+			By("create Gateway with listeners on ports 9080 and 9081")
+			gateway := fmt.Sprintf(multiListenerGateway, gatewayName, s.Namespace())
+			Expect(s.CreateResourceFromString(gateway)).NotTo(HaveOccurred())
+
+			s.RetryAssertion(func() string {
+				yaml, _ := s.GetResourceYaml("Gateway", gatewayName)
+				return yaml
+			}).Should(ContainSubstring(`status: "True"`))
+
+			By("create GRPCRoute targeting listener http-main")
+			routeMain := fmt.Sprintf(routeForMainListener, gatewayName)
+			s.ResourceApplied("GRPCRoute", "grpc-route-main", routeMain, 1)
+
+			By("create GRPCRoute targeting listener http-alt")
+			routeAlt := fmt.Sprintf(routeForAltListener, gatewayName)
+			s.ResourceApplied("GRPCRoute", "grpc-route-alt", routeAlt, 1)
+
+			By("verify both ports serve traffic before deletion")
+			Eventually(func() error {
+				return s.RequestEchoBackendOnPort(scaffold.ExpectedResponse{
+					EchoRequest: &pb.EchoRequest{},
+				}, 9080)
+			}).WithTimeout(30 * time.Second).ProbeEvery(time.Second).ShouldNot(HaveOccurred())
+
+			Eventually(func() error {
+				return s.RequestEchoBackendOnPort(scaffold.ExpectedResponse{
+					EchoRequest: &pb.EchoRequest{},
+				}, 9081)
+			}).WithTimeout(30 * time.Second).ProbeEvery(time.Second).ShouldNot(HaveOccurred())
+
+			By("delete route for 9080 and verify only 9081 keeps serving traffic")
+			Expect(s.DeleteResourceFromString(routeMain)).NotTo(HaveOccurred())
+
+			Eventually(func() error {
+				return s.RequestEchoBackendOnPort(scaffold.ExpectedResponse{
+					EchoRequest: &pb.EchoRequest{},
+				}, 9080)
+			}).WithTimeout(30 * time.Second).ProbeEvery(time.Second).Should(HaveOccurred())
+
+			Eventually(func() error {
+				return s.RequestEchoBackendOnPort(scaffold.ExpectedResponse{
+					EchoRequest: &pb.EchoRequest{},
+				}, 9081)
+			}).WithTimeout(30 * time.Second).ProbeEvery(time.Second).ShouldNot(HaveOccurred())
+		})
 	})
 
 	// TODO: add BackendTrafficPolicy test
