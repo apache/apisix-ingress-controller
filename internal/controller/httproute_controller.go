@@ -186,10 +186,10 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		// Populate listeners for port-based routing
 		// Use Listeners slice if available (multiple listener support)
 		if len(gateway.Listeners) > 0 {
-			tctx.Listeners = append(tctx.Listeners, gateway.Listeners...)
+			tctx.Listeners = appendUniqueListeners(tctx.Listeners, gateway.Listeners...)
 		} else if gateway.Listener != nil {
 			// Fallback for backward compatibility
-			tctx.Listeners = append(tctx.Listeners, *gateway.Listener)
+			tctx.Listeners = appendUniqueListeners(tctx.Listeners, *gateway.Listener)
 		}
 	}
 

@@ -210,3 +210,41 @@ func TestFilterHostnamesNoMatchedListeners(t *testing.T) {
 	_, err := filterHostnames(gateways, route.DeepCopy())
 	assert.ErrorIs(t, err, ErrNoMatchingListenerHostname)
 }
+
+func TestAppendUniqueListeners(t *testing.T) {
+	listenerA := gatewayv1.Listener{Name: "a", Port: 80}
+	listenerB := gatewayv1.Listener{Name: "b", Port: 81}
+	listenerA2 := gatewayv1.Listener{Name: "a", Port: 82} // Duplicate name, different port
+
+	tests := []struct {
+		name     string
+		target   []gatewayv1.Listener
+		source   []gatewayv1.Listener
+		expected []gatewayv1.Listener
+	}{
+		{
+			name:     "empty target, add listeners",
+			target:   nil,
+			source:   []gatewayv1.Listener{listenerA, listenerB},
+			expected: []gatewayv1.Listener{listenerA, listenerB},
+		},
+		{
+			name:     "duplicate names skipped",
+			target:   []gatewayv1.Listener{listenerA},
+			source:   []gatewayv1.Listener{listenerA, listenerB},
+			expected: []gatewayv1.Listener{listenerA, listenerB},
+		},
+		{
+			name:     "mixed duplicates and new",
+			target:   []gatewayv1.Listener{listenerA},
+			source:   []gatewayv1.Listener{listenerB, listenerA, listenerA2},
+			expected: []gatewayv1.Listener{listenerA, listenerB},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, appendUniqueListeners(tt.target, tt.source...))
+		})
+	}
+}
