@@ -272,14 +272,17 @@ func (s *Scaffold) RunDigDNSClientFromK8s(args ...string) (string, error) {
 // This is useful for making HTTP requests from within the cluster, avoiding
 // port-forward limitations where server_port variables may not work correctly.
 func (s *Scaffold) RunCurlFromK8s(args ...string) (string, error) {
+	podName := fmt.Sprintf("curl-test-%d", time.Now().UnixNano())
 	kubectlArgs := []string{
 		"run",
-		"curl-test",
-		"-i",
+		podName,
+		"--attach=true",
 		"--rm",
 		"--restart=Never",
 		"--image-pull-policy=IfNotPresent",
 		"--image=alpine/curl:latest",
+		"--quiet",
+		"--command",
 		"--",
 		"curl",
 	}

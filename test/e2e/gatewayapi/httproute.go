@@ -22,6 +22,8 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -2695,8 +2697,21 @@ spec:
 
 		// Get the APISIX service name from the deployer
 		getApisixServiceName := func() string {
-			// The APISIX service is named "apisix" (from framework.ProviderType)
-			return "apisix"
+			return framework.ProviderType
+		}
+
+		statusCodePattern := regexp.MustCompile(`\b([1-5][0-9]{2})\b`)
+		parseHTTPStatusCode := func(output string) (int, error) {
+			matches := statusCodePattern.FindAllString(strings.TrimSpace(output), -1)
+			if len(matches) == 0 {
+				return 0, fmt.Errorf("failed to parse HTTP status code from output: %q", output)
+			}
+
+			code, err := strconv.Atoi(matches[len(matches)-1])
+			if err != nil {
+				return 0, fmt.Errorf("failed converting status code from output %q: %w", output, err)
+			}
+			return code, nil
 		}
 
 		// Run curl with explicit Host header from within the cluster.
@@ -2710,13 +2725,12 @@ spec:
 			}
 			args = append(args, url)
 
-			// Note: curlimages/curl image already has curl as entrypoint, so we don't pass "curl" again
 			output, err := s.RunCurlFromK8s(args...)
 			if err != nil {
 				return 0, "", err
 			}
-			statusCode := 0
-			if _, err := fmt.Sscanf(output, "%d", &statusCode); err != nil {
+			statusCode, err := parseHTTPStatusCode(output)
+			if err != nil {
 				return 0, output, err
 			}
 			return statusCode, output, nil
