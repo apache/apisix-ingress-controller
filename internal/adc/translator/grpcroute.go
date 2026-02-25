@@ -315,7 +315,7 @@ func (t *Translator) TranslateGRPCRoute(tctx *provider.TranslateContext, grpcRou
 			listenerPorts[int32(listener.Port)] = struct{}{}
 		}
 
-		if shouldInjectServerPortVars(tctx.RouteParentRefs, listenerPorts) {
+		if t.shouldInjectServerPortVars(tctx.RouteParentRefs, listenerPorts) {
 			for _, route := range routes {
 				addServerPortVars(route, listenerPorts)
 			}

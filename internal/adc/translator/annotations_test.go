@@ -22,10 +22,12 @@ import (
 	"github.com/incubator4/go-resty-expr/expr"
 	"github.com/stretchr/testify/assert"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	"k8s.io/utils/ptr"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations/upstream"
+	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 )
 
 type mockParser struct {
@@ -343,7 +345,7 @@ func TestTranslateIngressAnnotations(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			translator := &Translator{}
+			translator := &Translator{ListenerPortMatchMode: config.ListenerPortMatchModeAuto}
 			result := translator.TranslateIngressAnnotations(tt.anno)
 
 			assert.NotNil(t, result)
@@ -456,20 +458,24 @@ func TestAddServerPortVars(t *testing.T) {
 
 func TestShouldInjectServerPortVars(t *testing.T) {
 	sectionName := gatewayv1.SectionName("http-main")
+	port := gatewayv1.PortNumber(9080)
 
 	tests := []struct {
 		name       string
+		mode       config.ListenerPortMatchMode
 		parentRefs []gatewayv1.ParentReference
 		ports      map[int32]struct{}
 		expected   bool
 	}{
 		{
 			name:     "empty listener ports",
+			mode:     config.ListenerPortMatchModeAuto,
 			ports:    map[int32]struct{}{},
 			expected: false,
 		},
 		{
 			name: "single port without sectionName",
+			mode: config.ListenerPortMatchModeAuto,
 			parentRefs: []gatewayv1.ParentReference{
 				{Name: "gw"},
 			},
@@ -480,6 +486,7 @@ func TestShouldInjectServerPortVars(t *testing.T) {
 		},
 		{
 			name: "single port with sectionName",
+			mode: config.ListenerPortMatchModeAuto,
 			parentRefs: []gatewayv1.ParentReference{
 				{Name: "gw", SectionName: &sectionName},
 			},
@@ -490,6 +497,7 @@ func TestShouldInjectServerPortVars(t *testing.T) {
 		},
 		{
 			name: "multiple ports without sectionName",
+			mode: config.ListenerPortMatchModeAuto,
 			parentRefs: []gatewayv1.ParentReference{
 				{Name: "gw"},
 			},
@@ -499,11 +507,93 @@ func TestShouldInjectServerPortVars(t *testing.T) {
 			},
 			expected: true,
 		},
+		{
+			name: "explicit mode with multiple ports and no explicit target",
+			mode: config.ListenerPortMatchModeExplicit,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw"},
+			},
+			ports: map[int32]struct{}{
+				9080: {},
+				9081: {},
+			},
+			expected: false,
+		},
+		{
+			name: "explicit mode with parentRef.port",
+			mode: config.ListenerPortMatchModeExplicit,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", Port: &port},
+			},
+			ports: map[int32]struct{}{
+				9080: {},
+			},
+			expected: true,
+		},
+		{
+			name: "explicit mode with single port and no explicit target",
+			mode: config.ListenerPortMatchModeExplicit,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw"},
+			},
+			ports: map[int32]struct{}{
+				9080: {},
+			},
+			expected: false,
+		},
+		{
+			name: "off mode ignores explicit target",
+			mode: config.ListenerPortMatchModeOff,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", SectionName: &sectionName},
+			},
+			ports: map[int32]struct{}{
+				9080: {},
+				9081: {},
+			},
+			expected: false,
+		},
+		{
+			name: "off mode ignores explicit parentRef.port target",
+			mode: config.ListenerPortMatchModeOff,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", Port: &port},
+			},
+			ports: map[int32]struct{}{
+				9080: {},
+			},
+			expected: false,
+		},
+		{
+			name: "explicit mode: non-Gateway parentRef with port is not treated as explicit target",
+			mode: config.ListenerPortMatchModeExplicit,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw"},
+				{Name: "svc", Kind: ptr.To(gatewayv1.Kind("Service")), Port: &port},
+			},
+			ports: map[int32]struct{}{
+				9080: {},
+			},
+			expected: false,
+		},
+		{
+			name: "auto mode: non-Gateway parentRef with port does not trigger single-port injection",
+			mode: config.ListenerPortMatchModeAuto,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw"},
+				{Name: "svc", Kind: ptr.To(gatewayv1.Kind("Service")), Port: &port},
+			},
+			ports: map[int32]struct{}{
+				9080: {},
+			},
+			expected: false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, shouldInjectServerPortVars(tt.parentRefs, tt.ports))
+			translator := &Translator{ListenerPortMatchMode: tt.mode}
+			assert.Equal(t, tt.expected, translator.shouldInjectServerPortVars(tt.parentRefs, tt.ports))
 		})
 	}
 }

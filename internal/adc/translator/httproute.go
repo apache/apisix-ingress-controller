@@ -718,7 +718,7 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 
 		// Add server_port matching only when a route explicitly targets a listener
 		// or when multiple listener ports need to be disambiguated.
-		if shouldInjectServerPortVars(tctx.RouteParentRefs, listenerPorts) {
+		if t.shouldInjectServerPortVars(tctx.RouteParentRefs, listenerPorts) {
 			for _, route := range routes {
 				addServerPortVars(route, listenerPorts)
 			}
@@ -910,18 +910,4 @@ func addServerPortVars(route *adctypes.Route, ports map[int32]struct{}) {
 		{SliceVal: portList},
 	}
 	route.Vars = append(route.Vars, portVar)
-}
-
-func shouldInjectServerPortVars(parentRefs []gatewayv1.ParentReference, ports map[int32]struct{}) bool {
-	if len(ports) == 0 {
-		return false
-	}
-
-	for _, parentRef := range parentRefs {
-		if parentRef.SectionName != nil && *parentRef.SectionName != "" {
-			return true
-		}
-	}
-
-	return len(ports) > 1
 }

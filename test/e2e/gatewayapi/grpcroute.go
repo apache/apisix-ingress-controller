@@ -335,6 +335,36 @@ spec:
       port: 8080
 `
 
+		var routeForMainListenerByPort = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: grpc-route-port-main
+spec:
+  parentRefs:
+  - name: %s
+    port: 9080
+  rules:
+  - backendRefs:
+    - name: grpc-infra-backend-v1
+      port: 8080
+`
+
+		var routeForAltListenerByPort = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: grpc-route-port-alt
+spec:
+  parentRefs:
+  - name: %s
+    port: 9081
+  rules:
+  - backendRefs:
+    - name: grpc-infra-backend-v1
+      port: 8080
+`
+
 		It("routes to the configured listener ports when sectionName is set", func() {
 			gatewayName := "grpc-multi-listener"
 
@@ -369,6 +399,54 @@ spec:
 			}).WithTimeout(30 * time.Second).ProbeEvery(time.Second).ShouldNot(HaveOccurred())
 
 			By("delete route for 9080 and verify only 9081 keeps serving traffic")
+			Expect(s.DeleteResourceFromString(routeMain)).NotTo(HaveOccurred())
+
+			Eventually(func() error {
+				return s.RequestEchoBackendOnPort(scaffold.ExpectedResponse{
+					EchoRequest: &pb.EchoRequest{},
+				}, 9080)
+			}).WithTimeout(30 * time.Second).ProbeEvery(time.Second).Should(HaveOccurred())
+
+			Eventually(func() error {
+				return s.RequestEchoBackendOnPort(scaffold.ExpectedResponse{
+					EchoRequest: &pb.EchoRequest{},
+				}, 9081)
+			}).WithTimeout(30 * time.Second).ProbeEvery(time.Second).ShouldNot(HaveOccurred())
+		})
+		It("routes to the configured listener ports when parentRef.port is set", func() {
+			gatewayName := "grpc-multi-listener-by-port"
+
+			By("create Gateway with listeners on ports 9080 and 9081")
+			gateway := fmt.Sprintf(multiListenerGateway, gatewayName, s.Namespace())
+			Expect(s.CreateResourceFromString(gateway)).NotTo(HaveOccurred())
+
+			s.RetryAssertion(func() string {
+				yaml, _ := s.GetResourceYaml("Gateway", gatewayName)
+				return yaml
+			}).Should(ContainSubstring(`status: "True"`))
+
+			By("create GRPCRoute targeting port 9080 via parentRef.port")
+			routeMain := fmt.Sprintf(routeForMainListenerByPort, gatewayName)
+			s.ResourceApplied("GRPCRoute", "grpc-route-port-main", routeMain, 1)
+
+			By("create GRPCRoute targeting port 9081 via parentRef.port")
+			routeAlt := fmt.Sprintf(routeForAltListenerByPort, gatewayName)
+			s.ResourceApplied("GRPCRoute", "grpc-route-port-alt", routeAlt, 1)
+
+			By("verify both ports serve traffic before deletion")
+			Eventually(func() error {
+				return s.RequestEchoBackendOnPort(scaffold.ExpectedResponse{
+					EchoRequest: &pb.EchoRequest{},
+				}, 9080)
+			}).WithTimeout(30 * time.Second).ProbeEvery(time.Second).ShouldNot(HaveOccurred())
+
+			Eventually(func() error {
+				return s.RequestEchoBackendOnPort(scaffold.ExpectedResponse{
+					EchoRequest: &pb.EchoRequest{},
+				}, 9081)
+			}).WithTimeout(30 * time.Second).ProbeEvery(time.Second).ShouldNot(HaveOccurred())
+
+			By("delete route for port 9080 and verify only port 9081 keeps serving traffic")
 			Expect(s.DeleteResourceFromString(routeMain)).NotTo(HaveOccurred())
 
 			Eventually(func() error {

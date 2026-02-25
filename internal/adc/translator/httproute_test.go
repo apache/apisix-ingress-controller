@@ -19,27 +19,50 @@ import (
 	"context"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
+	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 )
 
-func TestTranslateHTTPRouteServerPortVars(t *testing.T) {
+func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
 	sectionName := gatewayv1.SectionName("http-main")
+	parentPort := gatewayv1.PortNumber(9080)
 	pathMatchType := gatewayv1.PathMatchPathPrefix
 	pathValue := "/"
 
+	singlePortVars := adctypes.Vars{
+		{
+			{StrVal: "server_port"},
+			{StrVal: "=="},
+			{StrVal: "9080"},
+		},
+	}
+	multiPortVars := adctypes.Vars{
+		{
+			{StrVal: "server_port"},
+			{StrVal: "in"},
+			{SliceVal: []adctypes.StringOrSlice{
+				{StrVal: "9080"},
+				{StrVal: "9081"},
+			}},
+		},
+	}
+
 	tests := []struct {
 		name       string
+		mode       config.ListenerPortMatchMode
 		parentRefs []gatewayv1.ParentReference
 		listeners  []gatewayv1.Listener
 		expected   adctypes.Vars
 	}{
 		{
-			name: "no injection for single listener without sectionName",
+			name: "auto mode: no injection for single listener without explicit target",
+			mode: config.ListenerPortMatchModeAuto,
 			parentRefs: []gatewayv1.ParentReference{
 				{Name: "gw"},
 			},
@@ -49,23 +72,30 @@ func TestTranslateHTTPRouteServerPortVars(t *testing.T) {
 			expected: nil,
 		},
 		{
-			name: "injection for single listener with explicit sectionName",
+			name: "auto mode: inject for sectionName target",
+			mode: config.ListenerPortMatchModeAuto,
 			parentRefs: []gatewayv1.ParentReference{
 				{Name: "gw", SectionName: &sectionName},
 			},
 			listeners: []gatewayv1.Listener{
 				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
 			},
-			expected: adctypes.Vars{
-				{
-					{StrVal: "server_port"},
-					{StrVal: "=="},
-					{StrVal: "9080"},
-				},
-			},
+			expected: singlePortVars,
 		},
 		{
-			name: "injection for multiple listener ports",
+			name: "auto mode: inject for port target",
+			mode: config.ListenerPortMatchModeAuto,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", Port: &parentPort},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
+			},
+			expected: singlePortVars,
+		},
+		{
+			name: "auto mode: inject for multiple listener ports",
+			mode: config.ListenerPortMatchModeAuto,
 			parentRefs: []gatewayv1.ParentReference{
 				{Name: "gw"},
 			},
@@ -73,16 +103,75 @@ func TestTranslateHTTPRouteServerPortVars(t *testing.T) {
 				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9081)},
 				{Name: "http-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
 			},
-			expected: adctypes.Vars{
-				{
-					{StrVal: "server_port"},
-					{StrVal: "in"},
-					{SliceVal: []adctypes.StringOrSlice{
-						{StrVal: "9080"},
-						{StrVal: "9081"},
-					}},
-				},
+			expected: multiPortVars,
+		},
+		{
+			name: "explicit mode: inject for sectionName target",
+			mode: config.ListenerPortMatchModeExplicit,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", SectionName: &sectionName},
 			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
+			},
+			expected: singlePortVars,
+		},
+		{
+			name: "explicit mode: inject for port target",
+			mode: config.ListenerPortMatchModeExplicit,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", Port: &parentPort},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
+			},
+			expected: singlePortVars,
+		},
+		{
+			name: "explicit mode: no injection for multiple listener ports without explicit target",
+			mode: config.ListenerPortMatchModeExplicit,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw"},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9081)},
+				{Name: "http-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
+			},
+			expected: nil,
+		},
+		{
+			name: "off mode: no injection even with sectionName target",
+			mode: config.ListenerPortMatchModeOff,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", SectionName: &sectionName},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
+			},
+			expected: nil,
+		},
+		{
+			name: "off mode: no injection for multiple listener ports",
+			mode: config.ListenerPortMatchModeOff,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw"},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9081)},
+				{Name: "http-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
+			},
+			expected: nil,
+		},
+		{
+			name: "empty mode normalizes to auto",
+			mode: "",
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", Port: &parentPort},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
+			},
+			expected: singlePortVars,
 		},
 	}
 
@@ -113,7 +202,8 @@ func TestTranslateHTTPRouteServerPortVars(t *testing.T) {
 				},
 			}
 
-			got, err := (&Translator{}).TranslateHTTPRoute(tctx, httpRoute)
+			translator := NewTranslator(logr.Discard(), tt.mode)
+			got, err := translator.TranslateHTTPRoute(tctx, httpRoute)
 			assert.NoError(t, err)
 			if assert.Len(t, got.Services, 1) && assert.Len(t, got.Services[0].Routes, 1) {
 				assert.Equal(t, tt.expected, got.Services[0].Routes[0].Vars)
