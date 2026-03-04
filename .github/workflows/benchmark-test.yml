@@ -109,5 +109,6 @@ jobs:
           PROVIDER_TYPE: ${{ matrix.provider_type }}
           TEST_LABEL: ${{ matrix.cases_subset }}
           TEST_ENV: CI
+          E2E_EXEC_ADC_TIMEOUT: "30s"
         run: |
           make benchmark-test
