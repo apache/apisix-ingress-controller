@@ -343,6 +343,9 @@ func (s *Scaffold) NewAPISIXClientForPort(port int) (*httpexpect.Expect, error) 
 		Client: &http.Client{
 			Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}},
 			Timeout:   3 * time.Second,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
 		},
 		Reporter: httpexpect.NewAssertReporter(
 			httpexpect.NewAssertReporter(GinkgoT()),

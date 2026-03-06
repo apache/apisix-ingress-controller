@@ -557,7 +557,9 @@ func (t *Translator) translateBackendsToUpstreams(
 
 		t.AttachBackendTrafficPolicyToUpstream(backend.BackendRef, tctx.BackendTrafficPolicies, upstream)
 		upstream.Nodes = upNodes
-		upstream.Scheme = appProtocolToUpstreamScheme(protocol)
+		if upstream.Scheme == "" {
+			upstream.Scheme = appProtocolToUpstreamScheme(protocol)
+		}
 		var (
 			kind string
 			port int32
