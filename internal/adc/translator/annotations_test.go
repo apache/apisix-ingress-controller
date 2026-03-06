@@ -21,8 +21,8 @@ import (
 
 	"github.com/incubator4/go-resty-expr/expr"
 	"github.com/stretchr/testify/assert"
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	"k8s.io/utils/ptr"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations"
