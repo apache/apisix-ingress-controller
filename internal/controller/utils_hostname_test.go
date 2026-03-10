@@ -211,10 +211,11 @@ func TestFilterHostnamesNoMatchedListeners(t *testing.T) {
 	assert.ErrorIs(t, err, ErrNoMatchingListenerHostname)
 }
 
-func TestAppendUniqueListeners(t *testing.T) {
+func TestAppendListeners(t *testing.T) {
 	listenerA := gatewayv1.Listener{Name: "a", Port: 80}
 	listenerB := gatewayv1.Listener{Name: "b", Port: 81}
-	listenerA2 := gatewayv1.Listener{Name: "a", Port: 82} // Duplicate name, different port
+	listenerA2 := gatewayv1.Listener{Name: "a", Port: 82}
+	listenerA3 := gatewayv1.Listener{Name: "a", Port: 80}
 
 	tests := []struct {
 		name     string
@@ -229,22 +230,22 @@ func TestAppendUniqueListeners(t *testing.T) {
 			expected: []gatewayv1.Listener{listenerA, listenerB},
 		},
 		{
-			name:     "duplicate names skipped",
+			name:     "preserves same listener names from different gateways",
 			target:   []gatewayv1.Listener{listenerA},
 			source:   []gatewayv1.Listener{listenerA, listenerB},
-			expected: []gatewayv1.Listener{listenerA, listenerB},
+			expected: []gatewayv1.Listener{listenerA, listenerA, listenerB},
 		},
 		{
-			name:     "mixed duplicates and new",
+			name:     "preserves all listeners when names collide",
 			target:   []gatewayv1.Listener{listenerA},
-			source:   []gatewayv1.Listener{listenerB, listenerA, listenerA2},
-			expected: []gatewayv1.Listener{listenerA, listenerB},
+			source:   []gatewayv1.Listener{listenerB, listenerA2, listenerA3},
+			expected: []gatewayv1.Listener{listenerA, listenerB, listenerA2, listenerA3},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.expected, appendUniqueListeners(tt.target, tt.source...))
+			assert.Equal(t, tt.expected, appendListeners(tt.target, tt.source...))
 		})
 	}
 }

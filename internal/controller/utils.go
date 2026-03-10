@@ -1179,21 +1179,11 @@ func isListenerHostnameEffective(listener gatewayv1.Listener) bool {
 		listener.Protocol == gatewayv1.TLSProtocolType
 }
 
-// appendUniqueListeners appends listeners to the target slice, skipping any
-// listener whose Name already exists in the target. Listener names are unique
-// within a Gateway per the Gateway API specification.
-func appendUniqueListeners(target []gatewayv1.Listener, source ...gatewayv1.Listener) []gatewayv1.Listener {
-	seen := make(map[gatewayv1.SectionName]struct{}, len(target))
-	for _, l := range target {
-		seen[l.Name] = struct{}{}
-	}
-	for _, l := range source {
-		if _, exists := seen[l.Name]; !exists {
-			seen[l.Name] = struct{}{}
-			target = append(target, l)
-		}
-	}
-	return target
+// appendListeners appends listeners without de-duplication.
+// Route translation aggregates listeners across multiple Gateways, and listener
+// names are only unique within a single Gateway.
+func appendListeners(target []gatewayv1.Listener, source ...gatewayv1.Listener) []gatewayv1.Listener {
+	return append(target, source...)
 }
 
 func isRouteAccepted(gateways []RouteParentRefContext) bool {

@@ -106,6 +106,19 @@ func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
 			expected: multiPortVars,
 		},
 		{
+			name: "auto mode: inject for multiple listener ports when listener names collide across gateways",
+			mode: config.ListenerPortMatchModeAuto,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw-a"},
+				{Name: "gw-b"},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9081)},
+				{Name: "http", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
+			},
+			expected: multiPortVars,
+		},
+		{
 			name: "explicit mode: inject for sectionName target",
 			mode: config.ListenerPortMatchModeExplicit,
 			parentRefs: []gatewayv1.ParentReference{
