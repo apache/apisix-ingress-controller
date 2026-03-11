@@ -314,7 +314,8 @@ func (s *Scaffold) NewAPISIXClientWithTLSProxy(host string) *httpexpect.Expect {
 }
 
 // NewAPISIXClientForPort creates an HTTP client for a specific APISIX port.
-// Uses existing tunnels if available, otherwise creates a new one.
+// For built-in ports (80, 443, 9100), it reuses the existing helpers/tunnels.
+// For any other port, it creates a new tunnel for that call.
 func (s *Scaffold) NewAPISIXClientForPort(port int) (*httpexpect.Expect, error) {
 	// Check if we can reuse existing tunnels
 	switch port {
