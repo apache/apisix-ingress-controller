@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gruntwork-io/terratest/modules/k8s"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -65,8 +66,24 @@ func (s *Scaffold) DeployGRPCBackend() {
 }
 
 func (s *Scaffold) RequestEchoBackend(exp ExpectedResponse) error {
-	endpoint := s.apisixTunnels.HTTP.Endpoint()
+	return s.requestEchoBackendWithEndpoint(exp, s.apisixTunnels.HTTP.Endpoint())
+}
 
+func (s *Scaffold) RequestEchoBackendOnPort(exp ExpectedResponse, port int) error {
+	if port == 80 {
+		return s.RequestEchoBackend(exp)
+	}
+
+	tunnel := k8s.NewTunnel(s.kubectlOptions, k8s.ResourceTypeService, s.dataplaneService.Name, 0, port)
+	if err := tunnel.ForwardPortE(s.t); err != nil {
+		return err
+	}
+	defer tunnel.Close()
+
+	return s.requestEchoBackendWithEndpoint(exp, tunnel.Endpoint())
+}
+
+func (s *Scaffold) requestEchoBackendWithEndpoint(exp ExpectedResponse, endpoint string) error {
 	endpoint = strings.Replace(endpoint, "localhost", "127.0.0.1", 1)
 
 	dialOpts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}

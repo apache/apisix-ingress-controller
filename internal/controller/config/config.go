@@ -56,7 +56,8 @@ func NewDefaultConfig() *Config {
 			SyncPeriod:    types.TimeDuration{Duration: 1 * time.Hour},
 			InitSyncDelay: types.TimeDuration{Duration: 20 * time.Minute},
 		},
-		Webhook: NewWebhookConfig(),
+		Webhook:               NewWebhookConfig(),
+		ListenerPortMatchMode: ListenerPortMatchModeAuto,
 	}
 }
 
@@ -122,6 +123,15 @@ func (c *Config) Validate() error {
 	if c.ControllerName == "" {
 		return fmt.Errorf("controller_name is required")
 	}
+
+	if c.ListenerPortMatchMode != "" {
+		switch c.ListenerPortMatchMode {
+		case ListenerPortMatchModeAuto, ListenerPortMatchModeExplicit, ListenerPortMatchModeOff:
+		default:
+			return fmt.Errorf("invalid listener_port_match_mode: %q (must be auto, explicit, or off)", c.ListenerPortMatchMode)
+		}
+	}
+
 	if err := validateProvider(c.ProviderConfig); err != nil {
 		return err
 	}

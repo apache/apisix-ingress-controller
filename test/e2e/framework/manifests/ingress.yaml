@@ -291,7 +291,7 @@ data:
       retry_period: 2s                      # retry_period is the time in seconds that the acting controller
                                             # will wait between tries of actions with the controller.
       disable: false                        # Whether to disable leader election.
-    exec_adc_timeout: 5s
+    exec_adc_timeout: {{ env "E2E_EXEC_ADC_TIMEOUT" | default "5s" }}
     provider:
       type: {{ .ProviderType | default "apisix" }}
       sync_period: {{ .ProviderSyncPeriod | default "0s" }}

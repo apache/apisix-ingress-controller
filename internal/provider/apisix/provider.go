@@ -86,7 +86,7 @@ func New(log logr.Logger, updater status.Updater, readier readiness.ReadinessMan
 	return &apisixProvider{
 		client:     cli,
 		Options:    o,
-		translator: translator.NewTranslator(log),
+		translator: translator.NewTranslator(log, o.ListenerPortMatchMode),
 		updater:    updater,
 		readier:    readier,
 		syncCh:     make(chan struct{}, 1),

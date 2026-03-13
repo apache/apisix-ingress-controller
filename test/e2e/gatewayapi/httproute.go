@@ -22,6 +22,8 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net/http"
+	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -2524,6 +2526,503 @@ spec:
 			_, msg, err := conn.ReadMessage()
 			Expect(err).ShouldNot(HaveOccurred(), "reading echo message")
 			Expect(string(msg)).To(Equal(testMessage), "message content verification")
+		})
+	})
+
+	Context("HTTPRoute with sectionName targeting different listeners", func() {
+		// Uses port 9080 (HTTP) and port 9081 (HTTP)
+		// Both ports are already exposed by the APISIX service
+		// Uses in-cluster curl to test server_port vars correctly
+
+		var multiListenerGateway = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: %s
+spec:
+  gatewayClassName: %s
+  listeners:
+    - name: http-main
+      protocol: HTTP
+      port: 9080
+    - name: http-alt
+      protocol: HTTP
+      port: 9081
+  infrastructure:
+    parametersRef:
+      group: apisix.apache.org
+      kind: GatewayProxy
+      name: apisix-proxy-config
+`
+
+		var routeForMainListener = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: route-main
+spec:
+  parentRefs:
+  - name: %s
+    sectionName: http-main
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /get
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
+
+		var routeForAltListener = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: route-alt
+spec:
+  parentRefs:
+  - name: %s
+    sectionName: http-alt
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /get
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
+
+		var routeNoSectionName = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: route-no-section
+spec:
+  parentRefs:
+  - name: %s
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /get
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
+
+		var routeInvalidSectionName = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: route-invalid-section
+spec:
+  parentRefs:
+  - name: %s
+    sectionName: non-existent-listener
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /get
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
+
+		var routeMultiParentRef = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: route-multi-parent
+spec:
+  parentRefs:
+  - name: %s
+    sectionName: http-main
+  - name: %s
+    sectionName: http-alt
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /get
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
+
+		var routeForMainListenerByPort = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: route-port-main
+spec:
+  parentRefs:
+  - name: %s
+    port: 9080
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /get
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
+
+		var routeForAltListenerByPort = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: route-port-alt
+spec:
+  parentRefs:
+  - name: %s
+    port: 9081
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /get
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
+
+		var multiListenerGatewayWithHostnames = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: %s
+spec:
+  gatewayClassName: %s
+  listeners:
+    - name: http-main
+      protocol: HTTP
+      port: 9080
+      hostname: api-main.example.com
+    - name: http-alt
+      protocol: HTTP
+      port: 9081
+      hostname: api-alt.example.com
+  infrastructure:
+    parametersRef:
+      group: apisix.apache.org
+      kind: GatewayProxy
+      name: apisix-proxy-config
+`
+
+		var routeNoSectionNameWithHostnames = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: route-no-section-hostnames
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - api-main.example.com
+  - api-alt.example.com
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /get
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
+
+		// Get the APISIX service name from the deployer
+		getApisixServiceName := func() string {
+			return framework.ProviderType
+		}
+
+		statusCodePattern := regexp.MustCompile(`\b([1-5][0-9]{2})\b`)
+		parseHTTPStatusCode := func(output string) (int, error) {
+			matches := statusCodePattern.FindAllString(strings.TrimSpace(output), -1)
+			if len(matches) == 0 {
+				return 0, fmt.Errorf("failed to parse HTTP status code from output: %q", output)
+			}
+
+			code, err := strconv.Atoi(matches[len(matches)-1])
+			if err != nil {
+				return 0, fmt.Errorf("failed converting status code from output %q: %w", output, err)
+			}
+			return code, nil
+		}
+
+		// Run curl with explicit Host header from within the cluster.
+		curlInClusterWithHost := func(port int, path, host string) (int, string, error) {
+			url := fmt.Sprintf("http://%s.%s.svc.cluster.local:%d%s",
+				getApisixServiceName(), s.Namespace(), port, path)
+
+			args := []string{"-s", "-o", "/dev/null", "-w", "%{http_code}"}
+			if host != "" {
+				args = append(args, "-H", fmt.Sprintf("Host: %s", host))
+			}
+			args = append(args, url)
+
+			output, err := s.RunCurlFromK8s(args...)
+			if err != nil {
+				return 0, "", err
+			}
+			statusCode, err := parseHTTPStatusCode(output)
+			if err != nil {
+				return 0, output, err
+			}
+			return statusCode, output, nil
+		}
+
+		// Run curl from within the cluster to the specified port.
+		curlInCluster := func(port int, path string) (int, string, error) {
+			return curlInClusterWithHost(port, path, "")
+		}
+
+		BeforeEach(func() {
+			By("create GatewayProxy")
+			Expect(s.CreateResourceFromString(s.GetGatewayProxySpec())).NotTo(HaveOccurred())
+
+			By("create GatewayClass")
+			Expect(s.CreateResourceFromString(s.GetGatewayClassYaml())).NotTo(HaveOccurred())
+
+			s.RetryAssertion(func() string {
+				yaml, _ := s.GetResourceYaml("GatewayClass", s.Namespace())
+				return yaml
+			}).Should(ContainSubstring(`status: "True"`))
+		})
+
+		It("routes traffic to correct backend based on sectionName (using server_port vars)", func() {
+			gatewayName := s.Namespace()
+
+			By("create Gateway with two listeners on different ports")
+			gateway := fmt.Sprintf(multiListenerGateway, gatewayName, s.Namespace())
+			Expect(s.CreateResourceFromString(gateway)).NotTo(HaveOccurred())
+
+			s.RetryAssertion(func() string {
+				yaml, _ := s.GetResourceYaml("Gateway", gatewayName)
+				return yaml
+			}).Should(ContainSubstring(`status: "True"`))
+
+			By("create HTTPRoute targeting http-main listener (port 9080)")
+			routeMain := fmt.Sprintf(routeForMainListener, gatewayName)
+			s.ResourceApplied("HTTPRoute", "route-main", routeMain, 1)
+
+			By("create HTTPRoute targeting http-alt listener (port 9081)")
+			routeAlt := fmt.Sprintf(routeForAltListener, gatewayName)
+			s.ResourceApplied("HTTPRoute", "route-alt", routeAlt, 1)
+
+			By("wait for routes to be synced")
+			time.Sleep(5 * time.Second)
+
+			By("verify route-main is accessible on port 9080 (via in-cluster curl)")
+			Eventually(func() (int, error) {
+				statusCode, _, err := curlInCluster(9080, "/get")
+				return statusCode, err
+			}).WithTimeout(30*time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK),
+				"route should be accessible on port 9080")
+
+			By("verify route-alt is accessible on port 9081 (via in-cluster curl)")
+			Eventually(func() (int, error) {
+				statusCode, _, err := curlInCluster(9081, "/get")
+				return statusCode, err
+			}).WithTimeout(30*time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK),
+				"route should be accessible on port 9081")
+
+			By("delete route-main and verify route-alt still works")
+			err := s.DeleteResourceFromString(routeMain)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Port 9080 should now return 404 (route deleted)
+			Eventually(func() (int, error) {
+				statusCode, _, err := curlInCluster(9080, "/get")
+				return statusCode, err
+			}).WithTimeout(30*time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound),
+				"route should return 404 on port 9080 after deletion")
+
+			// Port 9081 should still return 200
+			Eventually(func() (int, error) {
+				statusCode, _, err := curlInCluster(9081, "/get")
+				return statusCode, err
+			}).WithTimeout(30*time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK),
+				"route should still return 200 on port 9081")
+		})
+
+		It("should match all listeners when sectionName is omitted", func() {
+			gatewayName := s.Namespace()
+
+			By("create Gateway with two listeners")
+			gateway := fmt.Sprintf(multiListenerGateway, gatewayName, s.Namespace())
+			Expect(s.CreateResourceFromString(gateway)).NotTo(HaveOccurred())
+
+			s.RetryAssertion(func() string {
+				yaml, _ := s.GetResourceYaml("Gateway", gatewayName)
+				return yaml
+			}).Should(ContainSubstring(`status: "True"`))
+
+			By("create HTTPRoute WITHOUT sectionName")
+			route := fmt.Sprintf(routeNoSectionName, gatewayName)
+			s.ResourceApplied("HTTPRoute", "route-no-section", route, 1)
+
+			By("wait for route sync")
+			time.Sleep(5 * time.Second)
+
+			By("verify route is accessible on port 9080")
+			Eventually(func() (int, error) {
+				statusCode, _, err := curlInCluster(9080, "/get")
+				return statusCode, err
+			}).WithTimeout(30*time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK),
+				"route should be accessible on port 9080")
+
+			By("verify route is accessible on port 9081")
+			Eventually(func() (int, error) {
+				statusCode, _, err := curlInCluster(9081, "/get")
+				return statusCode, err
+			}).WithTimeout(30*time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK),
+				"route should be accessible on port 9081")
+		})
+
+		It("should keep all matched hostnames when sectionName is omitted", func() {
+			gatewayName := s.Namespace()
+
+			By("create Gateway with two listeners and distinct hostnames")
+			gateway := fmt.Sprintf(multiListenerGatewayWithHostnames, gatewayName, s.Namespace())
+			Expect(s.CreateResourceFromString(gateway)).NotTo(HaveOccurred())
+
+			s.RetryAssertion(func() string {
+				yaml, _ := s.GetResourceYaml("Gateway", gatewayName)
+				return yaml
+			}).Should(ContainSubstring(`status: "True"`))
+
+			By("create HTTPRoute WITHOUT sectionName and with both hostnames")
+			route := fmt.Sprintf(routeNoSectionNameWithHostnames, gatewayName)
+			s.ResourceApplied("HTTPRoute", "route-no-section-hostnames", route, 1)
+
+			By("verify first hostname is routable")
+			Eventually(func() (int, error) {
+				statusCode, _, err := curlInClusterWithHost(9080, "/get", "api-main.example.com")
+				return statusCode, err
+			}).WithTimeout(30*time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK),
+				"api-main.example.com should be routable")
+
+			By("verify second hostname is routable")
+			Eventually(func() (int, error) {
+				statusCode, _, err := curlInClusterWithHost(9081, "/get", "api-alt.example.com")
+				return statusCode, err
+			}).WithTimeout(30*time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK),
+				"api-alt.example.com should be routable")
+		})
+
+		It("should not route traffic when sectionName references non-existent listener", func() {
+			gatewayName := s.Namespace()
+
+			By("create Gateway with two listeners")
+			gateway := fmt.Sprintf(multiListenerGateway, gatewayName, s.Namespace())
+			Expect(s.CreateResourceFromString(gateway)).NotTo(HaveOccurred())
+
+			s.RetryAssertion(func() string {
+				yaml, _ := s.GetResourceYaml("Gateway", gatewayName)
+				return yaml
+			}).Should(ContainSubstring(`status: "True"`))
+
+			By("create HTTPRoute with invalid sectionName")
+			route := fmt.Sprintf(routeInvalidSectionName, gatewayName)
+			Expect(s.CreateResourceFromString(route)).NotTo(HaveOccurred())
+
+			By("wait for reconciliation")
+			time.Sleep(5 * time.Second)
+
+			By("verify route is NOT accessible on any port (no matching listener)")
+			Eventually(func() (int, error) {
+				statusCode, _, err := curlInCluster(9080, "/get")
+				return statusCode, err
+			}).WithTimeout(30*time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound),
+				"route should not be accessible when sectionName is invalid")
+		})
+
+		It("routes traffic to correct backend based on parentRef.port (using server_port vars)", func() {
+			gatewayName := s.Namespace()
+
+			By("create Gateway with two listeners on different ports")
+			gateway := fmt.Sprintf(multiListenerGateway, gatewayName, s.Namespace())
+			Expect(s.CreateResourceFromString(gateway)).NotTo(HaveOccurred())
+
+			s.RetryAssertion(func() string {
+				yaml, _ := s.GetResourceYaml("Gateway", gatewayName)
+				return yaml
+			}).Should(ContainSubstring(`status: "True"`))
+
+			By("create HTTPRoute targeting port 9080 via parentRef.port")
+			routeMain := fmt.Sprintf(routeForMainListenerByPort, gatewayName)
+			s.ResourceApplied("HTTPRoute", "route-port-main", routeMain, 1)
+
+			By("create HTTPRoute targeting port 9081 via parentRef.port")
+			routeAlt := fmt.Sprintf(routeForAltListenerByPort, gatewayName)
+			s.ResourceApplied("HTTPRoute", "route-port-alt", routeAlt, 1)
+
+			By("verify route-port-main is accessible on port 9080")
+			Eventually(func() (int, error) {
+				statusCode, _, err := curlInCluster(9080, "/get")
+				return statusCode, err
+			}).WithTimeout(30*time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK),
+				"route should be accessible on port 9080")
+
+			By("verify route-port-alt is accessible on port 9081")
+			Eventually(func() (int, error) {
+				statusCode, _, err := curlInCluster(9081, "/get")
+				return statusCode, err
+			}).WithTimeout(30*time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK),
+				"route should be accessible on port 9081")
+
+			By("delete route-port-main and verify route-port-alt still works")
+			err := s.DeleteResourceFromString(routeMain)
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(func() (int, error) {
+				statusCode, _, err := curlInCluster(9080, "/get")
+				return statusCode, err
+			}).WithTimeout(30*time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound),
+				"route should return 404 on port 9080 after deletion")
+
+			Eventually(func() (int, error) {
+				statusCode, _, err := curlInCluster(9081, "/get")
+				return statusCode, err
+			}).WithTimeout(30*time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK),
+				"route should still return 200 on port 9081")
+		})
+
+		It("should route to multiple listeners via multiple parentRefs with sectionName", func() {
+			gatewayName := s.Namespace()
+
+			By("create Gateway with two listeners")
+			gateway := fmt.Sprintf(multiListenerGateway, gatewayName, s.Namespace())
+			Expect(s.CreateResourceFromString(gateway)).NotTo(HaveOccurred())
+
+			s.RetryAssertion(func() string {
+				yaml, _ := s.GetResourceYaml("Gateway", gatewayName)
+				return yaml
+			}).Should(ContainSubstring(`status: "True"`))
+
+			By("create HTTPRoute with multiple parentRefs targeting different listeners")
+			route := fmt.Sprintf(routeMultiParentRef, gatewayName, gatewayName)
+			s.ResourceApplied("HTTPRoute", "route-multi-parent", route, 1)
+
+			By("wait for route sync")
+			time.Sleep(5 * time.Second)
+
+			By("verify route is accessible on port 9080")
+			Eventually(func() (int, error) {
+				statusCode, _, err := curlInCluster(9080, "/get")
+				return statusCode, err
+			}).WithTimeout(30*time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK),
+				"route should be accessible on port 9080")
+
+			By("verify route is accessible on port 9081")
+			Eventually(func() (int, error) {
+				statusCode, _, err := curlInCluster(9081, "/get")
+				return statusCode, err
+			}).WithTimeout(30*time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK),
+				"route should be accessible on port 9081")
 		})
 	})
 })

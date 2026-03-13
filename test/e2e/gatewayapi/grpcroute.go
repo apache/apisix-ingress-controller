@@ -19,6 +19,7 @@ package gatewayapi
 
 import (
 	"fmt"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -280,6 +281,162 @@ spec:
 		/*
 			It("GRPCRoute RequestMirror", func() {})
 		*/
+	})
+
+	Context("GRPCRoute with sectionName targeting different listeners", func() {
+		var multiListenerGateway = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: %s
+spec:
+  gatewayClassName: %s
+  listeners:
+    - name: http-main
+      protocol: HTTP
+      port: 9080
+    - name: http-alt
+      protocol: HTTP
+      port: 9081
+  infrastructure:
+    parametersRef:
+      group: apisix.apache.org
+      kind: GatewayProxy
+      name: apisix-proxy-config
+`
+
+		var routeForMainListener = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: grpc-route-main
+spec:
+  parentRefs:
+  - name: %s
+    sectionName: http-main
+  rules:
+  - backendRefs:
+    - name: grpc-infra-backend-v1
+      port: 8080
+`
+
+		var routeForAltListener = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: grpc-route-alt
+spec:
+  parentRefs:
+  - name: %s
+    sectionName: http-alt
+  rules:
+  - backendRefs:
+    - name: grpc-infra-backend-v1
+      port: 8080
+`
+
+		var routeForMainListenerByPort = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: grpc-route-port-main
+spec:
+  parentRefs:
+  - name: %s
+    port: 9080
+  rules:
+  - backendRefs:
+    - name: grpc-infra-backend-v1
+      port: 8080
+`
+
+		var routeForAltListenerByPort = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: GRPCRoute
+metadata:
+  name: grpc-route-port-alt
+spec:
+  parentRefs:
+  - name: %s
+    port: 9081
+  rules:
+  - backendRefs:
+    - name: grpc-infra-backend-v1
+      port: 8080
+`
+
+		assertRouteReachabilityOnPort := func(port int, shouldSucceed bool) {
+			check := Eventually(func() error {
+				return s.RequestEchoBackendOnPort(scaffold.ExpectedResponse{
+					EchoRequest: &pb.EchoRequest{},
+				}, port)
+			}).WithTimeout(30 * time.Second).ProbeEvery(time.Second)
+			if shouldSucceed {
+				check.ShouldNot(HaveOccurred())
+				return
+			}
+			check.Should(HaveOccurred())
+		}
+
+		runMultiListenerRouteTest := func(
+			gatewayName string,
+			routeMainTemplate, routeMainName, routeMainBy string,
+			routeAltTemplate, routeAltName, routeAltBy string,
+			deleteMainRouteBy string,
+		) {
+			By("create Gateway with listeners on ports 9080 and 9081")
+			gateway := fmt.Sprintf(multiListenerGateway, gatewayName, s.Namespace())
+			Expect(s.CreateResourceFromString(gateway)).NotTo(HaveOccurred())
+
+			s.RetryAssertion(func() string {
+				yaml, _ := s.GetResourceYaml("Gateway", gatewayName)
+				return yaml
+			}).Should(ContainSubstring(`status: "True"`))
+
+			By(routeMainBy)
+			routeMain := fmt.Sprintf(routeMainTemplate, gatewayName)
+			s.ResourceApplied("GRPCRoute", routeMainName, routeMain, 1)
+
+			By(routeAltBy)
+			routeAlt := fmt.Sprintf(routeAltTemplate, gatewayName)
+			s.ResourceApplied("GRPCRoute", routeAltName, routeAlt, 1)
+
+			By("verify both ports serve traffic before deletion")
+			assertRouteReachabilityOnPort(9080, true)
+			assertRouteReachabilityOnPort(9081, true)
+
+			By(deleteMainRouteBy)
+			Expect(s.DeleteResourceFromString(routeMain)).NotTo(HaveOccurred())
+
+			assertRouteReachabilityOnPort(9080, false)
+			assertRouteReachabilityOnPort(9081, true)
+		}
+
+		It("routes to the configured listener ports when sectionName is set", func() {
+			runMultiListenerRouteTest(
+				"grpc-multi-listener",
+				routeForMainListener,
+				"grpc-route-main",
+				"create GRPCRoute targeting listener http-main",
+				routeForAltListener,
+				"grpc-route-alt",
+				"create GRPCRoute targeting listener http-alt",
+				"delete route for 9080 and verify only 9081 keeps serving traffic",
+			)
+		})
+
+		It("routes to the configured listener ports when parentRef.port is set", func() {
+			runMultiListenerRouteTest(
+				"grpc-multi-listener-by-port",
+				routeForMainListenerByPort,
+				"grpc-route-port-main",
+				"create GRPCRoute targeting port 9080 via parentRef.port",
+				routeForAltListenerByPort,
+				"grpc-route-port-alt",
+				"create GRPCRoute targeting port 9081 via parentRef.port",
+				"delete route for port 9080 and verify only port 9081 keeps serving traffic",
+			)
+		})
 	})
 
 	// TODO: add BackendTrafficPolicy test
