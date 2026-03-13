@@ -122,20 +122,33 @@ type extractor struct {
 	annotations map[string]string
 }
 
-func (e *extractor) GetStringAnnotation(name string) string {
-	return e.annotations[name]
+func (ex *extractor) GetStringAnnotation(key string) string {
+	return strings.TrimSpace(ex.annotations[key])
 }
 
-func (e *extractor) GetStringsAnnotation(name string) []string {
-	value := e.GetStringAnnotation(name)
-	if value == "" {
+func (ex *extractor) GetStringsAnnotation(key string) []string {
+	raw := ex.GetStringAnnotation(key)
+	if raw == "" {
 		return nil
 	}
-	return strings.Split(value, ",")
+	items := strings.Split(raw, ",")
+	result := make([]string, 0, len(items))
+	for _, item := range items {
+		trimmedItem := strings.TrimSpace(item)
+		if trimmedItem == "" {
+			continue
+		}
+		result = append(result, trimmedItem)
+	}
+	if len(result) == 0 {
+		return nil
+	}
+	return result
 }
 
-func (e *extractor) GetBoolAnnotation(name string) bool {
-	return e.annotations[name] == "true"
+func (ex *extractor) GetBoolAnnotation(key string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(ex.annotations[key]))
+	return normalized == "true"
 }
 
 // NewExtractor creates an annotation extractor.
