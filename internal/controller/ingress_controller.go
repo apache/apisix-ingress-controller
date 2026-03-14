@@ -20,6 +20,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"net"
 	"reflect"
 
 	"github.com/go-logr/logr"
@@ -694,9 +695,13 @@ func (r *IngressReconciler) updateStatus(ctx context.Context, tctx *provider.Tra
 			if addr == "" {
 				continue
 			}
-			loadBalancerStatus.Ingress = append(loadBalancerStatus.Ingress, networkingv1.IngressLoadBalancerIngress{
-				IP: addr,
-			})
+			ingress := networkingv1.IngressLoadBalancerIngress{}
+			if net.ParseIP(addr) != nil {
+				ingress.IP = addr
+			} else {
+				ingress.Hostname = addr
+			}
+			loadBalancerStatus.Ingress = append(loadBalancerStatus.Ingress, ingress)
 		}
 	} else {
 		// 2. if the IngressStatusAddress is not configured, try to use the PublishService
@@ -729,6 +734,26 @@ func (r *IngressReconciler) updateStatus(ctx context.Context, tctx *provider.Tra
 						loadBalancerStatus.Ingress = append(loadBalancerStatus.Ingress, networkingv1.IngressLoadBalancerIngress{
 							Hostname: ip.Hostname,
 						})
+					}
+				}
+			} else if svc.Spec.Type == corev1.ServiceTypeClusterIP {
+				// for ClusterIP services, find Ingresses that reference this service
+				// and collect hostnames from their load balancer status
+				// this is when we run the apisix in ClusterIP mode and enable Ingress
+				// when deploying in Cloud environments.
+				ingressList := &networkingv1.IngressList{}
+				if err := r.List(ctx, ingressList, client.MatchingFields{
+					indexer.ServiceIndexRef: indexer.GenIndexKey(namespace, name),
+				}); err != nil {
+					return fmt.Errorf("failed to list ingresses for ClusterIP service %s/%s: %w", namespace, name, err)
+				}
+				for _, ing := range ingressList.Items {
+					for _, lb := range ing.Status.LoadBalancer.Ingress {
+						if lb.Hostname != "" {
+							loadBalancerStatus.Ingress = append(loadBalancerStatus.Ingress, networkingv1.IngressLoadBalancerIngress{
+								Hostname: lb.Hostname,
+							})
+						}
 					}
 				}
 			}

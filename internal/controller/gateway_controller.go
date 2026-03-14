@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -183,8 +184,13 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				if addr == "" {
 					continue
 				}
+				addrType := gatewayv1.IPAddressType
+				if net.ParseIP(addr) == nil {
+					addrType = gatewayv1.HostnameAddressType
+				}
 				addrs = append(addrs,
 					gatewayv1.GatewayStatusAddress{
+						Type:  &addrType,
 						Value: addr,
 					},
 				)

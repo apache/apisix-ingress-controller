@@ -30,6 +30,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
+	networkingv1 "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 
@@ -1292,6 +1294,260 @@ spec:
 					Expect().Raw().StatusCode
 			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).
 				Should(Equal(http.StatusOK))
+		})
+	})
+
+	Context("Ingress Status Address", func() {
+		var gatewayProxyWithStatusAddressYaml = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  name: apisix-proxy-config
+  namespace: %s
+spec:
+  statusAddress:
+  - %s
+  provider:
+    type: ControlPlane
+    controlPlane:
+      endpoints:
+      - %s
+      auth:
+        type: AdminKey
+        adminKey:
+          value: "%s"
+`
+		var gatewayProxyWithPublishServiceYaml = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  name: apisix-proxy-config
+  namespace: %s
+spec:
+  publishService: %s/%s
+  provider:
+    type: ControlPlane
+    controlPlane:
+      endpoints:
+      - %s
+      auth:
+        type: AdminKey
+        adminKey:
+          value: "%s"
+`
+		var ingressClassYaml = `
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: %s
+spec:
+  controller: "%s"
+  parameters:
+    apiGroup: "apisix.apache.org"
+    kind: "GatewayProxy"
+    name: "apisix-proxy-config"
+    namespace: "%s"
+    scope: "Namespace"
+`
+		var ingressYaml = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: %s
+spec:
+  ingressClassName: %s
+  rules:
+  - host: status.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: %s
+            port:
+              number: 80
+`
+		getIngressLBStatus := func(ingressName string) ([]networkingv1.IngressLoadBalancerIngress, error) {
+			ing := &networkingv1.Ingress{}
+			if err := s.K8sClient.Get(context.Background(), types.NamespacedName{
+				Name:      ingressName,
+				Namespace: s.Namespace(),
+			}, ing); err != nil {
+				return nil, err
+			}
+			return ing.Status.LoadBalancer.Ingress, nil
+		}
+
+		It("sets IP field when statusAddress is an IP", func() {
+			ipAddr := "192.168.1.200"
+			ingressClassName := s.Namespace()
+
+			By("create GatewayProxy with IP statusAddress")
+			gatewayProxy := fmt.Sprintf(gatewayProxyWithStatusAddressYaml,
+				s.Namespace(), ipAddr, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			Expect(s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			By("create IngressClass")
+			Expect(s.CreateResourceFromStringWithNamespace(
+				fmt.Sprintf(ingressClassYaml, ingressClassName, s.GetControllerName(), s.Namespace()), ""),
+			).NotTo(HaveOccurred(), "creating IngressClass")
+
+			By("create Ingress")
+			ingressName := s.Namespace() + "-ip"
+			Expect(s.CreateResourceFromStringWithNamespace(
+				fmt.Sprintf(ingressYaml, ingressName, ingressClassName, "httpbin-service-e2e-test"), s.Namespace()),
+			).NotTo(HaveOccurred(), "creating Ingress")
+
+			By("check Ingress status has IP set and Hostname empty")
+			s.RetryAssertion(func() error {
+				lbs, err := getIngressLBStatus(ingressName)
+				if err != nil {
+					return err
+				}
+				if len(lbs) == 0 {
+					return fmt.Errorf("expected at least 1 load balancer ingress, got 0")
+				}
+				if lbs[0].IP != ipAddr {
+					return fmt.Errorf("expected IP %s, got %s", ipAddr, lbs[0].IP)
+				}
+				if lbs[0].Hostname != "" {
+					return fmt.Errorf("expected Hostname to be empty, got %s", lbs[0].Hostname)
+				}
+				return nil
+			}).ShouldNot(HaveOccurred(), "check Ingress IP load balancer status")
+		})
+
+		It("sets Hostname field when statusAddress is a hostname", func() {
+			hostname := "myingress.example.com"
+			ingressClassName := s.Namespace()
+
+			By("create GatewayProxy with hostname statusAddress")
+			gatewayProxy := fmt.Sprintf(gatewayProxyWithStatusAddressYaml,
+				s.Namespace(), hostname, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			Expect(s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			By("create IngressClass")
+			Expect(s.CreateResourceFromStringWithNamespace(
+				fmt.Sprintf(ingressClassYaml, ingressClassName, s.GetControllerName(), s.Namespace()), ""),
+			).NotTo(HaveOccurred(), "creating IngressClass")
+
+			By("create Ingress")
+			ingressName := s.Namespace() + "-host"
+			Expect(s.CreateResourceFromStringWithNamespace(
+				fmt.Sprintf(ingressYaml, ingressName, ingressClassName, "httpbin-service-e2e-test"), s.Namespace()),
+			).NotTo(HaveOccurred(), "creating Ingress")
+
+			By("check Ingress status has Hostname set and IP empty")
+			s.RetryAssertion(func() error {
+				lbs, err := getIngressLBStatus(ingressName)
+				if err != nil {
+					return err
+				}
+				if len(lbs) == 0 {
+					return fmt.Errorf("expected at least 1 load balancer ingress, got 0")
+				}
+				if lbs[0].Hostname != hostname {
+					return fmt.Errorf("expected Hostname %s, got %s", hostname, lbs[0].Hostname)
+				}
+				if lbs[0].IP != "" {
+					return fmt.Errorf("expected IP to be empty, got %s", lbs[0].IP)
+				}
+				return nil
+			}).ShouldNot(HaveOccurred(), "check Ingress Hostname load balancer status")
+		})
+
+		It("propagates hostname from referencing Ingress when publishService is a ClusterIP", func() {
+			clusterIPSvcName := "apisix-clusterip-svc"
+			expectedHostname := "clusterip.example.com"
+			ingressClassName := s.Namespace()
+
+			By("create ClusterIP service")
+			clusterIPSvc := fmt.Sprintf(`
+apiVersion: v1
+kind: Service
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  type: ClusterIP
+  selector:
+    app: httpbin
+  ports:
+  - port: 80
+    targetPort: 80
+`, clusterIPSvcName, s.Namespace())
+			Expect(s.CreateResourceFromStringWithNamespace(clusterIPSvc, s.Namespace())).NotTo(HaveOccurred(), "creating ClusterIP service")
+
+			By("create source Ingress referencing the ClusterIP service")
+			sourceIngressName := s.Namespace() + "-source"
+			Expect(s.CreateResourceFromStringWithNamespace(
+				fmt.Sprintf(ingressYaml, sourceIngressName, ingressClassName, clusterIPSvcName), s.Namespace()),
+			).NotTo(HaveOccurred(), "creating source Ingress")
+
+			By("patch source Ingress status with hostname")
+			sourceIng := &networkingv1.Ingress{}
+			Expect(s.K8sClient.Get(context.Background(), types.NamespacedName{
+				Name: sourceIngressName, Namespace: s.Namespace(),
+			}, sourceIng)).NotTo(HaveOccurred(), "getting source Ingress")
+			sourceIng.Status.LoadBalancer.Ingress = []networkingv1.IngressLoadBalancerIngress{
+				{Hostname: expectedHostname},
+			}
+			Expect(s.K8sClient.Status().Update(context.Background(), sourceIng)).NotTo(HaveOccurred(), "patching source Ingress status")
+
+			By("create GatewayProxy with ClusterIP publishService")
+			gatewayProxy := fmt.Sprintf(gatewayProxyWithPublishServiceYaml,
+				s.Namespace(), s.Namespace(), clusterIPSvcName, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			Expect(s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			By("create IngressClass")
+			Expect(s.CreateResourceFromStringWithNamespace(
+				fmt.Sprintf(ingressClassYaml, ingressClassName, s.GetControllerName(), s.Namespace()), ""),
+			).NotTo(HaveOccurred(), "creating IngressClass")
+
+			By("create main Ingress")
+			mainIngressName := s.Namespace() + "-main"
+			mainIngress := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: %s
+spec:
+  ingressClassName: %s
+  rules:
+  - host: status.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`, mainIngressName, ingressClassName)
+			Expect(s.CreateResourceFromStringWithNamespace(mainIngress, s.Namespace())).NotTo(HaveOccurred(), "creating main Ingress")
+
+			By("check main Ingress status propagates hostname from source Ingress")
+			s.RetryAssertion(func() error {
+				lbs, err := getIngressLBStatus(mainIngressName)
+				if err != nil {
+					return err
+				}
+				if len(lbs) == 0 {
+					return fmt.Errorf("expected at least 1 load balancer ingress, got 0")
+				}
+				if lbs[0].Hostname != expectedHostname {
+					return fmt.Errorf("expected Hostname %s, got %s", expectedHostname, lbs[0].Hostname)
+				}
+				return nil
+			}).ShouldNot(HaveOccurred(), "check main Ingress load balancer status from ClusterIP")
+
+			// cleanup: avoid leaking the cluster-scoped IngressClass
+			DeferCleanup(func() {
+				ic := &networkingv1.IngressClass{ObjectMeta: metav1.ObjectMeta{Name: ingressClassName}}
+				_ = s.K8sClient.Delete(context.Background(), ic)
+			})
 		})
 	})
 })
