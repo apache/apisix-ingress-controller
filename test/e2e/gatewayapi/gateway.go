@@ -539,4 +539,147 @@ spec:
 			Expect(string(getListener.SupportedKinds[0].Kind)).To(Equal("UDPRoute"), "udp listener supported kind content")
 		})
 	})
+
+	Context("Gateway Status Address", func() {
+		var gatewayProxyWithStatusAddressYaml = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  name: apisix-proxy-config
+  namespace: %s
+spec:
+  statusAddress:
+  - %s
+  provider:
+    type: ControlPlane
+    controlPlane:
+      endpoints:
+      - %s
+      auth:
+        type: AdminKey
+        adminKey:
+          value: "%s"
+`
+		var defaultGatewayClass = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: %s
+spec:
+  controllerName: "%s"
+`
+		var defaultGateway = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: %s
+spec:
+  gatewayClassName: %s
+  listeners:
+  - name: http
+    protocol: HTTP
+    port: 80
+  infrastructure:
+    parametersRef:
+      group: apisix.apache.org
+      kind: GatewayProxy
+      name: apisix-proxy-config
+`
+		getGatewayAddresses := func(gatewayName string) ([]gatewayv1.GatewayStatusAddress, error) {
+			var gateway gatewayv1.Gateway
+			if err := s.GetKubeClient().Get(context.Background(), k8stypes.NamespacedName{
+				Name:      gatewayName,
+				Namespace: s.Namespace(),
+			}, &gateway); err != nil {
+				return nil, err
+			}
+			return gateway.Status.Addresses, nil
+		}
+
+		It("sets IPAddress type when statusAddress is an IP", func() {
+			ipAddr := "192.168.1.100"
+			gatewayClassName := s.Namespace()
+
+			By("create GatewayProxy with IP statusAddress")
+			gatewayProxy := fmt.Sprintf(gatewayProxyWithStatusAddressYaml,
+				s.Namespace(), ipAddr, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			Expect(s.CreateResourceFromString(gatewayProxy)).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			By("create GatewayClass")
+			Expect(s.CreateResourceFromStringWithNamespace(
+				fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()), ""),
+			).NotTo(HaveOccurred(), "creating GatewayClass")
+
+			By("create Gateway")
+			gatewayName := s.Namespace()
+			Expect(s.CreateResourceFromStringWithNamespace(
+				fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName), s.Namespace()),
+			).NotTo(HaveOccurred(), "creating Gateway")
+
+			By("check Gateway status addresses has IPAddress type")
+			s.RetryAssertion(func() error {
+				addrs, err := getGatewayAddresses(gatewayName)
+				if err != nil {
+					return err
+				}
+				if len(addrs) == 0 {
+					return fmt.Errorf("expected at least 1 status address, got 0")
+				}
+				addr := addrs[0]
+				if addr.Value != ipAddr {
+					return fmt.Errorf("expected address value %s, got %s", ipAddr, addr.Value)
+				}
+				if addr.Type == nil {
+					return fmt.Errorf("expected address type to be set, got nil")
+				}
+				if *addr.Type != gatewayv1.IPAddressType {
+					return fmt.Errorf("expected address type %s, got %s", gatewayv1.IPAddressType, *addr.Type)
+				}
+				return nil
+			}).ShouldNot(HaveOccurred(), "check Gateway IPAddress status address type")
+		})
+
+		It("sets Hostname type when statusAddress is a hostname", func() {
+			hostname := "mygateway.example.com"
+			gatewayClassName := s.Namespace()
+
+			By("create GatewayProxy with hostname statusAddress")
+			gatewayProxy := fmt.Sprintf(gatewayProxyWithStatusAddressYaml,
+				s.Namespace(), hostname, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			Expect(s.CreateResourceFromString(gatewayProxy)).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			By("create GatewayClass")
+			Expect(s.CreateResourceFromStringWithNamespace(
+				fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()), ""),
+			).NotTo(HaveOccurred(), "creating GatewayClass")
+
+			By("create Gateway")
+			gatewayName := s.Namespace()
+			Expect(s.CreateResourceFromStringWithNamespace(
+				fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName), s.Namespace()),
+			).NotTo(HaveOccurred(), "creating Gateway")
+
+			By("check Gateway status addresses has Hostname type")
+			s.RetryAssertion(func() error {
+				addrs, err := getGatewayAddresses(gatewayName)
+				if err != nil {
+					return err
+				}
+				if len(addrs) == 0 {
+					return fmt.Errorf("expected at least 1 status address, got 0")
+				}
+				addr := addrs[0]
+				if addr.Value != hostname {
+					return fmt.Errorf("expected address value %s, got %s", hostname, addr.Value)
+				}
+				if addr.Type == nil {
+					return fmt.Errorf("expected address type to be set, got nil")
+				}
+				if *addr.Type != gatewayv1.HostnameAddressType {
+					return fmt.Errorf("expected address type %s, got %s", gatewayv1.HostnameAddressType, *addr.Type)
+				}
+				return nil
+			}).ShouldNot(HaveOccurred(), "check Gateway Hostname status address type")
+		})
+	})
 })
