@@ -596,13 +596,12 @@ spec:
 			return gateway.Status.Addresses, nil
 		}
 
-		It("sets IPAddress type when statusAddress is an IP", func() {
-			ipAddr := "192.168.1.100"
+		checkGatewayStatusAddressType := func(addrValue string, expectedType gatewayv1.AddressType) {
 			gatewayClassName := s.Namespace()
 
-			By("create GatewayProxy with IP statusAddress")
+			By("create GatewayProxy with statusAddress")
 			gatewayProxy := fmt.Sprintf(gatewayProxyWithStatusAddressYaml,
-				s.Namespace(), ipAddr, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+				s.Namespace(), addrValue, s.Deployer.GetAdminEndpoint(), s.AdminKey())
 			Expect(s.CreateResourceFromString(gatewayProxy)).NotTo(HaveOccurred(), "creating GatewayProxy")
 
 			By("create GatewayClass")
@@ -616,7 +615,7 @@ spec:
 				fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName), s.Namespace()),
 			).NotTo(HaveOccurred(), "creating Gateway")
 
-			By("check Gateway status addresses has IPAddress type")
+			By("check Gateway status address type")
 			s.RetryAssertion(func() error {
 				addrs, err := getGatewayAddresses(gatewayName)
 				if err != nil {
@@ -626,60 +625,25 @@ spec:
 					return fmt.Errorf("expected at least 1 status address, got 0")
 				}
 				addr := addrs[0]
-				if addr.Value != ipAddr {
-					return fmt.Errorf("expected address value %s, got %s", ipAddr, addr.Value)
+				if addr.Value != addrValue {
+					return fmt.Errorf("expected address value %s, got %s", addrValue, addr.Value)
 				}
 				if addr.Type == nil {
 					return fmt.Errorf("expected address type to be set, got nil")
 				}
-				if *addr.Type != gatewayv1.IPAddressType {
-					return fmt.Errorf("expected address type %s, got %s", gatewayv1.IPAddressType, *addr.Type)
+				if *addr.Type != expectedType {
+					return fmt.Errorf("expected address type %s, got %s", expectedType, *addr.Type)
 				}
 				return nil
-			}).ShouldNot(HaveOccurred(), "check Gateway IPAddress status address type")
+			}).ShouldNot(HaveOccurred(), "check Gateway status address type")
+		}
+
+		It("sets IPAddress type when statusAddress is an IP", func() {
+			checkGatewayStatusAddressType("192.168.1.100", gatewayv1.IPAddressType)
 		})
 
 		It("sets Hostname type when statusAddress is a hostname", func() {
-			hostname := "mygateway.example.com"
-			gatewayClassName := s.Namespace()
-
-			By("create GatewayProxy with hostname statusAddress")
-			gatewayProxy := fmt.Sprintf(gatewayProxyWithStatusAddressYaml,
-				s.Namespace(), hostname, s.Deployer.GetAdminEndpoint(), s.AdminKey())
-			Expect(s.CreateResourceFromString(gatewayProxy)).NotTo(HaveOccurred(), "creating GatewayProxy")
-
-			By("create GatewayClass")
-			Expect(s.CreateResourceFromStringWithNamespace(
-				fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()), ""),
-			).NotTo(HaveOccurred(), "creating GatewayClass")
-
-			By("create Gateway")
-			gatewayName := s.Namespace()
-			Expect(s.CreateResourceFromStringWithNamespace(
-				fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName), s.Namespace()),
-			).NotTo(HaveOccurred(), "creating Gateway")
-
-			By("check Gateway status addresses has Hostname type")
-			s.RetryAssertion(func() error {
-				addrs, err := getGatewayAddresses(gatewayName)
-				if err != nil {
-					return err
-				}
-				if len(addrs) == 0 {
-					return fmt.Errorf("expected at least 1 status address, got 0")
-				}
-				addr := addrs[0]
-				if addr.Value != hostname {
-					return fmt.Errorf("expected address value %s, got %s", hostname, addr.Value)
-				}
-				if addr.Type == nil {
-					return fmt.Errorf("expected address type to be set, got nil")
-				}
-				if *addr.Type != gatewayv1.HostnameAddressType {
-					return fmt.Errorf("expected address type %s, got %s", gatewayv1.HostnameAddressType, *addr.Type)
-				}
-				return nil
-			}).ShouldNot(HaveOccurred(), "check Gateway Hostname status address type")
+			checkGatewayStatusAddressType("mygateway.example.com", gatewayv1.HostnameAddressType)
 		})
 	})
 })

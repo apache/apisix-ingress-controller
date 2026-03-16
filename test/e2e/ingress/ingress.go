@@ -1379,13 +1379,12 @@ spec:
 			return ing.Status.LoadBalancer.Ingress, nil
 		}
 
-		It("sets IP field when statusAddress is an IP", func() {
-			ipAddr := "192.168.1.200"
+		checkIngressStatusAddress := func(addrValue, ingressSuffix, expectedIP, expectedHostname string) {
 			ingressClassName := s.Namespace()
 
-			By("create GatewayProxy with IP statusAddress")
+			By("create GatewayProxy with statusAddress")
 			gatewayProxy := fmt.Sprintf(gatewayProxyWithStatusAddressYaml,
-				s.Namespace(), ipAddr, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+				s.Namespace(), addrValue, s.Deployer.GetAdminEndpoint(), s.AdminKey())
 			Expect(s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())).NotTo(HaveOccurred(), "creating GatewayProxy")
 
 			By("create IngressClass")
@@ -1394,12 +1393,12 @@ spec:
 			).NotTo(HaveOccurred(), "creating IngressClass")
 
 			By("create Ingress")
-			ingressName := s.Namespace() + "-ip"
+			ingressName := s.Namespace() + ingressSuffix
 			Expect(s.CreateResourceFromStringWithNamespace(
 				fmt.Sprintf(ingressYaml, ingressName, ingressClassName, "httpbin-service-e2e-test"), s.Namespace()),
 			).NotTo(HaveOccurred(), "creating Ingress")
 
-			By("check Ingress status has IP set and Hostname empty")
+			By("check Ingress load balancer status")
 			s.RetryAssertion(func() error {
 				lbs, err := getIngressLBStatus(ingressName)
 				if err != nil {
@@ -1408,53 +1407,22 @@ spec:
 				if len(lbs) == 0 {
 					return fmt.Errorf("expected at least 1 load balancer ingress, got 0")
 				}
-				if lbs[0].IP != ipAddr {
-					return fmt.Errorf("expected IP %s, got %s", ipAddr, lbs[0].IP)
+				if lbs[0].IP != expectedIP {
+					return fmt.Errorf("expected IP %s, got %s", expectedIP, lbs[0].IP)
 				}
-				if lbs[0].Hostname != "" {
-					return fmt.Errorf("expected Hostname to be empty, got %s", lbs[0].Hostname)
+				if lbs[0].Hostname != expectedHostname {
+					return fmt.Errorf("expected Hostname %s, got %s", expectedHostname, lbs[0].Hostname)
 				}
 				return nil
-			}).ShouldNot(HaveOccurred(), "check Ingress IP load balancer status")
+			}).ShouldNot(HaveOccurred(), "check Ingress load balancer status")
+		}
+
+		It("sets IP field when statusAddress is an IP", func() {
+			checkIngressStatusAddress("192.168.1.200", "-ip", "192.168.1.200", "")
 		})
 
 		It("sets Hostname field when statusAddress is a hostname", func() {
-			hostname := "myingress.example.com"
-			ingressClassName := s.Namespace()
-
-			By("create GatewayProxy with hostname statusAddress")
-			gatewayProxy := fmt.Sprintf(gatewayProxyWithStatusAddressYaml,
-				s.Namespace(), hostname, s.Deployer.GetAdminEndpoint(), s.AdminKey())
-			Expect(s.CreateResourceFromStringWithNamespace(gatewayProxy, s.Namespace())).NotTo(HaveOccurred(), "creating GatewayProxy")
-
-			By("create IngressClass")
-			Expect(s.CreateResourceFromStringWithNamespace(
-				fmt.Sprintf(ingressClassYaml, ingressClassName, s.GetControllerName(), s.Namespace()), ""),
-			).NotTo(HaveOccurred(), "creating IngressClass")
-
-			By("create Ingress")
-			ingressName := s.Namespace() + "-host"
-			Expect(s.CreateResourceFromStringWithNamespace(
-				fmt.Sprintf(ingressYaml, ingressName, ingressClassName, "httpbin-service-e2e-test"), s.Namespace()),
-			).NotTo(HaveOccurred(), "creating Ingress")
-
-			By("check Ingress status has Hostname set and IP empty")
-			s.RetryAssertion(func() error {
-				lbs, err := getIngressLBStatus(ingressName)
-				if err != nil {
-					return err
-				}
-				if len(lbs) == 0 {
-					return fmt.Errorf("expected at least 1 load balancer ingress, got 0")
-				}
-				if lbs[0].Hostname != hostname {
-					return fmt.Errorf("expected Hostname %s, got %s", hostname, lbs[0].Hostname)
-				}
-				if lbs[0].IP != "" {
-					return fmt.Errorf("expected IP to be empty, got %s", lbs[0].IP)
-				}
-				return nil
-			}).ShouldNot(HaveOccurred(), "check Ingress Hostname load balancer status")
+			checkIngressStatusAddress("myingress.example.com", "-host", "", "myingress.example.com")
 		})
 
 		It("propagates hostname from referencing Ingress when publishService is a ClusterIP", func() {
