@@ -1391,7 +1391,15 @@ spec:
 			Expect(s.CreateResourceFromStringWithNamespace(
 				fmt.Sprintf(ingressClassYaml, ingressClassName, s.GetControllerName(), s.Namespace()), ""),
 			).NotTo(HaveOccurred(), "creating IngressClass")
-
+			DeferCleanup(func() {
+ 				ingressClass := &networkingv1.IngressClass{}
+ 				if err := s.K8sClient.Get(context.Background(), types.NamespacedName{
+ 					Name: ingressClassName,
+ 				}, ingressClass); err == nil {
+ 					_ = s.K8sClient.Delete(context.Background(), ingressClass)
+ 				}
+ 			})
+			
 			By("create Ingress")
 			ingressName := s.Namespace() + ingressSuffix
 			Expect(s.CreateResourceFromStringWithNamespace(

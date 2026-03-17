@@ -695,13 +695,13 @@ func (r *IngressReconciler) updateStatus(ctx context.Context, tctx *provider.Tra
 			if addr == "" {
 				continue
 			}
-			ingress := networkingv1.IngressLoadBalancerIngress{}
+			lbIngress := networkingv1.IngressLoadBalancerIngress{}
 			if net.ParseIP(addr) != nil {
-				ingress.IP = addr
+				lbIngress.IP = addr
 			} else {
-				ingress.Hostname = addr
+				lbIngress.Hostname = addr
 			}
-			loadBalancerStatus.Ingress = append(loadBalancerStatus.Ingress, ingress)
+			loadBalancerStatus.Ingress = append(loadBalancerStatus.Ingress, lbIngress)
 		}
 	} else {
 		// 2. if the IngressStatusAddress is not configured, try to use the PublishService
@@ -757,6 +757,11 @@ func (r *IngressReconciler) updateStatus(ctx context.Context, tctx *provider.Tra
 						continue
 					}
 					for _, lb := range ing.Status.LoadBalancer.Ingress {
+						if lb.IP != "" {
+							loadBalancerStatus.Ingress = append(loadBalancerStatus.Ingress, networkingv1.IngressLoadBalancerIngress{
+								IP: lb.IP,
+							})
+						}
 						if lb.Hostname != "" {
 							loadBalancerStatus.Ingress = append(loadBalancerStatus.Ingress, networkingv1.IngressLoadBalancerIngress{
 								Hostname: lb.Hostname,
