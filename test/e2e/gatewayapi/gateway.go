@@ -619,6 +619,18 @@ spec:
 			}).ShouldNot(HaveOccurred(), "check Gateway status address")
 		}
 
+		createGatewayClassAndGateway := func(gatewayClassName, gatewayName string) {
+			By("create GatewayClass")
+			Expect(s.CreateResourceFromStringWithNamespace(
+				fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()), ""),
+			).NotTo(HaveOccurred(), "creating GatewayClass")
+
+			By("create Gateway")
+			Expect(s.CreateResourceFromStringWithNamespace(
+				fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName), s.Namespace()),
+			).NotTo(HaveOccurred(), "creating Gateway")
+		}
+
 		checkGatewayStatusAddressType := func(addrValue string, expectedType gatewayv1.AddressType) {
 			gatewayClassName := s.Namespace()
 
@@ -627,16 +639,8 @@ spec:
 				s.Namespace(), addrValue, s.Deployer.GetAdminEndpoint(), s.AdminKey())
 			Expect(s.CreateResourceFromString(gatewayProxy)).NotTo(HaveOccurred(), "creating GatewayProxy")
 
-			By("create GatewayClass")
-			Expect(s.CreateResourceFromStringWithNamespace(
-				fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()), ""),
-			).NotTo(HaveOccurred(), "creating GatewayClass")
-
-			By("create Gateway")
 			gatewayName := s.Namespace()
-			Expect(s.CreateResourceFromStringWithNamespace(
-				fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName), s.Namespace()),
-			).NotTo(HaveOccurred(), "creating Gateway")
+			createGatewayClassAndGateway(gatewayClassName, gatewayName)
 
 			By("check Gateway status address type")
 			assertGatewayAddress(gatewayName, addrValue, expectedType)
@@ -650,6 +654,52 @@ spec:
 			checkGatewayStatusAddressType("mygateway.example.com", gatewayv1.HostnameAddressType)
 		})
 
+		It("deduplicates repeated statusAddress entries", func() {
+			gatewayClassName := s.Namespace()
+			gatewayName := s.Namespace()
+			addr := "192.168.1.100"
+
+			By("create GatewayProxy with the same IP listed twice in statusAddress")
+			gatewayProxy := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  name: apisix-proxy-config
+  namespace: %s
+spec:
+  statusAddress:
+  - %s
+  - %s
+  provider:
+    type: ControlPlane
+    controlPlane:
+      endpoints:
+      - %s
+      auth:
+        type: AdminKey
+        adminKey:
+          value: "%s"
+`, s.Namespace(), addr, addr, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			Expect(s.CreateResourceFromString(gatewayProxy)).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			createGatewayClassAndGateway(gatewayClassName, gatewayName)
+
+			By("verify only one address appears in Gateway status despite duplicate input")
+			s.RetryAssertion(func() error {
+				addrs, err := getGatewayAddresses(gatewayName)
+				if err != nil {
+					return err
+				}
+				if len(addrs) != 1 {
+					return fmt.Errorf("expected exactly 1 status address after dedup, got %d", len(addrs))
+				}
+				if addrs[0].Value != addr {
+					return fmt.Errorf("expected address value %s, got %s", addr, addrs[0].Value)
+				}
+				return nil
+			}).ShouldNot(HaveOccurred(), "check Gateway status address deduplication")
+		})
+
 		It("updates status when statusAddress value changes without count change", func() {
 			gatewayClassName := s.Namespace()
 			gatewayName := s.Namespace()
@@ -661,15 +711,7 @@ spec:
 				s.Namespace(), initialAddr, s.Deployer.GetAdminEndpoint(), s.AdminKey())
 			Expect(s.CreateResourceFromString(gatewayProxy)).NotTo(HaveOccurred(), "creating GatewayProxy")
 
-			By("create GatewayClass")
-			Expect(s.CreateResourceFromStringWithNamespace(
-				fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()), ""),
-			).NotTo(HaveOccurred(), "creating GatewayClass")
-
-			By("create Gateway")
-			Expect(s.CreateResourceFromStringWithNamespace(
-				fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName), s.Namespace()),
-			).NotTo(HaveOccurred(), "creating Gateway")
+			createGatewayClassAndGateway(gatewayClassName, gatewayName)
 
 			By("verify initial status address is set")
 			assertGatewayAddress(gatewayName, initialAddr, gatewayv1.IPAddressType)
