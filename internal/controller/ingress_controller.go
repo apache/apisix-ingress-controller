@@ -722,8 +722,7 @@ func (r *IngressReconciler) updateStatus(ctx context.Context, tctx *provider.Tra
 				return fmt.Errorf("failed to get publish service %s: %w", publishService, err)
 			}
 
-			switch svc.Spec.Type {
-			case corev1.ServiceTypeLoadBalancer:
+			if svc.Spec.Type == corev1.ServiceTypeLoadBalancer {
 				// get the LoadBalancer IP and Hostname of the service
 				for _, ip := range svc.Status.LoadBalancer.Ingress {
 					if ip.IP != "" {
@@ -735,38 +734,6 @@ func (r *IngressReconciler) updateStatus(ctx context.Context, tctx *provider.Tra
 						loadBalancerStatus.Ingress = append(loadBalancerStatus.Ingress, networkingv1.IngressLoadBalancerIngress{
 							Hostname: ip.Hostname,
 						})
-					}
-				}
-			case corev1.ServiceTypeClusterIP:
-				// for ClusterIP services, find Ingresses that reference this service
-				// and collect hostnames from their load balancer status
-				// this is when we run the apisix in ClusterIP mode and enable Ingress
-				// when deploying in Cloud environments.
-				ingressList := &networkingv1.IngressList{}
-				if err := r.List(ctx, ingressList, client.MatchingFields{
-					indexer.ServiceIndexRef: indexer.GenIndexKey(namespace, name),
-				}); err != nil {
-					return fmt.Errorf("failed to list ingresses for ClusterIP service %s/%s: %w", namespace, name, err)
-				}
-				for _, ing := range ingressList.Items {
-					// Skip the current Ingress being reconciled to avoid a
-					// self-referential loop: updating its own status would trigger
-					// a new reconcile, which would collect its own (just-written)
-					// hostname again and potentially repeat indefinitely.
-					if ing.Namespace == ingress.Namespace && ing.Name == ingress.Name {
-						continue
-					}
-					for _, lb := range ing.Status.LoadBalancer.Ingress {
-						if lb.IP != "" {
-							loadBalancerStatus.Ingress = append(loadBalancerStatus.Ingress, networkingv1.IngressLoadBalancerIngress{
-								IP: lb.IP,
-							})
-						}
-						if lb.Hostname != "" {
-							loadBalancerStatus.Ingress = append(loadBalancerStatus.Ingress, networkingv1.IngressLoadBalancerIngress{
-								Hostname: lb.Hostname,
-							})
-						}
 					}
 				}
 			}

@@ -1137,10 +1137,7 @@ spec:
   publishService: apisix-gateway
 ```
 
-When using `publishService`, the controller will use the endpoint of this Service to update the status information of the Ingress resource. The format can be either `namespace/svc-name` or simply `svc-name` if the default namespace is correctly set.
-
-- If the Service is of `LoadBalancer` type, the controller uses its external IP or hostname.
-- If the Service is of `ClusterIP` type, the controller propagates the hostname from any Ingress resources that reference that Service.
+When using `publishService`, the controller will use the endpoint of this Service to update the status information of the Ingress resource. The format can be either `namespace/svc-name` or simply `svc-name` if the default namespace is correctly set. Only `LoadBalancer` type services are supported - the controller uses their external IP or hostname to populate the Ingress load balancer status.
 
 </TabItem>
 

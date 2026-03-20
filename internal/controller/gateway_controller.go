@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"reflect"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -179,22 +180,20 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			msg:    "gateway proxy not found",
 		}
 	} else {
-		if len(gateway.Status.Addresses) != len(gatewayProxy.Spec.StatusAddress) {
-			for _, addr := range gatewayProxy.Spec.StatusAddress {
-				if addr == "" {
-					continue
-				}
-				addrType := gatewayv1.IPAddressType
-				if net.ParseIP(addr) == nil {
-					addrType = gatewayv1.HostnameAddressType
-				}
-				addrs = append(addrs,
-					gatewayv1.GatewayStatusAddress{
-						Type:  &addrType,
-						Value: addr,
-					},
-				)
+		for _, addr := range gatewayProxy.Spec.StatusAddress {
+			if addr == "" {
+				continue
 			}
+			addrType := gatewayv1.IPAddressType
+			if net.ParseIP(addr) == nil {
+				addrType = gatewayv1.HostnameAddressType
+			}
+			addrs = append(addrs,
+				gatewayv1.GatewayStatusAddress{
+					Type:  &addrType,
+					Value: addr,
+				},
+			)
 		}
 	}
 
@@ -213,8 +212,9 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	accepted := SetGatewayConditionAccepted(gateway, acceptStatus.status, acceptStatus.msg)
 	programmed := SetGatewayConditionProgrammed(gateway, conditionProgrammedStatus, conditionProgrammedMsg)
-	if accepted || programmed || len(addrs) > 0 || len(listenerStatuses) > 0 {
-		if len(addrs) > 0 {
+	addressesChanged := !reflect.DeepEqual(gateway.Status.Addresses, addrs)
+	if accepted || programmed || addressesChanged || len(listenerStatuses) > 0 {
+		if addressesChanged {
 			gateway.Status.Addresses = addrs
 		}
 		if len(listenerStatuses) > 0 {
