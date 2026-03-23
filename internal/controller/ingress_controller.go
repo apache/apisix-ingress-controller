@@ -780,15 +780,7 @@ func (r *IngressReconciler) updateStatus(ctx context.Context, tctx *provider.Tra
 	// deduplicate load balancer ingress entries that may arise when multiple
 	// source Ingresses carry the same address (ClusterIP case) or when
 	// statusAddress contains repeated values.
-	seen := make(map[networkingv1.IngressLoadBalancerIngress]bool)
-	deduped := loadBalancerStatus.Ingress[:0]
-	for _, lb := range loadBalancerStatus.Ingress {
-		if !seen[lb] {
-			seen[lb] = true
-			deduped = append(deduped, lb)
-		}
-	}
-	loadBalancerStatus.Ingress = deduped
+	loadBalancerStatus.Ingress = deduplicateLoadBalancerIngress(loadBalancerStatus.Ingress)
 
 	// update the load balancer status
 	if !reflect.DeepEqual(ingress.Status.LoadBalancer, loadBalancerStatus) {

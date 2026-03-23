@@ -1621,3 +1621,28 @@ func ExtractIngressClass(obj client.Object) string {
 		panic(fmt.Errorf("unhandled object type %T for extracting ingress class", obj))
 	}
 }
+
+// deduplicateLoadBalancerIngress removes duplicate IngressLoadBalancerIngress entries in-place,
+// comparing by IP and Hostname (Ports are ignored for dedup purposes).
+func deduplicateLoadBalancerIngress(entries []networkingv1.IngressLoadBalancerIngress) []networkingv1.IngressLoadBalancerIngress {
+	slices.SortFunc(entries, func(a, b networkingv1.IngressLoadBalancerIngress) int {
+		if c := strings.Compare(a.IP, b.IP); c != 0 {
+			return c
+		}
+		return strings.Compare(a.Hostname, b.Hostname)
+	})
+	return slices.CompactFunc(entries, func(a, b networkingv1.IngressLoadBalancerIngress) bool {
+		return a.IP == b.IP && a.Hostname == b.Hostname
+	})
+}
+
+// deduplicateGatewayStatusAddresses removes duplicate GatewayStatusAddress entries in-place,
+// comparing by Value field (AddressType is a pointer so cannot be used as map key).
+func deduplicateGatewayStatusAddresses(addrs []gatewayv1.GatewayStatusAddress) []gatewayv1.GatewayStatusAddress {
+	slices.SortFunc(addrs, func(a, b gatewayv1.GatewayStatusAddress) int {
+		return strings.Compare(a.Value, b.Value)
+	})
+	return slices.CompactFunc(addrs, func(a, b gatewayv1.GatewayStatusAddress) bool {
+		return a.Value == b.Value
+	})
+}

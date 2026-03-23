@@ -198,15 +198,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// deduplicate in case statusAddress contains repeated values
-	seen := make(map[string]bool)
-	deduped := addrs[:0]
-	for _, addr := range addrs {
-		if !seen[addr.Value] {
-			seen[addr.Value] = true
-			deduped = append(deduped, addr)
-		}
-	}
-	addrs = deduped
+	addrs = deduplicateGatewayStatusAddresses(addrs)
 
 	listenerStatuses, err := getListenerStatus(ctx, r.Client, gateway)
 	if err != nil {
