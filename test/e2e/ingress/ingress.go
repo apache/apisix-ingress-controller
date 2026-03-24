@@ -1511,9 +1511,28 @@ spec:
 
 			By("create source Ingress referencing the ClusterIP service")
 			sourceIngressName := s.Namespace() + "-source"
-			Expect(s.CreateResourceFromStringWithNamespace(
-				fmt.Sprintf(ingressYaml, sourceIngressName, ingressClassName, clusterIPSvcName), s.Namespace()),
-			).NotTo(HaveOccurred(), "creating source Ingress")
+			// The source Ingress intentionally has no ingressClassName — it simulates a
+			// cloud ALB Ingress managed by a different controller. Without ingressClassName
+			// our controller will not reconcile it and will not overwrite its status.
+			sourceIngressYaml := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: %s
+spec:
+  rules:
+  - host: clusterip.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: %s
+            port:
+              number: 80
+`, sourceIngressName, clusterIPSvcName)
+			Expect(s.CreateResourceFromStringWithNamespace(sourceIngressYaml, s.Namespace())).NotTo(HaveOccurred(), "creating source Ingress")
 
 			By("patch source Ingress status with hostname")
 			sourceIng := &networkingv1.Ingress{}
