@@ -283,15 +283,21 @@ func (d *apisixProvider) handleEmptyFailedStatuses(
 	}
 
 	for _, obj := range resource.Services {
-		d.addResourceToStatusUpdateMap(obj.GetLabels(), failedStatus.Error(), statusUpdateMap)
+		labels := obj.GetLabels()
+		msg := buildErrorMessage(labels, failedStatus.Error())
+		d.addResourceToStatusUpdateMap(labels, msg, statusUpdateMap)
 	}
 
 	for _, obj := range resource.Consumers {
-		d.addResourceToStatusUpdateMap(obj.GetLabels(), failedStatus.Error(), statusUpdateMap)
+		labels := obj.GetLabels()
+		msg := buildErrorMessage(labels, failedStatus.Error())
+		d.addResourceToStatusUpdateMap(labels, msg, statusUpdateMap)
 	}
 
 	for _, obj := range resource.SSLs {
-		d.addResourceToStatusUpdateMap(obj.GetLabels(), failedStatus.Error(), statusUpdateMap)
+		labels := obj.GetLabels()
+		msg := buildErrorMessage(labels, failedStatus.Error())
+		d.addResourceToStatusUpdateMap(labels, msg, statusUpdateMap)
 	}
 
 	globalRules, err := d.client.ListGlobalRules(configName)
@@ -300,7 +306,9 @@ func (d *apisixProvider) handleEmptyFailedStatuses(
 		return
 	}
 	for _, rule := range globalRules {
-		d.addResourceToStatusUpdateMap(rule.GetLabels(), failedStatus.Error(), statusUpdateMap)
+		labels := rule.GetLabels()
+		msg := buildErrorMessage(labels, failedStatus.Error())
+		d.addResourceToStatusUpdateMap(labels, msg, statusUpdateMap)
 	}
 }
 
@@ -322,14 +330,12 @@ func (d *apisixProvider) handleDetailedFailedStatuses(
 				"configName", configName,
 				"resourceType", status.Event.ResourceType,
 				"id", id,
+				"resource", fmt.Sprintf("%s/%s", status.Event.ResourceType, id),
 			)
 			continue
 		}
-		d.addResourceToStatusUpdateMap(
-			labels,
-			fmt.Sprintf("ServerAddr: %s, Error: %s", failedStatus.ServerAddr, status.Reason),
-			statusUpdateMap,
-		)
+		msg := buildErrorMessage(labels, fmt.Sprintf("ServerAddr: %s, Error: %s", failedStatus.ServerAddr, status.Reason))
+		d.addResourceToStatusUpdateMap(labels, msg, statusUpdateMap)
 	}
 }
 
@@ -344,4 +350,16 @@ func (d *apisixProvider) addResourceToStatusUpdateMap(
 		Kind:      labels[label.LabelKind],
 	}
 	statusUpdateMap[statusKey] = append(statusUpdateMap[statusKey], msg)
+}
+
+func buildErrorMessage(labels map[string]string, originalErr string) string {
+	namespace := labels[label.LabelNamespace]
+	name := labels[label.LabelName]
+	kind := labels[label.LabelKind]
+
+	if namespace == "" && name == "" {
+		return originalErr
+	}
+
+	return fmt.Sprintf("%s (resource: %s/%s/%s)", originalErr, kind, namespace, name)
 }
