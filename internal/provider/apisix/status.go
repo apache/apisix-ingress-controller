@@ -334,6 +334,15 @@ func (d *apisixProvider) handleDetailedFailedStatuses(
 			)
 			continue
 		}
+		if labels == nil {
+			d.log.Error(nil, "resource labels is nil",
+				"configName", configName,
+				"resourceType", status.Event.ResourceType,
+				"id", id,
+				"resource", fmt.Sprintf("%s/%s", status.Event.ResourceType, id),
+			)
+			continue
+		}
 		msg := buildErrorMessage(labels, fmt.Sprintf("ServerAddr: %s, Error: %s", failedStatus.ServerAddr, status.Reason))
 		d.addResourceToStatusUpdateMap(labels, msg, statusUpdateMap)
 	}
