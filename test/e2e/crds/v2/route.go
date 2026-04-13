@@ -139,7 +139,7 @@ spec:
 				applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
 					&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Namespace(), "/headers"))
 				Eventually(request).WithArguments("/get").WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
-				s.NewAPISIXClient().GET("/headers").WithHost("httpbin").Expect().Status(http.StatusOK)
+				Eventually(request).WithArguments("/headers").WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 
 				By("delete ApisixRoute")
 				err := s.DeleteResource("ApisixRoute", "default")
@@ -1347,7 +1347,6 @@ spec:
 				&apisixRouteWithoutWS,
 				fmt.Sprintf(apisixRouteSpec2, s.Namespace(), s.Namespace()),
 			)
-			time.Sleep(12 * time.Second)
 
 			By("verify WebSocket connection fails without WebSocket enabled")
 			u := url.URL{
@@ -1356,9 +1355,14 @@ spec:
 				Path:   "/echo",
 			}
 			headers := http.Header{"Host": []string{"httpbin.org"}}
-			_, resp, _ := websocket.DefaultDialer.Dial(u.String(), headers)
-			// should receive 200 instead of 101
-			Expect(resp.StatusCode).Should(Equal(http.StatusOK))
+			// In standalone mode, config application is async — retry until the route is active
+			Eventually(func() int {
+				_, resp, _ := websocket.DefaultDialer.Dial(u.String(), headers)
+				if resp == nil {
+					return 0
+				}
+				return resp.StatusCode
+			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 			By("apply ApisixRoute for WebSocket")
 			var apisixRoute apiv2.ApisixRoute
 			applier.MustApplyAPIv2(
