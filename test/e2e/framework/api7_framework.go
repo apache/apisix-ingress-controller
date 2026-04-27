@@ -70,7 +70,10 @@ func (f *Framework) BeforeSuite() {
 	f.DeployComponents()
 
 	time.Sleep(1 * time.Minute)
-	err := f.newDashboardTunnel()
+	err := f.ensureServiceWithTimeout("api7ee3-dashboard", _namespace, 1, 300)
+	Expect(err).ShouldNot(HaveOccurred(), "ensuring dashboard service")
+
+	err = f.newDashboardTunnel()
 	f.Logf("Dashboard HTTP Tunnel:" + _dashboardHTTPTunnel.Endpoint())
 	Expect(err).ShouldNot(HaveOccurred(), "creating dashboard tunnel")
 
@@ -150,7 +153,7 @@ func (f *Framework) deploy() {
 	}
 	f.GomegaT.Expect(err).ShouldNot(HaveOccurred(), "install dashboard")
 
-	err = f.ensureServiceWithTimeout("api7ee3-dashboard", _namespace, 1, 300)
+	_, err = k8s.GetServiceE(GinkgoT(), f.kubectlOpts, "api7ee3-dashboard")
 	f.GomegaT.Expect(err).ShouldNot(HaveOccurred(), "ensuring dashboard service")
 
 	err = f.ensureService("api7-postgresql", _namespace, 1)
