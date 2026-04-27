@@ -69,7 +69,17 @@ jobs:
           make kind-down
           make kind-up
           kind export kubeconfig --name apisix-ingress-cluster
-          kubectl wait --for=condition=Ready nodes --all
+          for attempt in {1..30}; do
+            if kubectl cluster-info >/dev/null 2>&1; then
+              break
+            fi
+            if [ "${attempt}" -eq 30 ]; then
+              echo "kind apiserver did not become reachable in time" >&2
+              exit 1
+            fi
+            sleep 2
+          done
+          kubectl wait --for=condition=Ready nodes --all --timeout=120s
 
       - name: Build images
         env:
