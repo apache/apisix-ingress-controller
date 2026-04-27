@@ -150,7 +150,7 @@ func (f *Framework) deploy() {
 	}
 	f.GomegaT.Expect(err).ShouldNot(HaveOccurred(), "install dashboard")
 
-	err = f.ensureService("api7ee3-dashboard", _namespace, 1)
+	err = f.ensureServiceWithTimeout("api7ee3-dashboard", _namespace, 1, 300)
 	f.GomegaT.Expect(err).ShouldNot(HaveOccurred(), "ensuring dashboard service")
 
 	err = f.ensureService("api7-postgresql", _namespace, 1)

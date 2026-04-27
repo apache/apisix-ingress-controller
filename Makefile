@@ -224,14 +224,25 @@ kind-load-adc-image:
 
 .PHONY: pull-infra-images
 pull-infra-images:
-	@docker pull hkccr.ccs.tencentyun.com/api7-dev/api7-ee-3-gateway:dev
-	@docker pull hkccr.ccs.tencentyun.com/api7-dev/api7-ee-dp-manager:$(DASHBOARD_VERSION)
-	@docker pull hkccr.ccs.tencentyun.com/api7-dev/api7-ee-3-integrated:$(DASHBOARD_VERSION)
-	@docker pull kennethreitz/httpbin:latest
-	@docker pull jmalloc/echo-server:latest
-	@docker pull ghcr.io/api7/adc:dev
-	@docker pull apache/apisix:dev
-	@docker pull openresty/openresty:1.27.1.2-4-bullseye-fat
+	@for image in \
+		hkccr.ccs.tencentyun.com/api7-dev/api7-ee-3-gateway:dev \
+		hkccr.ccs.tencentyun.com/api7-dev/api7-ee-dp-manager:$(DASHBOARD_VERSION) \
+		hkccr.ccs.tencentyun.com/api7-dev/api7-ee-3-integrated:$(DASHBOARD_VERSION) \
+		kennethreitz/httpbin:latest \
+		jmalloc/echo-server:latest \
+		ghcr.io/api7/adc:dev \
+		apache/apisix:dev \
+		openresty/openresty:1.27.1.2-4-bullseye-fat; do \
+		for attempt in 1 2 3; do \
+			docker pull $$image && break; \
+			if [ $$attempt -eq 3 ]; then \
+				echo "failed to pull $$image after $$attempt attempts" >&2; \
+				exit 1; \
+			fi; \
+			echo "retrying docker pull for $$image (attempt $$((attempt + 1))/3)..." >&2; \
+			sleep 5; \
+		done; \
+	done
 
 ##@ Build
 
