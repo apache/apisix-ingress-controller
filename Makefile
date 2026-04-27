@@ -224,25 +224,37 @@ kind-load-adc-image:
 
 .PHONY: pull-infra-images
 pull-infra-images:
-	@for image in \
-		hkccr.ccs.tencentyun.com/api7-dev/api7-ee-3-gateway:dev \
-		hkccr.ccs.tencentyun.com/api7-dev/api7-ee-dp-manager:$(DASHBOARD_VERSION) \
-		hkccr.ccs.tencentyun.com/api7-dev/api7-ee-3-integrated:$(DASHBOARD_VERSION) \
-		kennethreitz/httpbin:latest \
-		jmalloc/echo-server:latest \
-		ghcr.io/api7/adc:dev \
-		apache/apisix:dev \
-		openresty/openresty:1.27.1.2-4-bullseye-fat; do \
+	@retry_pull() { \
+		source="$$1"; \
+		target="$$2"; \
 		for attempt in 1 2 3; do \
-			docker pull $$image && break; \
+			if docker pull "$$source"; then \
+				if [ "$$source" != "$$target" ]; then \
+					docker tag "$$source" "$$target"; \
+				fi; \
+				return 0; \
+			fi; \
 			if [ $$attempt -eq 3 ]; then \
-				echo "failed to pull $$image after $$attempt attempts" >&2; \
+				echo "failed to pull $$source after $$attempt attempts" >&2; \
 				exit 1; \
 			fi; \
-			echo "retrying docker pull for $$image (attempt $$((attempt + 1))/3)..." >&2; \
+			echo "retrying docker pull for $$source (attempt $$((attempt + 1))/3)..." >&2; \
 			sleep 5; \
 		done; \
-	done
+	}; \
+	retry_pull "hkccr.ccs.tencentyun.com/api7-dev/api7-ee-3-gateway:dev" "hkccr.ccs.tencentyun.com/api7-dev/api7-ee-3-gateway:dev"; \
+	retry_pull "hkccr.ccs.tencentyun.com/api7-dev/api7-ee-dp-manager:$(DASHBOARD_VERSION)" "hkccr.ccs.tencentyun.com/api7-dev/api7-ee-dp-manager:$(DASHBOARD_VERSION)"; \
+	retry_pull "hkccr.ccs.tencentyun.com/api7-dev/api7-ee-3-integrated:$(DASHBOARD_VERSION)" "hkccr.ccs.tencentyun.com/api7-dev/api7-ee-3-integrated:$(DASHBOARD_VERSION)"; \
+	if [ -n "$$DOCKER_REGISTRY" ]; then \
+		retry_pull "$$DOCKER_REGISTRY/kennethreitz/httpbin:latest" "kennethreitz/httpbin:latest"; \
+		retry_pull "$$DOCKER_REGISTRY/jmalloc/echo-server:latest" "jmalloc/echo-server:latest"; \
+	else \
+		retry_pull "kennethreitz/httpbin:latest" "kennethreitz/httpbin:latest"; \
+		retry_pull "jmalloc/echo-server:latest" "jmalloc/echo-server:latest"; \
+	fi; \
+	retry_pull "ghcr.io/api7/adc:dev" "ghcr.io/api7/adc:dev"; \
+	retry_pull "apache/apisix:dev" "apache/apisix:dev"; \
+	retry_pull "openresty/openresty:1.27.1.2-4-bullseye-fat" "openresty/openresty:1.27.1.2-4-bullseye-fat"
 
 ##@ Build
 
