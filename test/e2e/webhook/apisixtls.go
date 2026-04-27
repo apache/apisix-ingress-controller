@@ -24,6 +24,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
@@ -91,6 +92,10 @@ spec:
 	})
 
 	It("should reject invalid TLS material during ADC validation", func() {
+		if framework.ProviderType != framework.ProviderTypeAPISIXStandalone {
+			Skip("ADC validation requires apisix-standalone backend")
+		}
+
 		serverSecret := "invalid-server-tls"
 		tlsName := "webhook-apisixtls-invalid"
 		host := "invalid-webhook.example.com"

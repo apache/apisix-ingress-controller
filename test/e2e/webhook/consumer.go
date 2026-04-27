@@ -24,6 +24,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
@@ -91,7 +92,11 @@ stringData:
 		Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), missingSecret)))
 	})
 
-	It("should reject duplicate credentials during ADC validation", func() {
+	It("should reject invalid plugin config during ADC validation", func() {
+		if framework.ProviderType != framework.ProviderTypeAPISIXStandalone {
+			Skip("ADC validation requires apisix-standalone backend")
+		}
+
 		gatewayName := s.Namespace()
 
 		firstConsumer := fmt.Sprintf(`
@@ -106,14 +111,14 @@ spec:
   - type: key-auth
     name: key-auth-a
     config:
-      key: shared-key
+      key: consumer-a-key
 `, gatewayName)
 
-		By("creating the first Consumer")
+		By("creating the first Consumer with valid key-auth config")
 		err := s.CreateResourceFromString(firstConsumer)
 		Expect(err).NotTo(HaveOccurred(), "creating first Consumer")
 
-		secondConsumer := fmt.Sprintf(`
+		invalidConsumer := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v1alpha1
 kind: Consumer
 metadata:
@@ -122,14 +127,15 @@ spec:
   gatewayRef:
     name: %s
   credentials:
-  - type: key-auth
-    name: key-auth-b
+  - type: jwt-auth
+    name: jwt-cred
     config:
-      key: shared-key
+      key: consumer-b-key
+      algorithm: INVALID_ALGO
 `, gatewayName)
 
-		By("creating a second Consumer with the same key")
-		err = s.CreateResourceFromString(secondConsumer)
+		By("creating Consumer with an invalid jwt-auth algorithm")
+		err = s.CreateResourceFromString(invalidConsumer)
 		expectAdmissionDenied(s, "consumer", "webhook-consumer-b", err)
 
 		correctedConsumer := fmt.Sprintf(`
@@ -141,13 +147,14 @@ spec:
   gatewayRef:
     name: %s
   credentials:
-  - type: key-auth
-    name: key-auth-b
+  - type: jwt-auth
+    name: jwt-cred
     config:
-      key: unique-key
+      key: consumer-b-key
+      algorithm: HS256
 `, gatewayName)
 
-		By("creating a corrected Consumer with a unique key")
+		By("creating corrected Consumer with a valid algorithm")
 		err = s.CreateResourceFromString(correctedConsumer)
 		Expect(err).NotTo(HaveOccurred(), "creating corrected Consumer")
 	})

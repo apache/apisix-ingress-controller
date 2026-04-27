@@ -24,6 +24,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
@@ -98,6 +99,10 @@ spec:
 	})
 
 	It("should reject routes that fail ADC validation", func() {
+		if framework.ProviderType != framework.ProviderTypeAPISIXStandalone {
+			Skip("ADC validation requires apisix-standalone backend")
+		}
+
 		backendService := "webhook-route-backend"
 		routeName := "webhook-apisixroute-invalid"
 

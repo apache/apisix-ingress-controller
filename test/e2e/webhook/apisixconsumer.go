@@ -24,6 +24,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
@@ -86,7 +87,11 @@ stringData:
 		Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), missingSecret)))
 	})
 
-	It("should reject duplicate credentials during ADC validation", func() {
+	It("should reject invalid plugin config during ADC validation", func() {
+		if framework.ProviderType != framework.ProviderTypeAPISIXStandalone {
+			Skip("ADC validation requires apisix-standalone backend")
+		}
+
 		firstConsumer := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
@@ -96,16 +101,17 @@ metadata:
 spec:
   ingressClassName: %s
   authParameter:
-    keyAuth:
+    jwtAuth:
       value:
-        key: shared-key
+        key: consumer-a-key
+        algorithm: HS256
 `, s.Namespace(), s.Namespace())
 
-		By("creating the first ApisixConsumer")
+		By("creating the first ApisixConsumer with valid jwt-auth config")
 		err := s.CreateResourceFromString(firstConsumer)
 		Expect(err).NotTo(HaveOccurred(), "creating first ApisixConsumer")
 
-		secondConsumer := fmt.Sprintf(`
+		invalidConsumer := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
 kind: ApisixConsumer
 metadata:
@@ -114,13 +120,14 @@ metadata:
 spec:
   ingressClassName: %s
   authParameter:
-    keyAuth:
+    jwtAuth:
       value:
-        key: shared-key
+        key: consumer-b-key
+        algorithm: INVALID_ALGO
 `, s.Namespace(), s.Namespace())
 
-		By("creating a second ApisixConsumer with the same key")
-		err = s.CreateResourceFromString(secondConsumer)
+		By("creating ApisixConsumer with an invalid jwt-auth algorithm")
+		err = s.CreateResourceFromString(invalidConsumer)
 		expectAdmissionDenied(s, "apisixconsumer", "webhook-apisixconsumer-b", err)
 
 		correctedConsumer := fmt.Sprintf(`
@@ -132,12 +139,13 @@ metadata:
 spec:
   ingressClassName: %s
   authParameter:
-    keyAuth:
+    jwtAuth:
       value:
-        key: unique-key
+        key: consumer-b-key
+        algorithm: HS256
 `, s.Namespace(), s.Namespace())
 
-		By("creating a corrected ApisixConsumer with a unique key")
+		By("creating corrected ApisixConsumer with a valid algorithm")
 		err = s.CreateResourceFromString(correctedConsumer)
 		Expect(err).NotTo(HaveOccurred(), "creating corrected ApisixConsumer")
 	})
