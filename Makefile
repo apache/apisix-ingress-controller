@@ -245,13 +245,9 @@ pull-infra-images:
 	retry_pull "hkccr.ccs.tencentyun.com/api7-dev/api7-ee-3-gateway:dev" "hkccr.ccs.tencentyun.com/api7-dev/api7-ee-3-gateway:dev"; \
 	retry_pull "hkccr.ccs.tencentyun.com/api7-dev/api7-ee-dp-manager:$(DASHBOARD_VERSION)" "hkccr.ccs.tencentyun.com/api7-dev/api7-ee-dp-manager:$(DASHBOARD_VERSION)"; \
 	retry_pull "hkccr.ccs.tencentyun.com/api7-dev/api7-ee-3-integrated:$(DASHBOARD_VERSION)" "hkccr.ccs.tencentyun.com/api7-dev/api7-ee-3-integrated:$(DASHBOARD_VERSION)"; \
-	if [ -n "$$DOCKER_REGISTRY" ]; then \
-		retry_pull "$$DOCKER_REGISTRY/kennethreitz/httpbin:latest" "kennethreitz/httpbin:latest"; \
-		retry_pull "$$DOCKER_REGISTRY/jmalloc/echo-server:latest" "jmalloc/echo-server:latest"; \
-	else \
-		retry_pull "kennethreitz/httpbin:latest" "kennethreitz/httpbin:latest"; \
-		retry_pull "jmalloc/echo-server:latest" "jmalloc/echo-server:latest"; \
-	fi; \
+	dockerhub_proxy="$${DOCKERHUB_PROXY:-docker.m.daocloud.io}"; \
+	retry_pull "$$dockerhub_proxy/kennethreitz/httpbin:latest" "kennethreitz/httpbin:latest"; \
+	retry_pull "$$dockerhub_proxy/jmalloc/echo-server:latest" "jmalloc/echo-server:latest"; \
 	retry_pull "ghcr.io/api7/adc:dev" "ghcr.io/api7/adc:dev"; \
 	retry_pull "apache/apisix:dev" "apache/apisix:dev"; \
 	retry_pull "openresty/openresty:1.27.1.2-4-bullseye-fat" "openresty/openresty:1.27.1.2-4-bullseye-fat"
