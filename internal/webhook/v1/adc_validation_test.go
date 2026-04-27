@@ -34,13 +34,17 @@ import (
 func withMockADCServer(t *testing.T, handler http.HandlerFunc) string {
 	t.Helper()
 
-	server := httptest.NewServer(http.HandlerFunc(handler))
+	server := httptest.NewServer(handler)
 	t.Setenv("ADC_SERVER_URL", server.URL)
 	t.Cleanup(server.Close)
 	return server.URL
 }
 
 func managedIngressClassWithGatewayProxy(endpoint string) []runtime.Object {
+	return managedIngressClassWithGatewayProxyMode(endpoint, "apisix-standalone")
+}
+
+func managedIngressClassWithGatewayProxyMode(endpoint, mode string) []runtime.Object {
 	namespace := "default"
 
 	return []runtime.Object{
@@ -65,7 +69,7 @@ func managedIngressClassWithGatewayProxy(endpoint string) []runtime.Object {
 				Provider: &apisixv1alpha1.GatewayProxyProvider{
 					Type: apisixv1alpha1.ProviderTypeControlPlane,
 					ControlPlane: &apisixv1alpha1.ControlPlaneProvider{
-						Mode:      "apisix-standalone",
+						Mode:      mode,
 						Endpoints: []string{endpoint},
 						Auth: apisixv1alpha1.ControlPlaneAuth{
 							Type: apisixv1alpha1.AuthTypeAdminKey,
@@ -85,4 +89,10 @@ func requireValidateRequest(t *testing.T, r *http.Request) {
 	require.Equal(t, http.MethodPost, r.Method)
 	require.Equal(t, "/apisix/admin/configs/validate", r.URL.Path)
 	require.Equal(t, "token", r.Header.Get("X-API-KEY"))
+}
+
+func requireADCServerValidateRequest(t *testing.T, r *http.Request) {
+	t.Helper()
+	require.Equal(t, http.MethodPost, r.Method)
+	require.Equal(t, "/validate", r.URL.Path)
 }

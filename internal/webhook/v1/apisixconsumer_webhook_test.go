@@ -33,6 +33,8 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 )
 
+const managedIngressClassName = "apisix"
+
 func buildApisixConsumerValidator(t *testing.T, objects ...runtime.Object) *ApisixConsumerCustomValidator {
 	t.Helper()
 
@@ -46,7 +48,7 @@ func buildApisixConsumerValidator(t *testing.T, objects ...runtime.Object) *Apis
 	hasManagedIngressClass := false
 	for _, obj := range objects {
 		ingressClass, ok := obj.(*networkingv1.IngressClass)
-		if ok && ingressClass.Name == "apisix" {
+		if ok && ingressClass.Name == managedIngressClassName {
 			hasManagedIngressClass = true
 			break
 		}
@@ -54,7 +56,7 @@ func buildApisixConsumerValidator(t *testing.T, objects ...runtime.Object) *Apis
 	if !hasManagedIngressClass {
 		managed = append(managed, &networkingv1.IngressClass{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "apisix",
+				Name: managedIngressClassName,
 				Annotations: map[string]string{
 					"ingressclass.kubernetes.io/is-default-class": "true",
 				},
@@ -197,6 +199,36 @@ func TestApisixConsumerValidator_DeniesOnADCValidationFailure(t *testing.T) {
 	)
 
 	validator := buildApisixConsumerValidator(t, objects...)
+
+	warnings, err := validator.ValidateCreate(context.Background(), consumer)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "consumer rejected")
+	require.Empty(t, warnings)
+}
+
+func TestApisixConsumerValidator_UsesADCValidateEndpointForControlPlane(t *testing.T) {
+	serverURL := withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requireADCServerValidateRequest(t, r)
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"errorMessage":"consumer rejected","errors":[{"resource_type":"consumers","resource_name":"demo","message":"duplicate credential"}]}`))
+	})
+
+	consumer := &apisixv2.ApisixConsumer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+		},
+		Spec: apisixv2.ApisixConsumerSpec{
+			IngressClassName: managedIngressClassName,
+			AuthParameter: apisixv2.ApisixConsumerAuthParameter{
+				KeyAuth: &apisixv2.ApisixConsumerKeyAuth{
+					Value: &apisixv2.ApisixConsumerKeyAuthValue{Key: "shared-key"},
+				},
+			},
+		},
+	}
+
+	validator := buildApisixConsumerValidator(t, managedIngressClassWithGatewayProxyMode(serverURL, "apisix")...)
 
 	warnings, err := validator.ValidateCreate(context.Background(), consumer)
 	require.Error(t, err)

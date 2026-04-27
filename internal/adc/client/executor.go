@@ -262,7 +262,7 @@ func (e *HTTPADCExecutor) runHTTPValidateForSingleServer(ctx context.Context, se
 		req, err = e.buildAPISIXValidateRequest(ctx, serverAddr, config, resources)
 		httpClient = e.newBackendHTTPClient(config)
 	} else {
-		req, err = e.buildHTTPRequest(ctx, serverAddr, config, labels, types, resources, http.MethodPost, "/sync")
+		req, err = e.buildHTTPRequest(ctx, serverAddr, config, labels, types, resources, http.MethodPost, "/validate")
 	}
 	if err != nil {
 		return fmt.Errorf("failed to build validate request: %w", err)
@@ -367,7 +367,7 @@ func buildAPISIXValidatePayload(resources *adctypes.Resources) (*apisixValidateR
 		}
 
 		for _, route := range service.Routes {
-			routeMap, err := toMap(route)
+			routeMap, err := buildAPISIXRouteValidateObject(route)
 			if err != nil {
 				return nil, err
 			}
@@ -387,7 +387,7 @@ func buildAPISIXValidatePayload(resources *adctypes.Resources) (*apisixValidateR
 	}
 
 	for _, consumer := range resources.Consumers {
-		consumerMap, err := toMap(consumer)
+		consumerMap, err := buildAPISIXConsumerValidateObject(consumer)
 		if err != nil {
 			return nil, err
 		}
@@ -403,6 +403,40 @@ func buildAPISIXValidatePayload(resources *adctypes.Resources) (*apisixValidateR
 	}
 
 	return body, nil
+}
+
+func buildAPISIXRouteValidateObject(route *adctypes.Route) (map[string]any, error) {
+	routeMap, err := toMap(route)
+	if err != nil {
+		return nil, err
+	}
+
+	delete(routeMap, "description")
+	return routeMap, nil
+}
+
+func buildAPISIXConsumerValidateObject(consumer *adctypes.Consumer) (map[string]any, error) {
+	consumerMap, err := toMap(consumer)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(consumer.Credentials) == 0 {
+		return consumerMap, nil
+	}
+
+	plugins, ok := consumerMap["plugins"].(map[string]any)
+	if !ok || plugins == nil {
+		plugins = make(map[string]any, len(consumer.Credentials))
+	}
+
+	for _, credential := range consumer.Credentials {
+		plugins[credential.Type] = credential.Config
+	}
+
+	consumerMap["plugins"] = plugins
+	delete(consumerMap, "credentials")
+	return consumerMap, nil
 }
 
 func buildAPISIXSSLValidateObject(ssl *adctypes.SSL) (map[string]any, error) {
