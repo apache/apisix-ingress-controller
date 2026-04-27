@@ -45,7 +45,7 @@ var _ = Describe("Test ApisixConsumer Webhook", Label("webhook"), func() {
 		time.Sleep(5 * time.Second)
 	})
 
-	It("should warn on missing authentication secrets", func() {
+	It("should reject missing authentication secrets", func() {
 		missingSecret := "missing-basic-secret"
 		consumerName := "webhook-apisixconsumer"
 		consumerYAML := `
@@ -63,7 +63,7 @@ spec:
 `
 
 		output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(consumerYAML, consumerName, s.Namespace(), s.Namespace(), missingSecret))
-		Expect(err).ShouldNot(HaveOccurred())
+		expectAdmissionDenied(s, "apisixconsumer", consumerName, err, fmt.Sprintf("%s/%s", s.Namespace(), missingSecret))
 		Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), missingSecret)))
 
 		By("creating referenced secret")
@@ -84,5 +84,61 @@ stringData:
 		output, err = s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(consumerYAML, consumerName, s.Namespace(), s.Namespace(), missingSecret))
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), missingSecret)))
+	})
+
+	It("should reject duplicate credentials during ADC validation", func() {
+		firstConsumer := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: webhook-apisixconsumer-a
+  namespace: %s
+spec:
+  ingressClassName: %s
+  authParameter:
+    keyAuth:
+      value:
+        key: shared-key
+`, s.Namespace(), s.Namespace())
+
+		By("creating the first ApisixConsumer")
+		err := s.CreateResourceFromString(firstConsumer)
+		Expect(err).NotTo(HaveOccurred(), "creating first ApisixConsumer")
+
+		secondConsumer := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: webhook-apisixconsumer-b
+  namespace: %s
+spec:
+  ingressClassName: %s
+  authParameter:
+    keyAuth:
+      value:
+        key: shared-key
+`, s.Namespace(), s.Namespace())
+
+		By("creating a second ApisixConsumer with the same key")
+		err = s.CreateResourceFromString(secondConsumer)
+		expectAdmissionDenied(s, "apisixconsumer", "webhook-apisixconsumer-b", err)
+
+		correctedConsumer := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: webhook-apisixconsumer-b
+  namespace: %s
+spec:
+  ingressClassName: %s
+  authParameter:
+    keyAuth:
+      value:
+        key: unique-key
+`, s.Namespace(), s.Namespace())
+
+		By("creating a corrected ApisixConsumer with a unique key")
+		err = s.CreateResourceFromString(correctedConsumer)
+		Expect(err).NotTo(HaveOccurred(), "creating corrected ApisixConsumer")
 	})
 })

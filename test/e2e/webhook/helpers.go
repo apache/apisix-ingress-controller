@@ -235,3 +235,14 @@ spec:
 	Expect(err).ShouldNot(HaveOccurred())
 	Expect(output).NotTo(ContainSubstring(missingBackendWarning))
 }
+
+func expectAdmissionDenied(s *scaffold.Scaffold, resourceType, resourceName string, err error, messageSubstrings ...string) {
+	Expect(err).To(HaveOccurred(), "expecting admission rejection")
+	Expect(err.Error()).To(ContainSubstring("denied the request"))
+	for _, substring := range messageSubstrings {
+		Expect(err.Error()).To(ContainSubstring(substring))
+	}
+
+	_, getErr := s.GetOutputFromString(resourceType, resourceName, "-o", "yaml")
+	Expect(getErr).To(HaveOccurred(), fmt.Sprintf("resource %s/%s should not exist after admission rejection", resourceType, resourceName))
+}

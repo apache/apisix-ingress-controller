@@ -92,3 +92,70 @@ type ADCExecutionServerAddrError struct {
 func (e ADCExecutionServerAddrError) Error() string {
 	return fmt.Sprintf("ServerAddr: %s, Err: %s", e.ServerAddr, e.Err)
 }
+
+type ADCValidationErrors struct {
+	Errors []ADCValidationError
+}
+
+func (e ADCValidationErrors) Error() string {
+	messages := make([]string, 0, len(e.Errors))
+	for _, err := range e.Errors {
+		messages = append(messages, err.Error())
+	}
+	return fmt.Sprintf("ADC validation errors: [%s]", strings.Join(messages, "; "))
+}
+
+type ADCValidationError struct {
+	Name         string
+	FailedErrors []ADCValidationServerAddrError
+}
+
+func (e ADCValidationError) Error() string {
+	messages := make([]string, 0, len(e.FailedErrors))
+	for _, failed := range e.FailedErrors {
+		messages = append(messages, failed.Error())
+	}
+	return fmt.Sprintf("ADC validation error for %s: [%s]", e.Name, strings.Join(messages, "; "))
+}
+
+type ADCValidationServerAddrError struct {
+	Err              string
+	ServerAddr       string
+	ValidationErrors []ADCValidationDetail
+}
+
+func (e ADCValidationServerAddrError) Error() string {
+	if len(e.ValidationErrors) == 0 {
+		return fmt.Sprintf("ServerAddr: %s, Err: %s", e.ServerAddr, e.Err)
+	}
+
+	messages := make([]string, 0, len(e.ValidationErrors))
+	for _, detail := range e.ValidationErrors {
+		messages = append(messages, detail.Error())
+	}
+	return fmt.Sprintf("ServerAddr: %s, Err: %s (%s)", e.ServerAddr, e.Err, strings.Join(messages, "; "))
+}
+
+type ADCValidationDetail struct {
+	ResourceType string `json:"resource_type,omitempty"`
+	ResourceName string `json:"resource_name,omitempty"`
+	Message      string `json:"message,omitempty"`
+	Index        int    `json:"index,omitempty"`
+}
+
+func (e ADCValidationDetail) Error() string {
+	var parts []string
+	if e.ResourceType != "" {
+		parts = append(parts, fmt.Sprintf("type=%s", e.ResourceType))
+	}
+	if e.ResourceName != "" {
+		parts = append(parts, fmt.Sprintf("name=%s", e.ResourceName))
+	}
+	if e.Message != "" {
+		parts = append(parts, e.Message)
+	}
+	if len(parts) == 0 {
+		return fmt.Sprintf("index=%d", e.Index)
+	}
+	return strings.Join(parts, ", ")
+}

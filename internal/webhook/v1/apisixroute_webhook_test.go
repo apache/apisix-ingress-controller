@@ -17,6 +17,7 @@ package v1
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -24,9 +25,11 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	apisixv1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apisixv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 )
@@ -37,10 +40,20 @@ func buildApisixRouteValidator(t *testing.T, objects ...runtime.Object) *ApisixR
 	scheme := runtime.NewScheme()
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
 	require.NoError(t, networkingv1.AddToScheme(scheme))
+	require.NoError(t, apisixv1alpha1.AddToScheme(scheme))
 	require.NoError(t, apisixv2.AddToScheme(scheme))
 
-	managed := []runtime.Object{
-		&networkingv1.IngressClass{
+	managed := []runtime.Object{}
+	hasManagedIngressClass := false
+	for _, obj := range objects {
+		ingressClass, ok := obj.(*networkingv1.IngressClass)
+		if ok && ingressClass.Name == "apisix" {
+			hasManagedIngressClass = true
+			break
+		}
+	}
+	if !hasManagedIngressClass {
+		managed = append(managed, &networkingv1.IngressClass{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "apisix",
 				Annotations: map[string]string{
@@ -50,7 +63,7 @@ func buildApisixRouteValidator(t *testing.T, objects ...runtime.Object) *ApisixR
 			Spec: networkingv1.IngressClassSpec{
 				Controller: config.ControllerConfig.ControllerName,
 			},
-		},
+		})
 	}
 	allObjects := append(managed, objects...)
 	builder := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(allObjects...)
@@ -169,6 +182,95 @@ func TestApisixRouteValidator_NoWarnings(t *testing.T) {
 	}
 
 	validator := buildApisixRouteValidator(t, objs...)
+
+	warnings, err := validator.ValidateCreate(context.Background(), route)
+	require.NoError(t, err)
+	require.Empty(t, warnings)
+}
+
+func TestApisixRouteValidator_DeniesOnADCValidationFailure(t *testing.T) {
+	serverURL := withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requireValidateRequest(t, r)
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"errorMessage":"route rejected","errors":[{"resource_type":"routes","resource_name":"demo","message":"invalid plugin config"}]}`))
+	})
+
+	route := &apisixv2.ApisixRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+		},
+		Spec: apisixv2.ApisixRouteSpec{
+			IngressClassName: "apisix",
+			HTTP: []apisixv2.ApisixRouteHTTP{{
+				Name: "rule",
+				Backends: []apisixv2.ApisixRouteHTTPBackend{{
+					ServiceName:        "backend",
+					ServicePort:        intstr.FromInt(80),
+					ResolveGranularity: apisixv2.ResolveGranularityService,
+				}},
+			}},
+		},
+	}
+
+	objects := append(managedIngressClassWithGatewayProxy(serverURL),
+		&corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{Name: "backend", Namespace: "default"},
+			Spec: corev1.ServiceSpec{
+				ClusterIP: "10.0.0.1",
+				Ports: []corev1.ServicePort{{
+					Port: 80,
+				}},
+			},
+		},
+	)
+
+	validator := buildApisixRouteValidator(t, objects...)
+
+	warnings, err := validator.ValidateCreate(context.Background(), route)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "route rejected")
+	require.Empty(t, warnings)
+}
+
+func TestApisixRouteValidator_FailsOpenWhenADCUnavailable(t *testing.T) {
+	serverURL := withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requireValidateRequest(t, r)
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte(`{"error":"backend unavailable"}`))
+	})
+
+	route := &apisixv2.ApisixRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+		},
+		Spec: apisixv2.ApisixRouteSpec{
+			IngressClassName: "apisix",
+			HTTP: []apisixv2.ApisixRouteHTTP{{
+				Name: "rule",
+				Backends: []apisixv2.ApisixRouteHTTPBackend{{
+					ServiceName:        "backend",
+					ServicePort:        intstr.FromInt(80),
+					ResolveGranularity: apisixv2.ResolveGranularityService,
+				}},
+			}},
+		},
+	}
+
+	objects := append(managedIngressClassWithGatewayProxy(serverURL),
+		&corev1.Service{
+			ObjectMeta: metav1.ObjectMeta{Name: "backend", Namespace: "default"},
+			Spec: corev1.ServiceSpec{
+				ClusterIP: "10.0.0.1",
+				Ports: []corev1.ServicePort{{
+					Port: 80,
+				}},
+			},
+		},
+	)
+
+	validator := buildApisixRouteValidator(t, objects...)
 
 	warnings, err := validator.ValidateCreate(context.Background(), route)
 	require.NoError(t, err)

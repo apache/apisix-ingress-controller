@@ -90,4 +90,65 @@ stringData:
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), missingSecret)))
 	})
+
+	It("should reject duplicate credentials during ADC validation", func() {
+		gatewayName := s.Namespace()
+
+		firstConsumer := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v1alpha1
+kind: Consumer
+metadata:
+  name: webhook-consumer-a
+spec:
+  gatewayRef:
+    name: %s
+  credentials:
+  - type: key-auth
+    name: key-auth-a
+    config:
+      key: shared-key
+`, gatewayName)
+
+		By("creating the first Consumer")
+		err := s.CreateResourceFromString(firstConsumer)
+		Expect(err).NotTo(HaveOccurred(), "creating first Consumer")
+
+		secondConsumer := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v1alpha1
+kind: Consumer
+metadata:
+  name: webhook-consumer-b
+spec:
+  gatewayRef:
+    name: %s
+  credentials:
+  - type: key-auth
+    name: key-auth-b
+    config:
+      key: shared-key
+`, gatewayName)
+
+		By("creating a second Consumer with the same key")
+		err = s.CreateResourceFromString(secondConsumer)
+		expectAdmissionDenied(s, "consumer", "webhook-consumer-b", err)
+
+		correctedConsumer := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v1alpha1
+kind: Consumer
+metadata:
+  name: webhook-consumer-b
+spec:
+  gatewayRef:
+    name: %s
+  credentials:
+  - type: key-auth
+    name: key-auth-b
+    config:
+      key: unique-key
+`, gatewayName)
+
+		By("creating a corrected Consumer with a unique key")
+		err = s.CreateResourceFromString(correctedConsumer)
+		Expect(err).NotTo(HaveOccurred(), "creating corrected Consumer")
+	})
 })

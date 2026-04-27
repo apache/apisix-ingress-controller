@@ -17,8 +17,11 @@ package v1
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -44,16 +47,21 @@ func SetupConsumerWebhookWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:webhook:path=/validate-apisix-apache-org-v1alpha1-consumer,mutating=false,failurePolicy=fail,sideEffects=None,groups=apisix.apache.org,resources=consumers,verbs=create;update,versions=v1alpha1,name=vconsumer-v1alpha1.kb.io,admissionReviewVersions=v1,failurePolicy=Ignore
 
 type ConsumerCustomValidator struct {
-	Client  client.Client
-	checker reference.Checker
+	Client       client.Client
+	checker      reference.Checker
+	adcValidator *adcAdmissionValidator
+	initErr      error
 }
 
 var _ webhook.CustomValidator = &ConsumerCustomValidator{}
 
 func NewConsumerCustomValidator(c client.Client) *ConsumerCustomValidator {
+	adcValidator, err := newADCAdmissionValidator(c, consumerLog)
 	return &ConsumerCustomValidator{
-		Client:  c,
-		checker: reference.NewChecker(c, consumerLog),
+		Client:       c,
+		checker:      reference.NewChecker(c, consumerLog),
+		adcValidator: adcValidator,
+		initErr:      err,
 	}
 }
 
@@ -67,7 +75,14 @@ func (v *ConsumerCustomValidator) ValidateCreate(ctx context.Context, obj runtim
 		return nil, nil
 	}
 
-	return v.collectWarnings(ctx, consumer), nil
+	warnings := v.collectWarnings(ctx, consumer)
+	if v.initErr != nil {
+		return warnings, v.initErr
+	}
+	if err := v.validateDuplicateKeyAuthCredentials(ctx, consumer); err != nil {
+		return warnings, err
+	}
+	return warnings, v.adcValidator.Validate(ctx, consumer)
 }
 
 func (v *ConsumerCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
@@ -80,7 +95,14 @@ func (v *ConsumerCustomValidator) ValidateUpdate(ctx context.Context, oldObj, ne
 		return nil, nil
 	}
 
-	return v.collectWarnings(ctx, consumer), nil
+	warnings := v.collectWarnings(ctx, consumer)
+	if v.initErr != nil {
+		return warnings, v.initErr
+	}
+	if err := v.validateDuplicateKeyAuthCredentials(ctx, consumer); err != nil {
+		return warnings, err
+	}
+	return warnings, v.adcValidator.Validate(ctx, consumer)
 }
 
 func (*ConsumerCustomValidator) ValidateDelete(context.Context, runtime.Object) (admission.Warnings, error) {
@@ -116,4 +138,107 @@ func (v *ConsumerCustomValidator) collectWarnings(ctx context.Context, consumer 
 	}
 
 	return warnings
+}
+
+func (v *ConsumerCustomValidator) validateDuplicateKeyAuthCredentials(ctx context.Context, consumer *apisixv1alpha1.Consumer) error {
+	keys, err := v.extractKeyAuthKeys(ctx, consumer)
+	if err != nil {
+		return err
+	}
+	if len(keys) == 0 {
+		return nil
+	}
+
+	var consumers apisixv1alpha1.ConsumerList
+	if err := v.Client.List(ctx, &consumers); err != nil {
+		return err
+	}
+
+	for i := range consumers.Items {
+		existing := &consumers.Items[i]
+		if existing.Namespace == consumer.Namespace && existing.Name == consumer.Name {
+			continue
+		}
+		if !sameConsumerGatewayRef(existing, consumer) {
+			continue
+		}
+
+		existingKeys, err := v.extractKeyAuthKeys(ctx, existing)
+		if err != nil {
+			return err
+		}
+		for key := range existingKeys {
+			if _, ok := keys[key]; ok {
+				return fmt.Errorf("duplicate key-auth credential key %q already used by Consumer %s/%s", key, existing.Namespace, existing.Name)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (v *ConsumerCustomValidator) extractKeyAuthKeys(ctx context.Context, consumer *apisixv1alpha1.Consumer) (map[string]struct{}, error) {
+	keys := make(map[string]struct{})
+
+	for _, credential := range consumer.Spec.Credentials {
+		if credential.Type != "key-auth" {
+			continue
+		}
+
+		key, err := v.extractCredentialKey(ctx, consumer, credential)
+		if err != nil {
+			return nil, err
+		}
+		if key == "" {
+			continue
+		}
+		keys[key] = struct{}{}
+	}
+
+	return keys, nil
+}
+
+func (v *ConsumerCustomValidator) extractCredentialKey(ctx context.Context, consumer *apisixv1alpha1.Consumer, credential apisixv1alpha1.Credential) (string, error) {
+	if credential.SecretRef != nil && credential.SecretRef.Name != "" {
+		namespace := consumer.Namespace
+		if credential.SecretRef.Namespace != nil && *credential.SecretRef.Namespace != "" {
+			namespace = *credential.SecretRef.Namespace
+		}
+
+		var secret corev1.Secret
+		err := v.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: credential.SecretRef.Name}, &secret)
+		if err != nil {
+			if k8serrors.IsNotFound(err) {
+				return "", nil
+			}
+			return "", err
+		}
+		return string(secret.Data["key"]), nil
+	}
+
+	if len(credential.Config.Raw) == 0 {
+		return "", nil
+	}
+
+	var cfg struct {
+		Key string `json:"key"`
+	}
+	if err := json.Unmarshal(credential.Config.Raw, &cfg); err != nil {
+		return "", nil
+	}
+	return cfg.Key, nil
+}
+
+func sameConsumerGatewayRef(left, right *apisixv1alpha1.Consumer) bool {
+	leftNamespace := left.Namespace
+	if left.Spec.GatewayRef.Namespace != nil && *left.Spec.GatewayRef.Namespace != "" {
+		leftNamespace = *left.Spec.GatewayRef.Namespace
+	}
+
+	rightNamespace := right.Namespace
+	if right.Spec.GatewayRef.Namespace != nil && *right.Spec.GatewayRef.Namespace != "" {
+		rightNamespace = *right.Spec.GatewayRef.Namespace
+	}
+
+	return left.Spec.GatewayRef.Name == right.Spec.GatewayRef.Name && leftNamespace == rightNamespace
 }

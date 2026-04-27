@@ -45,16 +45,21 @@ func SetupApisixConsumerWebhookWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:webhook:path=/validate-apisix-apache-org-v2-apisixconsumer,mutating=false,failurePolicy=fail,sideEffects=None,groups=apisix.apache.org,resources=apisixconsumers,verbs=create;update,versions=v2,name=vapisixconsumer-v2.kb.io,admissionReviewVersions=v1,failurePolicy=Ignore
 
 type ApisixConsumerCustomValidator struct {
-	Client  client.Client
-	checker reference.Checker
+	Client       client.Client
+	checker      reference.Checker
+	adcValidator *adcAdmissionValidator
+	initErr      error
 }
 
 var _ webhook.CustomValidator = &ApisixConsumerCustomValidator{}
 
 func NewApisixConsumerCustomValidator(c client.Client) *ApisixConsumerCustomValidator {
+	adcValidator, err := newADCAdmissionValidator(c, apisixConsumerLog)
 	return &ApisixConsumerCustomValidator{
-		Client:  c,
-		checker: reference.NewChecker(c, apisixConsumerLog),
+		Client:       c,
+		checker:      reference.NewChecker(c, apisixConsumerLog),
+		adcValidator: adcValidator,
+		initErr:      err,
 	}
 }
 
@@ -69,7 +74,11 @@ func (v *ApisixConsumerCustomValidator) ValidateCreate(ctx context.Context, obj 
 		return nil, nil
 	}
 
-	return v.collectWarnings(ctx, consumer), nil
+	warnings := v.collectWarnings(ctx, consumer)
+	if v.initErr != nil {
+		return warnings, v.initErr
+	}
+	return warnings, v.adcValidator.Validate(ctx, consumer)
 }
 
 func (v *ApisixConsumerCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
@@ -82,7 +91,11 @@ func (v *ApisixConsumerCustomValidator) ValidateUpdate(ctx context.Context, oldO
 		return nil, nil
 	}
 
-	return v.collectWarnings(ctx, consumer), nil
+	warnings := v.collectWarnings(ctx, consumer)
+	if v.initErr != nil {
+		return warnings, v.initErr
+	}
+	return warnings, v.adcValidator.Validate(ctx, consumer)
 }
 
 func (*ApisixConsumerCustomValidator) ValidateDelete(context.Context, runtime.Object) (admission.Warnings, error) {
