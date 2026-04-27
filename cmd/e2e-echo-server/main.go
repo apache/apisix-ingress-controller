@@ -20,7 +20,9 @@ func main() {
 			if err != nil {
 				return
 			}
-			defer conn.Close()
+			defer func() {
+				_ = conn.Close()
+			}()
 
 			for {
 				messageType, message, err := conn.ReadMessage()

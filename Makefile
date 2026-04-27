@@ -253,8 +253,8 @@ pull-infra-images:
 	dockerhub_proxy="$${DOCKERHUB_PROXY:-docker.m.daocloud.io}"; \
 	retry_pull "$$dockerhub_proxy/kennethreitz/httpbin:latest" "kennethreitz/httpbin:latest"; \
 	retry_pull "ghcr.io/api7/adc:dev" "ghcr.io/api7/adc:dev"; \
-	retry_pull "apache/apisix:dev" "apache/apisix:dev"; \
-	retry_pull "openresty/openresty:1.27.1.2-4-bullseye-fat" "openresty/openresty:1.27.1.2-4-bullseye-fat"
+	retry_pull "$$dockerhub_proxy/apache/apisix:dev" "apache/apisix:dev"; \
+	retry_pull "$$dockerhub_proxy/openresty/openresty:1.27.1.2-4-bullseye-fat" "openresty/openresty:1.27.1.2-4-bullseye-fat"
 
 ##@ Build
 
