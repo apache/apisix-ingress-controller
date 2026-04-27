@@ -68,7 +68,7 @@ jobs:
         run: |
           make kind-down
           make kind-up
-          kind export kubeconfig --name apisix-ingress-cluster
+          kind export kubeconfig --name apisix-ingress-cluster --internal
           for attempt in {1..30}; do
             if kubectl cluster-info >/dev/null 2>&1; then
               break
