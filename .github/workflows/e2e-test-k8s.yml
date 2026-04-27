@@ -67,11 +67,7 @@ jobs:
           KIND_NODE_IMAGE: kindest/node:v1.18.15
         run: |
           make kind-up
-          KIND_NODE_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' apisix-ingress-cluster-control-plane)
-          echo $KIND_NODE_IP
-
-          kubectl config get-clusters
-          kubectl config set-cluster kind-apisix-ingress-cluster --server=https://$KIND_NODE_IP:6443
+          kind export kubeconfig --name apisix-ingress-cluster
           kubectl wait --for=condition=Ready nodes --all
 
       - name: Build images
