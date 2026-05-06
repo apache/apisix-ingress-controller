@@ -277,7 +277,7 @@ spec:
 
 		By("updating ApisixRoute with invalid plugin config")
 		err = s.CreateResourceFromString(invalidRouteYAML)
-		expectAdmissionDenied(s, "apisixroute", routeName, err)
+		expectUpdateDenied(err)
 
 		By("updating ApisixRoute with corrected config")
 		err = s.CreateResourceFromString(validRouteYAML)

@@ -198,7 +198,7 @@ spec:
 
 		By("updating ApisixConsumer with invalid jwt-auth algorithm")
 		err = s.CreateResourceFromString(invalidConsumer)
-		expectAdmissionDenied(s, "apisixconsumer", consumerName, err)
+		expectUpdateDenied(err)
 
 		By("updating ApisixConsumer with corrected config")
 		err = s.CreateResourceFromString(validConsumer)

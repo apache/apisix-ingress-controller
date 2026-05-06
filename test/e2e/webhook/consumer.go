@@ -205,7 +205,7 @@ spec:
 
 		By("updating Consumer with an invalid jwt-auth algorithm")
 		err = s.CreateResourceFromString(invalidConsumer)
-		expectAdmissionDenied(s, "consumer", consumerName, err)
+		expectUpdateDenied(err)
 
 		correctedConsumer := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v1alpha1
