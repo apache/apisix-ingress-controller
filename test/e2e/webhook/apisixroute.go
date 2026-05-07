@@ -117,10 +117,6 @@ stringData:
 	})
 
 	It("should reject routes that fail ADC validation", func() {
-		if framework.ProviderType != framework.ProviderTypeAPISIXStandalone {
-			Skip("ADC validation requires apisix-standalone backend")
-		}
-
 		backendService := "webhook-route-backend"
 		routeName := "webhook-apisixroute-invalid"
 
@@ -199,10 +195,6 @@ spec:
 	})
 
 	It("should reject route update that fails ADC validation", func() {
-		if framework.ProviderType != framework.ProviderTypeAPISIXStandalone {
-			Skip("ADC validation requires apisix-standalone backend")
-		}
-
 		backendService := "webhook-route-update-backend"
 		routeName := "webhook-apisixroute-update"
 

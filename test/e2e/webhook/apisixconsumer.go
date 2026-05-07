@@ -89,10 +89,6 @@ stringData:
 	})
 
 	It("should reject invalid plugin config during ADC validation", func() {
-		if framework.ProviderType != framework.ProviderTypeAPISIXStandalone {
-			Skip("ADC validation requires apisix-standalone backend")
-		}
-
 		privateKeyYAML := "          " + strings.ReplaceAll(framework.TestKey, "\n", "\n          ")
 
 		firstConsumer := fmt.Sprintf(`
@@ -154,10 +150,6 @@ spec:
 	})
 
 	It("should reject consumer update that fails ADC validation", func() {
-		if framework.ProviderType != framework.ProviderTypeAPISIXStandalone {
-			Skip("ADC validation requires apisix-standalone backend")
-		}
-
 		consumerName := "webhook-apisixconsumer-update"
 
 		validConsumer := fmt.Sprintf(`

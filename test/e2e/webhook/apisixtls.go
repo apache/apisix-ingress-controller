@@ -92,10 +92,6 @@ spec:
 	})
 
 	It("should reject invalid TLS material during ADC validation", func() {
-		if framework.ProviderType != framework.ProviderTypeAPISIXStandalone {
-			Skip("ADC validation requires apisix-standalone backend")
-		}
-
 		serverSecret := "invalid-server-tls"
 		tlsName := "webhook-apisixtls-invalid"
 		host := "invalid-webhook.example.com"
@@ -151,10 +147,6 @@ spec:
 	})
 
 	It("should reject TLS update with invalid certificate material", func() {
-		if framework.ProviderType != framework.ProviderTypeAPISIXStandalone {
-			Skip("ADC validation requires apisix-standalone backend")
-		}
-
 		validSecret := "update-valid-tls"
 		invalidSecret := "update-invalid-tls"
 		tlsName := "webhook-apisixtls-update"
