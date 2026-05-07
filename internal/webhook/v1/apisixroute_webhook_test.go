@@ -192,7 +192,7 @@ func TestApisixRouteValidator_DeniesOnADCValidationFailure(t *testing.T) {
 	serverURL := withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
 		requireValidateRequest(t, r)
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(`{"errorMessage":"route rejected","errors":[{"resource_type":"routes","resource_name":"demo","message":"invalid plugin config"}]}`))
+		_, _ = w.Write([]byte(`{"message":"route rejected","errors":[{"resource_type":"routes","resource_name":"demo","message":"invalid plugin config"}]}`))
 	})
 
 	route := &apisixv2.ApisixRoute{

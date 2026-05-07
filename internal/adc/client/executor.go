@@ -20,14 +20,12 @@ package client
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -86,7 +84,7 @@ type ADCServerOpts struct {
 
 type ADCValidateResult struct {
 	Success      *bool                       `json:"success,omitempty"`
-	ErrorMessage string                      `json:"errorMessage,omitempty"`
+	ErrorMessage string                      `json:"message,omitempty"`
 	Errors       []types.ADCValidationDetail `json:"errors,omitempty"`
 }
 
@@ -254,21 +252,12 @@ func (e *HTTPADCExecutor) runHTTPValidateForSingleServer(ctx context.Context, se
 		return fmt.Errorf("failed to load resources from file %s: %w", filePath, err)
 	}
 
-	var (
-		req        *http.Request
-		httpClient = e.httpClient
-	)
-	if config.BackendType == "apisix-standalone" {
-		req, err = e.buildAPISIXValidateRequest(ctx, serverAddr, config, resources)
-		httpClient = e.newBackendHTTPClient(config)
-	} else {
-		req, err = e.buildHTTPRequest(ctx, serverAddr, config, labels, types, resources, http.MethodPost, "/validate")
-	}
+	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, types, resources, http.MethodPost, "/validate")
 	if err != nil {
 		return fmt.Errorf("failed to build validate request: %w", err)
 	}
 
-	resp, err := httpClient.Do(req)
+	resp, err := e.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send HTTP request: %w", err)
 	}
@@ -279,230 +268,6 @@ func (e *HTTPADCExecutor) runHTTPValidateForSingleServer(ctx context.Context, se
 	}()
 
 	return e.handleHTTPValidateResponse(resp, serverAddr)
-}
-
-type apisixValidateRequest struct {
-	Routes         []map[string]any `json:"routes,omitempty"`
-	Services       []map[string]any `json:"services,omitempty"`
-	Consumers      []map[string]any `json:"consumers,omitempty"`
-	SSLs           []map[string]any `json:"ssls,omitempty"`
-	GlobalRules    []map[string]any `json:"global_rules,omitempty"`
-	StreamRoutes   []map[string]any `json:"stream_routes,omitempty"`
-	PluginMetadata []map[string]any `json:"plugin_metadata,omitempty"`
-	Upstreams      []map[string]any `json:"upstreams,omitempty"`
-}
-
-func (e *HTTPADCExecutor) buildAPISIXValidateRequest(ctx context.Context, serverAddr string, config adctypes.Config, resources *adctypes.Resources) (*http.Request, error) {
-	body, err := buildAPISIXValidatePayload(resources)
-	if err != nil {
-		return nil, err
-	}
-
-	jsonData, err := json.Marshal(body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal APISIX validate request body: %w", err)
-	}
-
-	validateURL, err := url.JoinPath(serverAddr, "/apisix/admin/configs/validate")
-	if err != nil {
-		return nil, fmt.Errorf("failed to build APISIX validate URL: %w", err)
-	}
-
-	e.log.V(1).Info("sending APISIX validate request",
-		"url", validateURL,
-		"server", serverAddr,
-		"cacheKey", config.Name,
-		"bodyLen", len(jsonData),
-	)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, validateURL, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create APISIX validate request: %w", err)
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-API-KEY", config.Token)
-	return req, nil
-}
-
-func (e *HTTPADCExecutor) newBackendHTTPClient(config adctypes.Config) *http.Client {
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	if transport.TLSClientConfig == nil {
-		transport.TLSClientConfig = &tls.Config{}
-	}
-	transport.TLSClientConfig.MinVersion = tls.VersionTLS12
-	if !config.TlsVerify {
-		transport.TLSClientConfig.InsecureSkipVerify = true
-	}
-
-	return &http.Client{
-		Timeout:   e.httpClient.Timeout,
-		Transport: transport,
-	}
-}
-
-func buildAPISIXValidatePayload(resources *adctypes.Resources) (*apisixValidateRequest, error) {
-	body := &apisixValidateRequest{}
-
-	for _, service := range resources.Services {
-		if service == nil {
-			continue
-		}
-
-		serviceMap, err := toMap(service)
-		if err != nil {
-			return nil, err
-		}
-		delete(serviceMap, "routes")
-		delete(serviceMap, "stream_routes")
-		delete(serviceMap, "upstreams")
-
-		body.Services = append(body.Services, serviceMap)
-
-		for _, upstream := range service.Upstreams {
-			upstreamMap, err := toMap(upstream)
-			if err != nil {
-				return nil, err
-			}
-			body.Upstreams = append(body.Upstreams, upstreamMap)
-		}
-
-		for _, route := range service.Routes {
-			routeMap, err := buildAPISIXRouteValidateObject(route)
-			if err != nil {
-				return nil, err
-			}
-			if service.ID != "" {
-				routeMap["service_id"] = service.ID
-			}
-			body.Routes = append(body.Routes, routeMap)
-		}
-
-		for _, streamRoute := range service.StreamRoutes {
-			streamRouteMap, err := toMap(streamRoute)
-			if err != nil {
-				return nil, err
-			}
-			body.StreamRoutes = append(body.StreamRoutes, streamRouteMap)
-		}
-	}
-
-	for _, consumer := range resources.Consumers {
-		consumerMap, err := buildAPISIXConsumerValidateObject(consumer)
-		if err != nil {
-			return nil, err
-		}
-		body.Consumers = append(body.Consumers, consumerMap)
-	}
-
-	for _, ssl := range resources.SSLs {
-		sslMap, err := buildAPISIXSSLValidateObject(ssl)
-		if err != nil {
-			return nil, err
-		}
-		body.SSLs = append(body.SSLs, sslMap)
-	}
-
-	if len(resources.GlobalRules) > 0 {
-		globalRuleMap, err := toMap(&adctypes.GlobalRuleItem{
-			Metadata: adctypes.Metadata{ID: "validation-global-rule"},
-			Plugins:  adctypes.Plugins(resources.GlobalRules),
-		})
-		if err != nil {
-			return nil, err
-		}
-		body.GlobalRules = append(body.GlobalRules, globalRuleMap)
-	}
-
-	for pluginName, pluginConfig := range resources.PluginMetadata {
-		m := map[string]any{"id": pluginName}
-		if cfg, ok := pluginConfig.(map[string]any); ok {
-			for k, v := range cfg {
-				m[k] = v
-			}
-		}
-		body.PluginMetadata = append(body.PluginMetadata, m)
-	}
-
-	return body, nil
-}
-
-func buildAPISIXRouteValidateObject(route *adctypes.Route) (map[string]any, error) {
-	routeMap, err := toMap(route)
-	if err != nil {
-		return nil, err
-	}
-
-	delete(routeMap, "description")
-	return routeMap, nil
-}
-
-func buildAPISIXConsumerValidateObject(consumer *adctypes.Consumer) (map[string]any, error) {
-	consumerMap, err := toMap(consumer)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(consumer.Credentials) == 0 {
-		return consumerMap, nil
-	}
-
-	plugins, ok := consumerMap["plugins"].(map[string]any)
-	if !ok || plugins == nil {
-		plugins = make(map[string]any, len(consumer.Credentials))
-	}
-
-	for _, credential := range consumer.Credentials {
-		plugins[credential.Type] = credential.Config
-	}
-
-	consumerMap["plugins"] = plugins
-	delete(consumerMap, "credentials")
-	return consumerMap, nil
-}
-
-func buildAPISIXSSLValidateObject(ssl *adctypes.SSL) (map[string]any, error) {
-	sslMap, err := toMap(ssl)
-	if err != nil {
-		return nil, err
-	}
-
-	delete(sslMap, "certificates")
-
-	switch len(ssl.Certificates) {
-	case 0:
-		return sslMap, nil
-	case 1:
-		sslMap["cert"] = ssl.Certificates[0].Certificate
-		sslMap["key"] = ssl.Certificates[0].Key
-	default:
-		sslMap["cert"] = ssl.Certificates[0].Certificate
-		sslMap["key"] = ssl.Certificates[0].Key
-
-		certs := make([]string, 0, len(ssl.Certificates)-1)
-		keys := make([]string, 0, len(ssl.Certificates)-1)
-		for _, certificate := range ssl.Certificates[1:] {
-			certs = append(certs, certificate.Certificate)
-			keys = append(keys, certificate.Key)
-		}
-		sslMap["certs"] = certs
-		sslMap["keys"] = keys
-	}
-
-	return sslMap, nil
-}
-
-func toMap(obj any) (map[string]any, error) {
-	data, err := json.Marshal(obj)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal validation object: %w", err)
-	}
-
-	var out map[string]any
-	if err := json.Unmarshal(data, &out); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal validation object: %w", err)
-	}
-	return out, nil
 }
 
 // parseArgs parses the command line arguments to extract labels, types, and file path

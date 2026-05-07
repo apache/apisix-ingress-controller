@@ -87,12 +87,5 @@ func managedIngressClassWithGatewayProxyMode(endpoint, mode string) []runtime.Ob
 func requireValidateRequest(t *testing.T, r *http.Request) {
 	t.Helper()
 	require.Equal(t, http.MethodPost, r.Method)
-	require.Equal(t, "/apisix/admin/configs/validate", r.URL.Path)
-	require.Equal(t, "token", r.Header.Get("X-API-KEY"))
-}
-
-func requireADCServerValidateRequest(t *testing.T, r *http.Request) {
-	t.Helper()
-	require.Equal(t, http.MethodPost, r.Method)
 	require.Equal(t, "/validate", r.URL.Path)
 }

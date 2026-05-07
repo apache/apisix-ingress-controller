@@ -171,7 +171,7 @@ func TestApisixConsumerValidator_DeniesOnADCValidationFailure(t *testing.T) {
 	serverURL := withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
 		requireValidateRequest(t, r)
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(`{"errorMessage":"consumer rejected","errors":[{"resource_type":"consumers","resource_name":"demo","message":"duplicate credential"}]}`))
+		_, _ = w.Write([]byte(`{"message":"consumer rejected","errors":[{"resource_type":"consumers","resource_name":"demo","message":"duplicate credential"}]}`))
 	})
 
 	consumer := &apisixv2.ApisixConsumer{
@@ -208,9 +208,9 @@ func TestApisixConsumerValidator_DeniesOnADCValidationFailure(t *testing.T) {
 
 func TestApisixConsumerValidator_UsesADCValidateEndpointForControlPlane(t *testing.T) {
 	serverURL := withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
-		requireADCServerValidateRequest(t, r)
+		requireValidateRequest(t, r)
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(`{"errorMessage":"consumer rejected","errors":[{"resource_type":"consumers","resource_name":"demo","message":"duplicate credential"}]}`))
+		_, _ = w.Write([]byte(`{"message":"consumer rejected","errors":[{"resource_type":"consumers","resource_name":"demo","message":"duplicate credential"}]}`))
 	})
 
 	consumer := &apisixv2.ApisixConsumer{

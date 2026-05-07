@@ -146,7 +146,7 @@ func TestApisixTlsValidator_DeniesOnADCValidationFailure(t *testing.T) {
 	serverURL := withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
 		requireValidateRequest(t, r)
 		w.WriteHeader(http.StatusBadRequest)
-		_, _ = w.Write([]byte(`{"errorMessage":"tls rejected","errors":[{"resource_type":"ssls","resource_name":"demo","message":"invalid sni"}]}`))
+		_, _ = w.Write([]byte(`{"message":"tls rejected","errors":[{"resource_type":"ssls","resource_name":"demo","message":"invalid sni"}]}`))
 	})
 
 	tls := newApisixTls()
