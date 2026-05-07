@@ -121,15 +121,14 @@ metadata:
 spec:
   gatewayRef:
     name: %s
-  credentials:
-  - type: jwt-auth
-    name: jwt-cred
+  plugins:
+  - name: jwt-auth
     config:
       key: consumer-b-key
       algorithm: INVALID_ALGO
 `, gatewayName)
 
-		By("creating Consumer with an invalid jwt-auth algorithm")
+		By("creating Consumer with an invalid jwt-auth algorithm in plugins")
 		err = s.CreateResourceFromString(invalidConsumer)
 		expectAdmissionDenied(s, "consumer", "webhook-consumer-b", err)
 
@@ -141,9 +140,8 @@ metadata:
 spec:
   gatewayRef:
     name: %s
-  credentials:
-  - type: jwt-auth
-    name: jwt-cred
+  plugins:
+  - name: jwt-auth
     config:
       key: consumer-b-key
       algorithm: HS256
@@ -186,15 +184,14 @@ metadata:
 spec:
   gatewayRef:
     name: %s
-  credentials:
-  - type: jwt-auth
-    name: jwt-cred-update
+  plugins:
+  - name: jwt-auth
     config:
       key: update-consumer-jwt-key
       algorithm: INVALID_ALGO
 `, consumerName, gatewayName)
 
-		By("updating Consumer with an invalid jwt-auth algorithm")
+		By("updating Consumer with an invalid jwt-auth algorithm in plugins")
 		err = s.CreateResourceFromString(invalidConsumer)
 		expectUpdateDenied(err)
 
@@ -206,9 +203,8 @@ metadata:
 spec:
   gatewayRef:
     name: %s
-  credentials:
-  - type: jwt-auth
-    name: jwt-cred-update
+  plugins:
+  - name: jwt-auth
     config:
       key: update-consumer-jwt-key
       algorithm: HS256
