@@ -86,6 +86,6 @@ func managedIngressClassWithGatewayProxyMode(endpoint, mode string) []runtime.Ob
 
 func requireValidateRequest(t *testing.T, r *http.Request) {
 	t.Helper()
-	require.Equal(t, http.MethodPost, r.Method)
+	require.Equal(t, http.MethodPut, r.Method)
 	require.Equal(t, "/validate", r.URL.Path)
 }
