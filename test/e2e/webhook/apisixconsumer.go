@@ -47,7 +47,7 @@ var _ = Describe("Test ApisixConsumer Webhook", Label("webhook"), func() {
 		time.Sleep(5 * time.Second)
 	})
 
-	It("should warn on missing authentication secrets", func() {
+	It("should warn on missing authentication secrets", func() { //nolint:dupl
 		missingSecret := "missing-basic-secret"
 		consumerName := "webhook-apisixconsumer"
 		consumerYAML := `

@@ -45,7 +45,7 @@ var _ = Describe("Test ApisixRoute Webhook", Label("webhook"), func() {
 		time.Sleep(5 * time.Second)
 	})
 
-	It("should warn on missing service references", func() {
+	It("should warn on missing service references", func() { //nolint:dupl
 		missingService := "missing-backend"
 		routeName := "webhook-apisixroute"
 		routeYAML := `
