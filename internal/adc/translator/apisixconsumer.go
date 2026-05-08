@@ -98,7 +98,7 @@ func (t *Translator) TranslateApisixConsumer(tctx *provider.TranslateContext, ac
 		Username: username,
 	}
 	consumer.Plugins = plugins
-	consumer.Labels = label.GenLabel(ac)
+	consumer.Labels = label.GenLabelWithObjectLabels(ac)
 	result.Consumers = append(result.Consumers, consumer)
 	return result, nil
 }

@@ -184,7 +184,7 @@ func (t *Translator) buildRoute(ar *apiv2.ApisixRoute, service *adc.Service, rul
 	route.Name = adc.ComposeRouteName(ar.Namespace, ar.Name, rule.Name)
 	route.ID = id.GenID(route.Name)
 	route.Desc = "Created by apisix-ingress-controller, DO NOT modify it manually"
-	route.Labels = label.GenLabel(ar)
+	route.Labels = label.GenLabelWithObjectLabels(ar)
 	route.EnableWebsocket = rule.Websocket
 	if route.EnableWebsocket == nil && *enableWebsocket != nil {
 		route.EnableWebsocket = *enableWebsocket
@@ -197,9 +197,6 @@ func (t *Translator) buildRoute(ar *apiv2.ApisixRoute, service *adc.Service, rul
 	route.Timeout = timeout
 	route.Uris = rule.Match.Paths
 	route.Vars = vars
-	for key, value := range ar.GetObjectMeta().GetLabels() {
-		route.Labels[key] = value
-	}
 
 	service.Routes = []*adc.Route{route}
 }

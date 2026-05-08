@@ -45,3 +45,14 @@ func GenLabel(client client.Object, args ...string) Label {
 	}
 	return label
 }
+
+func GenLabelWithObjectLabels(obj client.Object, args ...string) Label {
+	label := make(Label)
+	for key, value := range obj.GetLabels() {
+		label[key] = value
+	}
+	for key, value := range GenLabel(obj, args...) {
+		label[key] = value
+	}
+	return label
+}

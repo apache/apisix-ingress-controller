@@ -82,3 +82,42 @@ func TestBuildService_HostsSet(t *testing.T) {
 	// service.Hosts SHOULD be set — this is the canonical location for hosts.
 	assert.Equal(t, []string{"example.com", "foo.com"}, service.Hosts)
 }
+
+func TestBuildRoute_MetadataLabelsDoNotOverwriteControllerLabels(t *testing.T) {
+	translator := NewTranslator(logr.Discard())
+
+	ar := &apiv2.ApisixRoute{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ApisixRoute",
+			APIVersion: apiv2.GroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-route",
+			Namespace: "default",
+			Labels: map[string]string{
+				"team":          "payments",
+				"k8s/name":      "user-value",
+				"manager-by":    "user-manager",
+				"k8s/namespace": "user-namespace",
+			},
+		},
+	}
+
+	service := &adc.Service{}
+	rule := apiv2.ApisixRouteHTTP{
+		Name: "rule1",
+		Match: apiv2.ApisixRouteHTTPMatch{
+			Paths: []string{"/api/*"},
+		},
+	}
+
+	var enableWebsocket *bool
+	translator.buildRoute(ar, service, rule, nil, nil, nil, &enableWebsocket)
+
+	assert.Len(t, service.Routes, 1)
+	route := service.Routes[0]
+	assert.Equal(t, "payments", route.Labels["team"])
+	assert.Equal(t, ar.Name, route.Labels["k8s/name"])
+	assert.Equal(t, ar.Namespace, route.Labels["k8s/namespace"])
+	assert.Equal(t, "apisix-ingress-controller", route.Labels["manager-by"])
+}
