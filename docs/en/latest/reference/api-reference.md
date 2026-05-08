@@ -781,6 +781,9 @@ _Appears in:_
 
 
 ApisixConsumerJwtAuthValue defines configuration for JWT authentication.
+For asymmetric algorithms (RS*, ES*, PS*, EdDSA), at least one of public_key
+or private_key must be provided. Symmetric algorithms (HS256, HS384, HS512)
+and unset algorithm do not require any key field.
 
 
 
@@ -790,7 +793,7 @@ ApisixConsumerJwtAuthValue defines configuration for JWT authentication.
 | `secret` _string_ | Secret is the shared secret used to sign the JWT (for symmetric algorithms). |
 | `public_key` _string_ | PublicKey is the public key used to verify JWT signatures (for asymmetric algorithms). |
 | `private_key` _string_ | PrivateKey is the private key used to sign the JWT (for asymmetric algorithms). |
-| `algorithm` _string_ | Algorithm specifies the signing algorithm. Can be `HS256`, `HS512`, `RS256`, or `ES256`. |
+| `algorithm` _string_ | Algorithm specifies the signing algorithm. Can be `HS256`, `HS384`, `HS512`, `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, `PS256`, `PS384`, `PS512`, or `EdDSA`. Currently APISIX only supports `HS256`, `HS512`, `RS256`, and `ES256`. API7 Enterprise supports all algorithms. |
 | `exp` _integer_ | Exp is the token expiration period in seconds. |
 | `base64_secret` _boolean_ | Base64Secret indicates whether the secret is base64-encoded. |
 | `lifetime_grace_period` _integer_ | LifetimeGracePeriod is the allowed clock skew in seconds for token expiration. |

@@ -130,6 +130,11 @@ type ApisixConsumerJwtAuth struct {
 }
 
 // ApisixConsumerJwtAuthValue defines configuration for JWT authentication.
+// For asymmetric algorithms (RS*, ES*, PS*, EdDSA), at least one of public_key
+// or private_key must be provided. Symmetric algorithms (HS256, HS384, HS512)
+// and unset algorithm do not require any key field.
+//
+// +kubebuilder:validation:XValidation:rule="!has(self.algorithm) || size(self.algorithm) == 0 || self.algorithm in ['HS256','HS384','HS512'] || (has(self.public_key) && size(self.public_key.trim()) > 0) || (has(self.private_key) && size(self.private_key.trim()) > 0)",message="algorithms other than HS256/HS384/HS512 require at least one non-empty public_key or private_key"
 type ApisixConsumerJwtAuthValue struct {
 	// Key is the unique identifier for the JWT credential.
 	Key string `json:"key" yaml:"key"`
@@ -138,9 +143,10 @@ type ApisixConsumerJwtAuthValue struct {
 	// PublicKey is the public key used to verify JWT signatures (for asymmetric algorithms).
 	PublicKey string `json:"public_key,omitempty" yaml:"public_key,omitempty"`
 	// PrivateKey is the private key used to sign the JWT (for asymmetric algorithms).
-	PrivateKey string `json:"private_key" yaml:"private_key,omitempty"`
+	PrivateKey string `json:"private_key,omitempty" yaml:"private_key,omitempty"`
 	// Algorithm specifies the signing algorithm.
-	// Can be `HS256`, `HS512`, `RS256`, or `ES256`.
+	// Can be `HS256`, `HS384`, `HS512`, `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, `PS256`, `PS384`, `PS512`, or `EdDSA`.
+	// Currently APISIX only supports `HS256`, `HS512`, `RS256`, and `ES256`. API7 Enterprise supports all algorithms.
 	Algorithm string `json:"algorithm,omitempty" yaml:"algorithm,omitempty"`
 	// Exp is the token expiration period in seconds.
 	Exp int64 `json:"exp,omitempty" yaml:"exp,omitempty"`

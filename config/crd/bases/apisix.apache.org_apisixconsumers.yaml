@@ -176,7 +176,8 @@ spec:
                           algorithm:
                             description: |-
                               Algorithm specifies the signing algorithm.
-                              Can be `HS256`, `HS512`, `RS256`, or `ES256`.
+                              Can be `HS256`, `HS384`, `HS512`, `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, `PS256`, `PS384`, `PS512`, or `EdDSA`.
+                              Currently APISIX only supports `HS256`, `HS512`, `RS256`, and `ES256`. API7 Enterprise supports all algorithms.
                             type: string
                           base64_secret:
                             description: Base64Secret indicates whether the secret
@@ -209,8 +210,15 @@ spec:
                             type: string
                         required:
                         - key
-                        - private_key
                         type: object
+                        x-kubernetes-validations:
+                        - message: algorithms other than HS256/HS384/HS512 require
+                            at least one non-empty public_key or private_key
+                          rule: '!has(self.algorithm) || size(self.algorithm) == 0
+                            || self.algorithm in [''HS256'',''HS384'',''HS512''] ||
+                            (has(self.public_key) && size(self.public_key.trim())
+                            > 0) || (has(self.private_key) && size(self.private_key.trim())
+                            > 0)'
                     type: object
                   keyAuth:
                     description: KeyAuth configures the key authentication details.
