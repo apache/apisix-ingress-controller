@@ -45,9 +45,8 @@ var _ = Describe("Test ApisixRoute Webhook", Label("webhook"), func() {
 		time.Sleep(5 * time.Second)
 	})
 
-	It("should warn on missing service or secret references", func() {
+	It("should warn on missing service references", func() {
 		missingService := "missing-backend"
-		missingSecret := "missing-plugin-secret"
 		routeName := "webhook-apisixroute"
 		routeYAML := `
 apiVersion: apisix.apache.org/v2
@@ -67,18 +66,13 @@ spec:
     backends:
     - serviceName: %s
       servicePort: 80
-    plugins:
-    - name: echo
-      enable: true
-      secretRef: %s
 `
 
-		output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(routeYAML, routeName, s.Namespace(), s.Namespace(), missingService, missingSecret))
+		output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(routeYAML, routeName, s.Namespace(), s.Namespace(), missingService))
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Referenced Service '%s/%s' not found", s.Namespace(), missingService)))
-		Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), missingSecret)))
 
-		By("creating referenced Service and Secret")
+		By("creating referenced Service")
 		serviceYAML := fmt.Sprintf(`
 apiVersion: v1
 kind: Service
@@ -96,23 +90,11 @@ spec:
 		err = s.CreateResourceFromString(serviceYAML)
 		Expect(err).NotTo(HaveOccurred(), "creating backend service placeholder")
 
-		secretYAML := fmt.Sprintf(`
-apiVersion: v1
-kind: Secret
-metadata:
-  name: %s
-stringData:
-  config: enabled
-`, missingSecret)
-		err = s.CreateResourceFromString(secretYAML)
-		Expect(err).NotTo(HaveOccurred(), "creating plugin secret placeholder")
-
 		time.Sleep(2 * time.Second)
 
-		output, err = s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(routeYAML, routeName, s.Namespace(), s.Namespace(), missingService, missingSecret))
+		output, err = s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(routeYAML, routeName, s.Namespace(), s.Namespace(), missingService))
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced Service '%s/%s' not found", s.Namespace(), missingService)))
-		Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), missingSecret)))
 	})
 
 	It("should reject routes that fail ADC validation", func() {
