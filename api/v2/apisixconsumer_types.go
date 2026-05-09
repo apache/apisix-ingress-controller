@@ -146,7 +146,6 @@ type ApisixConsumerJwtAuthValue struct {
 	PrivateKey string `json:"private_key,omitempty" yaml:"private_key,omitempty"`
 	// Algorithm specifies the signing algorithm.
 	// Can be `HS256`, `HS384`, `HS512`, `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, `PS256`, `PS384`, `PS512`, or `EdDSA`.
-	// Currently APISIX only supports `HS256`, `HS512`, `RS256`, and `ES256`. API7 Enterprise supports all algorithms.
 	Algorithm string `json:"algorithm,omitempty" yaml:"algorithm,omitempty"`
 	// Exp is the token expiration period in seconds.
 	Exp int64 `json:"exp,omitempty" yaml:"exp,omitempty"`
