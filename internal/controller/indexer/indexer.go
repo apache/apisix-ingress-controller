@@ -879,21 +879,28 @@ func ApisixPluginConfigSecretIndexFunc(obj client.Object) (keys []string) {
 func ApisixConsumerSecretIndexFunc(rawObj client.Object) (keys []string) {
 	ac := rawObj.(*apiv2.ApisixConsumer)
 	var secretRef *corev1.LocalObjectReference
-	if ac.Spec.AuthParameter.KeyAuth != nil {
-		secretRef = ac.Spec.AuthParameter.KeyAuth.SecretRef
-	} else if ac.Spec.AuthParameter.BasicAuth != nil {
-		secretRef = ac.Spec.AuthParameter.BasicAuth.SecretRef
-	} else if ac.Spec.AuthParameter.JwtAuth != nil {
-		secretRef = ac.Spec.AuthParameter.JwtAuth.SecretRef
-	} else if ac.Spec.AuthParameter.WolfRBAC != nil {
-		secretRef = ac.Spec.AuthParameter.WolfRBAC.SecretRef
-	} else if ac.Spec.AuthParameter.HMACAuth != nil {
-		secretRef = ac.Spec.AuthParameter.HMACAuth.SecretRef
-	} else if ac.Spec.AuthParameter.LDAPAuth != nil {
-		secretRef = ac.Spec.AuthParameter.LDAPAuth.SecretRef
+	if ap := ac.Spec.AuthParameter; ap != nil {
+		if ap.KeyAuth != nil {
+			secretRef = ap.KeyAuth.SecretRef
+		} else if ap.BasicAuth != nil {
+			secretRef = ap.BasicAuth.SecretRef
+		} else if ap.JwtAuth != nil {
+			secretRef = ap.JwtAuth.SecretRef
+		} else if ap.WolfRBAC != nil {
+			secretRef = ap.WolfRBAC.SecretRef
+		} else if ap.HMACAuth != nil {
+			secretRef = ap.HMACAuth.SecretRef
+		} else if ap.LDAPAuth != nil {
+			secretRef = ap.LDAPAuth.SecretRef
+		}
 	}
-	if secretRef != nil {
+	if secretRef != nil && secretRef.Name != "" {
 		keys = append(keys, GenIndexKey(ac.GetNamespace(), secretRef.Name))
+	}
+	for _, plugin := range ac.Spec.Plugins {
+		if plugin.Enable && plugin.SecretRef != "" {
+			keys = append(keys, GenIndexKey(ac.GetNamespace(), plugin.SecretRef))
+		}
 	}
 	return
 }

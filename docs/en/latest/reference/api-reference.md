@@ -875,6 +875,7 @@ ApisixConsumerSpec defines the desired state of ApisixConsumer.
 | --- | --- |
 | `ingressClassName` _string_ | IngressClassName is the name of an IngressClass cluster resource. The controller uses this field to decide whether the resource should be managed. |
 | `authParameter` _[ApisixConsumerAuthParameter](#apisixconsumerauthparameter)_ | AuthParameter defines the authentication credentials and configuration for this consumer. |
+| `plugins` _[ApisixRoutePlugin](#apisixrouteplugin) array_ | Plugins lists additional consumer-scoped plugins to attach to this consumer. These plugins are applied alongside any authentication plugin derived from AuthParameter. An enabled plugin with the same name as the auth plugin derived from AuthParameter takes precedence. |
 
 
 _Appears in:_
@@ -1163,6 +1164,7 @@ ApisixRoutePlugin represents an APISIX plugin.
 
 
 _Appears in:_
+- [ApisixConsumerSpec](#apisixconsumerspec)
 - [ApisixGlobalRuleSpec](#apisixglobalrulespec)
 - [ApisixPluginConfigSpec](#apisixpluginconfigspec)
 - [ApisixRouteHTTP](#apisixroutehttp)

@@ -80,7 +80,7 @@ func TestApisixConsumerValidator_MissingBasicAuthSecret(t *testing.T) {
 		},
 		Spec: apisixv2.ApisixConsumerSpec{
 			IngressClassName: "apisix",
-			AuthParameter: apisixv2.ApisixConsumerAuthParameter{
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
 				BasicAuth: &apisixv2.ApisixConsumerBasicAuth{
 					SecretRef: &corev1.LocalObjectReference{Name: "basic-auth"},
 				},
@@ -104,7 +104,7 @@ func TestApisixConsumerValidator_MultipleSecretWarnings(t *testing.T) {
 		},
 		Spec: apisixv2.ApisixConsumerSpec{
 			IngressClassName: "apisix",
-			AuthParameter: apisixv2.ApisixConsumerAuthParameter{
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
 				BasicAuth: &apisixv2.ApisixConsumerBasicAuth{
 					SecretRef: &corev1.LocalObjectReference{Name: "basic-auth"},
 				},
@@ -144,7 +144,7 @@ func TestApisixConsumerValidator_NoWarningsWhenSecretsExist(t *testing.T) {
 		},
 		Spec: apisixv2.ApisixConsumerSpec{
 			IngressClassName: "apisix",
-			AuthParameter: apisixv2.ApisixConsumerAuthParameter{
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
 				KeyAuth: &apisixv2.ApisixConsumerKeyAuth{
 					SecretRef: &corev1.LocalObjectReference{Name: "key-auth"},
 				},
@@ -181,7 +181,7 @@ func TestApisixConsumerValidator_DeniesOnADCValidationFailure(t *testing.T) {
 		},
 		Spec: apisixv2.ApisixConsumerSpec{
 			IngressClassName: "apisix",
-			AuthParameter: apisixv2.ApisixConsumerAuthParameter{
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
 				KeyAuth: &apisixv2.ApisixConsumerKeyAuth{
 					SecretRef: &corev1.LocalObjectReference{Name: "key-auth"},
 				},
@@ -220,7 +220,7 @@ func TestApisixConsumerValidator_UsesADCValidateEndpointForControlPlane(t *testi
 		},
 		Spec: apisixv2.ApisixConsumerSpec{
 			IngressClassName: managedIngressClassName,
-			AuthParameter: apisixv2.ApisixConsumerAuthParameter{
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
 				KeyAuth: &apisixv2.ApisixConsumerKeyAuth{
 					Value: &apisixv2.ApisixConsumerKeyAuthValue{Key: "shared-key"},
 				},

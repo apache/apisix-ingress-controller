@@ -55,42 +55,54 @@ const (
 func (t *Translator) TranslateApisixConsumer(tctx *provider.TranslateContext, ac *v2.ApisixConsumer) (*TranslateResult, error) {
 	result := &TranslateResult{}
 	plugins := make(adctypes.Plugins)
-	if ac.Spec.AuthParameter.KeyAuth != nil {
-		cfg, err := t.translateConsumerKeyAuthPlugin(tctx, ac.Namespace, ac.Spec.AuthParameter.KeyAuth)
-		if err != nil {
-			return nil, fmt.Errorf("invalid key auth config: %s", err)
+	if ap := ac.Spec.AuthParameter; ap != nil {
+		if ap.KeyAuth != nil {
+			cfg, err := t.translateConsumerKeyAuthPlugin(tctx, ac.Namespace, ap.KeyAuth)
+			if err != nil {
+				return nil, fmt.Errorf("invalid key auth config: %s", err)
+			}
+			plugins["key-auth"] = cfg
+		} else if ap.BasicAuth != nil {
+			cfg, err := t.translateConsumerBasicAuthPlugin(tctx, ac.Namespace, ap.BasicAuth)
+			if err != nil {
+				return nil, fmt.Errorf("invalid basic auth config: %s", err)
+			}
+			plugins["basic-auth"] = cfg
+		} else if ap.JwtAuth != nil {
+			cfg, err := t.translateConsumerJwtAuthPlugin(tctx, ac.Namespace, ap.JwtAuth)
+			if err != nil {
+				return nil, fmt.Errorf("invalid jwt auth config: %s", err)
+			}
+			plugins["jwt-auth"] = cfg
+		} else if ap.WolfRBAC != nil {
+			cfg, err := t.translateConsumerWolfRBACPlugin(tctx, ac.Namespace, ap.WolfRBAC)
+			if err != nil {
+				return nil, fmt.Errorf("invalid wolf rbac config: %s", err)
+			}
+			plugins["wolf-rbac"] = cfg
+		} else if ap.HMACAuth != nil {
+			cfg, err := t.translateConsumerHMACAuthPlugin(tctx, ac.Namespace, ap.HMACAuth)
+			if err != nil {
+				return nil, fmt.Errorf("invalid hmac auth config: %s", err)
+			}
+			plugins["hmac-auth"] = cfg
+		} else if ap.LDAPAuth != nil {
+			cfg, err := t.translateConsumerLDAPAuthPlugin(tctx, ac.Namespace, ap.LDAPAuth)
+			if err != nil {
+				return nil, fmt.Errorf("invalid ldap auth config: %s", err)
+			}
+			plugins["ldap-auth"] = cfg
 		}
-		plugins["key-auth"] = cfg
-	} else if ac.Spec.AuthParameter.BasicAuth != nil {
-		cfg, err := t.translateConsumerBasicAuthPlugin(tctx, ac.Namespace, ac.Spec.AuthParameter.BasicAuth)
-		if err != nil {
-			return nil, fmt.Errorf("invalid basic auth config: %s", err)
+	}
+
+	// Merge generic consumer-scoped plugins. Only enabled entries are merged;
+	// an enabled plugin with the same name as an auth plugin derived from authParameter takes precedence.
+	for _, plugin := range ac.Spec.Plugins {
+		if !plugin.Enable {
+			continue
 		}
-		plugins["basic-auth"] = cfg
-	} else if ac.Spec.AuthParameter.JwtAuth != nil {
-		cfg, err := t.translateConsumerJwtAuthPlugin(tctx, ac.Namespace, ac.Spec.AuthParameter.JwtAuth)
-		if err != nil {
-			return nil, fmt.Errorf("invalid jwt auth config: %s", err)
-		}
-		plugins["jwt-auth"] = cfg
-	} else if ac.Spec.AuthParameter.WolfRBAC != nil {
-		cfg, err := t.translateConsumerWolfRBACPlugin(tctx, ac.Namespace, ac.Spec.AuthParameter.WolfRBAC)
-		if err != nil {
-			return nil, fmt.Errorf("invalid wolf rbac config: %s", err)
-		}
-		plugins["wolf-rbac"] = cfg
-	} else if ac.Spec.AuthParameter.HMACAuth != nil {
-		cfg, err := t.translateConsumerHMACAuthPlugin(tctx, ac.Namespace, ac.Spec.AuthParameter.HMACAuth)
-		if err != nil {
-			return nil, fmt.Errorf("invalid hmac auth config: %s", err)
-		}
-		plugins["hmac-auth"] = cfg
-	} else if ac.Spec.AuthParameter.LDAPAuth != nil {
-		cfg, err := t.translateConsumerLDAPAuthPlugin(tctx, ac.Namespace, ac.Spec.AuthParameter.LDAPAuth)
-		if err != nil {
-			return nil, fmt.Errorf("invalid ldap auth config: %s", err)
-		}
-		plugins["ldap-auth"] = cfg
+		config := t.buildPluginConfig(plugin, ac.Namespace, tctx.Secrets)
+		plugins[plugin.Name] = config
 	}
 
 	username := adctypes.ComposeConsumerName(ac.Namespace, ac.Name)
@@ -107,7 +119,9 @@ func (t *Translator) translateConsumerKeyAuthPlugin(tctx *provider.TranslateCont
 	if cfg.Value != nil {
 		return &adctypes.KeyAuthConsumerConfig{Key: cfg.Value.Key}, nil
 	}
-
+	if cfg.SecretRef == nil {
+		return nil, fmt.Errorf("key-auth: either value or secretRef must be specified")
+	}
 	sec := tctx.Secrets[k8stypes.NamespacedName{
 		Namespace: consumerNamespace,
 		Name:      cfg.SecretRef.Name,
@@ -129,7 +143,9 @@ func (t *Translator) translateConsumerBasicAuthPlugin(tctx *provider.TranslateCo
 			Password: cfg.Value.Password,
 		}, nil
 	}
-
+	if cfg.SecretRef == nil {
+		return nil, fmt.Errorf("basic-auth: either value or secretRef must be specified")
+	}
 	sec := tctx.Secrets[k8stypes.NamespacedName{
 		Namespace: consumerNamespace,
 		Name:      cfg.SecretRef.Name,
@@ -158,6 +174,9 @@ func (t *Translator) translateConsumerWolfRBACPlugin(tctx *provider.TranslateCon
 			Appid:        cfg.Value.Appid,
 			HeaderPrefix: cfg.Value.HeaderPrefix,
 		}, nil
+	}
+	if cfg.SecretRef == nil {
+		return nil, fmt.Errorf("wolf-rbac: either value or secretRef must be specified")
 	}
 	sec := tctx.Secrets[k8stypes.NamespacedName{
 		Namespace: consumerNamespace,
@@ -194,6 +213,9 @@ func (t *Translator) translateConsumerJwtAuthPlugin(tctx *provider.TranslateCont
 		}, nil
 	}
 
+	if cfg.SecretRef == nil {
+		return nil, fmt.Errorf("jwt-auth: either value or secretRef must be specified")
+	}
 	sec := tctx.Secrets[k8stypes.NamespacedName{
 		Namespace: consumerNamespace,
 		Name:      cfg.SecretRef.Name,
@@ -251,6 +273,9 @@ func (t *Translator) translateConsumerHMACAuthPlugin(tctx *provider.TranslateCon
 		}, nil
 	}
 
+	if cfg.SecretRef == nil {
+		return nil, fmt.Errorf("hmac-auth: either value or secretRef must be specified")
+	}
 	sec := tctx.Secrets[k8stypes.NamespacedName{
 		Namespace: consumerNamespace,
 		Name:      cfg.SecretRef.Name,
@@ -357,6 +382,9 @@ func (t *Translator) translateConsumerLDAPAuthPlugin(tctx *provider.TranslateCon
 		}, nil
 	}
 
+	if cfg.SecretRef == nil {
+		return nil, fmt.Errorf("ldap-auth: either value or secretRef must be specified")
+	}
 	sec := tctx.Secrets[k8stypes.NamespacedName{
 		Namespace: consumerNamespace,
 		Name:      cfg.SecretRef.Name,

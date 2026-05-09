@@ -109,7 +109,7 @@ func TestApisixConsumer_JwtAuth_SymmetricHS256(t *testing.T) {
 	v := loadApisixConsumerSchema(t)
 	ac := &apisixv2.ApisixConsumer{
 		Spec: apisixv2.ApisixConsumerSpec{
-			AuthParameter: apisixv2.ApisixConsumerAuthParameter{
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
 				JwtAuth: &apisixv2.ApisixConsumerJwtAuth{
 					Value: &apisixv2.ApisixConsumerJwtAuthValue{
 						Key:       "my-key",
@@ -130,7 +130,7 @@ func TestApisixConsumer_JwtAuth_AsymmetricWithWhitespaceOnlyPublicKey(t *testing
 	v := loadApisixConsumerSchema(t)
 	ac := &apisixv2.ApisixConsumer{
 		Spec: apisixv2.ApisixConsumerSpec{
-			AuthParameter: apisixv2.ApisixConsumerAuthParameter{
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
 				JwtAuth: &apisixv2.ApisixConsumerJwtAuth{
 					Value: &apisixv2.ApisixConsumerJwtAuthValue{
 						Key:       "my-key",
@@ -150,7 +150,7 @@ func TestApisixConsumer_JwtAuth_SymmetricHS512(t *testing.T) {
 	v := loadApisixConsumerSchema(t)
 	ac := &apisixv2.ApisixConsumer{
 		Spec: apisixv2.ApisixConsumerSpec{
-			AuthParameter: apisixv2.ApisixConsumerAuthParameter{
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
 				JwtAuth: &apisixv2.ApisixConsumerJwtAuth{
 					Value: &apisixv2.ApisixConsumerJwtAuthValue{
 						Key:       "my-key",
@@ -168,7 +168,7 @@ func TestApisixConsumer_JwtAuth_NoAlgorithmDefaultsToSymmetric(t *testing.T) {
 	v := loadApisixConsumerSchema(t)
 	ac := &apisixv2.ApisixConsumer{
 		Spec: apisixv2.ApisixConsumerSpec{
-			AuthParameter: apisixv2.ApisixConsumerAuthParameter{
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
 				JwtAuth: &apisixv2.ApisixConsumerJwtAuth{
 					Value: &apisixv2.ApisixConsumerJwtAuthValue{
 						Key:    "my-key",
@@ -185,7 +185,7 @@ func TestApisixConsumer_JwtAuth_AsymmetricRS256WithPublicKey(t *testing.T) {
 	v := loadApisixConsumerSchema(t)
 	ac := &apisixv2.ApisixConsumer{
 		Spec: apisixv2.ApisixConsumerSpec{
-			AuthParameter: apisixv2.ApisixConsumerAuthParameter{
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
 				JwtAuth: &apisixv2.ApisixConsumerJwtAuth{
 					Value: &apisixv2.ApisixConsumerJwtAuthValue{
 						Key:       "my-key",
@@ -203,7 +203,7 @@ func TestApisixConsumer_JwtAuth_AsymmetricRS256WithPrivateKey(t *testing.T) {
 	v := loadApisixConsumerSchema(t)
 	ac := &apisixv2.ApisixConsumer{
 		Spec: apisixv2.ApisixConsumerSpec{
-			AuthParameter: apisixv2.ApisixConsumerAuthParameter{
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
 				JwtAuth: &apisixv2.ApisixConsumerJwtAuth{
 					Value: &apisixv2.ApisixConsumerJwtAuthValue{
 						Key:        "my-key",
@@ -221,7 +221,7 @@ func TestApisixConsumer_JwtAuth_AsymmetricRS256WithBothKeys(t *testing.T) {
 	v := loadApisixConsumerSchema(t)
 	ac := &apisixv2.ApisixConsumer{
 		Spec: apisixv2.ApisixConsumerSpec{
-			AuthParameter: apisixv2.ApisixConsumerAuthParameter{
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
 				JwtAuth: &apisixv2.ApisixConsumerJwtAuth{
 					Value: &apisixv2.ApisixConsumerJwtAuthValue{
 						Key:        "my-key",
@@ -240,7 +240,7 @@ func TestApisixConsumer_JwtAuth_AsymmetricRS256WithoutAnyKey(t *testing.T) {
 	v := loadApisixConsumerSchema(t)
 	ac := &apisixv2.ApisixConsumer{
 		Spec: apisixv2.ApisixConsumerSpec{
-			AuthParameter: apisixv2.ApisixConsumerAuthParameter{
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
 				JwtAuth: &apisixv2.ApisixConsumerJwtAuth{
 					Value: &apisixv2.ApisixConsumerJwtAuthValue{
 						Key:       "my-key",
@@ -259,7 +259,7 @@ func TestApisixConsumer_JwtAuth_AsymmetricES256WithoutAnyKey(t *testing.T) {
 	v := loadApisixConsumerSchema(t)
 	ac := &apisixv2.ApisixConsumer{
 		Spec: apisixv2.ApisixConsumerSpec{
-			AuthParameter: apisixv2.ApisixConsumerAuthParameter{
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
 				JwtAuth: &apisixv2.ApisixConsumerJwtAuth{
 					Value: &apisixv2.ApisixConsumerJwtAuthValue{
 						Key:       "my-key",
@@ -278,7 +278,7 @@ func TestApisixConsumer_JwtAuth_AsymmetricEdDSAWithoutAnyKey(t *testing.T) {
 	v := loadApisixConsumerSchema(t)
 	ac := &apisixv2.ApisixConsumer{
 		Spec: apisixv2.ApisixConsumerSpec{
-			AuthParameter: apisixv2.ApisixConsumerAuthParameter{
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
 				JwtAuth: &apisixv2.ApisixConsumerJwtAuth{
 					Value: &apisixv2.ApisixConsumerJwtAuthValue{
 						Key:       "my-key",
@@ -297,7 +297,7 @@ func TestApisixConsumer_JwtAuth_AsymmetricWithEmptyPublicKey(t *testing.T) {
 	v := loadApisixConsumerSchema(t)
 	ac := &apisixv2.ApisixConsumer{
 		Spec: apisixv2.ApisixConsumerSpec{
-			AuthParameter: apisixv2.ApisixConsumerAuthParameter{
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
 				JwtAuth: &apisixv2.ApisixConsumerJwtAuth{
 					Value: &apisixv2.ApisixConsumerJwtAuthValue{
 						Key:       "my-key",
@@ -321,7 +321,7 @@ func TestApisixConsumer_JwtAuth_EmptyAlgorithmTreatedAsSymmetric(t *testing.T) {
 	v := loadApisixConsumerSchema(t)
 	ac := &apisixv2.ApisixConsumer{
 		Spec: apisixv2.ApisixConsumerSpec{
-			AuthParameter: apisixv2.ApisixConsumerAuthParameter{
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
 				JwtAuth: &apisixv2.ApisixConsumerJwtAuth{
 					Value: &apisixv2.ApisixConsumerJwtAuthValue{
 						Key:    "my-key",

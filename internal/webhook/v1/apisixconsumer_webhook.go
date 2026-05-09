@@ -128,24 +128,25 @@ func (v *ApisixConsumerCustomValidator) collectWarnings(ctx context.Context, con
 		})...)
 	}
 
-	params := consumer.Spec.AuthParameter
-	if params.BasicAuth != nil {
-		addSecretWarning(params.BasicAuth.SecretRef)
-	}
-	if params.KeyAuth != nil {
-		addSecretWarning(params.KeyAuth.SecretRef)
-	}
-	if params.WolfRBAC != nil {
-		addSecretWarning(params.WolfRBAC.SecretRef)
-	}
-	if params.JwtAuth != nil {
-		addSecretWarning(params.JwtAuth.SecretRef)
-	}
-	if params.HMACAuth != nil {
-		addSecretWarning(params.HMACAuth.SecretRef)
-	}
-	if params.LDAPAuth != nil {
-		addSecretWarning(params.LDAPAuth.SecretRef)
+	if params := consumer.Spec.AuthParameter; params != nil {
+		if params.BasicAuth != nil {
+			addSecretWarning(params.BasicAuth.SecretRef)
+		}
+		if params.KeyAuth != nil {
+			addSecretWarning(params.KeyAuth.SecretRef)
+		}
+		if params.WolfRBAC != nil {
+			addSecretWarning(params.WolfRBAC.SecretRef)
+		}
+		if params.JwtAuth != nil {
+			addSecretWarning(params.JwtAuth.SecretRef)
+		}
+		if params.HMACAuth != nil {
+			addSecretWarning(params.HMACAuth.SecretRef)
+		}
+		if params.LDAPAuth != nil {
+			addSecretWarning(params.LDAPAuth.SecretRef)
+		}
 	}
 
 	return warnings

@@ -29,7 +29,13 @@ type ApisixConsumerSpec struct {
 	IngressClassName string `json:"ingressClassName,omitempty" yaml:"ingressClassName,omitempty"`
 
 	// AuthParameter defines the authentication credentials and configuration for this consumer.
-	AuthParameter ApisixConsumerAuthParameter `json:"authParameter" yaml:"authParameter"`
+	// +kubebuilder:validation:Optional
+	AuthParameter *ApisixConsumerAuthParameter `json:"authParameter,omitempty" yaml:"authParameter,omitempty"`
+
+	// Plugins lists additional consumer-scoped plugins to attach to this consumer.
+	// These plugins are applied alongside any authentication plugin derived from AuthParameter.
+	// An enabled plugin with the same name as the auth plugin derived from AuthParameter takes precedence.
+	Plugins []ApisixRoutePlugin `json:"plugins,omitempty" yaml:"plugins,omitempty"`
 }
 
 // ApisixConsumerStatus defines the observed state of ApisixConsumer.
