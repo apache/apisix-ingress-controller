@@ -289,7 +289,6 @@ spec:
 			s.NewAPISIXClient().GET("/get").Expect().Status(http.StatusNotFound)
 		})
 
-
 		It("Test ApisixRoute match by body vars (urlencoded)", func() {
 			const apisixRouteSpec = `
 apiVersion: apisix.apache.org/v2
