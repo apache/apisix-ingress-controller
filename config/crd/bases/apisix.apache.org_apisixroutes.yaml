@@ -203,7 +203,7 @@ spec:
                               subject:
                                 description: |-
                                   Subject defines the left-hand side of the expression.
-                                  It can be any [built-in variable](/apisix/reference/built-in-variables) or string literal.
+                                  It can be any [APISIX variable](https://apisix.apache.org/docs/apisix/apisix-variable) or string literal.
                                 properties:
                                   name:
                                     description: |-

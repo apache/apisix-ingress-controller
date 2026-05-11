@@ -265,7 +265,7 @@ type ApisixRouteStreamBackend struct {
 // ApisixRouteHTTPMatchExpr represents a binary expression used to match requests based on Nginx variables.
 type ApisixRouteHTTPMatchExpr struct {
 	// Subject defines the left-hand side of the expression.
-	// It can be any [built-in variable](/apisix/reference/built-in-variables) or string literal.
+	// It can be any [APISIX variable](https://apisix.apache.org/docs/apisix/apisix-variable) or string literal.
 	Subject ApisixRouteHTTPMatchExprSubject `json:"subject" yaml:"subject"`
 
 	// Op specifies the operator used in the expression.
