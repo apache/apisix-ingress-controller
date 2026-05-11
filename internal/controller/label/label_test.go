@@ -56,3 +56,21 @@ func TestGenLabelWithObjectLabels(t *testing.T) {
 	require.Equal(t, config.ControllerConfig.ControllerName, labels[LabelControllerName])
 	require.Equal(t, "apisix-ingress-controller", labels[LabelManagedBy])
 }
+
+func TestGenLabel_IgnoresDanglingKeyArg(t *testing.T) {
+	consumer := &apiv2.ApisixConsumer{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ApisixConsumer",
+			APIVersion: apiv2.GroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+		},
+	}
+
+	labels := GenLabel(consumer, "team", "payments", "dangling")
+
+	require.Equal(t, "payments", labels["team"])
+	require.NotContains(t, labels, "dangling")
+}

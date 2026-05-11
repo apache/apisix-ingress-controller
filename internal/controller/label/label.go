@@ -40,7 +40,7 @@ func GenLabel(client client.Object, args ...string) Label {
 	label[LabelName] = client.GetName()
 	label[LabelControllerName] = config.ControllerConfig.ControllerName
 	label[LabelManagedBy] = "apisix-ingress-controller"
-	for i := 0; i < len(args); i += 2 {
+	for i := 0; i+1 < len(args); i += 2 {
 		label[args[i]] = args[i+1]
 	}
 	return label
