@@ -49,7 +49,7 @@ func TestApisixConsumer_JwtAuth_SymmetricHS256(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, v.validateObject(t, ac))
+	assert.NoError(t, v.Validate(t, ac))
 }
 
 // TestApisixConsumer_JwtAuth_AsymmetricWithWhitespaceOnlyPublicKey verifies
@@ -70,7 +70,7 @@ func TestApisixConsumer_JwtAuth_AsymmetricWithWhitespaceOnlyPublicKey(t *testing
 			},
 		},
 	}
-	err := v.validateObject(t, ac)
+	err := v.Validate(t, ac)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "algorithms other than HS256/HS384/HS512")
 }
@@ -90,7 +90,7 @@ func TestApisixConsumer_JwtAuth_SymmetricHS512(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, v.validateObject(t, ac))
+	assert.NoError(t, v.Validate(t, ac))
 }
 
 func TestApisixConsumer_JwtAuth_NoAlgorithmDefaultsToSymmetric(t *testing.T) {
@@ -107,7 +107,7 @@ func TestApisixConsumer_JwtAuth_NoAlgorithmDefaultsToSymmetric(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, v.validateObject(t, ac))
+	assert.NoError(t, v.Validate(t, ac))
 }
 
 func TestApisixConsumer_JwtAuth_AsymmetricRS256WithPublicKey(t *testing.T) {
@@ -125,7 +125,7 @@ func TestApisixConsumer_JwtAuth_AsymmetricRS256WithPublicKey(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, v.validateObject(t, ac))
+	assert.NoError(t, v.Validate(t, ac))
 }
 
 func TestApisixConsumer_JwtAuth_AsymmetricRS256WithPrivateKey(t *testing.T) {
@@ -143,7 +143,7 @@ func TestApisixConsumer_JwtAuth_AsymmetricRS256WithPrivateKey(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, v.validateObject(t, ac))
+	assert.NoError(t, v.Validate(t, ac))
 }
 
 func TestApisixConsumer_JwtAuth_AsymmetricRS256WithBothKeys(t *testing.T) {
@@ -162,7 +162,7 @@ func TestApisixConsumer_JwtAuth_AsymmetricRS256WithBothKeys(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, v.validateObject(t, ac))
+	assert.NoError(t, v.Validate(t, ac))
 }
 
 func TestApisixConsumer_JwtAuth_AsymmetricRS256WithoutAnyKey(t *testing.T) {
@@ -179,7 +179,7 @@ func TestApisixConsumer_JwtAuth_AsymmetricRS256WithoutAnyKey(t *testing.T) {
 			},
 		},
 	}
-	err := v.validateObject(t, ac)
+	err := v.Validate(t, ac)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "algorithms other than HS256/HS384/HS512")
 }
@@ -198,7 +198,7 @@ func TestApisixConsumer_JwtAuth_AsymmetricES256WithoutAnyKey(t *testing.T) {
 			},
 		},
 	}
-	err := v.validateObject(t, ac)
+	err := v.Validate(t, ac)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "algorithms other than HS256/HS384/HS512")
 }
@@ -217,7 +217,7 @@ func TestApisixConsumer_JwtAuth_AsymmetricEdDSAWithoutAnyKey(t *testing.T) {
 			},
 		},
 	}
-	err := v.validateObject(t, ac)
+	err := v.Validate(t, ac)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "algorithms other than HS256/HS384/HS512")
 }
@@ -238,7 +238,7 @@ func TestApisixConsumer_JwtAuth_AsymmetricWithEmptyPublicKey(t *testing.T) {
 			},
 		},
 	}
-	err := v.validateObject(t, ac)
+	err := v.Validate(t, ac)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "algorithms other than HS256/HS384/HS512")
 }
@@ -262,5 +262,5 @@ func TestApisixConsumer_JwtAuth_EmptyAlgorithmTreatedAsSymmetric(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, v.validateObject(t, ac))
+	assert.NoError(t, v.Validate(t, ac))
 }

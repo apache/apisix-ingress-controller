@@ -38,9 +38,9 @@ type crdSchemaValidator struct {
 	internal   *apiextensions.JSONSchemaProps
 }
 
-// validateObject marshals obj to JSON then runs the CRD's OpenAPI schema validator
+// Validate marshals obj to JSON then runs the CRD's OpenAPI schema validator
 // followed by any CEL x-kubernetes-validations rules.
-func (v *crdSchemaValidator) validateObject(t *testing.T, obj any) error {
+func (v *crdSchemaValidator) Validate(t *testing.T, obj any) error {
 	t.Helper()
 
 	data, err := json.Marshal(obj)

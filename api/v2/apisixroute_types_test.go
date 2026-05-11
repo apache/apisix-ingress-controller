@@ -74,21 +74,21 @@ func newRouteWithBodyExpr(ingressClass, fieldName, value string) *apisixv2.Apisi
 // simple field name passes CRD schema validation.
 func TestApisixRoute_BodyScope_SimpleField(t *testing.T) {
 	v := loadApisixRouteSchema(t)
-	assert.NoError(t, v.validateObject(t, newRouteWithBodyExpr("apisix", "action", "login")))
+	assert.NoError(t, v.Validate(t, newRouteWithBodyExpr("apisix", "action", "login")))
 }
 
 // TestApisixRoute_BodyScope_NestedJSONPath verifies that a Body scope expr with
 // a dot-notation JSON path passes CRD schema validation.
 func TestApisixRoute_BodyScope_NestedJSONPath(t *testing.T) {
 	v := loadApisixRouteSchema(t)
-	assert.NoError(t, v.validateObject(t, newRouteWithBodyExpr("apisix", "model.version", "gpt-4")))
+	assert.NoError(t, v.Validate(t, newRouteWithBodyExpr("apisix", "model.version", "gpt-4")))
 }
 
 // TestApisixRoute_BodyScope_EmptyName verifies that a Body scope expr with an
 // empty name is rejected by the CEL XValidation rule.
 func TestApisixRoute_BodyScope_EmptyName(t *testing.T) {
 	v := loadApisixRouteSchema(t)
-	err := v.validateObject(t, newRouteWithBodyExpr("apisix", "", "login"))
+	err := v.Validate(t, newRouteWithBodyExpr("apisix", "", "login"))
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "name is required when scope is not Path")
 }
@@ -123,5 +123,5 @@ func TestApisixRoute_PathScope_EmptyName(t *testing.T) {
 			},
 		},
 	}
-	assert.NoError(t, v.validateObject(t, ar))
+	assert.NoError(t, v.Validate(t, ar))
 }
