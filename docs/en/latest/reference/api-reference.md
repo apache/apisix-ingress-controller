@@ -367,7 +367,7 @@ LoadBalancer describes the load balancing parameters.
 | --- | --- |
 | `type` _string_ | Type specifies the load balancing algorithms to route traffic to the backend. Default is `roundrobin`. Can be `roundrobin`, `chash`, `ewma`, or `least_conn`. |
 | `hashOn` _string_ | HashOn specified the type of field used for hashing, required when type is `chash`. Default is `vars`. Can be `vars`, `header`, `cookie`, `consumer`, or `vars_combinations`. |
-| `key` _string_ | Key is used with HashOn, generally required when type is `chash`. When HashOn is `header` or `cookie`, specifies the name of the header or cookie. When HashOn is `consumer`, key is not required, as the consumer name is used automatically. When HashOn is `vars` or `vars_combinations`, key refers to one or a combination of [built-in variables](/enterprise/reference/built-in-variables). |
+| `key` _string_ | Key is used with HashOn, generally required when type is `chash`. When HashOn is `header` or `cookie`, specifies the name of the header or cookie. When HashOn is `consumer`, key is not required, as the consumer name is used automatically. When HashOn is `vars` or `vars_combinations`, key refers to one or a combination of [APISIX variable](https://apisix.apache.org/docs/apisix/apisix-variable/). |
 
 
 _Appears in:_
@@ -781,6 +781,9 @@ _Appears in:_
 
 
 ApisixConsumerJwtAuthValue defines configuration for JWT authentication.
+For asymmetric algorithms (RS*, ES*, PS*, EdDSA), at least one of public_key
+or private_key must be provided. Symmetric algorithms (HS256, HS384, HS512)
+and unset algorithm do not require any key field.
 
 
 
@@ -790,7 +793,7 @@ ApisixConsumerJwtAuthValue defines configuration for JWT authentication.
 | `secret` _string_ | Secret is the shared secret used to sign the JWT (for symmetric algorithms). |
 | `public_key` _string_ | PublicKey is the public key used to verify JWT signatures (for asymmetric algorithms). |
 | `private_key` _string_ | PrivateKey is the private key used to sign the JWT (for asymmetric algorithms). |
-| `algorithm` _string_ | Algorithm specifies the signing algorithm. Can be `HS256`, `HS384`, `HS512`, `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, `PS256`, `PS384`, `PS512`, or `EdDSA`. Currently APISIX only supports `HS256`, `HS512`, `RS256`, and `ES256`. API7 Enterprise supports all algorithms. |
+| `algorithm` _string_ | Algorithm specifies the signing algorithm. Can be `HS256`, `HS384`, `HS512`, `RS256`, `RS384`, `RS512`, `ES256`, `ES384`, `ES512`, `PS256`, `PS384`, `PS512`, or `EdDSA`. |
 | `exp` _integer_ | Exp is the token expiration period in seconds. |
 | `base64_secret` _boolean_ | Base64Secret indicates whether the secret is base64-encoded. |
 | `lifetime_grace_period` _integer_ | LifetimeGracePeriod is the allowed clock skew in seconds for token expiration. |
@@ -1473,7 +1476,7 @@ LoadBalancer defines the load balancing strategy for distributing traffic across
 | --- | --- |
 | `type` _string_ | Type specifies the load balancing algorithms to route traffic to the backend. Default is `roundrobin`. Can be `roundrobin`, `chash`, `ewma`, or `least_conn`. |
 | `hashOn` _string_ | HashOn specified the type of field used for hashing, required when type is `chash`. Default is `vars`. Can be `vars`, `header`, `cookie`, `consumer`, or `vars_combinations`. |
-| `key` _string_ | Key is used with HashOn, generally required when type is `chash`. When HashOn is `header` or `cookie`, specifies the name of the header or cookie. When HashOn is `consumer`, key is not required, as the consumer name is used automatically. When HashOn is `vars` or `vars_combinations`, key refers to one or a combination of [built-in variables](/enterprise/reference/built-in-variables). |
+| `key` _string_ | Key is used with HashOn, generally required when type is `chash`. When HashOn is `header` or `cookie`, specifies the name of the header or cookie. When HashOn is `consumer`, key is not required, as the consumer name is used automatically. When HashOn is `vars` or `vars_combinations`, key refers to one or a combination of [APISIX variables](https://apisix.apache.org/docs/apisix/apisix-variable). |
 
 
 _Appears in:_
@@ -1562,6 +1565,8 @@ them if they are set on the port level.
 
 _Appears in:_
 - [ApisixUpstreamSpec](#apisixupstreamspec)
+
+
 
 
 
