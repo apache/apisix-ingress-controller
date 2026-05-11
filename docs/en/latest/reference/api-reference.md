@@ -1089,7 +1089,7 @@ ApisixRouteHTTPMatch defines the conditions used to match incoming HTTP requests
 | `hosts` _string array_ | Hosts specifies Host header values to match. Supports exact and wildcard domains. Only one level of wildcard is allowed (e.g., `*.example.com` is valid, but `*.*.example.com` is not). |
 | `remoteAddrs` _string array_ | RemoteAddrs is a list of source IP addresses or CIDR ranges to match. Supports both IPv4 and IPv6 formats. |
 | `exprs` _[ApisixRouteHTTPMatchExprs](#apisixroutehttpmatchexprs)_ | NginxVars defines match conditions based on Nginx variables. |
-| `filter_func` _string_ | FilterFunc is a user-defined function for advanced request filtering. The function can use Nginx variables through the `vars` parameter. This field is supported in APISIX but not in API7 Enterprise. |
+| `filter_func` _string_ | FilterFunc is a user-defined function for advanced request filtering. The function can use Nginx variables through the `vars` parameter. |
 
 
 _Appears in:_

@@ -164,7 +164,6 @@ type ApisixRouteHTTPMatch struct {
 
 	// FilterFunc is a user-defined function for advanced request filtering.
 	// The function can use Nginx variables through the `vars` parameter.
-	// This field is supported in APISIX but not in API7 Enterprise.
 	FilterFunc string `json:"filter_func,omitempty" yaml:"filter_func,omitempty"`
 }
 

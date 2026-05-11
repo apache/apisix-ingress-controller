@@ -249,7 +249,6 @@ spec:
                           description: |-
                             FilterFunc is a user-defined function for advanced request filtering.
                             The function can use Nginx variables through the `vars` parameter.
-                            This field is supported in APISIX but not in API7 Enterprise.
                           type: string
                         hosts:
                           description: |-
