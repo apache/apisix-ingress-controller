@@ -123,6 +123,7 @@ func (d *apisixProvider) updateStatus(nnk types.NamespacedNameKind, condition me
 			Resource:       &gatewayv1.HTTPRoute{},
 			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
 				cp := obj.(*gatewayv1.HTTPRoute).DeepCopy()
+				condition.ObservedGeneration = cp.GetGeneration()
 				gatewayNs := cp.GetNamespace()
 				for i, ref := range cp.Status.Parents {
 					ns := gatewayNs
@@ -158,6 +159,7 @@ func (d *apisixProvider) updateStatus(nnk types.NamespacedNameKind, condition me
 			Resource:       &gatewayv1alpha2.UDPRoute{},
 			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
 				cp := obj.(*gatewayv1alpha2.UDPRoute).DeepCopy()
+				condition.ObservedGeneration = cp.GetGeneration()
 				gatewayNs := cp.GetNamespace()
 				for i, ref := range cp.Status.Parents {
 					ns := gatewayNs
@@ -193,6 +195,7 @@ func (d *apisixProvider) updateStatus(nnk types.NamespacedNameKind, condition me
 			Resource:       &gatewayv1alpha2.TCPRoute{},
 			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
 				cp := obj.(*gatewayv1alpha2.TCPRoute).DeepCopy()
+				condition.ObservedGeneration = cp.GetGeneration()
 				gatewayNs := cp.GetNamespace()
 				for i, ref := range cp.Status.Parents {
 					ns := gatewayNs
@@ -228,6 +231,7 @@ func (d *apisixProvider) updateStatus(nnk types.NamespacedNameKind, condition me
 			Resource:       &gatewayv1.GRPCRoute{},
 			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
 				cp := obj.(*gatewayv1.GRPCRoute).DeepCopy()
+				condition.ObservedGeneration = cp.GetGeneration()
 				gatewayNs := cp.GetNamespace()
 				for i, ref := range cp.Status.Parents {
 					ns := gatewayNs
