@@ -269,6 +269,7 @@ func setupAPIv2Controllers(ctx context.Context, mgr manager.Manager, pro provide
 			Scheme:  mgr.GetScheme(),
 			Log:     ctrl.LoggerFrom(ctx).WithName("controllers").WithName(types.KindApisixPluginConfig),
 			Updater: updater,
+			Readier: readier,
 		},
 		&apiv2.ApisixTls{}: &controller.ApisixTlsReconciler{
 			Client:   mgr.GetClient(),
@@ -283,6 +284,7 @@ func setupAPIv2Controllers(ctx context.Context, mgr manager.Manager, pro provide
 			Scheme:  mgr.GetScheme(),
 			Log:     ctrl.LoggerFrom(ctx).WithName("controllers").WithName(types.KindApisixUpstream),
 			Updater: updater,
+			Readier: readier,
 		},
 	} {
 		if utils.HasAPIResource(mgr, resource) {
@@ -367,6 +369,8 @@ func apiV2ReadinessResources() []client.Object {
 		&apiv2.ApisixGlobalRule{},
 		&apiv2.ApisixTls{},
 		&apiv2.ApisixConsumer{},
+		&apiv2.ApisixPluginConfig{},
+		&apiv2.ApisixUpstream{},
 	}
 }
 
