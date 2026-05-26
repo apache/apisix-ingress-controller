@@ -29,7 +29,7 @@ import (
 )
 
 func TestBuildRoute_HostsNotSet(t *testing.T) {
-	translator := NewTranslator(logr.Discard())
+	translator := NewTranslator(logr.Discard(), "")
 
 	ar := &apiv2.ApisixRoute{
 		ObjectMeta: metav1.ObjectMeta{
@@ -60,7 +60,7 @@ func TestBuildRoute_HostsNotSet(t *testing.T) {
 }
 
 func TestBuildService_HostsSet(t *testing.T) {
-	translator := NewTranslator(logr.Discard())
+	translator := NewTranslator(logr.Discard(), "")
 
 	ar := &apiv2.ApisixRoute{
 		ObjectMeta: metav1.ObjectMeta{
@@ -84,7 +84,7 @@ func TestBuildService_HostsSet(t *testing.T) {
 }
 
 func TestBuildRoute_MetadataLabelsDoNotOverwriteControllerLabels(t *testing.T) {
-	translator := NewTranslator(logr.Discard())
+	translator := NewTranslator(logr.Discard(), "")
 
 	ar := &apiv2.ApisixRoute{
 		TypeMeta: metav1.TypeMeta{

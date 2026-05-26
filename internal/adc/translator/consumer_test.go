@@ -31,7 +31,7 @@ import (
 )
 
 func TestTranslateConsumerV1alpha1_UsesMetadataLabelsWithoutOverwritingControllerLabels(t *testing.T) {
-	translator := NewTranslator(logr.Discard())
+	translator := NewTranslator(logr.Discard(), "")
 	tctx := provider.NewDefaultTranslateContext(context.Background())
 
 	consumer := &v1alpha1.Consumer{

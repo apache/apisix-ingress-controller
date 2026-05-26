@@ -55,7 +55,7 @@ func newADCAdmissionValidator(kubeClient client.Client, log logr.Logger) (*adcAd
 	return &adcAdmissionValidator{
 		kubeClient:             kubeClient,
 		client:                 cli,
-		translator:             adctranslator.NewTranslator(log),
+		translator:             adctranslator.NewTranslator(log, config.ControllerConfig.ListenerPortMatchMode),
 		log:                    log.WithName("adc-validation"),
 		defaultResolveEndpoint: config.ControllerConfig.ProviderConfig.Type == config.ProviderTypeStandalone,
 	}, nil
