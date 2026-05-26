@@ -943,6 +943,60 @@ spec:
 			})
 		})
 
+		It("HTTPRoute RegularExpression Match", func() {
+			var regexRoute = fmt.Sprintf(`
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: httpbin
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - httpbin.example
+  rules:
+  - matches:
+    - path:
+        type: RegularExpression
+        value: /status/[0-9]+
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`, s.Namespace())
+
+			By("create HTTPRoute with RegularExpression path type")
+			s.ResourceApplied("HTTPRoute", "httpbin", regexRoute, 1)
+
+			By("access dataplane: path matching regex should succeed")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/status/200",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/status/201",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusCreated),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+
+			By("access dataplane: path not matching regex should return 404")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/status/ok",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+		})
+
 		It("HTTPRoute Method Match", func() {
 			By("create HTTPRoute")
 			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(methodRouteGETAndDELETEByAnything, s.Namespace()), 1)
