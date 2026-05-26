@@ -2848,6 +2848,43 @@ spec:
 				"route should still return 200 on port 9081")
 		})
 
+		It("route with sectionName should be blocked on non-target port (server_port isolation)", func() {
+			gatewayName := s.Namespace()
+
+			By("create Gateway with two listeners on different ports")
+			gateway := fmt.Sprintf(multiListenerGateway, gatewayName, s.Namespace())
+			Expect(s.CreateResourceFromString(gateway)).NotTo(HaveOccurred())
+
+			s.RetryAssertion(func() string {
+				yaml, _ := s.GetResourceYaml("Gateway", gatewayName)
+				return yaml
+			}).Should(ContainSubstring(`status: "True"`))
+
+			By("create HTTPRoute targeting ONLY http-main listener (port 9080)")
+			routeMain := fmt.Sprintf(routeForMainListener, gatewayName)
+			s.ResourceApplied("HTTPRoute", "route-main", routeMain, 1)
+
+			By("wait for route sync")
+			time.Sleep(5 * time.Second)
+
+			By("verify route-main is accessible on its target port 9080")
+			Eventually(func() (int, error) {
+				statusCode, _, err := curlInCluster(9080, "/get")
+				return statusCode, err
+			}).WithTimeout(30*time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK),
+				"route should be accessible on target port 9080")
+
+			By("verify route-main is NOT accessible on non-target port 9081 (server_port var must block it)")
+			// This is the key assertion: with server_port == 9080 injected on route-main,
+			// port 9081 must return 404. If server_port vars were missing, APISIX would match
+			// route-main on all ports and this assertion would fail with 200.
+			Eventually(func() (int, error) {
+				statusCode, _, err := curlInCluster(9081, "/get")
+				return statusCode, err
+			}).WithTimeout(30*time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound),
+				"route should NOT be accessible on non-target port 9081 — server_port var must enforce port isolation")
+		})
+
 		It("should match all listeners when sectionName is omitted", func() {
 			gatewayName := s.Namespace()
 
