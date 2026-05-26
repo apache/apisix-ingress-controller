@@ -2848,7 +2848,7 @@ spec:
 				"route should still return 200 on port 9081")
 		})
 
-		It("route with sectionName should be blocked on non-target port (server_port isolation)", func() {
+		It("route with sectionName should be blocked on non-target port (server_port isolation)", func() { //nolint:dupl
 			gatewayName := s.Namespace()
 
 			By("create Gateway with two listeners on different ports")
@@ -2885,7 +2885,7 @@ spec:
 				"route should NOT be accessible on non-target port 9081 — server_port var must enforce port isolation")
 		})
 
-		It("should match all listeners when sectionName is omitted", func() {
+		It("should match all listeners when sectionName is omitted", func() { //nolint:dupl
 			gatewayName := s.Namespace()
 
 			By("create Gateway with two listeners")
