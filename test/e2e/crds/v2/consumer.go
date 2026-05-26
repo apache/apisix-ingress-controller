@@ -671,4 +671,190 @@ spec:
 			Eventually(request).WithArguments("/get", "jack", "jackPassword").WithTimeout(5 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 		})
 	})
+
+	Context("Test Consumer Plugins - authParameter with extra plugins", func() {
+		// Verify that a consumer with authParameter + plugins (e.g. limit-count) works:
+		// auth is enforced via authParameter and limit-count throttles authenticated traffic.
+		const (
+			consumerWithPlugins = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: consumer-with-plugins
+spec:
+  ingressClassName: %s
+  authParameter:
+    keyAuth:
+      value:
+        key: plugin-test-key
+  plugins:
+  - name: limit-count
+    enable: true
+    config:
+      count: 2
+      time_window: 60
+      rejected_code: 429
+      key: consumer_name
+      policy: local
+`
+			pluginRoute = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: plugin-route
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - httpbin
+      paths:
+      - /get
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+    authentication:
+      enable: true
+      type: keyAuth
+`
+		)
+
+		It("consumer-level limit-count plugin is enforced", func() {
+			By("apply ApisixRoute")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "plugin-route"},
+				&apiv2.ApisixRoute{}, fmt.Sprintf(pluginRoute, s.Namespace()))
+
+			By("apply ApisixConsumer with plugins")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "consumer-with-plugins"},
+				&apiv2.ApisixConsumer{}, fmt.Sprintf(consumerWithPlugins, s.Namespace()))
+
+			By("unauthenticated request is rejected")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:  "GET",
+				Path:    "/get",
+				Host:    "httpbin",
+				Headers: map[string]string{"apikey": "wrong-key"},
+				Check:   scaffold.WithExpectedStatus(http.StatusUnauthorized),
+			})
+
+			By("first authenticated request succeeds")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:  "GET",
+				Path:    "/get",
+				Host:    "httpbin",
+				Headers: map[string]string{"apikey": "plugin-test-key"},
+				Check:   scaffold.WithExpectedStatus(http.StatusOK),
+			})
+
+			By("second authenticated request succeeds")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:  "GET",
+				Path:    "/get",
+				Host:    "httpbin",
+				Headers: map[string]string{"apikey": "plugin-test-key"},
+				Check:   scaffold.WithExpectedStatus(http.StatusOK),
+			})
+
+			By("third request is rate-limited by consumer-level limit-count")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:  "GET",
+				Path:    "/get",
+				Host:    "httpbin",
+				Headers: map[string]string{"apikey": "plugin-test-key"},
+				Check:   scaffold.WithExpectedStatus(http.StatusTooManyRequests),
+			})
+
+			By("delete ApisixConsumer")
+			err := s.DeleteResource("ApisixConsumer", "consumer-with-plugins")
+			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixConsumer")
+
+			By("delete ApisixRoute")
+			err = s.DeleteResource("ApisixRoute", "plugin-route")
+			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixRoute")
+		})
+	})
+
+	Context("Test Consumer Plugins - plugins only (no authParameter)", func() {
+		// Verify that authParameter can be omitted entirely and auth can be
+		// configured directly via the plugins field.
+		const (
+			consumerPluginsOnly = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  name: consumer-plugins-only
+spec:
+  ingressClassName: %s
+  plugins:
+  - name: key-auth
+    enable: true
+    config:
+      key: plugins-only-key
+`
+			pluginsOnlyRoute = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: plugins-only-route
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - httpbin
+      paths:
+      - /get
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+    authentication:
+      enable: true
+      type: keyAuth
+`
+		)
+
+		It("auth plugin configured via plugins field only", func() {
+			By("apply ApisixRoute")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "plugins-only-route"},
+				&apiv2.ApisixRoute{}, fmt.Sprintf(pluginsOnlyRoute, s.Namespace()))
+
+			By("apply ApisixConsumer with plugins only (no authParameter)")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "consumer-plugins-only"},
+				&apiv2.ApisixConsumer{}, fmt.Sprintf(consumerPluginsOnly, s.Namespace()))
+
+			By("request with wrong key is rejected")
+			Eventually(func() int {
+				return s.NewAPISIXClient().GET("/get").
+					WithHeader("apikey", "wrong-key").
+					WithHost("httpbin").
+					Expect().Raw().StatusCode
+			}).WithTimeout(10 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusUnauthorized))
+
+			By("request with correct key succeeds")
+			Eventually(func() int {
+				return s.NewAPISIXClient().GET("/get").
+					WithHeader("apikey", "plugins-only-key").
+					WithHost("httpbin").
+					Expect().Raw().StatusCode
+			}).WithTimeout(10 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+
+			By("delete ApisixConsumer")
+			err := s.DeleteResource("ApisixConsumer", "consumer-plugins-only")
+			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixConsumer")
+
+			By("request with correct key is rejected after consumer deletion")
+			Eventually(func() int {
+				return s.NewAPISIXClient().GET("/get").
+					WithHeader("apikey", "plugins-only-key").
+					WithHost("httpbin").
+					Expect().Raw().StatusCode
+			}).WithTimeout(10 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusUnauthorized))
+
+			By("delete ApisixRoute")
+			err = s.DeleteResource("ApisixRoute", "plugins-only-route")
+			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixRoute")
+		})
+	})
 })

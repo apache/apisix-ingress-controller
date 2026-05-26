@@ -337,15 +337,7 @@ func registerAPIv2ForReadiness(
 	readier readiness.ReadinessManager,
 ) {
 	var installed []schema.GroupVersionKind
-	for _, resource := range []client.Object{
-		&netv1.Ingress{},
-		&apiv2.ApisixRoute{},
-		&apiv2.ApisixGlobalRule{},
-		&apiv2.ApisixPluginConfig{},
-		&apiv2.ApisixTls{},
-		&apiv2.ApisixConsumer{},
-		&apiv2.ApisixUpstream{},
-	} {
+	for _, resource := range apiV2ReadinessResources() {
 		gvk := types.GvkOf(resource)
 		if utils.HasAPIResource(mgr, resource) {
 			installed = append(installed, gvk)
@@ -366,6 +358,16 @@ func registerAPIv2ForReadiness(
 			return ingressClass != nil
 		}),
 	})
+}
+
+func apiV2ReadinessResources() []client.Object {
+	return []client.Object{
+		&netv1.Ingress{},
+		&apiv2.ApisixRoute{},
+		&apiv2.ApisixGlobalRule{},
+		&apiv2.ApisixTls{},
+		&apiv2.ApisixConsumer{},
+	}
 }
 
 func registerAPIv1alpha1ForReadiness(

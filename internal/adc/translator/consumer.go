@@ -71,7 +71,7 @@ func (t *Translator) TranslateConsumerV1alpha1(tctx *provider.TranslateContext, 
 		credentials = append(credentials, credential)
 	}
 	consumer.Credentials = credentials
-	consumer.Labels = label.GenLabel(consumerV)
+	consumer.Labels = label.GenLabelWithObjectLabels(consumerV)
 	plugins := adctypes.Plugins{}
 	for _, plugin := range consumerV.Spec.Plugins {
 		pluginName := plugin.Name

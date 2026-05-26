@@ -184,39 +184,62 @@ func (r *ApisixConsumerReconciler) listApisixConsumerForSecret(ctx context.Conte
 
 func (r *ApisixConsumerReconciler) processSpec(ctx context.Context, tctx *provider.TranslateContext, ac *apiv2.ApisixConsumer) error {
 	var secretRef *corev1.LocalObjectReference
-	if ac.Spec.AuthParameter.KeyAuth != nil {
-		secretRef = ac.Spec.AuthParameter.KeyAuth.SecretRef
-	} else if ac.Spec.AuthParameter.BasicAuth != nil {
-		secretRef = ac.Spec.AuthParameter.BasicAuth.SecretRef
-	} else if ac.Spec.AuthParameter.JwtAuth != nil {
-		secretRef = ac.Spec.AuthParameter.JwtAuth.SecretRef
-	} else if ac.Spec.AuthParameter.WolfRBAC != nil {
-		secretRef = ac.Spec.AuthParameter.WolfRBAC.SecretRef
-	} else if ac.Spec.AuthParameter.HMACAuth != nil {
-		secretRef = ac.Spec.AuthParameter.HMACAuth.SecretRef
-	} else if ac.Spec.AuthParameter.LDAPAuth != nil {
-		secretRef = ac.Spec.AuthParameter.LDAPAuth.SecretRef
-	}
-	if secretRef == nil {
-		return nil
-	}
-
-	namespacedName := types.NamespacedName{
-		Name:      secretRef.Name,
-		Namespace: ac.Namespace,
-	}
-
-	secret := &corev1.Secret{}
-	if err := r.Get(ctx, namespacedName, secret); err != nil {
-		if k8serrors.IsNotFound(err) {
-			r.Log.Info("secret not found", "secret", namespacedName)
-			return nil
-		} else {
-			r.Log.Error(err, "failed to get secret", "secret", namespacedName)
-			return err
+	if ap := ac.Spec.AuthParameter; ap != nil {
+		if ap.KeyAuth != nil {
+			secretRef = ap.KeyAuth.SecretRef
+		} else if ap.BasicAuth != nil {
+			secretRef = ap.BasicAuth.SecretRef
+		} else if ap.JwtAuth != nil {
+			secretRef = ap.JwtAuth.SecretRef
+		} else if ap.WolfRBAC != nil {
+			secretRef = ap.WolfRBAC.SecretRef
+		} else if ap.HMACAuth != nil {
+			secretRef = ap.HMACAuth.SecretRef
+		} else if ap.LDAPAuth != nil {
+			secretRef = ap.LDAPAuth.SecretRef
 		}
 	}
-	tctx.Secrets[namespacedName] = secret
+	if secretRef != nil && secretRef.Name != "" {
+		namespacedName := types.NamespacedName{
+			Name:      secretRef.Name,
+			Namespace: ac.Namespace,
+		}
+		secret := &corev1.Secret{}
+		if err := r.Get(ctx, namespacedName, secret); err != nil {
+			if k8serrors.IsNotFound(err) {
+				r.Log.Info("secret not found", "secret", namespacedName)
+			} else {
+				r.Log.Error(err, "failed to get secret", "secret", namespacedName)
+				return err
+			}
+		} else {
+			tctx.Secrets[namespacedName] = secret
+		}
+	}
+
+	for _, plugin := range ac.Spec.Plugins {
+		if !plugin.Enable || plugin.SecretRef == "" {
+			continue
+		}
+		namespacedName := types.NamespacedName{
+			Name:      plugin.SecretRef,
+			Namespace: ac.Namespace,
+		}
+		if _, loaded := tctx.Secrets[namespacedName]; loaded {
+			continue
+		}
+		secret := &corev1.Secret{}
+		if err := r.Get(ctx, namespacedName, secret); err != nil {
+			if k8serrors.IsNotFound(err) {
+				r.Log.Info("secret not found for plugin", "plugin", plugin.Name, "secret", namespacedName)
+			} else {
+				r.Log.Error(err, "failed to get secret for plugin", "plugin", plugin.Name, "secret", namespacedName)
+				return err
+			}
+		} else {
+			tctx.Secrets[namespacedName] = secret
+		}
+	}
 	return nil
 }
 

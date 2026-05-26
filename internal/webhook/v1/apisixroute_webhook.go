@@ -41,19 +41,24 @@ func SetupApisixRouteWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/validate-apisix-apache-org-v2-apisixroute,mutating=false,failurePolicy=fail,sideEffects=None,groups=apisix.apache.org,resources=apisixroutes,verbs=create;update,versions=v2,name=vapisixroute-v2.kb.io,admissionReviewVersions=v1,failurePolicy=Ignore
+// +kubebuilder:webhook:path=/validate-apisix-apache-org-v2-apisixroute,mutating=false,failurePolicy=Ignore,sideEffects=None,groups=apisix.apache.org,resources=apisixroutes,verbs=create;update,versions=v2,name=vapisixroute-v2.kb.io,admissionReviewVersions=v1
 
 type ApisixRouteCustomValidator struct {
-	Client  client.Client
-	checker reference.Checker
+	Client       client.Client
+	checker      reference.Checker
+	adcValidator *adcAdmissionValidator
+	initErr      error
 }
 
 var _ webhook.CustomValidator = &ApisixRouteCustomValidator{}
 
 func NewApisixRouteCustomValidator(c client.Client) *ApisixRouteCustomValidator {
+	adcValidator, err := newADCAdmissionValidator(c, apisixRouteLog)
 	return &ApisixRouteCustomValidator{
-		Client:  c,
-		checker: reference.NewChecker(c, apisixRouteLog),
+		Client:       c,
+		checker:      reference.NewChecker(c, apisixRouteLog),
+		adcValidator: adcValidator,
+		initErr:      err,
 	}
 }
 
@@ -67,7 +72,12 @@ func (v *ApisixRouteCustomValidator) ValidateCreate(ctx context.Context, obj run
 		return nil, nil
 	}
 
-	return v.collectWarnings(ctx, route), nil
+	warnings := v.collectWarnings(ctx, route)
+	if v.initErr != nil {
+		apisixRouteLog.Error(v.initErr, "ADC validator init failed, skipping ADC validation")
+		return warnings, nil
+	}
+	return warnings, v.adcValidator.Validate(ctx, route)
 }
 
 func (v *ApisixRouteCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
@@ -80,7 +90,12 @@ func (v *ApisixRouteCustomValidator) ValidateUpdate(ctx context.Context, oldObj,
 		return nil, nil
 	}
 
-	return v.collectWarnings(ctx, route), nil
+	warnings := v.collectWarnings(ctx, route)
+	if v.initErr != nil {
+		apisixRouteLog.Error(v.initErr, "ADC validator init failed, skipping ADC validation")
+		return warnings, nil
+	}
+	return warnings, v.adcValidator.Validate(ctx, route)
 }
 
 func (*ApisixRouteCustomValidator) ValidateDelete(context.Context, runtime.Object) (admission.Warnings, error) {

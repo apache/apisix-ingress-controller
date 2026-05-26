@@ -42,19 +42,24 @@ func SetupApisixTlsWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/validate-apisix-apache-org-v2-apisixtls,mutating=false,failurePolicy=fail,sideEffects=None,groups=apisix.apache.org,resources=apisixtlses,verbs=create;update,versions=v2,name=vapisixtls-v2.kb.io,admissionReviewVersions=v1,failurePolicy=Ignore
+// +kubebuilder:webhook:path=/validate-apisix-apache-org-v2-apisixtls,mutating=false,failurePolicy=Ignore,sideEffects=None,groups=apisix.apache.org,resources=apisixtlses,verbs=create;update,versions=v2,name=vapisixtls-v2.kb.io,admissionReviewVersions=v1
 
 type ApisixTlsCustomValidator struct {
-	Client  client.Client
-	checker reference.Checker
+	Client       client.Client
+	checker      reference.Checker
+	adcValidator *adcAdmissionValidator
+	initErr      error
 }
 
 var _ webhook.CustomValidator = &ApisixTlsCustomValidator{}
 
 func NewApisixTlsCustomValidator(c client.Client) *ApisixTlsCustomValidator {
+	adcValidator, err := newADCAdmissionValidator(c, apisixTlsLog)
 	return &ApisixTlsCustomValidator{
-		Client:  c,
-		checker: reference.NewChecker(c, apisixTlsLog),
+		Client:       c,
+		checker:      reference.NewChecker(c, apisixTlsLog),
+		adcValidator: adcValidator,
+		initErr:      err,
 	}
 }
 
@@ -74,7 +79,15 @@ func (v *ApisixTlsCustomValidator) ValidateCreate(ctx context.Context, obj runti
 		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
 	}
 
-	return v.collectWarnings(ctx, tls), nil
+	warnings := v.collectWarnings(ctx, tls)
+	// Skip ADC validation when secrets are missing: the translator cannot
+	// load cert/key material, so validation would always fail. The missing-
+	// secret warnings are sufficient to inform the user.
+	if v.initErr != nil || len(warnings) > 0 {
+		return warnings, nil
+	}
+
+	return warnings, v.adcValidator.Validate(ctx, tls)
 }
 
 func (v *ApisixTlsCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
@@ -93,7 +106,12 @@ func (v *ApisixTlsCustomValidator) ValidateUpdate(ctx context.Context, oldObj, n
 		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
 	}
 
-	return v.collectWarnings(ctx, tls), nil
+	warnings := v.collectWarnings(ctx, tls)
+	if v.initErr != nil || len(warnings) > 0 {
+		return warnings, nil
+	}
+
+	return warnings, v.adcValidator.Validate(ctx, tls)
 }
 
 func (*ApisixTlsCustomValidator) ValidateDelete(context.Context, runtime.Object) (admission.Warnings, error) {

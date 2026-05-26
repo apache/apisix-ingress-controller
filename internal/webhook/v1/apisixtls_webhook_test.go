@@ -17,6 +17,7 @@ package v1
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -27,6 +28,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	apisixv1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apisixv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 )
@@ -37,10 +39,20 @@ func buildApisixTlsValidator(t *testing.T, objects ...runtime.Object) *ApisixTls
 	scheme := runtime.NewScheme()
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
 	require.NoError(t, networkingv1.AddToScheme(scheme))
+	require.NoError(t, apisixv1alpha1.AddToScheme(scheme))
 	require.NoError(t, apisixv2.AddToScheme(scheme))
 
-	managed := []runtime.Object{
-		&networkingv1.IngressClass{
+	managed := []runtime.Object{}
+	hasManagedIngressClass := false
+	for _, obj := range objects {
+		ingressClass, ok := obj.(*networkingv1.IngressClass)
+		if ok && ingressClass.Name == "apisix" {
+			hasManagedIngressClass = true
+			break
+		}
+	}
+	if !hasManagedIngressClass {
+		managed = append(managed, &networkingv1.IngressClass{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "apisix",
 				Annotations: map[string]string{
@@ -50,7 +62,7 @@ func buildApisixTlsValidator(t *testing.T, objects ...runtime.Object) *ApisixTls
 			Spec: networkingv1.IngressClassSpec{
 				Controller: config.ControllerConfig.ControllerName,
 			},
-		},
+		})
 	}
 	allObjects := append(managed, objects...)
 	builder := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(allObjects...)
@@ -127,5 +139,32 @@ func TestApisixTlsValidator_NoWarningsWhenSecretsExist(t *testing.T) {
 
 	warnings, err := validator.ValidateCreate(context.Background(), tls)
 	require.NoError(t, err)
+	require.Empty(t, warnings)
+}
+
+func TestApisixTlsValidator_DeniesOnADCValidationFailure(t *testing.T) {
+	serverURL := withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requireValidateRequest(t, r)
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"message":"tls rejected","errors":[{"resource_type":"ssls","resource_name":"demo","message":"invalid sni"}]}`))
+	})
+
+	tls := newApisixTls()
+
+	objects := append(managedIngressClassWithGatewayProxy(serverURL),
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "server-cert", Namespace: "default"},
+			Data: map[string][]byte{
+				corev1.TLSCertKey:       []byte("cert"),
+				corev1.TLSPrivateKeyKey: []byte("key"),
+			},
+		},
+	)
+
+	validator := buildApisixTlsValidator(t, objects...)
+
+	warnings, err := validator.ValidateCreate(context.Background(), tls)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "tls rejected")
 	require.Empty(t, warnings)
 }

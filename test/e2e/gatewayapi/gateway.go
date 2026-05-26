@@ -539,4 +539,190 @@ spec:
 			Expect(string(getListener.SupportedKinds[0].Kind)).To(Equal("UDPRoute"), "udp listener supported kind content")
 		})
 	})
+
+	Context("Gateway Status Address", func() {
+		var gatewayProxyWithStatusAddressYaml = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  name: apisix-proxy-config
+  namespace: %s
+spec:
+  statusAddress:
+  - %s
+  provider:
+    type: ControlPlane
+    controlPlane:
+      endpoints:
+      - %s
+      auth:
+        type: AdminKey
+        adminKey:
+          value: "%s"
+`
+		var defaultGatewayClass = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: %s
+spec:
+  controllerName: "%s"
+`
+		var defaultGateway = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: %s
+spec:
+  gatewayClassName: %s
+  listeners:
+  - name: http
+    protocol: HTTP
+    port: 80
+  infrastructure:
+    parametersRef:
+      group: apisix.apache.org
+      kind: GatewayProxy
+      name: apisix-proxy-config
+`
+		getGatewayAddresses := func(gatewayName string) ([]gatewayv1.GatewayStatusAddress, error) {
+			var gateway gatewayv1.Gateway
+			if err := s.GetKubeClient().Get(context.Background(), k8stypes.NamespacedName{
+				Name:      gatewayName,
+				Namespace: s.Namespace(),
+			}, &gateway); err != nil {
+				return nil, err
+			}
+			return gateway.Status.Addresses, nil
+		}
+
+		assertGatewayAddress := func(gatewayName, expectedValue string, expectedType gatewayv1.AddressType) {
+			s.RetryAssertion(func() error {
+				addrs, err := getGatewayAddresses(gatewayName)
+				if err != nil {
+					return err
+				}
+				if len(addrs) == 0 {
+					return fmt.Errorf("expected at least 1 status address, got 0")
+				}
+				addr := addrs[0]
+				if addr.Value != expectedValue {
+					return fmt.Errorf("expected address value %s, got %s", expectedValue, addr.Value)
+				}
+				if addr.Type == nil {
+					return fmt.Errorf("expected address type to be set, got nil")
+				}
+				if *addr.Type != expectedType {
+					return fmt.Errorf("expected address type %s, got %s", expectedType, *addr.Type)
+				}
+				return nil
+			}).ShouldNot(HaveOccurred(), "check Gateway status address")
+		}
+
+		createGatewayClassAndGateway := func(gatewayClassName, gatewayName string) {
+			By("create GatewayClass")
+			Expect(s.CreateResourceFromStringWithNamespace(
+				fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()), ""),
+			).NotTo(HaveOccurred(), "creating GatewayClass")
+
+			By("create Gateway")
+			Expect(s.CreateResourceFromStringWithNamespace(
+				fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName), s.Namespace()),
+			).NotTo(HaveOccurred(), "creating Gateway")
+		}
+
+		checkGatewayStatusAddressType := func(addrValue string, expectedType gatewayv1.AddressType) {
+			gatewayClassName := s.Namespace()
+
+			By("create GatewayProxy with statusAddress")
+			gatewayProxy := fmt.Sprintf(gatewayProxyWithStatusAddressYaml,
+				s.Namespace(), addrValue, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			Expect(s.CreateResourceFromString(gatewayProxy)).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			gatewayName := s.Namespace()
+			createGatewayClassAndGateway(gatewayClassName, gatewayName)
+
+			By("check Gateway status address type")
+			assertGatewayAddress(gatewayName, addrValue, expectedType)
+		}
+
+		It("sets IPAddress type when statusAddress is an IP", func() {
+			checkGatewayStatusAddressType("192.168.1.100", gatewayv1.IPAddressType)
+		})
+
+		It("sets Hostname type when statusAddress is a hostname", func() {
+			checkGatewayStatusAddressType("mygateway.example.com", gatewayv1.HostnameAddressType)
+		})
+
+		It("deduplicates repeated statusAddress entries", func() {
+			gatewayClassName := s.Namespace()
+			gatewayName := s.Namespace()
+			addr := "192.168.1.100"
+
+			By("create GatewayProxy with the same IP listed twice in statusAddress")
+			gatewayProxy := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  name: apisix-proxy-config
+  namespace: %s
+spec:
+  statusAddress:
+  - %s
+  - %s
+  provider:
+    type: ControlPlane
+    controlPlane:
+      endpoints:
+      - %s
+      auth:
+        type: AdminKey
+        adminKey:
+          value: "%s"
+`, s.Namespace(), addr, addr, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			Expect(s.CreateResourceFromString(gatewayProxy)).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			createGatewayClassAndGateway(gatewayClassName, gatewayName)
+
+			By("verify only one address appears in Gateway status despite duplicate input")
+			s.RetryAssertion(func() error {
+				addrs, err := getGatewayAddresses(gatewayName)
+				if err != nil {
+					return err
+				}
+				if len(addrs) != 1 {
+					return fmt.Errorf("expected exactly 1 status address after dedup, got %d", len(addrs))
+				}
+				if addrs[0].Value != addr {
+					return fmt.Errorf("expected address value %s, got %s", addr, addrs[0].Value)
+				}
+				return nil
+			}).ShouldNot(HaveOccurred(), "check Gateway status address deduplication")
+		})
+
+		It("updates status when statusAddress value changes without count change", func() {
+			gatewayClassName := s.Namespace()
+			gatewayName := s.Namespace()
+			initialAddr := "192.168.1.100"
+			updatedAddr := "updated.example.com"
+
+			By("create GatewayProxy with initial statusAddress")
+			gatewayProxy := fmt.Sprintf(gatewayProxyWithStatusAddressYaml,
+				s.Namespace(), initialAddr, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			Expect(s.CreateResourceFromString(gatewayProxy)).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			createGatewayClassAndGateway(gatewayClassName, gatewayName)
+
+			By("verify initial status address is set")
+			assertGatewayAddress(gatewayName, initialAddr, gatewayv1.IPAddressType)
+
+			By("update GatewayProxy with different statusAddress (same count)")
+			updatedGatewayProxy := fmt.Sprintf(gatewayProxyWithStatusAddressYaml,
+				s.Namespace(), updatedAddr, s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			Expect(s.CreateResourceFromString(updatedGatewayProxy)).NotTo(HaveOccurred(), "updating GatewayProxy")
+
+			By("verify status address is updated to new value and type")
+			assertGatewayAddress(gatewayName, updatedAddr, gatewayv1.HostnameAddressType)
+		})
+	})
 })

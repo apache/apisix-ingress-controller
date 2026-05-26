@@ -17,6 +17,7 @@ package v1
 
 import (
 	"context"
+	"net/http"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -27,9 +28,12 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	apisixv1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apisixv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 )
+
+const managedIngressClassName = "apisix"
 
 func buildApisixConsumerValidator(t *testing.T, objects ...runtime.Object) *ApisixConsumerCustomValidator {
 	t.Helper()
@@ -37,12 +41,22 @@ func buildApisixConsumerValidator(t *testing.T, objects ...runtime.Object) *Apis
 	scheme := runtime.NewScheme()
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
 	require.NoError(t, networkingv1.AddToScheme(scheme))
+	require.NoError(t, apisixv1alpha1.AddToScheme(scheme))
 	require.NoError(t, apisixv2.AddToScheme(scheme))
 
-	managed := []runtime.Object{
-		&networkingv1.IngressClass{
+	managed := []runtime.Object{}
+	hasManagedIngressClass := false
+	for _, obj := range objects {
+		ingressClass, ok := obj.(*networkingv1.IngressClass)
+		if ok && ingressClass.Name == managedIngressClassName {
+			hasManagedIngressClass = true
+			break
+		}
+	}
+	if !hasManagedIngressClass {
+		managed = append(managed, &networkingv1.IngressClass{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "apisix",
+				Name: managedIngressClassName,
 				Annotations: map[string]string{
 					"ingressclass.kubernetes.io/is-default-class": "true",
 				},
@@ -50,7 +64,7 @@ func buildApisixConsumerValidator(t *testing.T, objects ...runtime.Object) *Apis
 			Spec: networkingv1.IngressClassSpec{
 				Controller: config.ControllerConfig.ControllerName,
 			},
-		},
+		})
 	}
 	allObjects := append(managed, objects...)
 	builder := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(allObjects...)
@@ -66,7 +80,7 @@ func TestApisixConsumerValidator_MissingBasicAuthSecret(t *testing.T) {
 		},
 		Spec: apisixv2.ApisixConsumerSpec{
 			IngressClassName: "apisix",
-			AuthParameter: apisixv2.ApisixConsumerAuthParameter{
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
 				BasicAuth: &apisixv2.ApisixConsumerBasicAuth{
 					SecretRef: &corev1.LocalObjectReference{Name: "basic-auth"},
 				},
@@ -90,7 +104,7 @@ func TestApisixConsumerValidator_MultipleSecretWarnings(t *testing.T) {
 		},
 		Spec: apisixv2.ApisixConsumerSpec{
 			IngressClassName: "apisix",
-			AuthParameter: apisixv2.ApisixConsumerAuthParameter{
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
 				BasicAuth: &apisixv2.ApisixConsumerBasicAuth{
 					SecretRef: &corev1.LocalObjectReference{Name: "basic-auth"},
 				},
@@ -130,7 +144,7 @@ func TestApisixConsumerValidator_NoWarningsWhenSecretsExist(t *testing.T) {
 		},
 		Spec: apisixv2.ApisixConsumerSpec{
 			IngressClassName: "apisix",
-			AuthParameter: apisixv2.ApisixConsumerAuthParameter{
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
 				KeyAuth: &apisixv2.ApisixConsumerKeyAuth{
 					SecretRef: &corev1.LocalObjectReference{Name: "key-auth"},
 				},
@@ -150,5 +164,74 @@ func TestApisixConsumerValidator_NoWarningsWhenSecretsExist(t *testing.T) {
 
 	warnings, err := validator.ValidateCreate(context.Background(), consumer)
 	require.NoError(t, err)
+	require.Empty(t, warnings)
+}
+
+func TestApisixConsumerValidator_DeniesOnADCValidationFailure(t *testing.T) {
+	serverURL := withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requireValidateRequest(t, r)
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"message":"consumer rejected","errors":[{"resource_type":"consumers","resource_name":"demo","message":"duplicate credential"}]}`))
+	})
+
+	consumer := &apisixv2.ApisixConsumer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+		},
+		Spec: apisixv2.ApisixConsumerSpec{
+			IngressClassName: "apisix",
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
+				KeyAuth: &apisixv2.ApisixConsumerKeyAuth{
+					SecretRef: &corev1.LocalObjectReference{Name: "key-auth"},
+				},
+			},
+		},
+	}
+
+	objects := append(managedIngressClassWithGatewayProxy(serverURL),
+		&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "key-auth", Namespace: "default"},
+			Data: map[string][]byte{
+				"key": []byte("secret-key"),
+			},
+		},
+	)
+
+	validator := buildApisixConsumerValidator(t, objects...)
+
+	warnings, err := validator.ValidateCreate(context.Background(), consumer)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "consumer rejected")
+	require.Empty(t, warnings)
+}
+
+func TestApisixConsumerValidator_UsesADCValidateEndpointForControlPlane(t *testing.T) {
+	serverURL := withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
+		requireValidateRequest(t, r)
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"message":"consumer rejected","errors":[{"resource_type":"consumers","resource_name":"demo","message":"duplicate credential"}]}`))
+	})
+
+	consumer := &apisixv2.ApisixConsumer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+		},
+		Spec: apisixv2.ApisixConsumerSpec{
+			IngressClassName: managedIngressClassName,
+			AuthParameter: &apisixv2.ApisixConsumerAuthParameter{
+				KeyAuth: &apisixv2.ApisixConsumerKeyAuth{
+					Value: &apisixv2.ApisixConsumerKeyAuthValue{Key: "shared-key"},
+				},
+			},
+		},
+	}
+
+	validator := buildApisixConsumerValidator(t, managedIngressClassWithGatewayProxyMode(serverURL, "apisix")...)
+
+	warnings, err := validator.ValidateCreate(context.Background(), consumer)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "consumer rejected")
 	require.Empty(t, warnings)
 }

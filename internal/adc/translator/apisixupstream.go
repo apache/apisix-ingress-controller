@@ -323,7 +323,7 @@ func translateUpstreamActiveHealthCheck(config *apiv2.ActiveHealthCheck) (*adc.U
 	active.HTTPRequestHeaders = config.RequestHeaders
 
 	if config.StrictTLS == nil || *config.StrictTLS {
-		active.HTTPSVerifyCert = true
+		active.HTTPSVerifyCertificate = true
 	}
 
 	if config.Healthy != nil {

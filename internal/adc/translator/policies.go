@@ -24,6 +24,7 @@ import (
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 )
 
 func convertBackendRef(namespace, name, kind string) gatewayv1.BackendRef {
@@ -79,4 +80,92 @@ func (t *Translator) attachBackendTrafficPolicyToUpstream(policy *v1alpha1.Backe
 		upstream.HashOn = policy.Spec.LoadBalancer.HashOn
 		upstream.Key = policy.Spec.LoadBalancer.Key
 	}
+	if policy.Spec.HealthCheck != nil {
+		upstream.Checks = translateBTPHealthCheck(policy.Spec.HealthCheck)
+	}
+}
+
+func translateBTPHealthCheck(hc *v1alpha1.HealthCheck) *adctypes.UpstreamHealthCheck {
+	if hc == nil || (hc.Active == nil && hc.Passive == nil) {
+		return nil
+	}
+	result := &adctypes.UpstreamHealthCheck{}
+	if hc.Active != nil {
+		result.Active = translateBTPActiveHealthCheck(hc.Active)
+	}
+	if hc.Passive != nil {
+		result.Passive = translateBTPPassiveHealthCheck(hc.Passive)
+	}
+	return result
+}
+
+func translateBTPActiveHealthCheck(config *v1alpha1.ActiveHealthCheck) *adctypes.UpstreamActiveHealthCheck {
+	t := config.Type
+	if t == "" {
+		t = "http"
+	}
+	active := &adctypes.UpstreamActiveHealthCheck{
+		Type:                   t,
+		Timeout:                int(config.Timeout.Seconds()),
+		Concurrency:            config.Concurrency,
+		Host:                   config.Host,
+		Port:                   config.Port,
+		HTTPPath:               config.HTTPPath,
+		HTTPSVerifyCertificate: config.StrictTLS == nil || *config.StrictTLS,
+		HTTPRequestHeaders:     config.RequestHeaders,
+	}
+	if config.Healthy != nil {
+		interval := config.Healthy.Interval.Duration
+		if interval < apiv2.ActiveHealthCheckMinInterval {
+			interval = apiv2.ActiveHealthCheckMinInterval
+		}
+		active.Healthy = adctypes.UpstreamActiveHealthCheckHealthy{
+			Interval: int(interval.Seconds()),
+			UpstreamPassiveHealthCheckHealthy: adctypes.UpstreamPassiveHealthCheckHealthy{
+				HTTPStatuses: config.Healthy.HTTPCodes,
+				Successes:    config.Healthy.Successes,
+			},
+		}
+	}
+	if config.Unhealthy != nil {
+		interval := config.Unhealthy.Interval.Duration
+		if interval < apiv2.ActiveHealthCheckMinInterval {
+			interval = apiv2.ActiveHealthCheckMinInterval
+		}
+		active.Unhealthy = adctypes.UpstreamActiveHealthCheckUnhealthy{
+			Interval: int(interval.Seconds()),
+			UpstreamPassiveHealthCheckUnhealthy: adctypes.UpstreamPassiveHealthCheckUnhealthy{
+				HTTPStatuses: config.Unhealthy.HTTPCodes,
+				HTTPFailures: config.Unhealthy.HTTPFailures,
+				TCPFailures:  config.Unhealthy.TCPFailures,
+				Timeouts:     config.Unhealthy.Timeouts,
+			},
+		}
+	}
+	return active
+}
+
+func translateBTPPassiveHealthCheck(config *v1alpha1.PassiveHealthCheck) *adctypes.UpstreamPassiveHealthCheck {
+	t := config.Type
+	if t == "" {
+		t = "http"
+	}
+	passive := &adctypes.UpstreamPassiveHealthCheck{
+		Type: t,
+	}
+	if config.Healthy != nil {
+		passive.Healthy = adctypes.UpstreamPassiveHealthCheckHealthy{
+			HTTPStatuses: config.Healthy.HTTPCodes,
+			Successes:    config.Healthy.Successes,
+		}
+	}
+	if config.Unhealthy != nil {
+		passive.Unhealthy = adctypes.UpstreamPassiveHealthCheckUnhealthy{
+			HTTPStatuses: config.Unhealthy.HTTPCodes,
+			HTTPFailures: config.Unhealthy.HTTPFailures,
+			TCPFailures:  config.Unhealthy.TCPFailures,
+			Timeouts:     config.Unhealthy.Timeouts,
+		}
+	}
+	return passive
 }

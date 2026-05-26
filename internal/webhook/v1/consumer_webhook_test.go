@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -29,6 +30,7 @@ import (
 
 	apisixv1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
+	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 )
 
 func buildConsumerValidator(t *testing.T, objects ...runtime.Object) *ConsumerCustomValidator {
@@ -54,7 +56,10 @@ func buildConsumerValidator(t *testing.T, objects ...runtime.Object) *ConsumerCu
 		},
 	}
 	allObjects := append(managed, objects...)
-	builder := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(allObjects...)
+	builder := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithRuntimeObjects(allObjects...).
+		WithIndex(&apisixv1alpha1.Consumer{}, indexer.ConsumerGatewayRef, indexer.ConsumerGatewayRefIndexFunc)
 
 	return NewConsumerCustomValidator(builder.Build())
 }
@@ -145,4 +150,45 @@ func TestConsumerValidator_NoWarnings(t *testing.T) {
 	warnings, err := validator.ValidateCreate(context.Background(), consumer)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
+}
+
+func TestConsumerValidator_DenyDuplicateKeyAuthCredential(t *testing.T) {
+	existing := &apisixv1alpha1.Consumer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "existing",
+			Namespace: "default",
+		},
+		Spec: apisixv1alpha1.ConsumerSpec{
+			GatewayRef: apisixv1alpha1.GatewayRef{Name: "test-gateway"},
+			Credentials: []apisixv1alpha1.Credential{{
+				Type: "key-auth",
+				Config: apiextensionsv1.JSON{
+					Raw: []byte(`{"key":"shared-key"}`),
+				},
+			}},
+		},
+	}
+	consumer := &apisixv1alpha1.Consumer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+		},
+		Spec: apisixv1alpha1.ConsumerSpec{
+			GatewayRef: apisixv1alpha1.GatewayRef{Name: "test-gateway"},
+			Credentials: []apisixv1alpha1.Credential{{
+				Type: "key-auth",
+				Config: apiextensionsv1.JSON{
+					Raw: []byte(`{"key":"shared-key"}`),
+				},
+			}},
+		},
+	}
+
+	validator := buildConsumerValidator(t, existing)
+
+	warnings, err := validator.ValidateCreate(context.Background(), consumer)
+	require.Empty(t, warnings)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), `duplicate key-auth credential key "shared-key"`)
+	require.Contains(t, err.Error(), "default/existing")
 }

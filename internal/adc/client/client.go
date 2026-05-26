@@ -171,6 +171,43 @@ func (c *Client) DeleteConfig(ctx context.Context, args Task) error {
 	return err
 }
 
+func (c *Client) Validate(ctx context.Context, task Task) error {
+	if len(task.Configs) == 0 || task.Resources == nil {
+		return nil
+	}
+
+	fileIOStart := time.Now()
+	syncFilePath, cleanup, err := prepareSyncFile(task.Resources)
+	if err != nil {
+		pkgmetrics.RecordFileIODuration("prepare_sync_file", "failure", time.Since(fileIOStart).Seconds())
+		return err
+	}
+	pkgmetrics.RecordFileIODuration("prepare_sync_file", adctypes.StatusSuccess, time.Since(fileIOStart).Seconds())
+	defer cleanup()
+
+	args2 := BuildADCExecuteArgs(syncFilePath, task.Labels, task.ResourceTypes)
+
+	var errs types.ADCValidationErrors
+	for _, config := range task.Configs {
+		if config.BackendType == "" {
+			config.BackendType = c.defaultMode
+		}
+		if err := c.executor.Validate(ctx, config, args2); err != nil {
+			var validationErr types.ADCValidationError
+			if errors.As(err, &validationErr) {
+				errs.Errors = append(errs.Errors, validationErr)
+				continue
+			}
+			return err
+		}
+	}
+
+	if len(errs.Errors) > 0 {
+		return errs
+	}
+	return nil
+}
+
 func (c *Client) Sync(ctx context.Context) (map[string]types.ADCExecutionErrors, error) {
 	c.syncMu.Lock()
 	defer c.syncMu.Unlock()

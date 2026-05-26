@@ -198,16 +198,16 @@ type ClientTLS struct {
 // UpstreamActiveHealthCheck defines the active upstream health check configuration.
 // +k8s:deepcopy-gen=true
 type UpstreamActiveHealthCheck struct {
-	Type               string                             `json:"type,omitempty" yaml:"type,omitempty"`
-	Timeout            int                                `json:"timeout,omitempty" yaml:"timeout,omitempty"`
-	Concurrency        int                                `json:"concurrency,omitempty" yaml:"concurrency,omitempty"`
-	Host               string                             `json:"host,omitempty" yaml:"host,omitempty"`
-	Port               int32                              `json:"port,omitempty" yaml:"port,omitempty"`
-	HTTPPath           string                             `json:"http_path,omitempty" yaml:"http_path,omitempty"`
-	HTTPSVerifyCert    bool                               `json:"https_verify_cert,omitempty" yaml:"https_verify_cert,omitempty"`
-	HTTPRequestHeaders []string                           `json:"req_headers,omitempty" yaml:"req_headers,omitempty"`
-	Healthy            UpstreamActiveHealthCheckHealthy   `json:"healthy,omitempty" yaml:"healthy,omitempty"`
-	Unhealthy          UpstreamActiveHealthCheckUnhealthy `json:"unhealthy,omitempty" yaml:"unhealthy,omitempty"`
+	Type                   string                             `json:"type,omitempty" yaml:"type,omitempty"`
+	Timeout                int                                `json:"timeout,omitempty" yaml:"timeout,omitempty"`
+	Concurrency            int                                `json:"concurrency,omitempty" yaml:"concurrency,omitempty"`
+	Host                   string                             `json:"host,omitempty" yaml:"host,omitempty"`
+	Port                   int32                              `json:"port,omitempty" yaml:"port,omitempty"`
+	HTTPPath               string                             `json:"http_path,omitempty" yaml:"http_path,omitempty"`
+	HTTPSVerifyCertificate bool                               `json:"https_verify_certificate,omitempty" yaml:"https_verify_certificate,omitempty"`
+	HTTPRequestHeaders     []string                           `json:"req_headers,omitempty" yaml:"req_headers,omitempty"`
+	Healthy                UpstreamActiveHealthCheckHealthy   `json:"healthy,omitempty" yaml:"healthy,omitempty"`
+	Unhealthy              UpstreamActiveHealthCheckUnhealthy `json:"unhealthy,omitempty" yaml:"unhealthy,omitempty"`
 }
 
 // UpstreamPassiveHealthCheck defines the passive health check configuration for an upstream.

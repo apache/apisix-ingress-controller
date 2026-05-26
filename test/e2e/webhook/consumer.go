@@ -90,4 +90,129 @@ stringData:
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), missingSecret)))
 	})
+
+	It("should reject invalid plugin config during ADC validation", func() {
+		gatewayName := s.Namespace()
+
+		firstConsumer := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v1alpha1
+kind: Consumer
+metadata:
+  name: webhook-consumer-a
+spec:
+  gatewayRef:
+    name: %s
+  credentials:
+  - type: key-auth
+    name: key-auth-a
+    config:
+      key: consumer-a-key
+`, gatewayName)
+
+		By("creating the first Consumer with valid key-auth config")
+		err := s.CreateResourceFromString(firstConsumer)
+		Expect(err).NotTo(HaveOccurred(), "creating first Consumer")
+
+		invalidConsumer := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v1alpha1
+kind: Consumer
+metadata:
+  name: webhook-consumer-b
+spec:
+  gatewayRef:
+    name: %s
+  plugins:
+  - name: jwt-auth
+    config:
+      key: consumer-b-key
+      algorithm: INVALID_ALGO
+`, gatewayName)
+
+		By("creating Consumer with an invalid jwt-auth algorithm in plugins")
+		err = s.CreateResourceFromString(invalidConsumer)
+		expectAdmissionDenied(s, "consumer", "webhook-consumer-b", err)
+
+		correctedConsumer := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v1alpha1
+kind: Consumer
+metadata:
+  name: webhook-consumer-b
+spec:
+  gatewayRef:
+    name: %s
+  plugins:
+  - name: jwt-auth
+    config:
+      key: consumer-b-key
+      algorithm: HS256
+      secret: consumer-b-secret
+`, gatewayName)
+
+		By("creating corrected Consumer with a valid algorithm")
+		err = s.CreateResourceFromString(correctedConsumer)
+		Expect(err).NotTo(HaveOccurred(), "creating corrected Consumer")
+	})
+
+	It("should reject consumer update that fails ADC validation", func() {
+		gatewayName := s.Namespace()
+		consumerName := "webhook-consumer-update"
+
+		validConsumer := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v1alpha1
+kind: Consumer
+metadata:
+  name: %s
+spec:
+  gatewayRef:
+    name: %s
+  credentials:
+  - type: key-auth
+    name: key-auth-update
+    config:
+      key: update-consumer-key
+`, consumerName, gatewayName)
+
+		By("creating valid Consumer")
+		err := s.CreateResourceFromString(validConsumer)
+		Expect(err).NotTo(HaveOccurred(), "creating initial valid Consumer")
+
+		invalidConsumer := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v1alpha1
+kind: Consumer
+metadata:
+  name: %s
+spec:
+  gatewayRef:
+    name: %s
+  plugins:
+  - name: jwt-auth
+    config:
+      key: update-consumer-jwt-key
+      algorithm: INVALID_ALGO
+`, consumerName, gatewayName)
+
+		By("updating Consumer with an invalid jwt-auth algorithm in plugins")
+		err = s.CreateResourceFromString(invalidConsumer)
+		expectUpdateDenied(err)
+
+		correctedConsumer := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v1alpha1
+kind: Consumer
+metadata:
+  name: %s
+spec:
+  gatewayRef:
+    name: %s
+  plugins:
+  - name: jwt-auth
+    config:
+      key: update-consumer-jwt-key
+      algorithm: HS256
+      secret: update-consumer-secret
+`, consumerName, gatewayName)
+
+		By("updating Consumer with a valid algorithm")
+		err = s.CreateResourceFromString(correctedConsumer)
+		Expect(err).NotTo(HaveOccurred(), "updating Consumer with corrected config")
+	})
 })
