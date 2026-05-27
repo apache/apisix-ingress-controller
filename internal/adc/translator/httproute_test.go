@@ -36,9 +36,206 @@ import (
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
+	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
+
+func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
+	sectionName := gatewayv1.SectionName("http-main")
+	parentPort := gatewayv1.PortNumber(9080)
+	pathMatchType := gatewayv1.PathMatchPathPrefix
+	pathValue := "/"
+
+	singlePortVars := adctypes.Vars{
+		{
+			{StrVal: "server_port"},
+			{StrVal: "=="},
+			{StrVal: "9080"},
+		},
+	}
+	multiPortVars := adctypes.Vars{
+		{
+			{StrVal: "server_port"},
+			{StrVal: "in"},
+			{SliceVal: []adctypes.StringOrSlice{
+				{StrVal: "9080"},
+				{StrVal: "9081"},
+			}},
+		},
+	}
+
+	tests := []struct {
+		name       string
+		mode       config.ListenerPortMatchMode
+		parentRefs []gatewayv1.ParentReference
+		listeners  []gatewayv1.Listener
+		expected   adctypes.Vars
+	}{
+		{
+			name: "auto mode: no injection for single listener without explicit target",
+			mode: config.ListenerPortMatchModeAuto,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw"},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
+			},
+			expected: nil,
+		},
+		{
+			name: "auto mode: inject for sectionName target",
+			mode: config.ListenerPortMatchModeAuto,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", SectionName: &sectionName},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
+			},
+			expected: singlePortVars,
+		},
+		{
+			name: "auto mode: inject for port target",
+			mode: config.ListenerPortMatchModeAuto,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", Port: &parentPort},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
+			},
+			expected: singlePortVars,
+		},
+		{
+			name: "auto mode: inject for multiple listener ports",
+			mode: config.ListenerPortMatchModeAuto,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw"},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9081)},
+				{Name: "http-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
+			},
+			expected: multiPortVars,
+		},
+		{
+			name: "auto mode: inject for multiple listener ports when listener names collide across gateways",
+			mode: config.ListenerPortMatchModeAuto,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw-a"},
+				{Name: "gw-b"},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9081)},
+				{Name: "http", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
+			},
+			expected: multiPortVars,
+		},
+		{
+			name: "explicit mode: inject for sectionName target",
+			mode: config.ListenerPortMatchModeExplicit,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", SectionName: &sectionName},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
+			},
+			expected: singlePortVars,
+		},
+		{
+			name: "explicit mode: inject for port target",
+			mode: config.ListenerPortMatchModeExplicit,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", Port: &parentPort},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
+			},
+			expected: singlePortVars,
+		},
+		{
+			name: "explicit mode: no injection for multiple listener ports without explicit target",
+			mode: config.ListenerPortMatchModeExplicit,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw"},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9081)},
+				{Name: "http-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
+			},
+			expected: nil,
+		},
+		{
+			name: "off mode: no injection even with sectionName target",
+			mode: config.ListenerPortMatchModeOff,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", SectionName: &sectionName},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
+			},
+			expected: nil,
+		},
+		{
+			name: "off mode: no injection for multiple listener ports",
+			mode: config.ListenerPortMatchModeOff,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw"},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9081)},
+				{Name: "http-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
+			},
+			expected: nil,
+		},
+		{
+			name: "empty mode normalizes to auto",
+			mode: "",
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", Port: &parentPort},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
+			},
+			expected: singlePortVars,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tctx := provider.NewDefaultTranslateContext(context.Background())
+			tctx.RouteParentRefs = tt.parentRefs
+			tctx.Listeners = tt.listeners
+
+			httpRoute := &gatewayv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "route",
+					Namespace: "default",
+				},
+				Spec: gatewayv1.HTTPRouteSpec{
+					Rules: []gatewayv1.HTTPRouteRule{
+						{
+							Matches: []gatewayv1.HTTPRouteMatch{
+								{
+									Path: &gatewayv1.HTTPPathMatch{
+										Type:  &pathMatchType,
+										Value: &pathValue,
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			translator := NewTranslator(logr.Discard(), tt.mode)
+			got, err := translator.TranslateHTTPRoute(tctx, httpRoute)
+			assert.NoError(t, err)
+			if assert.Len(t, got.Services, 1) && assert.Len(t, got.Services[0].Routes, 1) {
+				assert.Equal(t, tt.expected, got.Services[0].Routes[0].Vars)
+			}
+		})
+	}
+}
 
 func TestTranslateHTTPRouteUpstreamScheme(t *testing.T) {
 	tests := []struct {
@@ -62,7 +259,7 @@ func TestTranslateHTTPRouteUpstreamScheme(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			translator := NewTranslator(logr.Discard())
+			translator := NewTranslator(logr.Discard(), "")
 			tctx := provider.NewDefaultTranslateContext(context.Background())
 
 			const (

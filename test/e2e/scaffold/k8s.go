@@ -254,15 +254,41 @@ func (s *Scaffold) WaitUntilDeploymentAvailable(name string) {
 }
 
 func (s *Scaffold) RunDigDNSClientFromK8s(args ...string) (string, error) {
+	podName := fmt.Sprintf("dig-test-%d", time.Now().UnixNano())
 	kubectlArgs := []string{
 		"run",
-		"dig",
-		"-i",
+		podName,
+		"--attach=true",
 		"--rm",
 		"--restart=Never",
 		"--image-pull-policy=IfNotPresent",
 		"--image=toolbelt/dig",
+		"--quiet",
+		"--command",
 		"--",
+		"dig",
+	}
+	kubectlArgs = append(kubectlArgs, args...)
+	return s.RunKubectlAndGetOutput(kubectlArgs...)
+}
+
+// RunCurlFromK8s runs a curl command from a temporary pod inside the cluster.
+// This is useful for making HTTP requests from within the cluster, avoiding
+// port-forward limitations where server_port variables may not work correctly.
+func (s *Scaffold) RunCurlFromK8s(args ...string) (string, error) {
+	podName := fmt.Sprintf("curl-test-%d", time.Now().UnixNano())
+	kubectlArgs := []string{
+		"run",
+		podName,
+		"--attach=true",
+		"--rm",
+		"--restart=Never",
+		"--image-pull-policy=IfNotPresent",
+		"--image=alpine/curl:8.17.0",
+		"--quiet",
+		"--command",
+		"--",
+		"curl",
 	}
 	kubectlArgs = append(kubectlArgs, args...)
 	return s.RunKubectlAndGetOutput(kubectlArgs...)

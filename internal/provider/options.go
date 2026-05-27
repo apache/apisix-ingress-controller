@@ -19,6 +19,8 @@ package provider
 
 import (
 	"time"
+
+	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 )
 
 type Option interface {
@@ -31,6 +33,7 @@ type Options struct {
 	InitSyncDelay           time.Duration
 	DefaultBackendMode      string
 	DefaultResolveEndpoints bool
+	ListenerPortMatchMode   config.ListenerPortMatchMode
 }
 
 func (o *Options) ApplyToList(lo *Options) {
@@ -48,6 +51,9 @@ func (o *Options) ApplyToList(lo *Options) {
 	}
 	if o.DefaultResolveEndpoints {
 		lo.DefaultResolveEndpoints = o.DefaultResolveEndpoints
+	}
+	if o.ListenerPortMatchMode != "" {
+		lo.ListenerPortMatchMode = o.ListenerPortMatchMode
 	}
 }
 

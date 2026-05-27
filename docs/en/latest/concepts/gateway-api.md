@@ -78,7 +78,7 @@ The fields below are specified in the Gateway API specification but are either p
 
 | Fields                                               | Status               | Notes                                                                                          |
 |------------------------------------------------------|----------------------|------------------------------------------------------------------------------------------------|
-| `spec.listeners[].port`               | Not supported*  | The configuration is required but ignored. This is due to limitations in the data plane: it cannot dynamically open new ports. Since the Ingress Controller does not manage the data plane deployment, it cannot automatically update the configuration or restart the data plane to apply port changes.    |
+| `spec.listeners[].port`               | Partially supported | Controls `server_port` route-var injection; behaviour is configured via [`listener_port_match_mode`](../reference/configuration-file.md) (`auto` / `explicit` / `off`). The controller cannot dynamically open data plane ports, so APISIX must already listen on the specified port. |
 | `spec.listeners[].tls.certificateRefs[].group` | Partially supported | Only `""` is supported; other group values cause validation failure. |
 | `spec.listeners[].tls.certificateRefs[].kind`        | Partially supported  | Only `Secret` is supported.                                                                    |
 | `spec.listeners[].tls.mode`                          | Partially supported  | `Terminate` is implemented; `Passthrough` is effectively unsupported for Gateway listeners.    |

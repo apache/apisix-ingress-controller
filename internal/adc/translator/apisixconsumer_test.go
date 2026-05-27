@@ -31,7 +31,7 @@ import (
 )
 
 func TestTranslateApisixConsumer_UsesMetadataLabelsWithoutOverwritingControllerLabels(t *testing.T) {
-	translator := NewTranslator(logr.Discard())
+	translator := NewTranslator(logr.Discard(), "")
 	tctx := provider.NewDefaultTranslateContext(context.Background())
 
 	consumer := &apiv2.ApisixConsumer{
