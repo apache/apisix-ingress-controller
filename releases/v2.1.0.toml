@@ -1,0 +1,82 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# commit to be tagged for new release
+commit = "HEAD"
+
+# project_name is used to refer to the project in the notes
+project_name = "apisix-ingress-controller"
+
+# github_repo is the github project, only github is currently supported
+github_repo = "apache/apisix-ingress-controller"
+
+# match_deps is a pattern to determine which dependencies should be included
+# as part of this release. The changelog will also include changes for these
+# dependencies based on the change in the dependency's version.
+match_deps = "^github.com/(apache/[a-zA-Z0-9-]+)$"
+
+# previous release of this project for determining changes
+previous = "2.0.1"
+
+# pre_release is whether to include a disclaimer about being a pre-release
+pre_release = false
+
+# preface is the description of the release which precedes the author list
+# and changelog. This description could include highlights as well as any
+# description of changes. Use markdown formatting.
+preface = """\
+
+## Highlights
+
+This release includes new features, bug fixes and dependency updates.
+
+---
+
+## Features
+
+* feat: support port-based routing for Gateway API routes [#2703](https://github.com/apache/apisix-ingress-controller/pull/2703)
+* feat: support upstream health checks in BackendTrafficPolicy [#2763](https://github.com/apache/apisix-ingress-controller/pull/2763)
+* feat: add Body scope to ApisixRoute match expressions for request body matching [#2762](https://github.com/apache/apisix-ingress-controller/pull/2762)
+* feat: support plugins field in ApisixConsumer [#2761](https://github.com/apache/apisix-ingress-controller/pull/2761)
+* feat: support consumer labels from metadata labels [#2760](https://github.com/apache/apisix-ingress-controller/pull/2760)
+* feat: add ADC-backed admission validation for APISIX CRDs [#2758](https://github.com/apache/apisix-ingress-controller/pull/2758)
+
+---
+
+## Bug Fixes
+
+* fix: set uris to ["/*"] when HTTPRoute path type is RegularExpression [#2770](https://github.com/apache/apisix-ingress-controller/pull/2770)
+* fix: update observedGeneration on Gateway-API route status conditions [#2768](https://github.com/apache/apisix-ingress-controller/pull/2768)
+* fix: relax jwtAuth private_key requirement and add CEL validation [#2759](https://github.com/apache/apisix-ingress-controller/pull/2759)
+* fix: exclude status-only API v2 resources from readiness gating [#2745](https://github.com/apache/apisix-ingress-controller/pull/2745)
+* fix: use https_verify_certificate for standalone health checks [#2755](https://github.com/apache/apisix-ingress-controller/pull/2755)
+* fix: update publishService/statusAddress logic in gateway and ingress controller files [#2732](https://github.com/apache/apisix-ingress-controller/pull/2732)
+* fix: remove redundant route.Hosts to prevent false diffs in ADC sync [#2743](https://github.com/apache/apisix-ingress-controller/pull/2743)
+* fix: ensure upstream scheme is set only if not already defined in HTTP route translation [#2691](https://github.com/apache/apisix-ingress-controller/pull/2691)
+
+---
+
+## Chores
+
+* chore(deps): bump go.opentelemetry.io/otel/sdk from 1.34.0 to 1.40.0 [#2728](https://github.com/apache/apisix-ingress-controller/pull/2728)
+
+---
+
+## Documentation
+
+* docs: add `apisix.apache.org/parameters-namespace` to annotation doc [#2702](https://github.com/apache/apisix-ingress-controller/pull/2702)
+
+"""

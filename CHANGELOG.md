@@ -19,6 +19,7 @@
 
 # Table of Contents
 
+- [2.1.0](#210)
 - [2.0.1](#201)
 - [2.0.0](#200)
 - [2.0.0-rc5](#200-rc5)
@@ -45,6 +46,103 @@
 - [0.3.0](#030)
 - [0.2.0](#020)
 - [0.1.0](#010)
+
+# 2.1.0
+
+apisix-ingress-controller 2.1.0
+
+Welcome to the 2.1.0 release of apisix-ingress-controller!
+
+## Highlights
+
+This release includes new features, bug fixes and dependency updates.
+
+---
+
+## Features
+
+* feat: support port-based routing for Gateway API routes [#2703](https://github.com/apache/apisix-ingress-controller/pull/2703)
+* feat: support upstream health checks in BackendTrafficPolicy [#2763](https://github.com/apache/apisix-ingress-controller/pull/2763)
+* feat: add Body scope to ApisixRoute match expressions for request body matching [#2762](https://github.com/apache/apisix-ingress-controller/pull/2762)
+* feat: support plugins field in ApisixConsumer [#2761](https://github.com/apache/apisix-ingress-controller/pull/2761)
+* feat: support consumer labels from metadata labels [#2760](https://github.com/apache/apisix-ingress-controller/pull/2760)
+* feat: add ADC-backed admission validation for APISIX CRDs [#2758](https://github.com/apache/apisix-ingress-controller/pull/2758)
+
+---
+
+## Bug Fixes
+
+* fix: set uris to ["/*"] when HTTPRoute path type is RegularExpression [#2770](https://github.com/apache/apisix-ingress-controller/pull/2770)
+* fix: update observedGeneration on Gateway-API route status conditions [#2768](https://github.com/apache/apisix-ingress-controller/pull/2768)
+* fix: relax jwtAuth private_key requirement and add CEL validation [#2759](https://github.com/apache/apisix-ingress-controller/pull/2759)
+* fix: exclude status-only API v2 resources from readiness gating [#2745](https://github.com/apache/apisix-ingress-controller/pull/2745)
+* fix: use https_verify_certificate for standalone health checks [#2755](https://github.com/apache/apisix-ingress-controller/pull/2755)
+* fix: update publishService/statusAddress logic in gateway and ingress controller files [#2732](https://github.com/apache/apisix-ingress-controller/pull/2732)
+* fix: remove redundant route.Hosts to prevent false diffs in ADC sync [#2743](https://github.com/apache/apisix-ingress-controller/pull/2743)
+* fix: ensure upstream scheme is set only if not already defined in HTTP route translation [#2691](https://github.com/apache/apisix-ingress-controller/pull/2691)
+
+---
+
+## Chores
+
+* chore(deps): bump go.opentelemetry.io/otel/sdk from 1.34.0 to 1.40.0 [#2728](https://github.com/apache/apisix-ingress-controller/pull/2728)
+
+---
+
+## Documentation
+
+* docs: add `apisix.apache.org/parameters-namespace` to annotation doc [#2702](https://github.com/apache/apisix-ingress-controller/pull/2702)
+
+Please try out the release binaries and report any issues at
+https://github.com/apache/apisix-ingress-controller/issues.
+
+### Contributors
+
+* AlinsRan
+* Hemanth Chebrolu
+* Johannes Engler
+* Nic
+* Timmy
+* Traky Deng
+* hyarkoni-DN
+* rongxin
+* yangkaa
+
+### Changes
+<details><summary>16 commits</summary>
+<p>
+
+  * [`33d376f1`](https://github.com/apache/apisix-ingress-controller/commit/33d376f16453e33b8d269f232265c1199833a02d) feat: support port-based routing for Gateway API routes (#2703)
+  * [`e4c6e2f1`](https://github.com/apache/apisix-ingress-controller/commit/e4c6e2f18cc013b953149c474f0dae622f0e4f0a) fix: set uris to ["/*"] when HTTPRoute path type is RegularExpression (#2770)
+  * [`7d8aa4ea`](https://github.com/apache/apisix-ingress-controller/commit/7d8aa4ea754e70a568c14f837cbd444a115579ed) fix: update observedGeneration on Gateway-API route status conditions (#2768)
+  * [`e461eb2e`](https://github.com/apache/apisix-ingress-controller/commit/e461eb2e330c44d831b96c59d2c4093653a2b5b8) feat: support upstream health checks in BackendTrafficPolicy (#2763)
+  * [`c99b26d9`](https://github.com/apache/apisix-ingress-controller/commit/c99b26d9e0eb36dba5cdeea2354033e0aa13b0db) feat: add Body scope to ApisixRoute match expressions for request body matching (#2762)
+  * [`336f4270`](https://github.com/apache/apisix-ingress-controller/commit/336f427059cae1f9eaf62895da204a89a22562f3) feat: support plugins field in ApisixConsumer (#2761)
+  * [`b0fa3e54`](https://github.com/apache/apisix-ingress-controller/commit/b0fa3e5459e26b98a2c409a34d70af438ab79353) feat: support consumer labels from metadata labels (#2760)
+  * [`5c236d07`](https://github.com/apache/apisix-ingress-controller/commit/5c236d07a9c99741f72ce33e944f84f3a0577dda) feat: add ADC-backed admission validation for APISIX CRDs (#2758)
+  * [`e89f0f24`](https://github.com/apache/apisix-ingress-controller/commit/e89f0f24ec4f6086b4539feb12a786eca6e079f3) fix: relax jwtAuth private_key requirement and add CEL validation (#2759)
+  * [`ff8cd429`](https://github.com/apache/apisix-ingress-controller/commit/ff8cd42953b6e3af2b05fd2241c58a09740970b3) fix: exclude status-only API v2 resources from readiness gating (#2745)
+  * [`19e40c94`](https://github.com/apache/apisix-ingress-controller/commit/19e40c9426ee42e8f5c179b6f42cb49baf1e45de) fix: use https_verify_certificate for standalone health checks (#2755)
+  * [`878e5015`](https://github.com/apache/apisix-ingress-controller/commit/878e5015bda978cb2f4231511c835420d8769a2f) fix: update publishService/statusAdress logic in gateway and ingress controller files (#2730) (#2732)
+  * [`0d225ad4`](https://github.com/apache/apisix-ingress-controller/commit/0d225ad490e80658a379e31ac88b08e70fcf141c) fix: remove redundant route.Hosts to prevent false diffs in ADC sync (#2743)
+  * [`f34a259f`](https://github.com/apache/apisix-ingress-controller/commit/f34a259fec42e9aa07edfe7dabf82a3ae45a01a6) chore(deps): bump go.opentelemetry.io/otel/sdk from 1.34.0 to 1.40.0 (#2728)
+  * [`c48e9b3f`](https://github.com/apache/apisix-ingress-controller/commit/c48e9b3fb8d269b04b440c6fc5ed6880c05456f3) fix: ensure upstream scheme is set only if not already defined in HTTP route translation (#2691)
+  * [`2b7b2478`](https://github.com/apache/apisix-ingress-controller/commit/2b7b24780c51932e5fec4c630e9200b2a8cbf955) docs: add `apisix.apache.org/parameters-namespace` to annotation doc (#2702)
+</p>
+</details>
+
+### Dependency Changes
+
+* **github.com/go-logr/logr**          v1.4.2 -> v1.4.3
+* **github.com/stretchr/testify**      v1.10.0 -> v1.11.1
+* **go.opentelemetry.io/auto/sdk**     v1.1.0 -> v1.2.1
+* **go.opentelemetry.io/otel**         v1.34.0 -> v1.40.0
+* **go.opentelemetry.io/otel/metric**  v1.34.0 -> v1.40.0
+* **go.opentelemetry.io/otel/sdk**     v1.34.0 -> v1.40.0
+* **go.opentelemetry.io/otel/trace**   v1.34.0 -> v1.40.0
+* **golang.org/x/sys**                 v0.38.0 -> v0.40.0
+
+Previous release can be found at [2.0.1](https://github.com/apache/apisix-ingress-controller/releases/tag/2.0.1)
 
 # 2.0.1
 
