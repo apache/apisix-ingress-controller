@@ -29,6 +29,7 @@ import (
 
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
+	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
@@ -39,6 +40,7 @@ type ApisixPluginConfigReconciler struct {
 	Scheme  *runtime.Scheme
 	Log     logr.Logger
 	Updater status.Updater
+	Readier readiness.ReadinessManager
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -51,6 +53,7 @@ func (r *ApisixPluginConfigReconciler) SetupWithManager(mgr ctrl.Manager) error 
 }
 
 func (r *ApisixPluginConfigReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	defer r.Readier.Done(&apiv2.ApisixPluginConfig{}, req.NamespacedName)
 	var pc apiv2.ApisixPluginConfig
 	if err := r.Get(ctx, req.NamespacedName, &pc); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
