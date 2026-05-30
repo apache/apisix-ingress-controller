@@ -30,7 +30,7 @@ team at <security@apache.org> per
 This repository inherits the Apache APISIX project threat
 model at:
 
-  https://github.com/apache/apisix/blob/master/docs/en/latest/security-threat-model.md
+<https://github.com/apache/apisix/blob/master/docs/en/latest/security-threat-model.md>
 
 Of particular relevance to `apisix-ingress-controller`:
 §4.8 covers a CRD-to-Admin-API fidelity invariant specific

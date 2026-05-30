@@ -29,7 +29,7 @@ consult before producing output.
 This repository inherits the Apache APISIX project threat
 model. The authoritative document lives at:
 
-  https://github.com/apache/apisix/blob/master/docs/en/latest/security-threat-model.md
+<https://github.com/apache/apisix/blob/master/docs/en/latest/security-threat-model.md>
 
 The §4.2 component-family table in that document covers this
 repository under the `apisix-ingress-controller` family.
