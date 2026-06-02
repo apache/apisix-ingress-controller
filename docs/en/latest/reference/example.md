@@ -439,7 +439,7 @@ This configuration is not supported by the Ingress resource.
 
 ## Configure Upstream
 
-To configure upstream related configurations, including load balancing algorithm, how the host header is passed to upstream, service timeout, and more:
+To configure upstream related configurations, including load balancing algorithm, how the host header is passed to upstream, service timeout, health checks, and more:
 
 <Tabs
 groupId="k8s-api"
@@ -472,6 +472,23 @@ spec:
     type: roundrobin
   passHost: rewrite
   upstreamHost: httpbin.example.com
+  healthCheck:
+    active:
+      type: http
+      httpPath: /status/200
+      host: httpbin.org
+      healthy:
+        successes: 2
+        interval: 2s
+      unhealthy:
+        httpFailures: 3
+        interval: 2s
+    passive:
+      type: http
+      healthy:
+        successes: 3
+      unhealthy:
+        httpFailures: 3
 ```
 
 </TabItem>
@@ -496,6 +513,23 @@ spec:
     type: roundrobin
   passHost: rewrite
   upstreamHost: httpbin.example.com
+  healthCheck:
+    active:
+      type: http
+      httpPath: /status/200
+      host: httpbin.org
+      healthy:
+        successes: 2
+        interval: 2s
+      unhealthy:
+        httpFailures: 3
+        interval: 2s
+    passive:
+      type: http
+      healthy:
+        successes: 3
+      unhealthy:
+        httpFailures: 3
 ```
 
 </TabItem>
@@ -570,6 +604,8 @@ kind: ApisixConsumer
 metadata:
   namespace: ingress-apisix
   name: alice
+  labels:
+    team: example
 spec:
   ingressClassName: apisix
   authParameter:
@@ -577,6 +613,8 @@ spec:
       value:
         key: alice-primary-key
 ```
+
+Labels in `metadata.labels` are propagated to the APISIX consumer.
 
 You can also use the secret CRD, where the credential should be base64 encoded:
 
@@ -594,6 +632,8 @@ kind: ApisixConsumer
 metadata:
   namespace: ingress-apisix
   name: alice
+  labels:
+    team: example
 spec:
   ingressClassName: apisix
   authParameter:
@@ -652,7 +692,32 @@ spec:
 
 <TabItem value="apisix-crd">
 
-ApisixConsumer currently does not support configuring plugins on consumers.
+```yaml
+apiVersion: apisix.apache.org/v2
+kind: ApisixConsumer
+metadata:
+  namespace: ingress-apisix
+  name: alice
+spec:
+  ingressClassName: apisix
+  authParameter:
+    keyAuth:
+      value:
+        key: alice-key
+  plugins:
+    - name: limit-count
+      enable: true
+      config:
+        count: 3
+        time_window: 60
+        key: consumer_name
+        key_type: var
+        policy: local
+        rejected_code: 429
+        rejected_msg: Too many requests
+        show_limit_quota_header: true
+        allow_degradation: false
+```
 
 </TabItem>
 
@@ -721,10 +786,17 @@ spec:
           name: test
         op: Equal
         value: test_name
+      - subject:
+          scope: Body
+          name: action
+        op: Equal
+        value: login
     backends:
     - serviceName: httpbin
       servicePort: 80
 ```
+
+When `scope` is `Body`, the `name` field accepts the request body field to match. For JSON payloads, nested fields can use dot notation such as `model.version`.
 
 </TabItem>
 

@@ -78,7 +78,7 @@ APISIX Ingress Controller CRDs extend Kubernetes functionality to provide declar
 
 * ApisixUpstream: Extends Kubernetes Services with advanced configurations such as load balancing, health checks, retries, timeouts, and service subset selection.
 
-* ApisixConsumer: Defines API consumers and their authentication credentials, supporting methods like basicAuth, keyAuth, jwtAuth, hmacAuth, wolfRBAC, and ldapAuth.
+* ApisixConsumer: Defines API consumers, their authentication credentials, and consumer-scoped plugins, supporting methods like basicAuth, keyAuth, jwtAuth, hmacAuth, wolfRBAC, and ldapAuth. Labels from `metadata.labels` are propagated to the APISIX consumer.
 
 * ApisixPluginConfig: Defines reusable plugin configurations referenced by ApisixRoute through the plugin_config_name field, promoting separation of routing logic and plugin settings.
 
