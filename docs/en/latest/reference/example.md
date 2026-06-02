@@ -604,8 +604,6 @@ kind: ApisixConsumer
 metadata:
   namespace: ingress-apisix
   name: alice
-  labels:
-    team: example
 spec:
   ingressClassName: apisix
   authParameter:
@@ -630,8 +628,6 @@ kind: ApisixConsumer
 metadata:
   namespace: ingress-apisix
   name: alice
-  labels:
-    team: example
 spec:
   ingressClassName: apisix
   authParameter:
