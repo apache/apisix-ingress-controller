@@ -784,17 +784,10 @@ spec:
           name: test
         op: Equal
         value: test_name
-      - subject:
-          scope: Body
-          name: action
-        op: Equal
-        value: login
     backends:
     - serviceName: httpbin
       servicePort: 80
 ```
-
-When `scope` is `Body`, the `name` field accepts the request body field to match. For JSON payloads, nested fields can use dot notation such as `model.version`.
 
 </TabItem>
 
