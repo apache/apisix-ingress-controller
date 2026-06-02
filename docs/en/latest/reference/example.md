@@ -614,8 +614,6 @@ spec:
         key: alice-primary-key
 ```
 
-Labels in `metadata.labels` are propagated to the APISIX consumer.
-
 You can also use the secret CRD, where the credential should be base64 encoded:
 
 ```yaml
