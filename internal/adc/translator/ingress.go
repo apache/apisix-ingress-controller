@@ -282,7 +282,7 @@ func (t *Translator) buildRouteFromIngressPath(
 			prefix := strings.TrimSuffix(path.Path, "/") + "/*"
 			uris = append(uris, prefix)
 		case networkingv1.PathTypeImplementationSpecific:
-			if config.UseRegex {
+			if config != nil && config.UseRegex {
 				uris = []string{"/*"}
 				vars := apiv2.ApisixRouteHTTPMatchExprs{
 					apiv2.ApisixRouteHTTPMatchExpr{
