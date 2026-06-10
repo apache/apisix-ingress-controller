@@ -251,6 +251,14 @@ func (d *apisixProvider) buildConfig(tctx *provider.TranslateContext, nnk types.
 }
 
 func (d *apisixProvider) Start(ctx context.Context) error {
+	// Start only runs once this pod has won leader election. Rotate the ADC
+	// cacheKey nonce so the long-lived ADC sidecar discards any stale baseline
+	// left over from a previous leadership term and regenerates conf_version
+	// from scratch on the first sync, avoiding "*_conf_version must be greater
+	// than or equal to" rejections after a leader switch.
+	nonce := d.client.RefreshCacheKeyNonce()
+	d.log.Info("leadership acquired, rotated ADC cacheKey nonce", "nonce", nonce)
+
 	d.log.Info("starting provider, waiting for readiness")
 	d.readier.WaitReady(ctx, 5*time.Minute)
 	d.log.Info("Ready detected, starting sync loop")

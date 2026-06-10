@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/google/uuid"
 	"github.com/pkg/errors"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
@@ -62,14 +63,29 @@ func New(log logr.Logger, defaultMode string, timeout time.Duration) (*Client, e
 	logger := log.WithName("client")
 	logger.Info("ADC client initialized")
 
+	executor := NewHTTPADCExecutor(log, serverURL, timeout)
+	// Seed an initial nonce so the cacheKey is isolated per process even before
+	// leadership is (re)acquired and RefreshCacheKeyNonce is called.
+	executor.SetCacheKeyNonce(uuid.NewString())
+
 	return &Client{
 		Store:            store,
-		executor:         NewHTTPADCExecutor(log, serverURL, timeout),
+		executor:         executor,
 		ConfigManager:    configManager,
 		ADCDebugProvider: common.NewADCDebugProvider(store, configManager),
 		log:              logger,
 		defaultMode:      defaultMode,
 	}, nil
+}
+
+// RefreshCacheKeyNonce rotates the nonce appended to the cacheKey sent to the
+// ADC server and returns the new value. It is called when the controller
+// (re)acquires leadership so that ADC discards any stale in-memory baseline
+// from a previous leadership term and regenerates conf_version from scratch.
+func (c *Client) RefreshCacheKeyNonce() string {
+	nonce := uuid.NewString()
+	c.executor.SetCacheKeyNonce(nonce)
+	return nonce
 }
 
 type Task struct {
