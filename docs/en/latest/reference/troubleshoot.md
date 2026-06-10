@@ -54,3 +54,14 @@ curl "http://127.0.0.1:9180/apisix/admin/routes" -H "X-API-KEY: ${ADMIN_API_KEY}
 ```
 
 For reference, see [Admin API](https://apisix.apache.org/docs/apisix/admin-api/).
+
+## Gateway API Routes Return 404 After Upgrade
+
+After upgrading to APISIX Ingress Controller 2.1.0, Gateway API HTTPRoute or GRPCRoute resources may return `404`. This can happen when Gateway listener ports do not match the ports that APISIX actually listens on.
+
+In the default `listener_port_match_mode: auto` mode, the Ingress Controller may inject a `server_port` route variable from the matched Gateway listener ports. The `server_port` variable is evaluated by APISIX against its actual listening port, such as `9080` or `9443`. If the Gateway listener uses `80` or `443` but the gateway Service maps those ports to `9080` or `9443`, the route may not match.
+
+To resolve the issue, use one of the following approaches:
+
+- Set [`listener_port_match_mode`](configuration-file.md) to `"off"` in the controller configuration to disable `server_port` route-var injection.
+- Configure APISIX to listen on the same ports declared in the Gateway listeners.
