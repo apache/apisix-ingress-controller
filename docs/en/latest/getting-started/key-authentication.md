@@ -76,7 +76,7 @@ spec:
       name: apisix-config
 ```
 
-Note that the `port` in the Gateway listener is required but ignored. This is due to limitations in the data plane: it cannot dynamically open new ports. Since the Ingress Controller does not manage the data plane deployment, it cannot automatically update the configuration or restart the data plane to apply port changes.
+The `port` in the Gateway listener can be used for route matching based on [`listener_port_match_mode`](../reference/configuration-file.md) (`auto`, `explicit`, or `off`). The controller cannot dynamically open new ports on the data plane, so ensure APISIX is configured to listen on the port.
 
 </details>
 
