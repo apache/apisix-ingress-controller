@@ -18,9 +18,17 @@
 package client
 
 import (
+	"context"
+	"encoding/json"
+	"io"
+	"net/http"
 	"testing"
 
+	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 )
 
 func TestHTTPADCExecutorCacheKey(t *testing.T) {
@@ -51,4 +59,33 @@ func TestClientRefreshCacheKeyNonce(t *testing.T) {
 	assert.NotEmpty(t, second)
 	assert.NotEqual(t, first, second)
 	assert.Equal(t, "name:"+second, e.cacheKey("name"))
+}
+
+// TestHTTPADCExecutorBuildHTTPRequestCacheKey verifies the nonce actually
+// reaches the cacheKey field of the request body sent to the ADC server.
+func TestHTTPADCExecutorBuildHTTPRequestCacheKey(t *testing.T) {
+	e := &HTTPADCExecutor{
+		serverURL: "http://127.0.0.1:3000",
+		log:       logr.Discard(),
+	}
+	config := adctypes.Config{Name: "Gateway/ns/name"}
+
+	cacheKeyOf := func(req *http.Request) string {
+		body, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		var parsed ADCServerRequest
+		require.NoError(t, json.Unmarshal(body, &parsed))
+		return parsed.Task.Opts.CacheKey
+	}
+
+	// Without a nonce the bare name is used.
+	req, err := e.buildHTTPRequest(context.Background(), "http://apisix:9180", config, nil, nil, &adctypes.Resources{}, http.MethodPut, "/sync")
+	require.NoError(t, err)
+	assert.Equal(t, "Gateway/ns/name", cacheKeyOf(req))
+
+	// With a nonce it is appended.
+	e.SetCacheKeyNonce("abc")
+	req, err = e.buildHTTPRequest(context.Background(), "http://apisix:9180", config, nil, nil, &adctypes.Resources{}, http.MethodPut, "/sync")
+	require.NoError(t, err)
+	assert.Equal(t, "Gateway/ns/name:abc", cacheKeyOf(req))
 }
