@@ -20,7 +20,6 @@ package v2
 import (
 	"fmt"
 	"net/http"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -30,6 +29,21 @@ import (
 
 var _ = Describe("Test GlobalRule", Label("apisix.apache.org", "v2", "apisixglobalrule"), func() {
 	s := scaffold.NewDefaultScaffold()
+
+	// globalRuleAccepted polls until the named ApisixGlobalRule reports the
+	// accepted/synced status, replacing fixed sleeps before status checks.
+	globalRuleAccepted := func(name string, extraSubstrings ...string) {
+		matchers := []OmegaMatcher{
+			ContainSubstring(`status: "True"`),
+			ContainSubstring("message: The global rule has been accepted and synced to APISIX"),
+		}
+		for _, sub := range extraSubstrings {
+			matchers = append(matchers, ContainSubstring(sub))
+		}
+		s.RetryAssertion(func() (string, error) {
+			return s.GetResourceYaml("ApisixGlobalRule", name)
+		}).Should(And(matchers...))
+	}
 
 	var ingressYaml = `
 apiVersion: networking.k8s.io/v1
@@ -56,26 +70,22 @@ spec:
 			By("create GatewayProxy")
 			err := s.CreateResourceFromString(s.GetGatewayProxySpec())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-			time.Sleep(5 * time.Second)
 
 			By("create IngressClass")
 			err = s.CreateResourceFromStringWithNamespace(s.GetIngressClassYaml(), "")
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
-			time.Sleep(5 * time.Second)
 
 			By("create Ingress")
 			err = s.CreateResourceFromString(fmt.Sprintf(ingressYaml, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress")
-			time.Sleep(5 * time.Second)
 
 			By("verify Ingress works")
-			Eventually(func() int {
-				return s.NewAPISIXClient().
-					GET("/get").
-					WithHost("globalrule.example.com").
-					Expect().Raw().StatusCode
-			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).
-				Should(Equal(http.StatusOK))
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "globalrule.example.com",
+				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+			})
 		})
 
 		It("Test GlobalRule with response-rewrite plugin", func() {
@@ -100,34 +110,35 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixGlobalRule")
 
 			By("verify ApisixGlobalRule status condition")
-			time.Sleep(5 * time.Second)
-			gryaml, err := s.GetResourceYaml("ApisixGlobalRule", "test-global-rule-response-rewrite")
-			Expect(err).NotTo(HaveOccurred(), "getting ApisixGlobalRule yaml")
-			Expect(gryaml).To(ContainSubstring(`status: "True"`))
-			Expect(gryaml).To(ContainSubstring("message: The global rule has been accepted and synced to APISIX"))
+			globalRuleAccepted("test-global-rule-response-rewrite")
 
 			By("verify global rule is applied - response should have custom headers")
-			resp := s.NewAPISIXClient().
-				GET("/get").
-				WithHost("globalrule.example.com").
-				Expect().
-				Status(http.StatusOK)
-			resp.Header("X-Global-Rule").IsEqual("test-response-rewrite")
-			resp.Header("X-Global-Test").IsEqual("enabled")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "globalrule.example.com",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedHeader("X-Global-Rule", "test-response-rewrite"),
+					scaffold.WithExpectedHeader("X-Global-Test", "enabled"),
+				},
+			})
 
 			By("delete ApisixGlobalRule")
 			err = s.DeleteResource("ApisixGlobalRule", "test-global-rule-response-rewrite")
 			Expect(err).NotTo(HaveOccurred(), "deleting ApisixGlobalRule")
-			time.Sleep(5 * time.Second)
 
 			By("verify global rule is removed - response should not have custom headers")
-			resp = s.NewAPISIXClient().
-				GET("/get").
-				WithHost("globalrule.example.com").
-				Expect().
-				Status(http.StatusOK)
-			resp.Header("X-Global-Rule").IsEmpty()
-			resp.Header("X-Global-Test").IsEmpty()
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "globalrule.example.com",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedNotHeader("X-Global-Rule"),
+					scaffold.WithExpectedNotHeader("X-Global-Test"),
+				},
+			})
 		})
 
 		It("Test GlobalRule update", func() {
@@ -167,41 +178,38 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixGlobalRule")
 
 			By("verify initial ApisixGlobalRule status condition")
-			time.Sleep(5 * time.Second)
-			gryaml, err := s.GetResourceYaml("ApisixGlobalRule", "test-global-rule-update")
-			Expect(err).NotTo(HaveOccurred(), "getting ApisixGlobalRule yaml")
-			Expect(gryaml).To(ContainSubstring(`status: "True"`))
-			Expect(gryaml).To(ContainSubstring("message: The global rule has been accepted and synced to APISIX"))
+			globalRuleAccepted("test-global-rule-update")
 
 			By("verify initial configuration")
-			resp := s.NewAPISIXClient().
-				GET("/get").
-				WithHost("globalrule.example.com").
-				Expect().
-				Status(http.StatusOK)
-			resp.Header("X-Update-Test").IsEqual("version1")
-			resp.Header("X-New-Header").IsEmpty()
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "globalrule.example.com",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedHeader("X-Update-Test", "version1"),
+					scaffold.WithExpectedNotHeader("X-New-Header"),
+				},
+			})
 
 			By("update ApisixGlobalRule")
 			err = s.CreateResourceFromString(fmt.Sprintf(updatedGlobalRuleYaml, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "updating ApisixGlobalRule")
 
 			By("verify updated ApisixGlobalRule status condition")
-			time.Sleep(5 * time.Second)
-			gryaml, err = s.GetResourceYaml("ApisixGlobalRule", "test-global-rule-update")
-			Expect(err).NotTo(HaveOccurred(), "getting updated ApisixGlobalRule yaml")
-			Expect(gryaml).To(ContainSubstring(`status: "True"`))
-			Expect(gryaml).To(ContainSubstring("message: The global rule has been accepted and synced to APISIX"))
-			Expect(gryaml).To(ContainSubstring("observedGeneration: 2"))
+			globalRuleAccepted("test-global-rule-update", "observedGeneration: 2")
 
 			By("verify updated configuration")
-			resp = s.NewAPISIXClient().
-				GET("/get").
-				WithHost("globalrule.example.com").
-				Expect().
-				Status(http.StatusOK)
-			resp.Header("X-Update-Test").IsEqual("version2")
-			resp.Header("X-New-Header").IsEqual("added")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "globalrule.example.com",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedHeader("X-Update-Test", "version2"),
+					scaffold.WithExpectedHeader("X-New-Header", "added"),
+				},
+			})
 
 			By("delete ApisixGlobalRule")
 			err = s.DeleteResource("ApisixGlobalRule", "test-global-rule-update")
@@ -250,57 +258,55 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixGlobalRule with response-rewrite")
 
 			By("verify both ApisixGlobalRule status conditions")
-			time.Sleep(5 * time.Second)
-
-			proxyRewriteYaml, err := s.GetResourceYaml("ApisixGlobalRule", "test-global-rule-proxy-rewrite")
-			Expect(err).NotTo(HaveOccurred(), "getting proxy-rewrite ApisixGlobalRule yaml")
-			Expect(proxyRewriteYaml).To(ContainSubstring(`status: "True"`))
-			Expect(proxyRewriteYaml).To(ContainSubstring("message: The global rule has been accepted and synced to APISIX"))
-
-			responseRewriteYaml, err := s.GetResourceYaml("ApisixGlobalRule", "test-global-rule-response-rewrite-multi")
-			Expect(err).NotTo(HaveOccurred(), "getting response-rewrite ApisixGlobalRule yaml")
-			Expect(responseRewriteYaml).To(ContainSubstring(`status: "True"`))
-			Expect(responseRewriteYaml).To(ContainSubstring("message: The global rule has been accepted and synced to APISIX"))
+			globalRuleAccepted("test-global-rule-proxy-rewrite")
+			globalRuleAccepted("test-global-rule-response-rewrite-multi")
 
 			By("verify both global rules are applied on GET request")
-			getResp := s.NewAPISIXClient().
-				GET("/get").
-				WithHost("globalrule.example.com").
-				Expect().
-				Status(http.StatusOK)
-			getResp.Header("X-Global-Multi").IsEqual("test-multi-rule")
-			getResp.Header("X-Response-Type").IsEqual("rewrite")
-			getResp.Body().Contains(`"X-Global-Proxy": "test"`)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "globalrule.example.com",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedHeader("X-Global-Multi", "test-multi-rule"),
+					scaffold.WithExpectedHeader("X-Response-Type", "rewrite"),
+					scaffold.WithExpectedBodyContains(`"X-Global-Proxy": "test"`),
+				},
+			})
 
 			By("delete proxy-rewrite ApisixGlobalRule")
 			err = s.DeleteResource("ApisixGlobalRule", "test-global-rule-proxy-rewrite")
 			Expect(err).NotTo(HaveOccurred(), "deleting proxy-rewrite ApisixGlobalRule")
-			time.Sleep(5 * time.Second)
 
 			By("verify only response-rewrite global rule remains - proxy-rewrite headers should be removed")
-			getRespAfterProxyDelete := s.NewAPISIXClient().
-				GET("/get").
-				WithHost("globalrule.example.com").
-				Expect().
-				Status(http.StatusOK)
-			getRespAfterProxyDelete.Header("X-Global-Multi").IsEqual("test-multi-rule")
-			getRespAfterProxyDelete.Header("X-Response-Type").IsEqual("rewrite")
-			getRespAfterProxyDelete.Body().NotContains(`"X-Global-Proxy": "test"`)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "globalrule.example.com",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedHeader("X-Global-Multi", "test-multi-rule"),
+					scaffold.WithExpectedHeader("X-Response-Type", "rewrite"),
+					scaffold.WithExpectedBodyNotContains(`"X-Global-Proxy": "test"`),
+				},
+			})
 
 			By("delete response-rewrite ApisixGlobalRule")
 			err = s.DeleteResource("ApisixGlobalRule", "test-global-rule-response-rewrite-multi")
 			Expect(err).NotTo(HaveOccurred(), "deleting response-rewrite ApisixGlobalRule")
-			time.Sleep(5 * time.Second)
 
 			By("verify all global rules are removed")
-			finalResp := s.NewAPISIXClient().
-				GET("/get").
-				WithHost("globalrule.example.com").
-				Expect().
-				Status(http.StatusOK)
-			finalResp.Header("X-Global-Multi").IsEmpty()
-			finalResp.Header("X-Response-Type").IsEmpty()
-			finalResp.Body().NotContains(`"X-Global-Proxy": "test"`)
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "globalrule.example.com",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedNotHeader("X-Global-Multi"),
+					scaffold.WithExpectedNotHeader("X-Response-Type"),
+					scaffold.WithExpectedBodyNotContains(`"X-Global-Proxy": "test"`),
+				},
+			})
 		})
 
 		It("Test GlobalRule with plugin using secretRef", func() {
@@ -337,19 +343,18 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixGlobalRule with secretRef")
 
 			By("verify ApisixGlobalRule status condition")
-			time.Sleep(5 * time.Second)
-			gryaml, err := s.GetResourceYaml("ApisixGlobalRule", "test-global-rule-with-secret")
-			Expect(err).NotTo(HaveOccurred(), "getting ApisixGlobalRule yaml")
-			Expect(gryaml).To(ContainSubstring(`status: "True"`))
-			Expect(gryaml).To(ContainSubstring("message: The global rule has been accepted and synced to APISIX"))
+			globalRuleAccepted("test-global-rule-with-secret")
 
 			By("verify global rule with secret is applied")
-			resp := s.NewAPISIXClient().
-				GET("/get").
-				WithHost("globalrule.example.com").
-				Expect().
-				Status(http.StatusOK)
-			resp.Body().Contains("GlobalRule with secret test")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "globalrule.example.com",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedBodyContains("GlobalRule with secret test"),
+				},
+			})
 
 			By("update Secret")
 			updatedSecretYaml := `
@@ -364,26 +369,29 @@ stringData:
 `
 			err = s.CreateResourceFromString(fmt.Sprintf(updatedSecretYaml, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "updating Secret")
-			time.Sleep(5 * time.Second)
 
 			By("verify global rule with updated secret")
-			resp = s.NewAPISIXClient().
-				GET("/get").
-				WithHost("globalrule.example.com").
-				Expect().
-				Status(http.StatusOK)
-			resp.Body().Contains("GlobalRule with secret test updated")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "globalrule.example.com",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedBodyContains("GlobalRule with secret test updated"),
+				},
+			})
 
 			By("delete Secret")
 			err = s.DeleteResource("Secret", "echo-secret")
 			Expect(err).NotTo(HaveOccurred(), "deleting Secret")
-			time.Sleep(5 * time.Second)
 
 			By("verify ApisixGlobalRule status shows error after secret deletion")
-			gryaml, err = s.GetResourceYaml("ApisixGlobalRule", "test-global-rule-with-secret")
-			Expect(err).NotTo(HaveOccurred(), "getting ApisixGlobalRule yaml")
-			Expect(gryaml).To(ContainSubstring(`status: "False"`))
-			Expect(gryaml).To(ContainSubstring("failed to get Secret"))
+			s.RetryAssertion(func() (string, error) {
+				return s.GetResourceYaml("ApisixGlobalRule", "test-global-rule-with-secret")
+			}).Should(And(
+				ContainSubstring(`status: "False"`),
+				ContainSubstring("failed to get Secret"),
+			))
 
 			By("delete ApisixGlobalRule")
 			err = s.DeleteResource("ApisixGlobalRule", "test-global-rule-with-secret")

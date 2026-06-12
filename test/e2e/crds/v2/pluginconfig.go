@@ -42,12 +42,10 @@ var _ = Describe("Test ApisixPluginConfig", Label("apisix.apache.org", "v2", "ap
 			By("create GatewayProxy")
 			err := s.CreateResourceFromString(s.GetGatewayProxySpec())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-			time.Sleep(5 * time.Second)
 
 			By("create IngressClass")
 			err = s.CreateResourceFromStringWithNamespace(s.GetIngressClassYaml(), "")
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
-			time.Sleep(5 * time.Second)
 		})
 
 		It("Basic ApisixPluginConfig test", func() {
@@ -190,12 +188,17 @@ spec:
 			By("update ApisixPluginConfig")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-update"},
 				&apisixPluginConfig, fmt.Sprintf(apisixPluginConfigSpecV2, s.Namespace()))
-			time.Sleep(5 * time.Second)
 
 			By("verify updated plugin config works")
-			resp = s.NewAPISIXClient().GET("/get").Expect().Status(http.StatusOK)
-			resp.Header("X-Version").IsEqual("v2")
-			resp.Header("X-Updated").IsEqual("true")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedHeader("X-Version", "v2"),
+					scaffold.WithExpectedHeader("X-Updated", "true"),
+				},
+			})
 
 			By("delete resources")
 			err := s.DeleteResource("ApisixRoute", "test-route-update")
@@ -384,7 +387,6 @@ spec:
 			By("apply ApisixPluginConfig in default namespace")
 			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(crossNamespaceApisixPluginConfigSpec, s.Namespace()), "default")
 			Expect(err).NotTo(HaveOccurred(), "creating default/cross-ns-plugin-config")
-			time.Sleep(5 * time.Second)
 
 			By("apply ApisixRoute in test namespace that references ApisixPluginConfig in default namespace")
 			var apisixRoute apiv2.ApisixRoute
