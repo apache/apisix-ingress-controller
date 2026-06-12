@@ -23,6 +23,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -31,10 +32,24 @@ import (
 	"github.com/onsi/gomega/types"
 )
 
-const (
-	DefaultTimeout  = 30 * time.Second
-	DefaultInterval = 2 * time.Second
+// DefaultTimeout and DefaultInterval are the default timeout and polling
+// interval for retry-based assertions. They can be overridden via the
+// E2E_DEFAULT_TIMEOUT / E2E_DEFAULT_INTERVAL environment variables (Go
+// duration syntax, e.g. "60s"), which is useful for tuning under high CI
+// concurrency without code changes.
+var (
+	DefaultTimeout  = durationFromEnv("E2E_DEFAULT_TIMEOUT", 30*time.Second)
+	DefaultInterval = durationFromEnv("E2E_DEFAULT_INTERVAL", 2*time.Second)
 )
+
+func durationFromEnv(key string, fallback time.Duration) time.Duration {
+	if v := os.Getenv(key); v != "" {
+		if d, err := time.ParseDuration(v); err == nil {
+			return d
+		}
+	}
+	return fallback
+}
 
 type ResponseCheckFunc func(*HTTPResponse) error
 

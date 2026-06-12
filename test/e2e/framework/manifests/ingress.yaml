@@ -350,6 +350,7 @@ spec:
         fsGroup: 2000   
       containers:
       - image: apache/apisix-ingress-controller:dev
+        imagePullPolicy: IfNotPresent
         env:
         - name: POD_NAMESPACE
           valueFrom:
@@ -393,6 +394,7 @@ spec:
           initialDelaySeconds: 5
           periodSeconds: 10       
       - image: ghcr.io/api7/adc:dev
+        imagePullPolicy: IfNotPresent
         env:
         - name: ADC_RUNNING_MODE
           value: ingress

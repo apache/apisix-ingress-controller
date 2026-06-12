@@ -85,6 +85,7 @@ spec:
       initContainers:
         - name: config-setup
           image: apache/apisix:dev
+          imagePullPolicy: IfNotPresent
           command:
             - sh
             - -c
@@ -103,6 +104,7 @@ spec:
       containers:
         - name: apisix
           image: apache/apisix:dev
+          imagePullPolicy: IfNotPresent
           ports:
             - name: http
               containerPort: 9080
