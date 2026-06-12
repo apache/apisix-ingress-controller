@@ -59,6 +59,31 @@ func NewAPISIXDeployer(s *Scaffold) Deployer {
 }
 
 func (s *APISIXDeployer) BeforeEach() {
+	// Fast path: pick up a prewarmed environment so the deploy/readiness
+	// latency is paid by a background worker (overlapping the previous spec)
+	// instead of on this spec's critical path. Only the default profile is
+	// pooled; anything else, or any provisioning failure, falls back to the
+	// synchronous deploy below.
+	if prewarmEnabled() && isPoolable(s.opts) {
+		fw, opts := s.Framework, s.opts
+		pool := getOrStartPool(profileKey(opts), prewarmDepth(), func() *pooledEnv {
+			return provisionAPISIXEnv(fw, opts)
+		})
+		env := pool.acquire()
+		if env != nil && env.err == nil {
+			s.loadPooledEnv(env)
+			return
+		}
+		if env != nil && env.err != nil {
+			s.Logf("prewarm provision failed, falling back to synchronous deploy: %v", env.err)
+			destroyPooledEnv(env)
+		}
+	}
+
+	s.beforeEachSync()
+}
+
+func (s *APISIXDeployer) beforeEachSync() {
 	s.runtimeOpts = s.opts
 	s.namespace = fmt.Sprintf("ingress-apisix-e2e-tests-%s-%d", s.runtimeOpts.Name, time.Now().Nanosecond())
 	s.kubectlOptions = &k8s.KubectlOptions{
