@@ -24,7 +24,6 @@ import (
 	"sync"
 
 	"github.com/gruntwork-io/terratest/modules/k8s"
-	. "github.com/onsi/ginkgo/v2" //nolint:staticcheck
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -185,7 +184,11 @@ func getOrStartPool(key string, depth int, provision func() *pooledEnv) *envPool
 	return p
 }
 
-func shutdownAllPools() {
+// ShutdownAllPools stops every prewarm pool and tears down any environments
+// still buffered. It is registered as an AfterSuite by the e2e suite root, not
+// here, so that suites which merely import this package (e.g. the benchmark
+// suite, which declares its own AfterSuite) are not given a duplicate node.
+func ShutdownAllPools() {
 	poolsMu.Lock()
 	ps := pools
 	pools = map[string]*envPool{}
@@ -194,11 +197,6 @@ func shutdownAllPools() {
 		p.shutdown()
 	}
 }
-
-// Clean up leftover prewarmed environments at the end of each parallel process.
-var _ = AfterSuite(func() {
-	shutdownAllPools()
-})
 
 // --- knobs ------------------------------------------------------------------
 

@@ -36,6 +36,9 @@ import (
 
 var nsCounter int64
 
+// defaultProfileName is the scaffold Options.Name used by the default profile.
+const defaultProfileName = "default"
+
 // isPoolable reports whether an environment with these options can be served
 // from the prewarm pool. Only the default profile is pooled; webhook-enabled
 // and custom-keyed environments fall back to synchronous deployment.
@@ -51,7 +54,7 @@ func isPoolable(o Options) bool {
 func profileKey(o Options) string {
 	name := o.Name
 	if name == "" {
-		name = "default"
+		name = defaultProfileName
 	}
 	return "name=" + name
 }
@@ -72,7 +75,7 @@ func provisionAPISIXEnv(fw *framework.Framework, opts Options) *pooledEnv {
 
 	name := opts.Name
 	if name == "" {
-		name = "default"
+		name = defaultProfileName
 	}
 	ns := fmt.Sprintf("ingress-apisix-e2e-tests-%s-p%d-%d",
 		name, GinkgoParallelProcess(), atomic.AddInt64(&nsCounter, 1))
