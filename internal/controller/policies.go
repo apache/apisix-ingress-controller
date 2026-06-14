@@ -18,7 +18,10 @@
 package controller
 
 import (
+	"context"
 	"fmt"
+	"slices"
+	"sort"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -223,4 +226,194 @@ func parentRefValueEqual(a, b gatewayv1.ParentReference) bool {
 		ptr.Equal(a.Kind, b.Kind) &&
 		ptr.Equal(a.Namespace, b.Namespace) &&
 		a.Name == b.Name
+}
+
+// l4RoutePolicyMatchesRoute reports whether the policy has a targetRef that matches the
+// given L4 route. A ref matches only when its group/kind/name equal the route and it does
+// not pin a sectionName, since L4 routes expose no addressable sections to attach to.
+func l4RoutePolicyMatchesRoute(policy v1alpha1.L4RoutePolicy, routeKind, routeNamespace, routeName string) bool {
+	if policy.Namespace != routeNamespace {
+		return false
+	}
+	for _, ref := range policy.Spec.TargetRefs {
+		if string(ref.Group) != gatewayv1alpha2.GroupName {
+			continue
+		}
+		if string(ref.Kind) != routeKind {
+			continue
+		}
+		if string(ref.Name) != routeName {
+			continue
+		}
+		if ref.SectionName != nil && *ref.SectionName != "" {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+// ProcessL4RoutePolicy finds L4RoutePolicy resources that target the given L4 route
+// (identified by namespace, name, and kind), resolves conflicts deterministically,
+// populates tctx.L4RoutePolicies with the winning policy, and queues status updates.
+func ProcessL4RoutePolicy(
+	c client.Client,
+	log logr.Logger,
+	tctx *provider.TranslateContext,
+	routeNamespace, routeName, routeKind string,
+) {
+	var list v1alpha1.L4RoutePolicyList
+	key := indexer.GenIndexKeyWithGK(gatewayv1alpha2.GroupName, routeKind, routeNamespace, routeName)
+	if err := c.List(tctx, &list, client.MatchingFields{indexer.PolicyTargetRefs: key}); err != nil {
+		log.Error(err, "failed to list L4RoutePolicy", "namespace", routeNamespace, "name", routeName, "kind", routeKind)
+		return
+	}
+	if len(list.Items) == 0 {
+		return
+	}
+
+	// L4 routes have no addressable sections; a targetRef that specifies a sectionName
+	// cannot be honored, so ignore policies that only match this route via such a ref.
+	list.Items = slices.DeleteFunc(list.Items, func(p v1alpha1.L4RoutePolicy) bool {
+		return !l4RoutePolicyMatchesRoute(p, routeKind, routeNamespace, routeName)
+	})
+	if len(list.Items) == 0 {
+		return
+	}
+
+	// Deterministic conflict resolution: oldest creationTimestamp wins; tie-break by namespace/name.
+	sort.Slice(list.Items, func(i, j int) bool {
+		ti := list.Items[i].CreationTimestamp.Time
+		tj := list.Items[j].CreationTimestamp.Time
+		if ti.Equal(tj) {
+			ki := list.Items[i].Namespace + "/" + list.Items[i].Name
+			kj := list.Items[j].Namespace + "/" + list.Items[j].Name
+			return ki < kj
+		}
+		return ti.Before(tj)
+	})
+
+	winner := list.Items[0].DeepCopy()
+	tctx.L4RoutePolicies[types.NamespacedName{Namespace: winner.Namespace, Name: winner.Name}] = winner
+
+	for i := range list.Items {
+		policy := list.Items[i]
+		var condition metav1.Condition
+		if i == 0 {
+			condition = metav1.Condition{
+				Type:               string(gatewayv1alpha2.PolicyConditionAccepted),
+				Status:             metav1.ConditionTrue,
+				ObservedGeneration: policy.GetGeneration(),
+				LastTransitionTime: metav1.Now(),
+				Reason:             string(gatewayv1alpha2.PolicyReasonAccepted),
+				Message:            "Policy has been accepted",
+			}
+		} else {
+			condition = metav1.Condition{
+				Type:               string(gatewayv1alpha2.PolicyConditionAccepted),
+				Status:             metav1.ConditionFalse,
+				ObservedGeneration: policy.GetGeneration(),
+				LastTransitionTime: metav1.Now(),
+				Reason:             string(gatewayv1alpha2.PolicyReasonConflicted),
+				Message:            fmt.Sprintf("Conflicts with L4RoutePolicy %s/%s which was created earlier", winner.Namespace, winner.Name),
+			}
+		}
+
+		if updated := SetAncestors(&policy.Status, tctx.RouteParentRefs, condition); updated {
+			// Resource must be a separate copy from the object captured by the Mutator:
+			// the status updater calls client.Get into Resource, overwriting it with the
+			// server state. The Mutator reads policy.Status, which keeps the ancestors set above.
+			tctx.StatusUpdaters = append(tctx.StatusUpdaters, status.Update{
+				NamespacedName: utils.NamespacedName(&policy),
+				Resource:       policy.DeepCopy(),
+				Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
+					cp := obj.(*v1alpha1.L4RoutePolicy).DeepCopy()
+					cp.Status = policy.Status
+					return cp
+				}),
+			})
+		}
+	}
+}
+
+// updateL4RoutePolicyStatusOnDeleting removes the deleted route's ancestor status entries
+// from L4RoutePolicy resources that target it. A single policy may target multiple routes,
+// so the still-existing target routes' parentRefs are recomputed and only ancestor entries
+// no longer referenced by any of them are removed.
+func updateL4RoutePolicyStatusOnDeleting(ctx context.Context, c client.Client, updater status.Updater, log logr.Logger, nn types.NamespacedName, routeKind string) {
+	var list v1alpha1.L4RoutePolicyList
+	key := indexer.GenIndexKeyWithGK(gatewayv1alpha2.GroupName, routeKind, nn.Namespace, nn.Name)
+	if err := c.List(ctx, &list, client.MatchingFields{indexer.PolicyTargetRefs: key}); err != nil {
+		log.Error(err, "failed to list L4RoutePolicy on route deletion", "namespace", nn.Namespace, "name", nn.Name)
+		return
+	}
+	for i := range list.Items {
+		policy := list.Items[i]
+		var parentRefs []gatewayv1.ParentReference
+		for _, ref := range policy.Spec.TargetRefs {
+			if string(ref.Group) != gatewayv1alpha2.GroupName {
+				continue
+			}
+			// The deleted route returns NotFound here and is naturally skipped.
+			refs, ok := l4RouteParentRefs(ctx, c, string(ref.Kind), types.NamespacedName{Namespace: policy.Namespace, Name: string(ref.Name)})
+			if !ok {
+				continue
+			}
+			parentRefs = append(parentRefs, refs...)
+		}
+		updateL4RoutePolicyDeleteAncestors(updater, policy, parentRefs)
+	}
+}
+
+// l4RouteParentRefs returns the parentRefs of the L4 route identified by kind/nn,
+// or ok=false if the route kind is unsupported or the route no longer exists.
+func l4RouteParentRefs(ctx context.Context, c client.Client, kind string, nn types.NamespacedName) ([]gatewayv1.ParentReference, bool) {
+	switch kind {
+	case internaltypes.KindTCPRoute:
+		var route gatewayv1alpha2.TCPRoute
+		if err := c.Get(ctx, nn, &route); err != nil {
+			return nil, false
+		}
+		return route.Spec.ParentRefs, true
+	case internaltypes.KindUDPRoute:
+		var route gatewayv1alpha2.UDPRoute
+		if err := c.Get(ctx, nn, &route); err != nil {
+			return nil, false
+		}
+		return route.Spec.ParentRefs, true
+	case internaltypes.KindTLSRoute:
+		var route gatewayv1alpha2.TLSRoute
+		if err := c.Get(ctx, nn, &route); err != nil {
+			return nil, false
+		}
+		return route.Spec.ParentRefs, true
+	default:
+		return nil, false
+	}
+}
+
+func updateL4RoutePolicyDeleteAncestors(updater status.Updater, policy v1alpha1.L4RoutePolicy, parentRefs []gatewayv1.ParentReference) {
+	length := len(policy.Status.Ancestors)
+	policy.Status.Ancestors = slices.DeleteFunc(policy.Status.Ancestors, func(ancestor gatewayv1alpha2.PolicyAncestorStatus) bool {
+		return !slices.ContainsFunc(parentRefs, func(ref gatewayv1.ParentReference) bool {
+			return parentRefValueEqual(ancestor.AncestorRef, ref)
+		})
+	})
+	if length == len(policy.Status.Ancestors) {
+		return
+	}
+	// status.ancestors is a required field; ensure a fully-cleared list serializes to []
+	// rather than null, which the CRD schema rejects.
+	if policy.Status.Ancestors == nil {
+		policy.Status.Ancestors = []gatewayv1alpha2.PolicyAncestorStatus{}
+	}
+	updater.Update(status.Update{
+		NamespacedName: utils.NamespacedName(&policy),
+		Resource:       policy.DeepCopy(),
+		Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
+			cp := obj.(*v1alpha1.L4RoutePolicy).DeepCopy()
+			cp.Status = policy.Status
+			return cp
+		}),
+	})
 }

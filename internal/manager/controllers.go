@@ -77,6 +77,8 @@ import (
 // +kubebuilder:rbac:groups=apisix.apache.org,resources=backendtrafficpolicies/status,verbs=get;update
 // +kubebuilder:rbac:groups=apisix.apache.org,resources=httproutepolicies,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apisix.apache.org,resources=httproutepolicies/status,verbs=get;update
+// +kubebuilder:rbac:groups=apisix.apache.org,resources=l4routepolicies,verbs=get;list;watch
+// +kubebuilder:rbac:groups=apisix.apache.org,resources=l4routepolicies/status,verbs=get;update
 
 // GatewayAPI
 // +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=gatewayclasses,verbs=get;list;watch;update

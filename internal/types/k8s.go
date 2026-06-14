@@ -55,6 +55,7 @@ const (
 	KindApisixTls            = "ApisixTls"
 	KindApisixConsumer       = "ApisixConsumer"
 	KindHTTPRoutePolicy      = "HTTPRoutePolicy"
+	KindL4RoutePolicy        = "L4RoutePolicy"
 	KindBackendTrafficPolicy = "BackendTrafficPolicy"
 	KindConsumer             = "Consumer"
 	KindPluginConfig         = "PluginConfig"
@@ -108,6 +109,8 @@ func KindOf(obj any) string {
 		return KindApisixConsumer
 	case *v1alpha1.HTTPRoutePolicy:
 		return KindHTTPRoutePolicy
+	case *v1alpha1.L4RoutePolicy:
+		return KindL4RoutePolicy
 	case *v1alpha1.BackendTrafficPolicy:
 		return KindBackendTrafficPolicy
 	case *v1alpha1.GatewayProxy:
@@ -175,6 +178,12 @@ func GvkOf(obj any) schema.GroupVersionKind {
 			Group:   "apisix.apache.org",
 			Version: "v1alpha1",
 			Kind:    KindHTTPRoutePolicy,
+		}
+	case *v1alpha1.L4RoutePolicy:
+		return schema.GroupVersionKind{
+			Group:   "apisix.apache.org",
+			Version: "v1alpha1",
+			Kind:    KindL4RoutePolicy,
 		}
 	case *v1alpha1.BackendTrafficPolicy:
 		return schema.GroupVersionKind{

@@ -62,6 +62,7 @@ func SetupAPIv1alpha1Indexer(mgr ctrl.Manager) error {
 		&v1alpha1.BackendTrafficPolicy{}: setupBackendTrafficPolicyIndexer,
 		&v1alpha1.Consumer{}:             setupConsumerIndexer,
 		&v1alpha1.GatewayProxy{}:         setupGatewayProxyIndexer,
+		&v1alpha1.L4RoutePolicy{}:        setupL4RoutePolicyIndexer,
 	} {
 		if utils.HasAPIResource(mgr, resource) {
 			if err := setup(mgr); err != nil {
@@ -487,6 +488,18 @@ func setupBackendTrafficPolicyIndexer(mgr ctrl.Manager) error {
 	return nil
 }
 
+func setupL4RoutePolicyIndexer(mgr ctrl.Manager) error {
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&v1alpha1.L4RoutePolicy{},
+		PolicyTargetRefs,
+		L4RoutePolicyIndexFunc,
+	); err != nil {
+		return err
+	}
+	return nil
+}
+
 func IngressClassIndexFunc(rawObj client.Object) []string {
 	ingressClass := rawObj.(*networkingv1.IngressClass)
 	if ingressClass.Spec.Controller == "" {
@@ -849,6 +862,20 @@ func BackendTrafficPolicyIndexFunc(rawObj client.Object) []string {
 				string(ref.Name),
 			),
 		)
+	}
+	return keys
+}
+
+func L4RoutePolicyIndexFunc(rawObj client.Object) []string {
+	lrp := rawObj.(*v1alpha1.L4RoutePolicy)
+	keys := make([]string, 0, len(lrp.Spec.TargetRefs))
+	m := make(map[string]struct{})
+	for _, ref := range lrp.Spec.TargetRefs {
+		key := GenIndexKeyWithGK(string(ref.Group), string(ref.Kind), lrp.GetNamespace(), string(ref.Name))
+		if _, ok := m[key]; !ok {
+			m[key] = struct{}{}
+			keys = append(keys, key)
+		}
 	}
 	return keys
 }
