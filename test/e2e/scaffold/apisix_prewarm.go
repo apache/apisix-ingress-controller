@@ -100,19 +100,13 @@ func provisionAPISIXEnv(fw *framework.Framework, opts Options) *pooledEnv {
 	}
 	env.dataplaneService = svc
 
-	// 2) Tunnels: 4 dataplane port-forwards + 1 admin port-forward.
-	if err := provisionTunnels(t, env); err != nil {
-		env.err = err
-		return env
-	}
-
-	// 3) Ingress controller.
+	// 2) Ingress controller.
 	if err := provisionIngress(t, env); err != nil {
 		env.err = err
 		return env
 	}
 
-	// 4) httpbin test backend.
+	// 3) httpbin test backend.
 	httpbinSvc, err := provisionHTTPBIN(fw, t, env)
 	if err != nil {
 		env.err = err
@@ -170,54 +164,6 @@ func provisionDataplane(t *bgTestingT, env *pooledEnv, _ Options) (*corev1.Servi
 	return svc, nil
 }
 
-func provisionTunnels(t *bgTestingT, env *pooledEnv) error {
-	svc := env.dataplaneService
-	var httpPort, httpsPort, tcpPort, tlsPort, adminPort int
-	for _, port := range svc.Spec.Ports {
-		switch port.Name {
-		case "http":
-			httpPort = int(port.Port)
-		case "https":
-			httpsPort = int(port.Port)
-		case "tcp":
-			tcpPort = int(port.Port)
-		case "tls":
-			tlsPort = int(port.Port)
-		case "admin":
-			adminPort = int(port.Port)
-		}
-	}
-
-	tunnels := &Tunnels{}
-	env.finalizers = append(env.finalizers, tunnels.Close)
-
-	for _, spec := range []struct {
-		dst  **k8s.Tunnel
-		port int
-	}{
-		{&tunnels.HTTP, httpPort},
-		{&tunnels.HTTPS, httpsPort},
-		{&tunnels.TCP, tcpPort},
-		{&tunnels.TLS, tlsPort},
-	} {
-		tunnel := k8s.NewTunnel(env.kubectlOptions, k8s.ResourceTypeService, svc.Name, 0, spec.port)
-		if err := tunnel.ForwardPortE(t); err != nil {
-			return fmt.Errorf("forwarding dataplane port %d: %w", spec.port, err)
-		}
-		*spec.dst = tunnel
-	}
-	env.apisixTunnels = tunnels
-
-	adminTunnel := k8s.NewTunnel(env.kubectlOptions, k8s.ResourceTypeService, svc.Name, 0, adminPort)
-	if err := adminTunnel.ForwardPortE(t); err != nil {
-		return fmt.Errorf("forwarding admin port %d: %w", adminPort, err)
-	}
-	env.adminTunnel = adminTunnel
-	env.finalizers = append(env.finalizers, adminTunnel.Close)
-
-	return nil
-}
-
 func provisionIngress(t *bgTestingT, env *pooledEnv) error {
 	opts := framework.IngressDeployOpts{
 		ControllerName:     env.controllerName,
@@ -263,7 +209,16 @@ func provisionHTTPBIN(fw *framework.Framework, t *bgTestingT, env *pooledEnv) (*
 
 // loadPooledEnv installs a prewarmed environment onto the deployer's scaffold so
 // the rest of the spec behaves exactly as if it had been deployed synchronously.
-func (s *APISIXDeployer) loadPooledEnv(env *pooledEnv) {
+//
+// Port-forward tunnels are (re)created here, on the spec's critical path, rather
+// than reused from the background prewarm worker. A port-forward opened during
+// prewarm can be left in a broken state when it is established before the data
+// plane's listener is fully serving (e.g. the TLS stream listener) and then sits
+// idle in the pool buffer until a spec picks it up, surfacing as an EOF on first
+// use. Recreating them here against a fully-provisioned data plane matches the
+// synchronous path exactly; tunnel setup is cheap (~1-2s) relative to the
+// deploy/readiness latency that prewarm hides.
+func (s *APISIXDeployer) loadPooledEnv(env *pooledEnv) error {
 	s.runtimeOpts = s.opts
 	s.namespace = env.namespace
 	s.kubectlOptions = env.kubectlOptions
@@ -271,8 +226,20 @@ func (s *APISIXDeployer) loadPooledEnv(env *pooledEnv) {
 	s.runtimeOpts.APISIXAdminAPIKey = env.adminKey
 	s.dataplaneService = env.dataplaneService
 	s.httpbinService = env.httpbinService
-	s.apisixTunnels = env.apisixTunnels
-	s.adminTunnel = env.adminTunnel
-	s.finalizers = env.finalizers
+	s.finalizers = nil
 	s.additionalGateways = make(map[string]*GatewayResources)
+
+	apisixTunnels, err := s.createDataplaneTunnels(env.dataplaneService, s.kubectlOptions, env.dataplaneService.Name)
+	if err != nil {
+		return fmt.Errorf("creating dataplane tunnels: %w", err)
+	}
+	s.apisixTunnels = apisixTunnels
+
+	adminTunnel, err := s.createAdminTunnel(env.dataplaneService)
+	if err != nil {
+		return fmt.Errorf("creating admin tunnel: %w", err)
+	}
+	s.adminTunnel = adminTunnel
+
+	return nil
 }

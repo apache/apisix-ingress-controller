@@ -71,10 +71,13 @@ func (s *APISIXDeployer) BeforeEach() {
 		})
 		env := pool.acquire()
 		if env != nil && env.err == nil {
-			s.loadPooledEnv(env)
-			return
-		}
-		if env != nil && env.err != nil {
+			if err := s.loadPooledEnv(env); err != nil {
+				s.Logf("prewarm tunnel setup failed, falling back to synchronous deploy: %v", err)
+				destroyPooledEnv(env)
+			} else {
+				return
+			}
+		} else if env != nil && env.err != nil {
 			s.Logf("prewarm provision failed, falling back to synchronous deploy: %v", env.err)
 			destroyPooledEnv(env)
 		}

@@ -37,12 +37,6 @@ type pooledEnv struct {
 	adminKey         string
 	dataplaneService *corev1.Service
 	httpbinService   *corev1.Service
-	apisixTunnels    *Tunnels
-	adminTunnel      *k8s.Tunnel
-
-	// finalizers close resources tied to this env (e.g. port-forward tunnels).
-	// Namespace deletion is handled separately by AfterEach / destroyPooledEnv.
-	finalizers []func()
 
 	// err is non-nil if provisioning failed; the consumer falls back to a
 	// synchronous deploy and discards this env.
@@ -152,14 +146,12 @@ func safeProvision(provision func() *pooledEnv) (env *pooledEnv) {
 	return provision()
 }
 
-// destroyPooledEnv tears down an environment that will not be used by a spec:
-// it closes the env's resources (tunnels) and deletes its namespace.
+// destroyPooledEnv tears down an environment that will not be used by a spec by
+// deleting its namespace. Tunnels are only created once an env is handed to a
+// spec (see loadPooledEnv), so an unused pooled env owns no port-forwards.
 func destroyPooledEnv(env *pooledEnv) {
 	if env == nil {
 		return
-	}
-	for i := len(env.finalizers) - 1; i >= 0; i-- {
-		runWithRecover(env.finalizers[i])
 	}
 	if env.namespace != "" && env.kubectlOptions != nil {
 		_ = k8s.RunKubectlE(&bgTestingT{}, env.kubectlOptions, "delete", "namespace", env.namespace, "--wait=false")
