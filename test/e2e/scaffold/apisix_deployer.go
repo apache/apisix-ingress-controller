@@ -136,11 +136,13 @@ func (s *APISIXDeployer) AfterEach() {
 		runWithRecover(s.finalizers[i])
 	}
 
-	// Delete the namespace without blocking on finalization. Each spec uses a
-	// unique namespace, so background termination does not interfere with the
-	// next spec, and we avoid waiting for slow namespace finalizers.
-	err := k8s.RunKubectlE(s.t, s.kubectlOptions, "delete", "namespace", s.namespace, "--wait=false")
+	// if the test case is successful, just delete namespace
+	err := k8s.DeleteNamespaceE(s.t, s.kubectlOptions, s.namespace)
 	Expect(err).NotTo(HaveOccurred(), "deleting namespace "+s.namespace)
+
+	// Wait for a while to prevent the worker node being overwhelming
+	// (new cases will be run).
+	time.Sleep(3 * time.Second)
 }
 
 func (s *APISIXDeployer) DeployDataplane(deployOpts DeployDataplaneOptions) {
