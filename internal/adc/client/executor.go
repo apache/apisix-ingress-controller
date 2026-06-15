@@ -373,7 +373,7 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr strin
 		"url", e.serverURL+path,
 		"server", serverAddr,
 		"mode", config.BackendType,
-		"cacheKey", config.Name,
+		"cacheKey", e.cacheKey(config.Name),
 		"labelSelector", labels,
 		"includeResourceType", types,
 		"tlsSkipVerify", !tlsVerify,
