@@ -2842,7 +2842,7 @@ spec:
 			}).Should(ContainSubstring(`status: "True"`))
 		})
 
-		It("routes traffic to correct backend based on sectionName (using server_port vars)", func() {
+		It("routes traffic to correct backend based on sectionName (using server_port vars)", func() { //nolint:dupl
 			gatewayName := s.Namespace()
 
 			By("create Gateway with two listeners on different ports")
@@ -3015,7 +3015,7 @@ spec:
 				"route should not be accessible when sectionName is invalid")
 		})
 
-		It("routes traffic to correct backend based on parentRef.port (using server_port vars)", func() {
+		It("routes traffic to correct backend based on parentRef.port (using server_port vars)", func() { //nolint:dupl
 			gatewayName := s.Namespace()
 
 			By("create Gateway with two listeners on different ports")
