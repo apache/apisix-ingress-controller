@@ -64,7 +64,7 @@ func (s *APISIXDeployer) BeforeEach() {
 	// instead of on this spec's critical path. Only the default profile is
 	// pooled; anything else, or any provisioning failure, falls back to the
 	// synchronous deploy below.
-	if prewarmEnabled() && isPoolable(s.opts) {
+	if prewarmEnabled() && isPoolable(s.opts) && specPrewarmable() {
 		fw, opts := s.Framework, s.opts
 		pool := getOrStartPool(profileKey(opts), prewarmDepth(), func() *pooledEnv {
 			return provisionAPISIXEnv(fw, opts)

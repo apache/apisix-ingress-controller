@@ -39,6 +39,35 @@ var nsCounter int64
 // defaultProfileName is the scaffold Options.Name used by the default profile.
 const defaultProfileName = "default"
 
+// streamRouteLabels marks Gateway API stream-route specs (TCP/TLS/UDP).
+var streamRouteLabels = map[string]struct{}{
+	"tcproute": {},
+	"tlsroute": {},
+	"udproute": {},
+}
+
+// specPrewarmable reports whether the currently running spec may be served from
+// the prewarm pool. Stream-route specs (Gateway API TCP/TLS/UDP routes and the
+// ApisixRoute stream-route suite) are excluded and fall back to synchronous
+// deployment: under apisix-standalone a stream route served from a prewarmed
+// data plane is flaky, because the data plane's stream subsystem races with the
+// concurrent background provisioning of the next pooled environment, whereas
+// HTTP routes tolerate that contention.
+func specPrewarmable() bool {
+	report := CurrentSpecReport()
+	for _, label := range report.Labels() {
+		if _, ok := streamRouteLabels[label]; ok {
+			return false
+		}
+	}
+	for _, text := range report.ContainerHierarchyTexts {
+		if strings.Contains(text, "StreamRoute") {
+			return false
+		}
+	}
+	return true
+}
+
 // isPoolable reports whether an environment with these options can be served
 // from the prewarm pool. Only the default profile is pooled; webhook-enabled
 // and custom-keyed environments fall back to synchronous deployment.
