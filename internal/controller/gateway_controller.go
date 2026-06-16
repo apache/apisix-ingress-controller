@@ -93,6 +93,10 @@ func (r *GatewayReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(
 			&corev1.Secret{},
 			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForSecret),
+		).
+		Watches(
+			&corev1.ConfigMap{},
+			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForConfigMap),
 		)
 
 	if GetEnableReferenceGrant() {
@@ -399,6 +403,34 @@ func (r *GatewayReconciler) listGatewaysForSecret(ctx context.Context, obj clien
 	return requests
 }
 
+func (r *GatewayReconciler) listGatewaysForConfigMap(ctx context.Context, obj client.Object) (requests []reconcile.Request) {
+	configMap, ok := obj.(*corev1.ConfigMap)
+	if !ok {
+		r.Log.Error(
+			errors.New("unexpected object type"),
+			"ConfigMap watch predicate received unexpected object type",
+			"expected", FullTypeName(new(corev1.ConfigMap)), "found", FullTypeName(obj),
+		)
+		return nil
+	}
+	var gatewayList gatewayv1.GatewayList
+	if err := r.List(ctx, &gatewayList, client.MatchingFields{
+		indexer.ConfigMapIndexRef: indexer.GenIndexKey(configMap.GetNamespace(), configMap.GetName()),
+	}); err != nil {
+		r.Log.Error(err, "failed to list gateways for configmap")
+		return nil
+	}
+	for _, gateway := range gatewayList.Items {
+		requests = append(requests, reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Namespace: gateway.GetNamespace(),
+				Name:      gateway.GetName(),
+			},
+		})
+	}
+	return requests
+}
+
 func (r *GatewayReconciler) listReferenceGrantsForGateway(ctx context.Context, obj client.Object) (requests []reconcile.Request) {
 	grant, ok := obj.(*v1beta1.ReferenceGrant)
 	if !ok {
@@ -443,7 +475,7 @@ func (r *GatewayReconciler) processInfrastructure(tctx *provider.TranslateContex
 func (r *GatewayReconciler) processListenerConfig(tctx *provider.TranslateContext, gateway *gatewayv1.Gateway) {
 	listeners := gateway.Spec.Listeners
 	for _, listener := range listeners {
-		if listener.TLS == nil || listener.TLS.CertificateRefs == nil {
+		if listener.TLS == nil {
 			continue
 		}
 		secret := corev1.Secret{}
@@ -464,6 +496,42 @@ func (r *GatewayReconciler) processListenerConfig(tctx *provider.TranslateContex
 				}
 				r.Log.Info("Setting secret for listener", "listener", listener.Name, "secret", secret.Name, " namespace", ns)
 				tctx.Secrets[types.NamespacedName{Namespace: ns, Name: string(ref.Name)}] = &secret
+			}
+		}
+		// frontendValidation references CA ConfigMaps or Secrets used for downstream mTLS.
+		if listener.TLS.FrontendValidation != nil {
+			for _, ref := range listener.TLS.FrontendValidation.CACertificateRefs {
+				ns := gateway.GetNamespace()
+				if ref.Namespace != nil {
+					ns = string(*ref.Namespace)
+				}
+				nn := types.NamespacedName{Namespace: ns, Name: string(ref.Name)}
+				kind := KindConfigMap
+				if ref.Kind != "" {
+					kind = string(ref.Kind)
+				}
+				switch kind {
+				case KindConfigMap:
+					configMap := corev1.ConfigMap{}
+					if err := r.Get(context.Background(), nn, &configMap); err != nil {
+						r.Log.Error(err, "failed to get CA configmap", "namespace", ns, "name", ref.Name)
+						SetGatewayListenerConditionProgrammed(gateway, string(listener.Name), false, err.Error())
+						SetGatewayListenerConditionResolvedRefs(gateway, string(listener.Name), false, err.Error())
+						continue
+					}
+					r.Log.Info("Setting CA configmap for listener", "listener", listener.Name, "configmap", configMap.Name, "namespace", ns)
+					tctx.ConfigMaps[nn] = &configMap
+				case KindSecret:
+					caSecret := corev1.Secret{}
+					if err := r.Get(context.Background(), nn, &caSecret); err != nil {
+						r.Log.Error(err, "failed to get CA secret", "namespace", ns, "name", ref.Name)
+						SetGatewayListenerConditionProgrammed(gateway, string(listener.Name), false, err.Error())
+						SetGatewayListenerConditionResolvedRefs(gateway, string(listener.Name), false, err.Error())
+						continue
+					}
+					r.Log.Info("Setting CA secret for listener", "listener", listener.Name, "secret", caSecret.Name, "namespace", ns)
+					tctx.Secrets[nn] = &caSecret
+				}
 			}
 		}
 	}

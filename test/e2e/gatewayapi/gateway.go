@@ -36,6 +36,8 @@ import (
 
 const _secretName = "test-apisix-tls"
 
+const _hostAPI6 = "api6.com"
+
 var Cert = strings.TrimSpace(framework.TestServerCert)
 
 var Key = strings.TrimSpace(framework.TestServerKey)
@@ -43,6 +45,16 @@ var Key = strings.TrimSpace(framework.TestServerKey)
 func createSecret(s *scaffold.Scaffold, secretName string) {
 	err := s.NewKubeTlsSecret(secretName, Cert, Key)
 	assert.Nil(GinkgoT(), err, "create secret error")
+}
+
+// indentLines indents every line of s with the given prefix, for embedding a
+// multi-line PEM block inside a YAML block scalar.
+func indentLines(s, prefix string) string {
+	lines := strings.Split(strings.TrimRight(s, "\n"), "\n")
+	for i, line := range lines {
+		lines[i] = prefix + line
+	}
+	return strings.Join(lines, "\n")
 }
 
 var _ = Describe("Test Gateway", Label("networking.k8s.io", "gateway"), func() {
@@ -166,7 +178,7 @@ spec:
 
 			By("create secret")
 			secretName := _secretName
-			host := "api6.com"
+			host := _hostAPI6
 			createSecret(s, secretName)
 			gatewayClassName := s.Namespace()
 			var defaultGatewayClass = `
@@ -217,6 +229,98 @@ spec:
 			assert.Len(GinkgoT(), tls[0].Certificates, 1, "length of certificates not expect")
 			assert.Equal(GinkgoT(), Cert, tls[0].Certificates[0].Certificate, "tls cert not expect")
 			assert.ElementsMatch(GinkgoT(), []string{host}, tls[0].Snis)
+		})
+
+		It("Check downstream mTLS via frontendValidation", func() {
+			By("create GatewayProxy")
+			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			err := s.CreateResourceFromString(gatewayProxy)
+			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
+			time.Sleep(5 * time.Second)
+
+			By("create server cert secret")
+			secretName := _secretName
+			host := _hostAPI6
+			createSecret(s, secretName)
+
+			By("create CA ConfigMap for frontendValidation")
+			caConfigMapName := "test-client-ca"
+			caConfigMap := fmt.Sprintf(`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: %s
+data:
+  ca.crt: |
+%s
+`, caConfigMapName, indentLines(framework.TestCACert, "    "))
+			err = s.CreateResourceFromString(caConfigMap)
+			Expect(err).NotTo(HaveOccurred(), "creating CA ConfigMap")
+
+			gatewayClassName := s.Namespace()
+			var defaultGatewayClass = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: %s
+spec:
+  controllerName: "%s"
+`
+			var defaultGateway = fmt.Sprintf(`
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: %s
+spec:
+  gatewayClassName: %s
+  listeners:
+    - name: http1
+      protocol: HTTPS
+      port: 443
+      hostname: %s
+      tls:
+        certificateRefs:
+        - kind: Secret
+          group: ""
+          name: %s
+        frontendValidation:
+          caCertificateRefs:
+          - kind: ConfigMap
+            group: ""
+            name: %s
+  infrastructure:
+    parametersRef:
+      group: apisix.apache.org
+      kind: GatewayProxy
+      name: apisix-proxy-config
+`, s.Namespace(), gatewayClassName, host, secretName, caConfigMapName)
+
+			By("create GatewayClass")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()), "")
+			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
+			time.Sleep(5 * time.Second)
+
+			By("create Gateway")
+			err = s.CreateResourceFromStringWithNamespace(defaultGateway, s.Namespace())
+			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
+			time.Sleep(10 * time.Second)
+
+			Eventually(func() error {
+				tls, err := s.DefaultDataplaneResource().SSL().List(context.Background())
+				if err != nil {
+					return err
+				}
+				if len(tls) != 1 {
+					return fmt.Errorf("expect 1 ssl, got %d", len(tls))
+				}
+				if tls[0].Client == nil {
+					return fmt.Errorf("expect client mTLS config, got nil")
+				}
+				if got := strings.TrimSpace(tls[0].Client.CA); got != strings.TrimSpace(framework.TestCACert) {
+					return fmt.Errorf("client CA not expected, got %s", got)
+				}
+				return nil
+			}).WithTimeout(30 * time.Second).ProbeEvery(time.Second).Should(Succeed())
 		})
 
 		It("Gateway SSL with and without hostname", func() {

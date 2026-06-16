@@ -82,4 +82,5 @@ The fields below are specified in the Gateway API specification but are either p
 | `spec.listeners[].tls.certificateRefs[].group` | Partially supported | Only `""` is supported; other group values cause validation failure. |
 | `spec.listeners[].tls.certificateRefs[].kind`        | Partially supported  | Only `Secret` is supported.                                                                    |
 | `spec.listeners[].tls.mode`                          | Partially supported  | `Terminate` is implemented; `Passthrough` is effectively unsupported for Gateway listeners.    |
+| `spec.listeners[].tls.frontendValidation`            | Partially supported  | Enables downstream (client) mTLS. `caCertificateRefs` may reference a `ConfigMap` (Gateway API Core support) or a `Secret` (implementation-specific) holding the CA certificate under the `ca.crt` key; clients are then required to present a certificate signed by one of the referenced CAs. |
 | `spec.addresses`                                     | Not supported        | Controller does not read or act on `spec.addresses`.                                           |

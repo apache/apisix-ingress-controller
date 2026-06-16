@@ -47,6 +47,7 @@ const (
 	KindIngressClass         = "IngressClass"
 	KindGatewayProxy         = "GatewayProxy"
 	KindSecret               = "Secret"
+	KindConfigMap            = "ConfigMap"
 	KindService              = "Service"
 	KindApisixRoute          = "ApisixRoute"
 	KindApisixGlobalRule     = "ApisixGlobalRule"

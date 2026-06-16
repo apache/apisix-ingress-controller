@@ -83,6 +83,63 @@ func ExtractCertificate(secret *corev1.Secret) ([]byte, error) {
 	return cert, err
 }
 
+// ExtractCAFromConfigMap extracts the CA certificate from a ConfigMap.
+//
+// Following the Gateway API conformance for frontendValidation, the CA certificate
+// is read from the `ca.crt` key. Both Data and BinaryData are supported.
+func ExtractCAFromConfigMap(cm *corev1.ConfigMap) ([]byte, error) {
+	if cm == nil {
+		return nil, ErrMissingCert
+	}
+	var ca []byte
+	if v, ok := cm.Data[corev1.ServiceAccountRootCAKey]; ok && v != "" {
+		ca = []byte(v)
+	} else if v, ok := cm.BinaryData[corev1.ServiceAccountRootCAKey]; ok && len(v) > 0 {
+		ca = v
+	}
+	if len(ca) == 0 {
+		return nil, ErrMissingCert
+	}
+	// Reject whitespace-only or otherwise malformed data so an invalid trust
+	// anchor never reaches the downstream mTLS configuration.
+	if !hasCertificatePEMBlock(ca) {
+		return nil, ErrInvalidPEM
+	}
+	return ca, nil
+}
+
+// ExtractCAFromSecret extracts the CA certificate from a Secret's `ca.crt` key
+// (e.g. a cert-manager-issued TLS Secret) and validates it contains a PEM
+// CERTIFICATE block.
+func ExtractCAFromSecret(secret *corev1.Secret) ([]byte, error) {
+	if secret == nil {
+		return nil, ErrMissingCert
+	}
+	ca, ok := secret.Data[corev1.ServiceAccountRootCAKey]
+	if !ok || len(ca) == 0 {
+		return nil, ErrMissingCert
+	}
+	if !hasCertificatePEMBlock(ca) {
+		return nil, ErrInvalidPEM
+	}
+	return ca, nil
+}
+
+// hasCertificatePEMBlock reports whether data contains at least one PEM-encoded
+// CERTIFICATE block.
+func hasCertificatePEMBlock(data []byte) bool {
+	for {
+		var block *pem.Block
+		block, data = pem.Decode(data)
+		if block == nil {
+			return false
+		}
+		if block.Type == "CERTIFICATE" {
+			return true
+		}
+	}
+}
+
 // ExtractHostsFromCertificate parses the certificate PEM block and returns the DNS names.
 func ExtractHostsFromCertificate(certPEM []byte) ([]string, error) {
 	block, _ := pem.Decode(certPEM)

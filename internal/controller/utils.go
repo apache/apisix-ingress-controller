@@ -51,6 +51,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	sslutils "github.com/apache/apisix-ingress-controller/internal/ssl"
 	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
@@ -66,6 +67,7 @@ const (
 	KindIngressClass       = "IngressClass"
 	KindGatewayProxy       = "GatewayProxy"
 	KindSecret             = "Secret"
+	KindConfigMap          = "ConfigMap"
 	KindService            = "Service"
 	KindApisixRoute        = "ApisixRoute"
 	KindApisixGlobalRule   = "ApisixGlobalRule"
@@ -947,6 +949,12 @@ func getListenerStatus(
 					break
 				}
 			}
+
+			// frontendValidation (downstream mTLS) only applies to Terminate listeners.
+			if listener.TLS.FrontendValidation != nil &&
+				(listener.TLS.Mode == nil || *listener.TLS.Mode == gatewayv1.TLSModeTerminate) {
+				validateListenerFrontendValidation(ctx, mrgc, gateway, listener.TLS.FrontendValidation, &conditionResolvedRefs, &conditionProgrammed)
+			}
 		}
 
 		status := gatewayv1.ListenerStatus{
@@ -983,6 +991,86 @@ func getListenerStatus(
 	}
 
 	return statusArray, nil
+}
+
+// validateListenerFrontendValidation validates a listener's TLS frontendValidation
+// (downstream mTLS CA references) and records the outcome on the listener conditions.
+func validateListenerFrontendValidation(
+	ctx context.Context,
+	mrgc client.Client,
+	gateway *gatewayv1.Gateway,
+	frontendValidation *gatewayv1.FrontendTLSValidation,
+	conditionResolvedRefs, conditionProgrammed *metav1.Condition,
+) {
+	setInvalid := func(reason gatewayv1.ListenerConditionReason, message string) {
+		conditionResolvedRefs.Status = metav1.ConditionFalse
+		conditionResolvedRefs.Reason = string(reason)
+		conditionResolvedRefs.Message = message
+		conditionProgrammed.Status = metav1.ConditionFalse
+		conditionProgrammed.Reason = string(gatewayv1.ListenerReasonInvalid)
+	}
+
+	for _, ref := range frontendValidation.CACertificateRefs {
+		if ref.Group != "" && string(ref.Group) != corev1.GroupName {
+			setInvalid(gatewayv1.ListenerReasonInvalidCertificateRef,
+				fmt.Sprintf(`Invalid Group for caCertificateRef, expect "", got "%s"`, ref.Group))
+			return
+		}
+		kind := KindConfigMap
+		if ref.Kind != "" {
+			kind = string(ref.Kind)
+		}
+		if kind != KindConfigMap && kind != KindSecret {
+			setInvalid(gatewayv1.ListenerReasonInvalidCertificateRef,
+				fmt.Sprintf(`Invalid Kind for caCertificateRef, expect "ConfigMap" or "Secret", got "%s"`, ref.Kind))
+			return
+		}
+		if permitted := checkReferenceGrant(ctx,
+			mrgc,
+			v1beta1.ReferenceGrantFrom{
+				Group:     gatewayv1.GroupName,
+				Kind:      KindGateway,
+				Namespace: v1beta1.Namespace(gateway.Namespace),
+			},
+			gatewayv1.ObjectReference{
+				Group:     corev1.GroupName,
+				Kind:      gatewayv1.Kind(kind),
+				Name:      ref.Name,
+				Namespace: ref.Namespace,
+			},
+		); !permitted {
+			setInvalid(gatewayv1.ListenerReasonRefNotPermitted, "caCertificateRefs cross namespaces is not permitted")
+			return
+		}
+		nn := k8stypes.NamespacedName{
+			Namespace: string(*cmp.Or(ref.Namespace, (*gatewayv1.Namespace)(&gateway.Namespace))),
+			Name:      string(ref.Name),
+		}
+		switch kind {
+		case KindConfigMap:
+			var configMap corev1.ConfigMap
+			if err := mrgc.Get(ctx, nn, &configMap); err != nil {
+				setInvalid(gatewayv1.ListenerReasonInvalidCertificateRef, err.Error())
+				return
+			}
+			if _, err := sslutils.ExtractCAFromConfigMap(&configMap); err != nil {
+				setInvalid(gatewayv1.ListenerReasonInvalidCertificateRef,
+					fmt.Sprintf("Malformed CA ConfigMap referenced: %s", err.Error()))
+				return
+			}
+		case KindSecret:
+			var secret corev1.Secret
+			if err := mrgc.Get(ctx, nn, &secret); err != nil {
+				setInvalid(gatewayv1.ListenerReasonInvalidCertificateRef, err.Error())
+				return
+			}
+			if _, err := sslutils.ExtractCAFromSecret(&secret); err != nil {
+				setInvalid(gatewayv1.ListenerReasonInvalidCertificateRef,
+					fmt.Sprintf("Malformed CA Secret referenced: %s", err.Error()))
+				return
+			}
+		}
+	}
 }
 
 // SplitMetaNamespaceKey returns the namespace and name that
