@@ -52,12 +52,10 @@ var _ = Describe("Test ApisixRoute", Label("apisix.apache.org", "v2", "apisixrou
 		By("create GatewayProxy")
 		err := s.CreateResourceFromString(s.GetGatewayProxySpec())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-		time.Sleep(5 * time.Second)
 
 		By("create IngressClass")
 		err = s.CreateResourceFromStringWithNamespace(s.GetIngressClassYaml(), "")
 		Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
-		time.Sleep(5 * time.Second)
 	})
 
 	Context("Test ApisixRoute", func() {
@@ -226,28 +224,32 @@ spec:
 			By("apply ApisixRoute with plugins")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
 				&apisixRoute, fmt.Sprintf(apisixRouteSpecPart0, s.Namespace(), s.Namespace())+apisixRouteSpecPart1)
-			time.Sleep(5 * time.Second)
 
 			By("verify plugin works")
-			resp := s.NewAPISIXClient().GET("/get").Expect().Status(http.StatusOK)
-			resp.Header("X-Global-Rule").IsEqual("test-response-rewrite")
-			resp.Header("X-Global-Test").IsEqual("enabled")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedHeader("X-Global-Rule", "test-response-rewrite"),
+					scaffold.WithExpectedHeader("X-Global-Test", "enabled"),
+				},
+			})
 
 			By("remove plugin")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
 				&apisixRoute, fmt.Sprintf(apisixRouteSpecPart0, s.Namespace(), s.Namespace()))
-			time.Sleep(5 * time.Second)
 
 			By("verify no plugin works")
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
 				Path:   "/get",
-				Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedNotHeader("X-Global-Rule"),
+					scaffold.WithExpectedNotHeader("X-Global-Test"),
+				},
 			})
-
-			resp = s.NewAPISIXClient().GET("/get").Expect().Status(http.StatusOK)
-			resp.Header("X-Global-Rule").IsEmpty()
-			resp.Header("X-Global-Test").IsEmpty()
 		})
 
 		It("Test ApisixRoute match by vars", func() {
@@ -1463,8 +1465,6 @@ spec:
 				&apisixRoute,
 				fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Namespace()),
 			)
-			By("wait for WebSocket server to be ready")
-			time.Sleep(10 * time.Second)
 			By("verify WebSocket connection")
 			u = url.URL{
 				Scheme: "ws",
@@ -1472,6 +1472,15 @@ spec:
 				Path:   "/echo",
 			}
 			headers = http.Header{"Host": []string{"httpbin.org"}}
+
+			By("wait for WebSocket server to be ready")
+			Eventually(func() int {
+				_, resp, _ := websocket.DefaultDialer.Dial(u.String(), headers)
+				if resp == nil {
+					return 0
+				}
+				return resp.StatusCode
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Equal(http.StatusSwitchingProtocols))
 
 			conn, resp, err := websocket.DefaultDialer.Dial(u.String(), headers)
 			Expect(err).ShouldNot(HaveOccurred(), "WebSocket handshake")
@@ -1681,7 +1690,7 @@ spec:
 				By("verify access to multiple services")
 				httpbin := false // httpbin-service-e2e-test
 				admin := false   // admin api service
-				for range 20 {
+				Eventually(func(g Gomega) {
 					status := s.NewAPISIXClient().GET("/ip").
 						WithHeader("Host", "httpbin.org").
 						WithHeader("X-Foo", "bar").
@@ -1692,9 +1701,8 @@ spec:
 					} else if status == http.StatusNotFound && httpbin {
 						admin = true
 					}
-					time.Sleep(1 * time.Second)
-				}
-				assert.True(GinkgoT(), httpbin && admin, "both httpbin and postman should be accessed at least once")
+					g.Expect(httpbin && admin).To(BeTrue(), "both httpbin and postman should be accessed at least once")
+				}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(time.Second).Should(Succeed())
 			})
 
 			It("should be able to use backends and upstreams together", func() {
@@ -1751,7 +1759,7 @@ spec:
 				By("verify access to multiple services")
 				upstreamHost := false // upstream.httpbin.org
 				httpbinHost := false  // httpbin.org
-				for range 20 {
+				Eventually(func(g Gomega) {
 					expect := s.NewAPISIXClient().GET("/headers").
 						WithHeader("Host", "httpbin.org").
 						WithHeader("X-Foo", "bar").
@@ -1764,9 +1772,8 @@ spec:
 							httpbinHost = true
 						}
 					}
-					time.Sleep(1 * time.Second)
-				}
-				assert.True(GinkgoT(), upstreamHost && httpbinHost, "both httpbin and postman should be accessed at least once")
+					g.Expect(upstreamHost && httpbinHost).To(BeTrue(), "both httpbin and postman should be accessed at least once")
+				}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(time.Second).Should(Succeed())
 			})
 		})
 	})
@@ -1930,12 +1937,13 @@ spec:
 			By("apply apisixroute")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
 				new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Namespace()))
-			time.Sleep(6 * time.Second)
-			services, err := s.DefaultDataplaneResource().Service().List(context.Background())
-			Expect(err).ShouldNot(HaveOccurred(), "list services")
-			assert.Len(GinkgoT(), services, 1, "there should be one service")
-			service := services[0]
-			Expect(service.Upstream.TLS).ShouldNot(BeNil(), "check tls in service")
+			Eventually(func(g Gomega) {
+				services, err := s.DefaultDataplaneResource().Service().List(context.Background())
+				g.Expect(err).ShouldNot(HaveOccurred(), "list services")
+				g.Expect(services).Should(HaveLen(1), "there should be one service")
+				service := services[0]
+				g.Expect(service.Upstream.TLS).ShouldNot(BeNil(), "check tls in service")
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 	})
 
@@ -2239,7 +2247,6 @@ spec:
 
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
 				new(apiv2.ApisixRoute), fmt.Sprintf(apisixRouteWithBackendWSS, s.Namespace()))
-			time.Sleep(6 * time.Second)
 
 			By("verify wss connection")
 			hostname := "api6.com"

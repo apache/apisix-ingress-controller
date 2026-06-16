@@ -19,7 +19,6 @@ package webhook
 
 import (
 	"fmt"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -59,10 +58,12 @@ spec:
 		missingSecret := "missing-admin-secret"
 		gpName := "webhook-gateway-proxy"
 
-		output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(gatewayProxyTemplate, gpName, missingService, missingSecret))
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Referenced Service '%s/%s' not found", s.Namespace(), missingService)))
-		Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), missingSecret)))
+		Eventually(func(g Gomega) {
+			output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(gatewayProxyTemplate, gpName, missingService, missingSecret))
+			g.Expect(err).ShouldNot(HaveOccurred())
+			g.Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Referenced Service '%s/%s' not found", s.Namespace(), missingService)))
+			g.Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), missingSecret)))
+		}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 
 		By("creating the referenced Service and Secret without the required key")
 		serviceYAML := fmt.Sprintf(`
@@ -79,7 +80,7 @@ spec:
     targetPort: 9180
   type: ClusterIP
 `, missingService)
-		err = s.CreateResourceFromString(serviceYAML)
+		err := s.CreateResourceFromString(serviceYAML)
 		Expect(err).NotTo(HaveOccurred(), "creating placeholder service")
 
 		secretWithoutKey := fmt.Sprintf(`
@@ -93,16 +94,16 @@ stringData:
 		err = s.CreateResourceFromString(secretWithoutKey)
 		Expect(err).NotTo(HaveOccurred(), "creating placeholder secret without token key")
 
-		time.Sleep(2 * time.Second)
-
 		By("delete and reapply the GatewayProxy, because gatewayproxy has no change")
-		err = s.DeleteResource("GatewayProxy", gpName)
-		Expect(err).ShouldNot(HaveOccurred())
+		Eventually(func(g Gomega) {
+			err := s.DeleteResource("GatewayProxy", gpName)
+			g.Expect(err).ShouldNot(HaveOccurred())
 
-		output, err = s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(gatewayProxyTemplate, gpName, missingService, missingSecret))
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced Service '%s/%s' not found", s.Namespace(), missingService)))
-		Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Secret key 'token' not found in Secret '%s/%s'", s.Namespace(), missingSecret)))
+			output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(gatewayProxyTemplate, gpName, missingService, missingSecret))
+			g.Expect(err).ShouldNot(HaveOccurred())
+			g.Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced Service '%s/%s' not found", s.Namespace(), missingService)))
+			g.Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Secret key 'token' not found in Secret '%s/%s'", s.Namespace(), missingSecret)))
+		}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 
 		By("updating the Secret to include the expected key")
 		secretWithKey := fmt.Sprintf(`
@@ -116,16 +117,16 @@ stringData:
 		err = s.CreateResourceFromString(secretWithKey)
 		Expect(err).NotTo(HaveOccurred(), "adding token key to secret")
 
-		time.Sleep(2 * time.Second)
-
 		By("delete and reapply the GatewayProxy, because gatewayproxy has no change")
-		err = s.DeleteResource("GatewayProxy", gpName)
-		Expect(err).ShouldNot(HaveOccurred())
+		Eventually(func(g Gomega) {
+			err := s.DeleteResource("GatewayProxy", gpName)
+			g.Expect(err).ShouldNot(HaveOccurred())
 
-		output, err = s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(gatewayProxyTemplate, gpName, missingService, missingSecret))
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced Service '%s/%s' not found", s.Namespace(), missingService)))
-		Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Secret key 'token' not found in Secret '%s/%s'", s.Namespace(), missingSecret)))
+			output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(gatewayProxyTemplate, gpName, missingService, missingSecret))
+			g.Expect(err).ShouldNot(HaveOccurred())
+			g.Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced Service '%s/%s' not found", s.Namespace(), missingService)))
+			g.Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Secret key 'token' not found in Secret '%s/%s'", s.Namespace(), missingSecret)))
+		}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 	})
 
 	Context("GatewayProxy configuration conflicts", func() {
@@ -163,15 +164,15 @@ stringData:
 			err := s.CreateResourceFromString(fmt.Sprintf(gatewayProxyTemplate, initialProxy, serviceName, secretName))
 			Expect(err).ShouldNot(HaveOccurred(), "creating initial GatewayProxy")
 
-			time.Sleep(2 * time.Second)
-
-			err = s.CreateResourceFromString(fmt.Sprintf(gatewayProxyTemplate, conflictingProxy, serviceName, secretName))
-			Expect(err).Should(HaveOccurred(), "expecting conflict for duplicated GatewayProxy")
-			Expect(err.Error()).To(ContainSubstring("gateway proxy configuration conflict"))
-			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("%s/%s", s.Namespace(), conflictingProxy)))
-			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("%s/%s", s.Namespace(), initialProxy)))
-			Expect(err.Error()).To(ContainSubstring("Service"))
-			Expect(err.Error()).To(ContainSubstring("AdminKey secret"))
+			Eventually(func(g Gomega) {
+				err := s.CreateResourceFromString(fmt.Sprintf(gatewayProxyTemplate, conflictingProxy, serviceName, secretName))
+				g.Expect(err).Should(HaveOccurred(), "expecting conflict for duplicated GatewayProxy")
+				g.Expect(err.Error()).To(ContainSubstring("gateway proxy configuration conflict"))
+				g.Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("%s/%s", s.Namespace(), conflictingProxy)))
+				g.Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("%s/%s", s.Namespace(), initialProxy)))
+				g.Expect(err.Error()).To(ContainSubstring("Service"))
+				g.Expect(err.Error()).To(ContainSubstring("AdminKey secret"))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 
 			Expect(s.DeleteResource("GatewayProxy", initialProxy)).ShouldNot(HaveOccurred())
 			Expect(s.DeleteResource("Service", serviceName)).ShouldNot(HaveOccurred())
@@ -207,15 +208,15 @@ spec:
 			err := s.CreateResourceFromString(fmt.Sprintf(gatewayProxyTemplate, existingProxy, endpointA, endpointB, inlineKey))
 			Expect(err).ShouldNot(HaveOccurred(), "creating GatewayProxy with inline AdminKey")
 
-			time.Sleep(2 * time.Second)
-
-			err = s.CreateResourceFromString(fmt.Sprintf(gatewayProxyTemplate, conflictingProxy, endpointB, endpointC, inlineKey))
-			Expect(err).Should(HaveOccurred(), "expecting conflict for overlapping endpoints with shared AdminKey")
-			Expect(err.Error()).To(ContainSubstring("gateway proxy configuration conflict"))
-			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("%s/%s", s.Namespace(), conflictingProxy)))
-			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("%s/%s", s.Namespace(), existingProxy)))
-			Expect(err.Error()).To(ContainSubstring("control plane endpoints"))
-			Expect(err.Error()).To(ContainSubstring("inline AdminKey value"))
+			Eventually(func(g Gomega) {
+				err := s.CreateResourceFromString(fmt.Sprintf(gatewayProxyTemplate, conflictingProxy, endpointB, endpointC, inlineKey))
+				g.Expect(err).Should(HaveOccurred(), "expecting conflict for overlapping endpoints with shared AdminKey")
+				g.Expect(err.Error()).To(ContainSubstring("gateway proxy configuration conflict"))
+				g.Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("%s/%s", s.Namespace(), conflictingProxy)))
+				g.Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("%s/%s", s.Namespace(), existingProxy)))
+				g.Expect(err.Error()).To(ContainSubstring("control plane endpoints"))
+				g.Expect(err.Error()).To(ContainSubstring("inline AdminKey value"))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 
 		It("should reject GatewayProxy update that creates conflict with another GatewayProxy", func() {
@@ -254,19 +255,19 @@ stringData:
 			err := s.CreateResourceFromString(fmt.Sprintf(gatewayProxyTemplate, proxyA, sharedServiceName, sharedSecretName))
 			Expect(err).ShouldNot(HaveOccurred(), "creating GatewayProxy A with shared Service and Secret")
 
-			time.Sleep(2 * time.Second)
-
-			err = s.CreateResourceFromString(fmt.Sprintf(gatewayProxyTemplate, proxyB, uniqueServiceName, sharedSecretName))
-			Expect(err).ShouldNot(HaveOccurred(), "creating GatewayProxy B with unique Service but same Secret")
-
-			time.Sleep(2 * time.Second)
+			Eventually(func(g Gomega) {
+				err := s.CreateResourceFromString(fmt.Sprintf(gatewayProxyTemplate, proxyB, uniqueServiceName, sharedSecretName))
+				g.Expect(err).ShouldNot(HaveOccurred(), "creating GatewayProxy B with unique Service but same Secret")
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 
 			By("updating GatewayProxy B to use the same Service as GatewayProxy A, causing conflict")
-			err = s.CreateResourceFromString(fmt.Sprintf(gatewayProxyTemplate, proxyB, sharedServiceName, sharedSecretName))
-			Expect(err).Should(HaveOccurred(), "expecting conflict when updating to same Service")
-			Expect(err.Error()).To(ContainSubstring("gateway proxy configuration conflict"))
-			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("%s/%s", s.Namespace(), proxyA)))
-			Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("%s/%s", s.Namespace(), proxyB)))
+			Eventually(func(g Gomega) {
+				err := s.CreateResourceFromString(fmt.Sprintf(gatewayProxyTemplate, proxyB, sharedServiceName, sharedSecretName))
+				g.Expect(err).Should(HaveOccurred(), "expecting conflict when updating to same Service")
+				g.Expect(err.Error()).To(ContainSubstring("gateway proxy configuration conflict"))
+				g.Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("%s/%s", s.Namespace(), proxyA)))
+				g.Expect(err.Error()).To(ContainSubstring(fmt.Sprintf("%s/%s", s.Namespace(), proxyB)))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 	})
 })

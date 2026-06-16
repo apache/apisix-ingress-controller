@@ -20,7 +20,6 @@ package v2
 import (
 	"context"
 	"fmt"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -41,12 +40,10 @@ var _ = Describe("Test ApisixUpstream", Label("apisix.apache.org", "v2", "apisix
 		By("create GatewayProxy")
 		err := s.CreateResourceFromString(s.GetGatewayProxySpec())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-		time.Sleep(5 * time.Second)
 
 		By("create IngressClass")
 		err = s.CreateResourceFromStringWithNamespace(s.GetIngressClassYaml(), "")
 		Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
-		time.Sleep(5 * time.Second)
 	})
 
 	Context("Health Check", func() {
@@ -111,25 +108,25 @@ spec:
 				Path:   "/ip",
 				Host:   "httpbin.org",
 			})
-			time.Sleep(2 * time.Second)
-
-			ups, err := s.Deployer.DefaultDataplaneResource().Upstream().List(context.Background())
-			Expect(err).ToNot(HaveOccurred(), "listing upstreams")
-			Expect(ups).To(HaveLen(1), "the number of upstreams")
-			Expect(ups[0].Nodes).To(HaveLen(3), "the number of upstream nodes")
-			Expect(ups[0].Checks).ToNot(BeNil(), "the healthcheck configuration")
-			Expect(ups[0].Checks.Active).ToNot(BeNil(), "the active healthcheck configuration")
-			Expect(ups[0].Checks.Active.Healthy).ToNot(BeNil(), "the active healthy configuration")
-			Expect(ups[0].Checks.Active.Unhealthy).ToNot(BeNil(), "the active unhealthy configuration")
-			Expect(ups[0].Checks.Active.Healthy.Interval).To(Equal(1), "the healthy interval")
-			Expect(ups[0].Checks.Active.Healthy.HTTPStatuses).To(Equal([]int{200}), "the healthy http status")
-			Expect(ups[0].Checks.Active.Unhealthy.Interval).To(Equal(1), "the unhealthy interval")
-			Expect(ups[0].Checks.Active.Unhealthy.HTTPFailures).To(Equal(2), "the unhealthy http failures")
-			Expect(ups[0].Checks.Passive).ToNot(BeNil(), "the passive healthcheck configuration")
-			Expect(ups[0].Checks.Passive.Healthy).ToNot(BeNil(), "the passive healthy configuration")
-			Expect(ups[0].Checks.Passive.Unhealthy).ToNot(BeNil(), "the passive unhealthy configuration")
-			Expect(ups[0].Checks.Passive.Healthy.HTTPStatuses).To(Equal([]int{200}), "the passive healthy http status")
-			Expect(ups[0].Checks.Passive.Unhealthy.HTTPStatuses).To(Equal([]int{502}), "the passive unhealthy http status")
+			Eventually(func(g Gomega) {
+				ups, err := s.Deployer.DefaultDataplaneResource().Upstream().List(context.Background())
+				g.Expect(err).ToNot(HaveOccurred(), "listing upstreams")
+				g.Expect(ups).To(HaveLen(1), "the number of upstreams")
+				g.Expect(ups[0].Nodes).To(HaveLen(3), "the number of upstream nodes")
+				g.Expect(ups[0].Checks).ToNot(BeNil(), "the healthcheck configuration")
+				g.Expect(ups[0].Checks.Active).ToNot(BeNil(), "the active healthcheck configuration")
+				g.Expect(ups[0].Checks.Active.Healthy).ToNot(BeNil(), "the active healthy configuration")
+				g.Expect(ups[0].Checks.Active.Unhealthy).ToNot(BeNil(), "the active unhealthy configuration")
+				g.Expect(ups[0].Checks.Active.Healthy.Interval).To(Equal(1), "the healthy interval")
+				g.Expect(ups[0].Checks.Active.Healthy.HTTPStatuses).To(Equal([]int{200}), "the healthy http status")
+				g.Expect(ups[0].Checks.Active.Unhealthy.Interval).To(Equal(1), "the unhealthy interval")
+				g.Expect(ups[0].Checks.Active.Unhealthy.HTTPFailures).To(Equal(2), "the unhealthy http failures")
+				g.Expect(ups[0].Checks.Passive).ToNot(BeNil(), "the passive healthcheck configuration")
+				g.Expect(ups[0].Checks.Passive.Healthy).ToNot(BeNil(), "the passive healthy configuration")
+				g.Expect(ups[0].Checks.Passive.Unhealthy).ToNot(BeNil(), "the passive unhealthy configuration")
+				g.Expect(ups[0].Checks.Passive.Healthy.HTTPStatuses).To(Equal([]int{200}), "the passive healthy http status")
+				g.Expect(ups[0].Checks.Passive.Unhealthy.HTTPStatuses).To(Equal([]int{502}), "the passive unhealthy http status")
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 
 			for range 100 {
 				s.NewAPISIXClient().GET("/ip").WithHost("httpbin.org").Expect().Status(200)

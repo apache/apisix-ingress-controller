@@ -2163,7 +2163,6 @@ spec:
 		})
 		It("HTTPRoute Canary", func() {
 			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(sameWeiht, s.Namespace()), 1)
-			time.Sleep(5 * time.Second)
 
 			s.RetryAssertion(func() int {
 				var (
@@ -2372,7 +2371,6 @@ spec:
 			By("apply services and HTTPRoute")
 			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(servicesSpec, s.Namespace()), s.Namespace())
 			Expect(err).ShouldNot(HaveOccurred(), "apply services and HTTPRoute")
-			time.Sleep(10 * time.Second)
 
 			By("verify load balancing works")
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -2396,7 +2394,6 @@ spec:
 				case http.StatusMovedPermanently:
 					upstreamHosts["mock.api7.ai"]++
 				}
-				time.Sleep(100 * time.Millisecond) // Small delay between requests
 			}
 
 			By("verify both upstreams received requests")
@@ -2471,7 +2468,6 @@ spec:
 				Timeout:  30 * time.Second,
 			})
 
-			time.Sleep(8 * time.Second)
 			By("restart controller and dataplane")
 			s.Deployer.ScaleIngress(0)
 			s.Deployer.ScaleDataplane(0)
@@ -2846,7 +2842,7 @@ spec:
 			}).Should(ContainSubstring(`status: "True"`))
 		})
 
-		It("routes traffic to correct backend based on sectionName (using server_port vars)", func() {
+		It("routes traffic to correct backend based on sectionName (using server_port vars)", func() { //nolint:dupl
 			gatewayName := s.Namespace()
 
 			By("create Gateway with two listeners on different ports")
@@ -2865,9 +2861,6 @@ spec:
 			By("create HTTPRoute targeting http-alt listener (port 9081)")
 			routeAlt := fmt.Sprintf(routeForAltListener, gatewayName)
 			s.ResourceApplied("HTTPRoute", "route-alt", routeAlt, 1)
-
-			By("wait for routes to be synced")
-			time.Sleep(5 * time.Second)
 
 			By("verify route-main is accessible on port 9080 (via in-cluster curl)")
 			Eventually(func() (int, error) {
@@ -2918,9 +2911,6 @@ spec:
 			routeMain := fmt.Sprintf(routeForMainListener, gatewayName)
 			s.ResourceApplied("HTTPRoute", "route-main", routeMain, 1)
 
-			By("wait for route sync")
-			time.Sleep(5 * time.Second)
-
 			By("verify route-main is accessible on its target port 9080")
 			Eventually(func() (int, error) {
 				statusCode, _, err := curlInCluster(9080, "/get")
@@ -2954,9 +2944,6 @@ spec:
 			By("create HTTPRoute WITHOUT sectionName")
 			route := fmt.Sprintf(routeNoSectionName, gatewayName)
 			s.ResourceApplied("HTTPRoute", "route-no-section", route, 1)
-
-			By("wait for route sync")
-			time.Sleep(5 * time.Second)
 
 			By("verify route is accessible on port 9080")
 			Eventually(func() (int, error) {
@@ -3020,9 +3007,6 @@ spec:
 			route := fmt.Sprintf(routeInvalidSectionName, gatewayName)
 			Expect(s.CreateResourceFromString(route)).NotTo(HaveOccurred())
 
-			By("wait for reconciliation")
-			time.Sleep(5 * time.Second)
-
 			By("verify route is NOT accessible on any port (no matching listener)")
 			Eventually(func() (int, error) {
 				statusCode, _, err := curlInCluster(9080, "/get")
@@ -3031,7 +3015,7 @@ spec:
 				"route should not be accessible when sectionName is invalid")
 		})
 
-		It("routes traffic to correct backend based on parentRef.port (using server_port vars)", func() {
+		It("routes traffic to correct backend based on parentRef.port (using server_port vars)", func() { //nolint:dupl
 			gatewayName := s.Namespace()
 
 			By("create Gateway with two listeners on different ports")
@@ -3097,9 +3081,6 @@ spec:
 			By("create HTTPRoute with multiple parentRefs targeting different listeners")
 			route := fmt.Sprintf(routeMultiParentRef, gatewayName, gatewayName)
 			s.ResourceApplied("HTTPRoute", "route-multi-parent", route, 1)
-
-			By("wait for route sync")
-			time.Sleep(5 * time.Second)
 
 			By("verify route is accessible on port 9080")
 			Eventually(func() (int, error) {
