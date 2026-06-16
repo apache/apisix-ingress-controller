@@ -19,6 +19,7 @@ Package v1alpha1 contains API Schema definitions for the apisix.apache.org v1alp
 - [Consumer](#consumer)
 - [GatewayProxy](#gatewayproxy)
 - [HTTPRoutePolicy](#httproutepolicy)
+- [L4RoutePolicy](#l4routepolicy)
 - [PluginConfig](#pluginconfig)
 ### BackendTrafficPolicy
 
@@ -81,6 +82,24 @@ HTTPRoutePolicy defines configuration of traffic policies.
 | `kind` _string_ | `HTTPRoutePolicy`
 | `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#objectmeta-v1-meta)_ | Please refer to the Kubernetes API documentation for details on the `metadata` field. |
 | `spec` _[HTTPRoutePolicySpec](#httproutepolicyspec)_ | HTTPRoutePolicySpec defines configuration of a HTTPRoutePolicy, including route priority and request matching conditions. |
+
+
+
+### L4RoutePolicy
+
+
+L4RoutePolicy defines plugin configuration for Gateway API L4 routes (TCPRoute, UDPRoute, TLSRoute).
+It follows the Gateway API Policy Attachment pattern and attaches APISIX stream plugins
+to the targeted L4 route resources.
+
+<!-- L4RoutePolicy resource -->
+
+| Field | Description |
+| --- | --- |
+| `apiVersion` _string_ | `apisix.apache.org/v1alpha1`
+| `kind` _string_ | `L4RoutePolicy`
+| `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#objectmeta-v1-meta)_ | Please refer to the Kubernetes API documentation for details on the `metadata` field. |
+| `spec` _[L4RoutePolicySpec](#l4routepolicyspec)_ | Spec defines the desired state of L4RoutePolicy. |
 
 
 
@@ -433,6 +452,22 @@ _Base type:_ `string`
 _Appears in:_
 - [BackendTrafficPolicySpec](#backendtrafficpolicyspec)
 
+#### L4RoutePolicySpec
+
+
+L4RoutePolicySpec defines the desired state of L4RoutePolicy.
+
+
+
+| Field | Description |
+| --- | --- |
+| `targetRefs` _LocalPolicyTargetReferenceWithSectionName array_ | TargetRefs identifies the L4 route resources (TCPRoute, UDPRoute, or TLSRoute) to which this policy applies. Only same-namespace targets are supported. |
+| `plugins` _[Plugin](#plugin) array_ | Plugins is the list of APISIX stream plugins to attach to the targeted L4 routes. Plugin names should be valid APISIX stream plugin names (e.g., limit-conn, ip-restriction). |
+
+
+_Appears in:_
+- [L4RoutePolicy](#l4routepolicy)
+
 #### LoadBalancer
 
 
@@ -518,6 +553,7 @@ _Appears in:_
 
 _Appears in:_
 - [ConsumerSpec](#consumerspec)
+- [L4RoutePolicySpec](#l4routepolicyspec)
 - [PluginConfigSpec](#pluginconfigspec)
 
 #### PluginConfigSpec

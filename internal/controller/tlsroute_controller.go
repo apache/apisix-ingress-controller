@@ -45,6 +45,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
+	pkgutils "github.com/apache/apisix-ingress-controller/pkg/utils"
 )
 
 // TLSRouteReconciler reconciles a TLSRoute object.
@@ -58,6 +59,9 @@ type TLSRouteReconciler struct { //nolint:revive
 
 	Updater status.Updater
 	Readier readiness.ReadinessManager
+
+	// supportsL4RoutePolicy indicates whether the L4RoutePolicy CRD is installed.
+	supportsL4RoutePolicy bool
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -94,6 +98,15 @@ func (r *TLSRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(&v1alpha1.GatewayProxy{},
 			handler.EnqueueRequestsFromMapFunc(r.listTLSRoutesForGatewayProxy),
 		)
+
+	// L4RoutePolicy is an optional CRD. Only watch it when installed so the
+	// controller still starts if the CRD has not been applied yet (e.g. upgrades).
+	r.supportsL4RoutePolicy = pkgutils.HasAPIResource(mgr, &v1alpha1.L4RoutePolicy{})
+	if r.supportsL4RoutePolicy {
+		bdr.Watches(&v1alpha1.L4RoutePolicy{},
+			handler.EnqueueRequestsFromMapFunc(r.listTLSRoutesForL4RoutePolicy),
+		)
+	}
 
 	if GetEnableReferenceGrant() {
 		bdr.Watches(&v1beta1.ReferenceGrant{},
@@ -240,6 +253,9 @@ func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 				r.Log.Error(err, "failed to delete tlsroute", "tlsroute", tr)
 				return ctrl.Result{}, err
 			}
+			if r.supportsL4RoutePolicy {
+				updateL4RoutePolicyStatusOnDeleting(ctx, r.Client, r.Updater, r.Log, req.NamespacedName, types.KindTLSRoute)
+			}
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
@@ -293,6 +309,9 @@ func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	ProcessBackendTrafficPolicy(r.Client, r.Log, tctx)
+	if r.supportsL4RoutePolicy {
+		ProcessL4RoutePolicy(r.Client, r.Log, tctx, tr.Namespace, tr.Name, types.KindTLSRoute)
+	}
 	tr.Status.Parents = make([]gatewayv1.RouteParentStatus, 0, len(gateways))
 	for _, gateway := range gateways {
 		parentStatus := gatewayv1.RouteParentStatus{}
@@ -500,6 +519,31 @@ func (r *TLSRouteReconciler) listTLSRoutesByServiceRef(ctx context.Context, obj 
 				Name:      tr.Name,
 			},
 		})
+	}
+	return requests
+}
+
+func (r *TLSRouteReconciler) listTLSRoutesForL4RoutePolicy(ctx context.Context, obj client.Object) []reconcile.Request {
+	policy, ok := obj.(*v1alpha1.L4RoutePolicy)
+	if !ok {
+		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to L4RoutePolicy")
+		return nil
+	}
+	requests := make([]reconcile.Request, 0, len(policy.Spec.TargetRefs))
+	seen := make(map[k8stypes.NamespacedName]struct{})
+	for _, ref := range policy.Spec.TargetRefs {
+		if string(ref.Group) != gatewayv1.GroupName || string(ref.Kind) != types.KindTLSRoute {
+			continue
+		}
+		nn := k8stypes.NamespacedName{
+			Namespace: policy.Namespace,
+			Name:      string(ref.Name),
+		}
+		if _, ok := seen[nn]; ok {
+			continue
+		}
+		seen[nn] = struct{}{}
+		requests = append(requests, reconcile.Request{NamespacedName: nn})
 	}
 	return requests
 }

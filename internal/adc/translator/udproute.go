@@ -145,7 +145,12 @@ func (t *Translator) TranslateUDPRoute(tctx *provider.TranslateContext, udpRoute
 		streamRoute.ID = id.GenID(streamRouteName)
 		streamRoute.Labels = labels
 		// TODO: support remote_addr, server_addr, sni, server_port
+		// Attach L4RoutePolicy plugins at the stream_route level: the APISIX stream proxy
+		// applies plugins from the stream_route, not from the service.
+		streamRoute.Plugins = make(adctypes.Plugins)
+		t.AttachL4RoutePolicyPlugins(tctx.L4RoutePolicies, udpRoute.Namespace, udpRoute.Name, "UDPRoute", streamRoute.Plugins)
 		service.StreamRoutes = append(service.StreamRoutes, streamRoute)
+
 		result.Services = append(result.Services, service)
 	}
 	return result, nil
