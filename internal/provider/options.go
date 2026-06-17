@@ -34,6 +34,7 @@ type Options struct {
 	DefaultBackendMode      string
 	DefaultResolveEndpoints bool
 	ListenerPortMatchMode   config.ListenerPortMatchMode
+	ExcludeResourceType     []string
 }
 
 func (o *Options) ApplyToList(lo *Options) {
@@ -54,6 +55,9 @@ func (o *Options) ApplyToList(lo *Options) {
 	}
 	if o.ListenerPortMatchMode != "" {
 		lo.ListenerPortMatchMode = o.ListenerPortMatchMode
+	}
+	if len(o.ExcludeResourceType) > 0 {
+		lo.ExcludeResourceType = o.ExcludeResourceType
 	}
 }
 

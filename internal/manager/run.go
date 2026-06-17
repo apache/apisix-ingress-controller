@@ -194,6 +194,7 @@ func Run(ctx context.Context, logger logr.Logger) error {
 		SyncPeriod:            config.ControllerConfig.ProviderConfig.SyncPeriod.Duration,
 		InitSyncDelay:         config.ControllerConfig.ProviderConfig.InitSyncDelay.Duration,
 		ListenerPortMatchMode: config.ControllerConfig.ListenerPortMatchMode,
+		ExcludeResourceType:   config.ControllerConfig.ProviderConfig.ExcludeResourceType,
 	}
 	provider, err := provider.New(providerType, logger, updater.Writer(), readier, providerOptions)
 	if err != nil {

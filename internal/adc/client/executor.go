@@ -51,7 +51,7 @@ type ADCExecutor interface {
 	Validate(ctx context.Context, config adctypes.Config, args []string) error
 }
 
-func BuildADCExecuteArgs(filePath string, labels map[string]string, types []string) []string {
+func BuildADCExecuteArgs(filePath string, labels map[string]string, includeTypes []string, excludeTypes []string) []string {
 	args := []string{
 		"sync",
 		"-f", filePath,
@@ -59,8 +59,11 @@ func BuildADCExecuteArgs(filePath string, labels map[string]string, types []stri
 	for k, v := range labels {
 		args = append(args, "--label-selector", k+"="+v)
 	}
-	for _, t := range types {
+	for _, t := range includeTypes {
 		args = append(args, "--include-resource-type", t)
+	}
+	for _, t := range excludeTypes {
+		args = append(args, "--exclude-resource-type", t)
 	}
 	return args
 }
@@ -83,6 +86,7 @@ type ADCServerOpts struct {
 	Token               string            `json:"token"`
 	LabelSelector       map[string]string `json:"labelSelector,omitempty"`
 	IncludeResourceType []string          `json:"includeResourceType,omitempty"`
+	ExcludeResourceType []string          `json:"excludeResourceType,omitempty"`
 	TlsSkipVerify       *bool             `json:"tlsSkipVerify,omitempty"`
 	CacheKey            string            `json:"cacheKey"`
 	// BypassCache is only accepted by the /sync task of ADC >= 0.27.0. Both ADC task
@@ -231,8 +235,8 @@ func (e *HTTPADCExecutor) runHTTPSyncForSingleServer(ctx context.Context, server
 	ctx, cancel := context.WithTimeout(ctx, e.httpClient.Timeout)
 	defer cancel()
 
-	// Parse args to extract labels, types, and file path
-	labels, types, filePath, err := e.parseArgs(args)
+	// Parse args to extract labels, include/exclude types, and file path
+	labels, includeTypes, excludeTypes, filePath, err := e.parseArgs(args)
 	if err != nil {
 		return fmt.Errorf("failed to parse args: %w", err)
 	}
@@ -244,7 +248,7 @@ func (e *HTTPADCExecutor) runHTTPSyncForSingleServer(ctx context.Context, server
 	}
 
 	// Build HTTP request
-	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, types, resources, http.MethodPut, pathSync)
+	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, includeTypes, excludeTypes, resources, http.MethodPut, pathSync)
 	if err != nil {
 		return fmt.Errorf("failed to build HTTP request: %w", err)
 	}
@@ -268,7 +272,7 @@ func (e *HTTPADCExecutor) runHTTPValidateForSingleServer(ctx context.Context, se
 	ctx, cancel := context.WithTimeout(ctx, e.httpClient.Timeout)
 	defer cancel()
 
-	labels, types, filePath, err := e.parseArgs(args)
+	labels, includeTypes, excludeTypes, filePath, err := e.parseArgs(args)
 	if err != nil {
 		return fmt.Errorf("failed to parse args: %w", err)
 	}
@@ -278,7 +282,7 @@ func (e *HTTPADCExecutor) runHTTPValidateForSingleServer(ctx context.Context, se
 		return fmt.Errorf("failed to load resources from file %s: %w", filePath, err)
 	}
 
-	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, types, resources, http.MethodPut, pathValidate)
+	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, includeTypes, excludeTypes, resources, http.MethodPut, pathValidate)
 	if err != nil {
 		return fmt.Errorf("failed to build validate request: %w", err)
 	}
@@ -296,10 +300,11 @@ func (e *HTTPADCExecutor) runHTTPValidateForSingleServer(ctx context.Context, se
 	return e.handleHTTPValidateResponse(resp, serverAddr)
 }
 
-// parseArgs parses the command line arguments to extract labels, types, and file path
-func (e *HTTPADCExecutor) parseArgs(args []string) (map[string]string, []string, string, error) {
+// parseArgs parses the command line arguments to extract labels, include/exclude types, and file path
+func (e *HTTPADCExecutor) parseArgs(args []string) (map[string]string, []string, []string, string, error) {
 	labels := make(map[string]string)
-	var types []string
+	var includeTypes []string
+	var excludeTypes []string
 	var filePath string
 
 	for i := 0; i < len(args); i++ {
@@ -320,17 +325,22 @@ func (e *HTTPADCExecutor) parseArgs(args []string) (map[string]string, []string,
 			}
 		case "--include-resource-type":
 			if i+1 < len(args) {
-				types = append(types, args[i+1])
+				includeTypes = append(includeTypes, args[i+1])
+				i++
+			}
+		case "--exclude-resource-type":
+			if i+1 < len(args) {
+				excludeTypes = append(excludeTypes, args[i+1])
 				i++
 			}
 		}
 	}
 
 	if filePath == "" {
-		return nil, nil, "", errors.New("file path not found in args")
+		return nil, nil, nil, "", errors.New("file path not found in args")
 	}
 
-	return labels, types, filePath, nil
+	return labels, includeTypes, excludeTypes, filePath, nil
 }
 
 // loadResourcesFromFile loads ADC resources from the specified file
@@ -349,7 +359,7 @@ func (e *HTTPADCExecutor) loadResourcesFromFile(filePath string) (*adctypes.Reso
 }
 
 // buildHTTPRequest builds the HTTP request for ADC Server
-func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr string, config adctypes.Config, labels map[string]string, types []string, resources *adctypes.Resources, method string, path string) (*http.Request, error) {
+func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr string, config adctypes.Config, labels map[string]string, includeTypes []string, excludeTypes []string, resources *adctypes.Resources, method string, path string) (*http.Request, error) {
 	// Prepare request body
 	tlsVerify := config.TlsVerify
 	bypassCache := path == pathSync && config.BypassCache
@@ -360,7 +370,8 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr strin
 				Server:              strings.Split(serverAddr, ","),
 				Token:               config.Token,
 				LabelSelector:       labels,
-				IncludeResourceType: types,
+				IncludeResourceType: includeTypes,
+				ExcludeResourceType: excludeTypes,
 				TlsSkipVerify:       ptr.To(!tlsVerify),
 				CacheKey:            config.Name,
 				BypassCache:         bypassCache,
@@ -383,7 +394,8 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr strin
 		"cacheKey", config.Name,
 		"bypassCache", bypassCache,
 		"labelSelector", labels,
-		"includeResourceType", types,
+		"includeResourceType", includeTypes,
+		"excludeResourceType", excludeTypes,
 		"tlsSkipVerify", !tlsVerify,
 	)
 
