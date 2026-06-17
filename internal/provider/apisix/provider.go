@@ -224,9 +224,10 @@ func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 	// on deleted gateway level resources
 	if len(resourceTypes) == 0 {
 		return d.client.Delete(ctx, adcclient.Task{
-			Key:    nnk,
-			Name:   nnk.String(),
-			Labels: labels,
+			Key:                 nnk,
+			Name:                nnk.String(),
+			Labels:              labels,
+			ExcludeResourceType: d.ExcludeResourceType,
 		})
 	}
 	defer d.syncNotify()
@@ -288,7 +289,7 @@ func (d *apisixProvider) Start(ctx context.Context) error {
 }
 
 func (d *apisixProvider) sync(ctx context.Context) error {
-	statusesMap, err := d.client.Sync(ctx)
+	statusesMap, err := d.client.Sync(ctx, d.ExcludeResourceType)
 	d.handleADCExecutionErrors(statusesMap)
 	return err
 }
