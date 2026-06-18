@@ -50,6 +50,7 @@ type TranslateContext struct {
 
 	EndpointSlices         map[k8stypes.NamespacedName][]discoveryv1.EndpointSlice
 	Secrets                map[k8stypes.NamespacedName]*corev1.Secret
+	ConfigMaps             map[k8stypes.NamespacedName]*corev1.ConfigMap
 	PluginConfigs          map[k8stypes.NamespacedName]*v1alpha1.PluginConfig
 	ApisixPluginConfigs    map[k8stypes.NamespacedName]*apiv2.ApisixPluginConfig
 	Services               map[k8stypes.NamespacedName]*corev1.Service
@@ -70,6 +71,7 @@ func NewDefaultTranslateContext(ctx context.Context) *TranslateContext {
 		Context:                ctx,
 		EndpointSlices:         make(map[k8stypes.NamespacedName][]discoveryv1.EndpointSlice),
 		Secrets:                make(map[k8stypes.NamespacedName]*corev1.Secret),
+		ConfigMaps:             make(map[k8stypes.NamespacedName]*corev1.ConfigMap),
 		PluginConfigs:          make(map[k8stypes.NamespacedName]*v1alpha1.PluginConfig),
 		ApisixPluginConfigs:    make(map[k8stypes.NamespacedName]*apiv2.ApisixPluginConfig),
 		Services:               make(map[k8stypes.NamespacedName]*corev1.Service),
