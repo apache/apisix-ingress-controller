@@ -47,10 +47,14 @@ import (
 type PolicyTargetKey struct {
 	NsName    types.NamespacedName
 	GroupKind schema.GroupKind
+	// SectionName scopes the target to a specific section (for a Service, the
+	// port name). Policies that target different sections of the same resource
+	// do not conflict; an empty SectionName targets the whole resource.
+	SectionName string
 }
 
 func (p PolicyTargetKey) String() string {
-	return p.NsName.String() + "/" + p.GroupKind.String()
+	return p.NsName.String() + "/" + p.GroupKind.String() + "/" + p.SectionName
 }
 
 func BackendTrafficPolicyPredicateFunc(channel chan event.GenericEvent) predicate.Predicate {
@@ -142,6 +146,9 @@ func ProcessBackendTrafficPolicy(
 			key := PolicyTargetKey{
 				NsName:    types.NamespacedName{Namespace: p.GetNamespace(), Name: string(targetRef.Name)},
 				GroupKind: schema.GroupKind{Group: "", Kind: internaltypes.KindService},
+			}
+			if sectionName != nil {
+				key.SectionName = string(*sectionName)
 			}
 			condition := NewPolicyCondition(policy.Generation, true, "Policy has been accepted")
 			if sectionName != nil && !servicePortNameMap[fmt.Sprintf("%s/%s/%s", policy.Namespace, string(targetRef.Name), *sectionName)] {
