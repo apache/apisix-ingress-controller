@@ -187,7 +187,7 @@ func (t *Translator) resolveIngressUpstream(
 		ns = config.ServiceNamespace
 	}
 	backendRef := convertBackendRef(ns, backendService.Name, internaltypes.KindService)
-	t.AttachBackendTrafficPolicyToUpstream(backendRef, tctx.BackendTrafficPolicies, upstream)
+	t.AttachBackendTrafficPolicyToUpstream(backendRef, tctx.BackendTrafficPolicies, upstream, tctx.Services)
 	if config != nil {
 		upConfig := config.Upstream
 		if upConfig.Scheme != "" {

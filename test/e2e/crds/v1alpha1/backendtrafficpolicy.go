@@ -160,6 +160,123 @@ spec:
 		})
 	})
 
+	Context("Section Name", func() {
+		// httpbin-service-e2e-test exposes two named ports backed by the same pod:
+		// "http" (80) and "http-v2" (8080). Routing one host to each port lets us
+		// assert that a sectionName-scoped policy only attaches to the matching port.
+		var routeToHTTPV2Port = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: httpbin-v2
+  namespace: %s
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - "httpbin-v2.org"
+  rules:
+  - matches:
+    - path:
+        type: Exact
+        value: /headers
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 8080
+`
+
+		var policyTmpl = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: httpbin
+spec:
+  targetRefs:
+  - name: httpbin-service-e2e-test
+    kind: Service
+    group: ""
+    sectionName: %s
+  passHost: rewrite
+  upstreamHost: %s
+`
+
+		BeforeEach(func() {
+			gatewayBeforeEach()
+			By("create HTTPRoute routing to the http-v2 (8080) port")
+			s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin-v2"}, fmt.Sprintf(routeToHTTPV2Port, s.Namespace(), s.Namespace()))
+		})
+
+		// assertScopedToPort applies a policy targeting the given port name and
+		// asserts it attaches to exactly that port: the host routed to the matched
+		// port gets the rewritten upstreamHost, while the host routed to the other
+		// port keeps the original host. matchedHost routes to the port named by
+		// sectionName; otherHost routes to the other port.
+		assertScopedToPort := func(sectionName, rewriteHost, matchedHost, otherHost string) {
+			s.ResourceApplied("BackendTrafficPolicy", "httpbin", fmt.Sprintf(policyTmpl, sectionName, rewriteHost), 1)
+
+			// Drive traffic to both hosts so both per-port upstreams are registered.
+			for _, host := range []string{matchedHost, otherHost} {
+				s.RequestAssert(&scaffold.RequestAssert{
+					Method:  "GET",
+					Path:    "/headers",
+					Host:    host,
+					Headers: map[string]string{"Host": host},
+					Checks:  []scaffold.ResponseCheckFunc{scaffold.WithExpectedStatus(200)},
+				})
+			}
+
+			// The Service is split into two per-port upstreams (http/80 and
+			// http-v2/8080) with identical nodes. The sectionName-scoped policy must
+			// attach to exactly one of them; under name-only matching it would attach
+			// to both (the whole Service), which this assertion rejects.
+			Eventually(func(g Gomega) {
+				ups, err := s.DefaultDataplaneResource().Upstream().List(context.Background())
+				g.Expect(err).ToNot(HaveOccurred(), "listing upstreams")
+				g.Expect(ups).To(HaveLen(2), "two per-port upstreams should exist")
+
+				var rewritten []*adctypes.Upstream
+				for _, u := range ups {
+					if u.PassHost == "rewrite" && u.UpstreamHost == rewriteHost {
+						rewritten = append(rewritten, u)
+					}
+				}
+				g.Expect(rewritten).To(HaveLen(1), "policy must attach to exactly the sectionName-matched port, not the whole Service")
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
+
+			By("the matched port reflects the rewritten host")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:  "GET",
+				Path:    "/headers",
+				Host:    matchedHost,
+				Headers: map[string]string{"Host": matchedHost},
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(200),
+					scaffold.WithExpectedBodyContains(rewriteHost),
+				},
+			})
+
+			By("the other port keeps the original host")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:  "GET",
+				Path:    "/headers",
+				Host:    otherHost,
+				Headers: map[string]string{"Host": otherHost},
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(200),
+					scaffold.WithExpectedBodyNotContains(rewriteHost),
+				},
+			})
+		}
+
+		It("attaches the policy to the http-v2 (8080) port when sectionName is http-v2", func() {
+			assertScopedToPort("http-v2", "httpbin.section-v2.example.com", "httpbin-v2.org", "httpbin.org")
+		})
+
+		It("attaches the policy to the http (80) port when sectionName is http", func() {
+			assertScopedToPort("http", "httpbin.section-http.example.com", "httpbin.org", "httpbin-v2.org")
+		})
+	})
+
 	Context("Health Check", func() {
 		var policyWithActiveHealthCheck = `
 apiVersion: apisix.apache.org/v1alpha1

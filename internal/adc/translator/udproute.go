@@ -58,7 +58,7 @@ func (t *Translator) TranslateUDPRoute(tctx *provider.TranslateContext, udpRoute
 				continue
 			}
 			// TODO: Confirm BackendTrafficPolicy attachment with e2e test case.
-			t.AttachBackendTrafficPolicyToUpstream(backend, tctx.BackendTrafficPolicies, upstream)
+			t.AttachBackendTrafficPolicyToUpstream(backend, tctx.BackendTrafficPolicies, upstream, tctx.Services)
 			upstream.Nodes = upNodes
 			var (
 				kind string
