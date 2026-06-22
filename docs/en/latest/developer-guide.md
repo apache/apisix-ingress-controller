@@ -103,7 +103,7 @@ make undeploy
 To run unit tests:
 
 ```shell
-make unit-test
+make test
 ```
 
 ### e2e Tests
