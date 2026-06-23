@@ -45,3 +45,8 @@ func TestAPISIXE2E(t *testing.T) {
 	_, _ = fmt.Fprintf(GinkgoWriter, "Starting APISIX standalone e2e suite\n")
 	RunSpecs(t, "apisix standalone e2e suite")
 }
+
+// Tear down any prewarmed environments left in the pools when the suite ends.
+var _ = AfterSuite(func() {
+	scaffold.ShutdownAllPools()
+})
