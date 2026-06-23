@@ -555,7 +555,7 @@ func (t *Translator) translateBackendsToUpstreams(
 			enableWebsocket = ptr.To(true)
 		}
 
-		t.AttachBackendTrafficPolicyToUpstream(backend.BackendRef, tctx.BackendTrafficPolicies, upstream)
+		t.AttachBackendTrafficPolicyToUpstream(backend.BackendRef, tctx.BackendTrafficPolicies, upstream, tctx.Services)
 		upstream.Nodes = upNodes
 		if upstream.Scheme == "" {
 			upstream.Scheme = appProtocolToUpstreamScheme(protocol)

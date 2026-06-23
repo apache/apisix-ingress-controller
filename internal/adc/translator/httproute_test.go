@@ -506,3 +506,125 @@ func TestAttachBackendTrafficPolicyHealthCheck(t *testing.T) {
 		})
 	}
 }
+
+func TestAttachBackendTrafficPolicyToUpstreamSectionName(t *testing.T) {
+	const (
+		namespace   = "default"
+		serviceName = "backend"
+		webPort     = int32(80)
+		webName     = "web"
+		adminPort   = int32(9000)
+		adminName   = "admin"
+	)
+
+	serviceKey := types.NamespacedName{Namespace: namespace, Name: serviceName}
+	services := map[types.NamespacedName]*corev1.Service{
+		serviceKey: {
+			ObjectMeta: metav1.ObjectMeta{Name: serviceName, Namespace: namespace},
+			Spec: corev1.ServiceSpec{
+				Ports: []corev1.ServicePort{
+					{Name: webName, Port: webPort},
+					{Name: adminName, Port: adminPort},
+				},
+			},
+		},
+	}
+
+	newRef := func(port int32) gatewayv1.BackendRef {
+		return gatewayv1.BackendRef{
+			BackendObjectReference: gatewayv1.BackendObjectReference{
+				Name:      gatewayv1.ObjectName(serviceName),
+				Namespace: ptr.To(gatewayv1.Namespace(namespace)),
+				Port:      ptr.To(gatewayv1.PortNumber(port)),
+			},
+		}
+	}
+
+	newPolicy := func(name, sectionName, scheme string) *v1alpha1.BackendTrafficPolicy {
+		targetRef := v1alpha1.BackendPolicyTargetReferenceWithSectionName{
+			LocalPolicyTargetReference: gatewayv1alpha2.LocalPolicyTargetReference{
+				Name: gatewayv1alpha2.ObjectName(serviceName),
+				Kind: gatewayv1alpha2.Kind(internaltypes.KindService),
+			},
+		}
+		if sectionName != "" {
+			targetRef.SectionName = ptr.To(gatewayv1alpha2.SectionName(sectionName))
+		}
+		return &v1alpha1.BackendTrafficPolicy{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+			Spec: v1alpha1.BackendTrafficPolicySpec{
+				TargetRefs: []v1alpha1.BackendPolicyTargetReferenceWithSectionName{targetRef},
+				Scheme:     scheme,
+			},
+		}
+	}
+
+	tests := []struct {
+		name       string
+		ref        gatewayv1.BackendRef
+		policies   map[types.NamespacedName]*v1alpha1.BackendTrafficPolicy
+		wantScheme string
+	}{
+		{
+			name: "sectionName matches the backend port name",
+			ref:  newRef(webPort),
+			policies: map[types.NamespacedName]*v1alpha1.BackendTrafficPolicy{
+				{Namespace: namespace, Name: "p"}: newPolicy("p", webName, apiv2.SchemeHTTPS),
+			},
+			wantScheme: apiv2.SchemeHTTPS,
+		},
+		{
+			name: "sectionName does not match the backend port name",
+			ref:  newRef(adminPort),
+			policies: map[types.NamespacedName]*v1alpha1.BackendTrafficPolicy{
+				{Namespace: namespace, Name: "p"}: newPolicy("p", webName, apiv2.SchemeHTTPS),
+			},
+			wantScheme: "",
+		},
+		{
+			name: "no sectionName applies to the whole service",
+			ref:  newRef(adminPort),
+			policies: map[types.NamespacedName]*v1alpha1.BackendTrafficPolicy{
+				{Namespace: namespace, Name: "p"}: newPolicy("p", "", apiv2.SchemeHTTPS),
+			},
+			wantScheme: apiv2.SchemeHTTPS,
+		},
+		{
+			name: "port-specific policy takes precedence over whole-service policy",
+			ref:  newRef(adminPort),
+			policies: map[types.NamespacedName]*v1alpha1.BackendTrafficPolicy{
+				{Namespace: namespace, Name: "generic"}:  newPolicy("generic", "", apiv2.SchemeHTTP),
+				{Namespace: namespace, Name: "specific"}: newPolicy("specific", adminName, apiv2.SchemeHTTPS),
+			},
+			wantScheme: apiv2.SchemeHTTPS,
+		},
+		{
+			name: "targetRef kind mismatch does not attach to a same-named service",
+			ref:  newRef(webPort),
+			policies: map[types.NamespacedName]*v1alpha1.BackendTrafficPolicy{
+				{Namespace: namespace, Name: "p"}: {
+					ObjectMeta: metav1.ObjectMeta{Name: "p", Namespace: namespace},
+					Spec: v1alpha1.BackendTrafficPolicySpec{
+						TargetRefs: []v1alpha1.BackendPolicyTargetReferenceWithSectionName{{
+							LocalPolicyTargetReference: gatewayv1alpha2.LocalPolicyTargetReference{
+								Name: gatewayv1alpha2.ObjectName(serviceName),
+								Kind: gatewayv1alpha2.Kind("ServiceImport"),
+							},
+						}},
+						Scheme: apiv2.SchemeHTTPS,
+					},
+				},
+			},
+			wantScheme: "",
+		},
+	}
+
+	translator := NewTranslator(logr.Discard(), "")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			upstream := adctypes.NewDefaultUpstream()
+			translator.AttachBackendTrafficPolicyToUpstream(tt.ref, tt.policies, upstream, services)
+			assert.Equal(t, tt.wantScheme, upstream.Scheme)
+		})
+	}
+}

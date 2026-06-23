@@ -160,6 +160,110 @@ spec:
 		})
 	})
 
+	Context("Section Name", func() {
+		// httpbin-service-e2e-test exposes two named ports backed by the same pod:
+		// "http" (80) and "http-v2" (8080). A single HTTPRoute routes /get to port
+		// 80 and /headers to port 8080, so the two rules share the same Service but
+		// resolve to different ports.
+		var routeWithTwoPorts = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: httpbin
+  namespace: %s
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - "httpbin.org"
+  rules:
+  - matches:
+    - path:
+        type: Exact
+        value: /get
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+  - matches:
+    - path:
+        type: Exact
+        value: /headers
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 8080
+`
+
+		// sectionPolicy is scoped to the http-v2 (8080) port via sectionName.
+		var sectionPolicy = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: httpbin-section
+spec:
+  targetRefs:
+  - name: httpbin-service-e2e-test
+    kind: Service
+    group: ""
+    sectionName: http-v2
+  passHost: rewrite
+  upstreamHost: section.http-v2.example.com
+`
+
+		// wholePolicy has no sectionName, so it targets the whole Service.
+		var wholePolicy = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: httpbin-whole
+spec:
+  targetRefs:
+  - name: httpbin-service-e2e-test
+    kind: Service
+    group: ""
+  passHost: rewrite
+  upstreamHost: whole.service.example.com
+`
+
+		BeforeEach(func() {
+			gatewayBeforeEach()
+			By("recreate the HTTPRoute with two rules to ports 80 and 8080")
+			s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, fmt.Sprintf(routeWithTwoPorts, s.Namespace(), s.Namespace()))
+		})
+
+		It("applies the sectionName-scoped policy only to the matching port", func() {
+			s.ResourceApplied("BackendTrafficPolicy", "httpbin-section", sectionPolicy, 1)
+			s.ResourceApplied("BackendTrafficPolicy", "httpbin-whole", wholePolicy, 1)
+
+			// /headers -> port 8080: both policies match by name, but the
+			// sectionName-scoped one wins, so the http-v2 host is used.
+			By("the http-v2 (8080) port uses the sectionName-scoped policy")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/headers",
+				Host:   "httpbin.org",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(200),
+					scaffold.WithExpectedBodyContains("section.http-v2.example.com"),
+					scaffold.WithExpectedBodyNotContains("whole.service.example.com"),
+				},
+			})
+
+			// /get -> port 80: the sectionName-scoped policy does not match this
+			// port, so only the whole-Service policy applies.
+			By("the http (80) port falls back to the whole-Service policy")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(200),
+					scaffold.WithExpectedBodyContains("whole.service.example.com"),
+					scaffold.WithExpectedBodyNotContains("section.http-v2.example.com"),
+				},
+			})
+		})
+	})
+
 	Context("Health Check", func() {
 		var policyWithActiveHealthCheck = `
 apiVersion: apisix.apache.org/v1alpha1
