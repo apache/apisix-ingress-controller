@@ -28,6 +28,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -44,6 +45,11 @@ const (
 type ADCExecutor interface {
 	Execute(ctx context.Context, config adctypes.Config, args []string) error
 	Validate(ctx context.Context, config adctypes.Config, args []string) error
+	// SetCacheKeyNonce sets a nonce that is appended to the cacheKey sent to the
+	// ADC server. Rotating it (e.g. on leader acquisition) makes ADC treat the
+	// next sync as a fresh cache, so it regenerates conf_version from scratch
+	// instead of reusing a stale baseline.
+	SetCacheKeyNonce(nonce string)
 }
 
 func BuildADCExecuteArgs(filePath string, labels map[string]string, types []string) []string {
@@ -90,9 +96,24 @@ type ADCValidateResult struct {
 
 // HTTPADCExecutor implements ADCExecutor interface using HTTP calls to ADC Server
 type HTTPADCExecutor struct {
-	httpClient *http.Client
-	serverURL  string
-	log        logr.Logger
+	httpClient    *http.Client
+	serverURL     string
+	log           logr.Logger
+	cacheKeyNonce atomic.Pointer[string]
+}
+
+// SetCacheKeyNonce implements the ADCExecutor interface.
+func (e *HTTPADCExecutor) SetCacheKeyNonce(nonce string) {
+	e.cacheKeyNonce.Store(&nonce)
+}
+
+// cacheKey builds the cacheKey sent to the ADC server, appending the current
+// nonce when set.
+func (e *HTTPADCExecutor) cacheKey(name string) string {
+	if nonce := e.cacheKeyNonce.Load(); nonce != nil && *nonce != "" {
+		return name + ":" + *nonce
+	}
+	return name
 }
 
 // NewHTTPADCExecutor creates a new HTTPADCExecutor with the specified ADC Server URL.
@@ -335,7 +356,7 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr strin
 				LabelSelector:       labels,
 				IncludeResourceType: types,
 				TlsSkipVerify:       ptr.To(!tlsVerify),
-				CacheKey:            config.Name,
+				CacheKey:            e.cacheKey(config.Name),
 			},
 			Config: *resources,
 		},
@@ -352,7 +373,7 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr strin
 		"url", e.serverURL+path,
 		"server", serverAddr,
 		"mode", config.BackendType,
-		"cacheKey", config.Name,
+		"cacheKey", e.cacheKey(config.Name),
 		"labelSelector", labels,
 		"includeResourceType", types,
 		"tlsSkipVerify", !tlsVerify,
