@@ -59,6 +59,16 @@ This release includes new features, bug fixes and dependency updates.
 
 ---
 
+## Breaking Changes
+
+**Port-based routing may cause `404` on Gateway API routes.** Port-based routing for Gateway API routes ([#2703](https://github.com/apache/apisix-ingress-controller/pull/2703)) adds a `server_port` match var to routes, derived from the Gateway listener port.
+
+- **What changed:** with the default `listener_port_match_mode: auto`, a route that matches multiple listener ports now gets a `server_port` var (e.g. `["80", "443"]`).
+- **Why it can break:** the APISIX `server_port` var reflects the port the data plane actually listens on (e.g. `9080`/`9443`), **not** the Gateway listener port. When they differ — for example a Service maps `80`/`443` to `9080`/`9443` — the var never matches and the route returns `404`.
+- **How to fix:** set `listener_port_match_mode: off` to disable the injection, or make APISIX listen on the same ports declared in the Gateway listeners.
+
+---
+
 ## Features
 
 * feat: support port-based routing for Gateway API routes [#2703](https://github.com/apache/apisix-ingress-controller/pull/2703)
