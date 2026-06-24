@@ -35,8 +35,8 @@ This document provides answers to frequently asked questions (FAQ) when using AP
 In APISIX, a higher value indicates a higher route priority.
 
 * **Ingress:** Does not support explicit route priority. Routes created using Ingress are assigned a default priority of 0, typically the lowest.
-* **HTTPRoute:** Has a [38-bit priority](https://github.com/apache/apisix-ingress-controller/blob/master/internal/adc/translator/httproute.go#L428-L448). The priority calculation is dynamic and may change, making exact values difficult to predict.
-* **APISIXRoute:** Can be assigned an explicit priority. To have a higher priority than an HTTPRoute, the value must exceed 549,755,813,887 (2^39 − 1).
+* **HTTPRoute:** Uses priority bits 7 through 38 based on hostname length, match fields, and rule index. The [priority calculation](https://github.com/apache/apisix-ingress-controller/blob/c48e9b3fb8d269b04b440c6fc5ed6880c05456f3/internal/adc/translator/httproute.go#L455-L524) is dynamic and may change, making exact values difficult to predict.
+* **APISIXRoute:** Can be assigned an explicit priority. To ensure it always has a higher priority than an HTTPRoute, the value must exceed 549,755,813,887 (2^39 − 1).
 
 ### How do HTTPRoute filters interact with PluginConfig CRDs?
 
