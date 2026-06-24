@@ -78,4 +78,10 @@ provider:
                                         # If you want to enable the sync, set it to a positive value.
   init_sync_delay: 20m                  # The initial delay before the first sync, only used when the controller is started.
                                         # The default value is 20 minutes.
+
+  exclude_resource_type: []             # Resource types to exclude from full reconciliation sweeps.
+                                        # Resources of these types that exist in APISIX but have no corresponding
+                                        # CRD will not be deleted during periodic syncs.
+                                        # Supported values mirror the ADC resource types, e.g.: Consumer, ConsumerGroup.
+                                        # The default value is [] (empty — all resource types are reconciled).
 ```

@@ -100,9 +100,10 @@ type LeaderElection struct {
 }
 
 type ProviderConfig struct {
-	Type          ProviderType       `json:"type" yaml:"type"`
-	SyncPeriod    types.TimeDuration `json:"sync_period" yaml:"sync_period"`
-	InitSyncDelay types.TimeDuration `json:"init_sync_delay" yaml:"init_sync_delay"`
+	Type                ProviderType       `json:"type" yaml:"type"`
+	SyncPeriod          types.TimeDuration `json:"sync_period" yaml:"sync_period"`
+	InitSyncDelay       types.TimeDuration `json:"init_sync_delay" yaml:"init_sync_delay"`
+	ExcludeResourceType []string           `json:"exclude_resource_type" yaml:"exclude_resource_type"`
 }
 
 type WebhookConfig struct {
