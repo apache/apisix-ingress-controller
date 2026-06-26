@@ -348,6 +348,87 @@ func TestTranslateHTTPRouteUpstreamScheme(t *testing.T) {
 	}
 }
 
+func TestTranslateHTTPRouteExternalNameAppProtocol(t *testing.T) {
+	tests := []struct {
+		name        string
+		appProtocol string
+		wantScheme  string
+	}{
+		{
+			name:        "ExternalName with websocket appProtocol",
+			appProtocol: internaltypes.AppProtocolWSS,
+			wantScheme:  apiv2.SchemeHTTPS,
+		},
+		{
+			name:        "ExternalName with http appProtocol",
+			appProtocol: internaltypes.AppProtocolHTTP,
+			wantScheme:  apiv2.SchemeHTTP,
+		},
+		{
+			name:        "ExternalName without appProtocol",
+			appProtocol: "",
+			wantScheme:  apiv2.SchemeHTTP,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			translator := NewTranslator(logr.Discard(), "")
+			tctx := provider.NewDefaultTranslateContext(context.Background())
+
+			const (
+				namespace   = "default"
+				serviceName = "external-backend"
+				portNumber  = int32(5000)
+			)
+
+			serviceKey := types.NamespacedName{Namespace: namespace, Name: serviceName}
+			tctx.Services[serviceKey] = &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      serviceName,
+					Namespace: namespace,
+				},
+				Spec: corev1.ServiceSpec{
+					Type:         corev1.ServiceTypeExternalName,
+					ExternalName: "example.com",
+					Ports: []corev1.ServicePort{{
+						Name:        "web",
+						Port:        portNumber,
+						AppProtocol: ptr.To(tt.appProtocol),
+					}},
+				},
+			}
+
+			route := &gatewayv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "demo",
+					Namespace: namespace,
+				},
+				Spec: gatewayv1.HTTPRouteSpec{
+					Rules: []gatewayv1.HTTPRouteRule{{
+						BackendRefs: []gatewayv1.HTTPBackendRef{{
+							BackendRef: gatewayv1.BackendRef{
+								BackendObjectReference: gatewayv1.BackendObjectReference{
+									Name: gatewayv1.ObjectName(serviceName),
+									Port: ptr.To(gatewayv1.PortNumber(portNumber)),
+								},
+							},
+						}},
+					}},
+				},
+			}
+
+			result, err := translator.TranslateHTTPRoute(tctx, route)
+			require.NoError(t, err)
+			require.Len(t, result.Services, 1)
+			require.NotNil(t, result.Services[0].Upstream)
+
+			assert.Equal(t, tt.wantScheme, result.Services[0].Upstream.Scheme)
+			assert.Equal(t, "example.com", result.Services[0].Upstream.Nodes[0].Host)
+		})
+	}
+}
+
 func TestAttachBackendTrafficPolicyHealthCheck(t *testing.T) {
 	trueVal := true
 	falseVal := false

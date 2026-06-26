@@ -421,6 +421,12 @@ func (t *Translator) translateBackendRef(tctx *provider.TranslateContext, ref ga
 		port := 80
 		if ref.Port != nil {
 			port = int(*ref.Port)
+			for _, p := range service.Spec.Ports {
+				if int(p.Port) == port {
+					protocol = ptr.Deref(p.AppProtocol, "")
+					break
+				}
+			}
 		}
 		return adctypes.UpstreamNodes{
 			{
