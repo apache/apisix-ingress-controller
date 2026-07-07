@@ -208,3 +208,34 @@ func TestTranslateSecret_FrontendValidation(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func TestTranslateSecret_Passthrough(t *testing.T) {
+	t.Run("passthrough listener with nil certificateRefs is valid, not an error", func(t *testing.T) {
+		tr := &Translator{Log: logr.Discard()}
+		gateway := &gatewayv1.Gateway{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: "default",
+				Name:      "gw",
+			},
+			Spec: gatewayv1.GatewaySpec{
+				Listeners: []gatewayv1.Listener{
+					{
+						Name: "tls-passthrough",
+						TLS: &gatewayv1.GatewayTLSConfig{
+							Mode: ptr.To(gatewayv1.TLSModePassthrough),
+							// Per the Gateway API spec, Passthrough listeners MUST NOT
+							// set certificateRefs: the Gateway never terminates TLS, so
+							// there is no certificate for it to present.
+							CertificateRefs: nil,
+						},
+					},
+				},
+			},
+		}
+		tctx := newTranslateContextWithTLS()
+
+		ssl, err := tr.translateSecret(tctx, gateway.Spec.Listeners[0], gateway)
+		require.NoError(t, err)
+		assert.Empty(t, ssl)
+	})
+}

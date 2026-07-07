@@ -72,12 +72,12 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 	if tctx.Secrets == nil {
 		return nil, nil
 	}
-	if listener.TLS.CertificateRefs == nil {
-		return nil, fmt.Errorf("no certificateRefs found in listener %s", listener.Name)
-	}
 	sslObjs := make([]*adctypes.SSL, 0)
 	switch *listener.TLS.Mode {
 	case gatewayv1.TLSModeTerminate:
+		if listener.TLS.CertificateRefs == nil {
+			return nil, fmt.Errorf("no certificateRefs found in listener %s", listener.Name)
+		}
 		// frontendValidation configures downstream mTLS: clients must present a
 		// certificate signed by one of the referenced CAs during the TLS handshake.
 		client, err := t.translateFrontendValidation(tctx, listener, obj)
