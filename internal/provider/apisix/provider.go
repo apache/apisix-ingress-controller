@@ -251,6 +251,12 @@ func (d *apisixProvider) buildConfig(tctx *provider.TranslateContext, nnk types.
 }
 
 func (d *apisixProvider) Start(ctx context.Context) error {
+	// Start only runs once this pod has won the election, and a leadership change is the
+	// one thing that leaves the ADC sidecar holding a baseline from an earlier term: it
+	// survives the manager container, the configuration it was derived from does not.
+	// Rebuild every baseline from the data plane before syncing from it.
+	d.client.InvalidateADCCache()
+
 	d.log.Info("starting provider, waiting for readiness")
 	d.readier.WaitReady(ctx, 5*time.Minute)
 	d.log.Info("Ready detected, starting sync loop")
