@@ -26,7 +26,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	v1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
@@ -36,8 +35,7 @@ import (
 var gatewayProxyLog = logf.Log.WithName("gatewayproxy-resource")
 
 func SetupGatewayProxyWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&v1alpha1.GatewayProxy{}).
+	return ctrl.NewWebhookManagedBy[runtime.Object](mgr, &v1alpha1.GatewayProxy{}).
 		WithValidator(NewGatewayProxyCustomValidator(mgr.GetClient())).
 		Complete()
 }
@@ -49,7 +47,7 @@ type GatewayProxyCustomValidator struct {
 	checker reference.Checker
 }
 
-var _ webhook.CustomValidator = &GatewayProxyCustomValidator{}
+var _ admission.Validator[runtime.Object] = &GatewayProxyCustomValidator{}
 
 func NewGatewayProxyCustomValidator(c client.Client) *GatewayProxyCustomValidator {
 	return &GatewayProxyCustomValidator{

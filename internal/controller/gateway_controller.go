@@ -472,6 +472,22 @@ func (r *GatewayReconciler) processInfrastructure(tctx *provider.TranslateContex
 	return ProcessGatewayProxy(r.Client, r.Log, tctx, gateway, utils.NamespacedNameKind(gateway))
 }
 
+// frontendTLSValidationForListener resolves the Gateway-level frontend TLS client-cert
+// validation (Gateway API v1.6 spec.tls.frontend) that applies to the given HTTPS
+// listener: a PerPort entry matching the listener's port overrides the Default.
+func frontendTLSValidationForListener(gateway *gatewayv1.Gateway, listener gatewayv1.Listener) *gatewayv1.FrontendTLSValidation {
+	if gateway.Spec.TLS == nil || gateway.Spec.TLS.Frontend == nil {
+		return nil
+	}
+	frontend := gateway.Spec.TLS.Frontend
+	for i := range frontend.PerPort {
+		if frontend.PerPort[i].Port == listener.Port {
+			return frontend.PerPort[i].TLS.Validation
+		}
+	}
+	return frontend.Default.Validation
+}
+
 func (r *GatewayReconciler) processListenerConfig(tctx *provider.TranslateContext, gateway *gatewayv1.Gateway) {
 	listeners := gateway.Spec.Listeners
 	for _, listener := range listeners {
@@ -499,8 +515,10 @@ func (r *GatewayReconciler) processListenerConfig(tctx *provider.TranslateContex
 			}
 		}
 		// frontendValidation references CA ConfigMaps or Secrets used for downstream mTLS.
-		if listener.TLS.FrontendValidation != nil {
-			for _, ref := range listener.TLS.FrontendValidation.CACertificateRefs {
+		// In Gateway API v1.6 it is declared at the Gateway level (spec.tls.frontend);
+		// resolve the config that applies to this HTTPS listener by its port.
+		if validation := frontendTLSValidationForListener(gateway, listener); validation != nil {
+			for _, ref := range validation.CACertificateRefs {
 				ns := gateway.GetNamespace()
 				if ref.Namespace != nil {
 					ns = string(*ref.Namespace)

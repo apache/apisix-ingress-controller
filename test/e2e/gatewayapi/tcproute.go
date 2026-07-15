@@ -25,7 +25,7 @@ import (
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
@@ -187,7 +187,7 @@ spec:
 				types.NamespacedName{Namespace: s.Namespace(), Name: "tcp-block-all"},
 				l4RoutePolicyBlockAll,
 				metav1.Condition{
-					Type:   string(gatewayv1alpha2.PolicyConditionAccepted),
+					Type:   string(gatewayv1.PolicyConditionAccepted),
 					Status: metav1.ConditionTrue,
 				},
 			)

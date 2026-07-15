@@ -25,7 +25,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	apisixv2 "github.com/apache/apisix-ingress-controller/api/v2"
@@ -36,8 +35,7 @@ import (
 var apisixConsumerLog = logf.Log.WithName("apisixconsumer-resource")
 
 func SetupApisixConsumerWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&apisixv2.ApisixConsumer{}).
+	return ctrl.NewWebhookManagedBy[runtime.Object](mgr, &apisixv2.ApisixConsumer{}).
 		WithValidator(NewApisixConsumerCustomValidator(mgr.GetClient())).
 		Complete()
 }
@@ -51,7 +49,7 @@ type ApisixConsumerCustomValidator struct {
 	initErr      error
 }
 
-var _ webhook.CustomValidator = &ApisixConsumerCustomValidator{}
+var _ admission.Validator[runtime.Object] = &ApisixConsumerCustomValidator{}
 
 func NewApisixConsumerCustomValidator(c client.Client) *ApisixConsumerCustomValidator {
 	adcValidator, err := newADCAdmissionValidator(c, apisixConsumerLog)

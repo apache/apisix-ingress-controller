@@ -24,7 +24,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	apisixv2 "github.com/apache/apisix-ingress-controller/api/v2"
@@ -35,8 +34,7 @@ import (
 var apisixRouteLog = logf.Log.WithName("apisixroute-resource")
 
 func SetupApisixRouteWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&apisixv2.ApisixRoute{}).
+	return ctrl.NewWebhookManagedBy[runtime.Object](mgr, &apisixv2.ApisixRoute{}).
 		WithValidator(NewApisixRouteCustomValidator(mgr.GetClient())).
 		Complete()
 }
@@ -50,7 +48,7 @@ type ApisixRouteCustomValidator struct {
 	initErr      error
 }
 
-var _ webhook.CustomValidator = &ApisixRouteCustomValidator{}
+var _ admission.Validator[runtime.Object] = &ApisixRouteCustomValidator{}
 
 func NewApisixRouteCustomValidator(c client.Client) *ApisixRouteCustomValidator {
 	adcValidator, err := newADCAdmissionValidator(c, apisixRouteLog)

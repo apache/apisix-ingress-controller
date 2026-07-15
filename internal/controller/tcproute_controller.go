@@ -434,7 +434,7 @@ func (r *TCPRouteReconciler) processTCPRouteBackendRefs(tctx *provider.Translate
 
 		portExists := false
 		for _, port := range service.Spec.Ports {
-			if port.Port == int32(*backend.Port) {
+			if port.Port == *backend.Port {
 				portExists = true
 				break
 			}

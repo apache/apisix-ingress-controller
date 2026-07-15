@@ -26,7 +26,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
@@ -42,7 +41,7 @@ var gatewaylog = logf.Log.WithName("gateway-resource")
 
 // SetupGatewayWebhookWithManager registers the webhook for Gateway in the manager.
 func SetupGatewayWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).For(&gatewayv1.Gateway{}).
+	return ctrl.NewWebhookManagedBy[runtime.Object](mgr, &gatewayv1.Gateway{}).
 		WithValidator(NewGatewayCustomValidator(mgr.GetClient())).
 		Complete()
 }
@@ -61,7 +60,7 @@ type GatewayCustomValidator struct {
 	checker reference.Checker
 }
 
-var _ webhook.CustomValidator = &GatewayCustomValidator{}
+var _ admission.Validator[runtime.Object] = &GatewayCustomValidator{}
 
 func NewGatewayCustomValidator(c client.Client) *GatewayCustomValidator {
 	return &GatewayCustomValidator{

@@ -18,16 +18,11 @@
 package conformance
 
 import (
-	"os"
 	"testing"
 
-	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/gateway-api/conformance"
 	conformancev1 "sigs.k8s.io/gateway-api/conformance/apis/v1"
 	"sigs.k8s.io/gateway-api/conformance/tests"
-	"sigs.k8s.io/gateway-api/conformance/utils/flags"
-	"sigs.k8s.io/gateway-api/conformance/utils/suite"
-	"sigs.k8s.io/yaml"
 )
 
 // https://github.com/kubernetes-sigs/gateway-api/blob/5c5fc388829d24e8071071b01e8313ada8f15d9f/conformance/utils/suite/suite.go#L358.  SAN includes '*'
@@ -46,7 +41,7 @@ func TestGatewayAPIConformance(t *testing.T) {
 	opts.Debug = true
 	opts.CleanupBaseResources = true
 	opts.GatewayClassName = gatewayClassName
-	opts.SkipTests = skippedTestsForSSL
+	opts.SkipTests = append(opts.SkipTests, skippedTestsForSSL...)
 	opts.Implementation = conformancev1.Implementation{
 		Organization: "APISIX",
 		Project:      "apisix-ingress-controller",
@@ -54,29 +49,5 @@ func TestGatewayAPIConformance(t *testing.T) {
 		Version:      "v2.0.0",
 	}
 
-	cSuite, err := suite.NewConformanceTestSuite(opts)
-	require.NoError(t, err)
-
-	t.Log("starting the gateway conformance test suite")
-	cSuite.Setup(t, tests.ConformanceTests)
-
-	if err := cSuite.Run(t, tests.ConformanceTests); err != nil {
-		t.Fatalf("failed to run the gateway conformance test suite: %v", err)
-	}
-
-	report, err := cSuite.Report()
-	if err != nil {
-		t.Fatalf("failed to get the gateway conformance test report: %v", err)
-	}
-
-	rawReport, err := yaml.Marshal(report)
-	if err != nil {
-		t.Fatalf("failed to marshal the gateway conformance test report: %v", err)
-	}
-	f, err := os.Create(*flags.ReportOutput)
-	require.NoError(t, err)
-	defer func() { _ = f.Close() }()
-
-	_, err = f.Write(rawReport)
-	require.NoError(t, err)
+	conformance.RunConformanceWithOptions(t, opts)
 }

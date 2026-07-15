@@ -25,7 +25,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	v1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
@@ -40,7 +39,7 @@ var ingressclasslog = logf.Log.WithName("ingressclass-resource")
 
 // SetupIngressClassWebhookWithManager registers the webhook for IngressClass in the manager.
 func SetupIngressClassWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).For(&networkingv1.IngressClass{}).
+	return ctrl.NewWebhookManagedBy[runtime.Object](mgr, &networkingv1.IngressClass{}).
 		WithValidator(&IngressClassCustomValidator{Client: mgr.GetClient()}).
 		Complete()
 }
@@ -58,7 +57,7 @@ type IngressClassCustomValidator struct {
 	Client client.Client
 }
 
-var _ webhook.CustomValidator = &IngressClassCustomValidator{}
+var _ admission.Validator[runtime.Object] = &IngressClassCustomValidator{}
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type IngressClass.
 func (v *IngressClassCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {

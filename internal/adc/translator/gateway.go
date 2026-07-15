@@ -144,16 +144,36 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 	return sslObjs, nil
 }
 
-// translateFrontendValidation builds the downstream mTLS client configuration from a
-// listener's frontendValidation. The referenced CA certificates (ConfigMap, key `ca.crt`)
-// are bundled into a single trust anchor used to validate client certificates.
+// frontendTLSValidation resolves the Gateway-level frontend TLS client-cert
+// validation that applies to the given HTTPS listener. In Gateway API v1.6,
+// frontendValidation moved from the per-listener TLS config to the Gateway-level
+// spec.tls.frontend: Default applies to all HTTPS listeners, and a PerPort entry
+// overrides it for listeners on the matching port.
+func frontendTLSValidation(obj *gatewayv1.Gateway, listener gatewayv1.Listener) *gatewayv1.FrontendTLSValidation {
+	if obj.Spec.TLS == nil || obj.Spec.TLS.Frontend == nil {
+		return nil
+	}
+	frontend := obj.Spec.TLS.Frontend
+	for i := range frontend.PerPort {
+		if frontend.PerPort[i].Port == listener.Port {
+			return frontend.PerPort[i].TLS.Validation
+		}
+	}
+	return frontend.Default.Validation
+}
+
+// translateFrontendValidation builds the downstream mTLS client configuration from the
+// Gateway's frontendValidation that applies to the listener. The referenced CA
+// certificates (ConfigMap, key `ca.crt`) are bundled into a single trust anchor used
+// to validate client certificates.
 func (t *Translator) translateFrontendValidation(tctx *provider.TranslateContext, listener gatewayv1.Listener, obj *gatewayv1.Gateway) (*adctypes.ClientClass, error) {
-	if listener.TLS.FrontendValidation == nil || len(listener.TLS.FrontendValidation.CACertificateRefs) == 0 {
+	validation := frontendTLSValidation(obj, listener)
+	if validation == nil || len(validation.CACertificateRefs) == 0 {
 		return nil, nil
 	}
 
-	cas := make([]string, 0, len(listener.TLS.FrontendValidation.CACertificateRefs))
-	for _, ref := range listener.TLS.FrontendValidation.CACertificateRefs {
+	cas := make([]string, 0, len(validation.CACertificateRefs))
+	for _, ref := range validation.CACertificateRefs {
 		// caCertificateRefs must be in the core API group. ConfigMap is the
 		// Gateway API Core support; Secret is an implementation-specific extension.
 		if ref.Group != "" && string(ref.Group) != corev1.GroupName {

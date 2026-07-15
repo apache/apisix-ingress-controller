@@ -31,7 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
@@ -308,9 +307,9 @@ func TestTranslateHTTPRouteUpstreamScheme(t *testing.T) {
 					},
 					Spec: v1alpha1.BackendTrafficPolicySpec{
 						TargetRefs: []v1alpha1.BackendPolicyTargetReferenceWithSectionName{{
-							LocalPolicyTargetReference: gatewayv1alpha2.LocalPolicyTargetReference{
-								Name: gatewayv1alpha2.ObjectName(serviceName),
-								Kind: gatewayv1alpha2.Kind(internaltypes.KindService),
+							LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
+								Name: gatewayv1.ObjectName(serviceName),
+								Kind: gatewayv1.Kind(internaltypes.KindService),
 							},
 						}},
 						Scheme: tt.policyScheme,
@@ -329,7 +328,7 @@ func TestTranslateHTTPRouteUpstreamScheme(t *testing.T) {
 							BackendRef: gatewayv1.BackendRef{
 								BackendObjectReference: gatewayv1.BackendObjectReference{
 									Name: gatewayv1.ObjectName(serviceName),
-									Port: ptr.To(gatewayv1.PortNumber(portNumber)),
+									Port: ptr.To(portNumber),
 								},
 							},
 						}},
@@ -535,20 +534,20 @@ func TestAttachBackendTrafficPolicyToUpstreamSectionName(t *testing.T) {
 			BackendObjectReference: gatewayv1.BackendObjectReference{
 				Name:      gatewayv1.ObjectName(serviceName),
 				Namespace: ptr.To(gatewayv1.Namespace(namespace)),
-				Port:      ptr.To(gatewayv1.PortNumber(port)),
+				Port:      ptr.To(port),
 			},
 		}
 	}
 
 	newPolicy := func(name, sectionName, scheme string) *v1alpha1.BackendTrafficPolicy {
 		targetRef := v1alpha1.BackendPolicyTargetReferenceWithSectionName{
-			LocalPolicyTargetReference: gatewayv1alpha2.LocalPolicyTargetReference{
-				Name: gatewayv1alpha2.ObjectName(serviceName),
-				Kind: gatewayv1alpha2.Kind(internaltypes.KindService),
+			LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
+				Name: gatewayv1.ObjectName(serviceName),
+				Kind: gatewayv1.Kind(internaltypes.KindService),
 			},
 		}
 		if sectionName != "" {
-			targetRef.SectionName = ptr.To(gatewayv1alpha2.SectionName(sectionName))
+			targetRef.SectionName = ptr.To(gatewayv1.SectionName(sectionName))
 		}
 		return &v1alpha1.BackendTrafficPolicy{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
@@ -606,9 +605,9 @@ func TestAttachBackendTrafficPolicyToUpstreamSectionName(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Name: "p", Namespace: namespace},
 					Spec: v1alpha1.BackendTrafficPolicySpec{
 						TargetRefs: []v1alpha1.BackendPolicyTargetReferenceWithSectionName{{
-							LocalPolicyTargetReference: gatewayv1alpha2.LocalPolicyTargetReference{
-								Name: gatewayv1alpha2.ObjectName(serviceName),
-								Kind: gatewayv1alpha2.Kind("ServiceImport"),
+							LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
+								Name: gatewayv1.ObjectName(serviceName),
+								Kind: gatewayv1.Kind("ServiceImport"),
 							},
 						}},
 						Scheme: apiv2.SchemeHTTPS,

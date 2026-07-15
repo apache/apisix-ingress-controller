@@ -50,11 +50,19 @@ func newTLSGateway(frontendValidation *gatewayv1.FrontendTLSValidation) *gateway
 			Name:      "gw",
 		},
 		Spec: gatewayv1.GatewaySpec{
+			// In Gateway API v1.6 frontendValidation is declared at the Gateway level.
+			TLS: &gatewayv1.GatewayTLSConfig{
+				Frontend: &gatewayv1.FrontendTLSConfig{
+					Default: gatewayv1.TLSConfig{
+						Validation: frontendValidation,
+					},
+				},
+			},
 			Listeners: []gatewayv1.Listener{
 				{
 					Name:     "https",
 					Hostname: ptr.To(gatewayv1.Hostname("example.com")),
-					TLS: &gatewayv1.GatewayTLSConfig{
+					TLS: &gatewayv1.ListenerTLSConfig{
 						Mode: ptr.To(gatewayv1.TLSModeTerminate),
 						CertificateRefs: []gatewayv1.SecretObjectReference{
 							{
@@ -62,7 +70,6 @@ func newTLSGateway(frontendValidation *gatewayv1.FrontendTLSValidation) *gateway
 								Name: gatewayv1.ObjectName("server-cert"),
 							},
 						},
-						FrontendValidation: frontendValidation,
 					},
 				},
 			},

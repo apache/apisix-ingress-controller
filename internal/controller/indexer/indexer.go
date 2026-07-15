@@ -591,33 +591,50 @@ func GatewaySecretIndexFunc(rawObj client.Object) (keys []string) {
 			}
 			add(namespace, string(ref.Name))
 		}
-		// frontendValidation CA references that are Secrets.
-		if listener.TLS.FrontendValidation != nil {
-			for _, ref := range listener.TLS.FrontendValidation.CACertificateRefs {
-				if string(ref.Kind) != internaltypes.KindSecret {
-					continue
-				}
-				namespace := gateway.GetNamespace()
-				if ref.Namespace != nil {
-					namespace = string(*ref.Namespace)
-				}
-				add(namespace, string(ref.Name))
+	}
+	// frontendValidation CA references that are Secrets. In Gateway API v1.6 these
+	// live at the Gateway level (spec.tls.frontend), not on individual listeners.
+	for _, validation := range gatewayFrontendValidations(gateway) {
+		for _, ref := range validation.CACertificateRefs {
+			if string(ref.Kind) != internaltypes.KindSecret {
+				continue
 			}
+			namespace := gateway.GetNamespace()
+			if ref.Namespace != nil {
+				namespace = string(*ref.Namespace)
+			}
+			add(namespace, string(ref.Name))
 		}
 	}
 	return keys
 }
 
+// gatewayFrontendValidations returns all frontend TLS client-cert validation configs
+// declared on a Gateway (the Default plus every PerPort override).
+func gatewayFrontendValidations(gateway *gatewayv1.Gateway) []*gatewayv1.FrontendTLSValidation {
+	if gateway.Spec.TLS == nil || gateway.Spec.TLS.Frontend == nil {
+		return nil
+	}
+	frontend := gateway.Spec.TLS.Frontend
+	validations := make([]*gatewayv1.FrontendTLSValidation, 0, len(frontend.PerPort)+1)
+	if frontend.Default.Validation != nil {
+		validations = append(validations, frontend.Default.Validation)
+	}
+	for i := range frontend.PerPort {
+		if frontend.PerPort[i].TLS.Validation != nil {
+			validations = append(validations, frontend.PerPort[i].TLS.Validation)
+		}
+	}
+	return validations
+}
+
 // GatewayConfigMapIndexFunc indexes Gateways by the CA ConfigMaps referenced via
-// listener TLS frontendValidation, so that ConfigMap changes can trigger reconciliation.
+// Gateway TLS frontendValidation, so that ConfigMap changes can trigger reconciliation.
 func GatewayConfigMapIndexFunc(rawObj client.Object) (keys []string) {
 	gateway := rawObj.(*gatewayv1.Gateway)
 	var m = make(map[string]struct{})
-	for _, listener := range gateway.Spec.Listeners {
-		if listener.TLS == nil || listener.TLS.FrontendValidation == nil {
-			continue
-		}
-		for _, ref := range listener.TLS.FrontendValidation.CACertificateRefs {
+	for _, validation := range gatewayFrontendValidations(gateway) {
+		for _, ref := range validation.CACertificateRefs {
 			if ref.Kind != "" && string(ref.Kind) != internaltypes.KindConfigMap {
 				continue
 			}

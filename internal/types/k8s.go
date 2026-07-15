@@ -129,11 +129,11 @@ func GvkOf(obj any) schema.GroupVersionKind {
 	kind := KindOf(obj)
 	switch obj.(type) {
 	case *gatewayv1.Gateway, *gatewayv1.HTTPRoute, *gatewayv1.GatewayClass, *gatewayv1.GRPCRoute:
-		return gatewayv1.SchemeGroupVersion.WithKind(kind)
+		return schema.GroupVersion(gatewayv1.GroupVersion).WithKind(kind)
 	case *gatewayv1alpha2.TCPRoute, *gatewayv1alpha2.UDPRoute, *gatewayv1alpha2.TLSRoute:
-		return gatewayv1alpha2.SchemeGroupVersion.WithKind(kind)
+		return schema.GroupVersion(gatewayv1alpha2.GroupVersion).WithKind(kind)
 	case *gatewayv1beta1.ReferenceGrant:
-		return gatewayv1beta1.SchemeGroupVersion.WithKind(kind)
+		return schema.GroupVersion(gatewayv1beta1.GroupVersion).WithKind(kind)
 	case *netv1.Ingress, *netv1.IngressClass:
 		return netv1.SchemeGroupVersion.WithKind(kind)
 	case *corev1.Secret, *corev1.Service:

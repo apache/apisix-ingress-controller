@@ -191,7 +191,9 @@ func (t *Translator) fillPluginFromHTTPCORSFilter(plugins adctypes.Plugins, cors
 		}
 		plugin.ExposeHeaders = strings.Join(exposeHeaders, ",")
 	}
-	plugin.AllowCredential = bool(cors.AllowCredentials)
+	if cors.AllowCredentials != nil {
+		plugin.AllowCredential = *cors.AllowCredentials
+	}
 }
 
 func (t *Translator) fillPluginFromHTTPRequestHeaderFilter(plugins adctypes.Plugins, reqHeaderModifier *gatewayv1.HTTPHeaderFilter) {
@@ -570,7 +572,7 @@ func (t *Translator) translateBackendsToUpstreams(
 			kind = string(*backend.Kind)
 		}
 		if backend.Port != nil {
-			port = int32(*backend.Port)
+			port = *backend.Port
 		}
 		namespace := string(*backend.Namespace)
 		name := string(backend.Name)
@@ -715,7 +717,7 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 		// Collect unique listener ports for port-based routing
 		listenerPorts := make(map[int32]struct{})
 		for _, listener := range tctx.Listeners {
-			listenerPorts[int32(listener.Port)] = struct{}{}
+			listenerPorts[listener.Port] = struct{}{}
 		}
 
 		// Add server_port matching only when a route explicitly targets a listener
