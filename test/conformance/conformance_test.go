@@ -47,6 +47,7 @@ func TestGatewayAPIConformance(t *testing.T) {
 		Project:      "apisix-ingress-controller",
 		URL:          "https://github.com/apache/apisix-ingress-controller.git",
 		Version:      "v2.0.0",
+		Contact:      []string{"https://github.com/apache/apisix-ingress-controller/issues"},
 	}
 
 	conformance.RunConformanceWithOptions(t, opts)
