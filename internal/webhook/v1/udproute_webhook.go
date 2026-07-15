@@ -35,8 +35,8 @@ import (
 var udpRouteLog = logf.Log.WithName("udproute-resource")
 
 func SetupUDPRouteWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy[runtime.Object](mgr, &gatewayv1alpha2.UDPRoute{}).
-		WithValidator(NewUDPRouteCustomValidator(mgr.GetClient())).
+	return ctrl.NewWebhookManagedBy(mgr, &gatewayv1alpha2.UDPRoute{}).
+		WithCustomValidator(NewUDPRouteCustomValidator(mgr.GetClient())).
 		Complete()
 }
 

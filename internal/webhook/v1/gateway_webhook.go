@@ -41,8 +41,8 @@ var gatewaylog = logf.Log.WithName("gateway-resource")
 
 // SetupGatewayWebhookWithManager registers the webhook for Gateway in the manager.
 func SetupGatewayWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy[runtime.Object](mgr, &gatewayv1.Gateway{}).
-		WithValidator(NewGatewayCustomValidator(mgr.GetClient())).
+	return ctrl.NewWebhookManagedBy(mgr, &gatewayv1.Gateway{}).
+		WithCustomValidator(NewGatewayCustomValidator(mgr.GetClient())).
 		Complete()
 }
 

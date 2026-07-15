@@ -35,8 +35,8 @@ import (
 var grpcRouteLog = logf.Log.WithName("grpcroute-resource")
 
 func SetupGRPCRouteWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy[runtime.Object](mgr, &gatewayv1.GRPCRoute{}).
-		WithValidator(NewGRPCRouteCustomValidator(mgr.GetClient())).
+	return ctrl.NewWebhookManagedBy(mgr, &gatewayv1.GRPCRoute{}).
+		WithCustomValidator(NewGRPCRouteCustomValidator(mgr.GetClient())).
 		Complete()
 }
 

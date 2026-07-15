@@ -35,8 +35,8 @@ import (
 var tcpRouteLog = logf.Log.WithName("tcproute-resource")
 
 func SetupTCPRouteWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy[runtime.Object](mgr, &gatewayv1alpha2.TCPRoute{}).
-		WithValidator(NewTCPRouteCustomValidator(mgr.GetClient())).
+	return ctrl.NewWebhookManagedBy(mgr, &gatewayv1alpha2.TCPRoute{}).
+		WithCustomValidator(NewTCPRouteCustomValidator(mgr.GetClient())).
 		Complete()
 }
 

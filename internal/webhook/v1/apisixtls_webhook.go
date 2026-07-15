@@ -35,8 +35,8 @@ import (
 var apisixTlsLog = logf.Log.WithName("apisixtls-resource")
 
 func SetupApisixTlsWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy[runtime.Object](mgr, &apisixv2.ApisixTls{}).
-		WithValidator(NewApisixTlsCustomValidator(mgr.GetClient())).
+	return ctrl.NewWebhookManagedBy(mgr, &apisixv2.ApisixTls{}).
+		WithCustomValidator(NewApisixTlsCustomValidator(mgr.GetClient())).
 		Complete()
 }
 

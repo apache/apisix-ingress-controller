@@ -38,8 +38,8 @@ import (
 var consumerLog = logf.Log.WithName("consumer-resource")
 
 func SetupConsumerWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy[runtime.Object](mgr, &apisixv1alpha1.Consumer{}).
-		WithValidator(NewConsumerCustomValidator(mgr.GetClient())).
+	return ctrl.NewWebhookManagedBy(mgr, &apisixv1alpha1.Consumer{}).
+		WithCustomValidator(NewConsumerCustomValidator(mgr.GetClient())).
 		Complete()
 }
 

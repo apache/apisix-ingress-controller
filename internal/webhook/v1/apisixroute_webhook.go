@@ -34,8 +34,8 @@ import (
 var apisixRouteLog = logf.Log.WithName("apisixroute-resource")
 
 func SetupApisixRouteWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy[runtime.Object](mgr, &apisixv2.ApisixRoute{}).
-		WithValidator(NewApisixRouteCustomValidator(mgr.GetClient())).
+	return ctrl.NewWebhookManagedBy(mgr, &apisixv2.ApisixRoute{}).
+		WithCustomValidator(NewApisixRouteCustomValidator(mgr.GetClient())).
 		Complete()
 }
 

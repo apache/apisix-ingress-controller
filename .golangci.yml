@@ -67,6 +67,13 @@ linters:
           - staticcheck
         text: "SA1019:.*scheme.Builder"
         path: api/.*/groupversion_info.go
+      # controller-runtime v0.24 deprecated WithCustomValidator in favour of the
+      # generic WithValidator, but that path decodes via the generic type and
+      # panics for our runtime.Object-typed CustomValidators; keep the working API.
+      - linters:
+          - staticcheck
+        text: "WithCustomValidator is deprecated"
+        path: internal/webhook/.*
     paths:
       - third_party$
       - builtin$

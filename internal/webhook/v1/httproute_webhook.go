@@ -35,8 +35,8 @@ import (
 var httpRouteLog = logf.Log.WithName("httproute-resource")
 
 func SetupHTTPRouteWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy[runtime.Object](mgr, &gatewayv1.HTTPRoute{}).
-		WithValidator(NewHTTPRouteCustomValidator(mgr.GetClient())).
+	return ctrl.NewWebhookManagedBy(mgr, &gatewayv1.HTTPRoute{}).
+		WithCustomValidator(NewHTTPRouteCustomValidator(mgr.GetClient())).
 		Complete()
 }
 

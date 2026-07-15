@@ -36,8 +36,8 @@ var ingresslog = logf.Log.WithName("ingress-resource")
 
 // SetupIngressWebhookWithManager registers the webhook for Ingress in the manager.
 func SetupIngressWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy[runtime.Object](mgr, &networkingv1.Ingress{}).
-		WithValidator(NewIngressCustomValidator(mgr.GetClient())).
+	return ctrl.NewWebhookManagedBy(mgr, &networkingv1.Ingress{}).
+		WithCustomValidator(NewIngressCustomValidator(mgr.GetClient())).
 		Complete()
 }
 

@@ -35,8 +35,8 @@ import (
 var apisixConsumerLog = logf.Log.WithName("apisixconsumer-resource")
 
 func SetupApisixConsumerWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy[runtime.Object](mgr, &apisixv2.ApisixConsumer{}).
-		WithValidator(NewApisixConsumerCustomValidator(mgr.GetClient())).
+	return ctrl.NewWebhookManagedBy(mgr, &apisixv2.ApisixConsumer{}).
+		WithCustomValidator(NewApisixConsumerCustomValidator(mgr.GetClient())).
 		Complete()
 }
 

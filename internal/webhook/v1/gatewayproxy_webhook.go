@@ -35,8 +35,8 @@ import (
 var gatewayProxyLog = logf.Log.WithName("gatewayproxy-resource")
 
 func SetupGatewayProxyWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy[runtime.Object](mgr, &v1alpha1.GatewayProxy{}).
-		WithValidator(NewGatewayProxyCustomValidator(mgr.GetClient())).
+	return ctrl.NewWebhookManagedBy(mgr, &v1alpha1.GatewayProxy{}).
+		WithCustomValidator(NewGatewayProxyCustomValidator(mgr.GetClient())).
 		Complete()
 }
 
