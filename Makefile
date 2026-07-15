@@ -48,7 +48,7 @@ VERSYM="github.com/apache/apisix-ingress-controller/internal/version._buildVersi
 GITSHASYM="github.com/apache/apisix-ingress-controller/internal/version._buildGitRevision"
 BUILDOSSYM="github.com/apache/apisix-ingress-controller/internal/version._buildOS"
 MINK8SVERSYM="github.com/apache/apisix-ingress-controller/internal/manager._minK8sVersion"
-MIN_K8S_VERSION ?= 1.26.0
+MIN_K8S_VERSION ?= 1.31.0
 GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM)=$(OSNAME)/$(OSARCH) -X=$(MINK8SVERSYM)=$(MIN_K8S_VERSION)"
 
 # gateway-api
@@ -294,7 +294,9 @@ endif
 
 .PHONY: install-gateway-api
 install-gateway-api: ## Install Gateway API CRDs into the K8s cluster specified in ~/.kube/config.
-	kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEAY_API_VERSION)/experimental-install.yaml
+	# Server-side apply: the v1.6 CRDs exceed the 262144-byte annotation limit of
+	# client-side apply (last-applied-configuration).
+	kubectl apply --server-side --force-conflicts -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEAY_API_VERSION)/experimental-install.yaml
 
 .PHONY: uninstall-gateway-api
 uninstall-gateway-api: ## Uninstall Gateway API CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
