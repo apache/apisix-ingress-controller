@@ -212,7 +212,7 @@ func (s *Scaffold) NewAPISIXClient() *httpexpect.Expect {
 func (s *Scaffold) NewAPISIXClientOnTCPPort() *httpexpect.Expect {
 	u := url.URL{
 		Scheme: "http",
-		Host:   s.apisixTunnels.TCP.Endpoint(),
+		Host:   s.apisixTCPEndpoint(),
 	}
 	return httpexpect.WithConfig(httpexpect.Config{
 		BaseURL: u.String(),
@@ -238,7 +238,15 @@ func (s *Scaffold) GetAPISIXHTTPSEndpoint() string {
 }
 
 func (s *Scaffold) GetAPISIXTCPEndpoint() string {
-	return s.apisixTunnels.TCP.Endpoint()
+	return s.apisixTCPEndpoint()
+}
+
+// apisixTCPEndpoint returns the local TCP tunnel address forced to IPv4.
+// terratest's Endpoint() yields "localhost:<port>", which resolves to ::1
+// first; the client-go port-forward is not guaranteed to bind ::1, so raw TCP
+// dials (e.g. the MQTT client, net.Dial) fail with "connection refused" on IPv6.
+func (s *Scaffold) apisixTCPEndpoint() string {
+	return strings.Replace(s.apisixTunnels.TCP.Endpoint(), "localhost", "127.0.0.1", 1)
 }
 
 func (s *Scaffold) UpdateNamespace(ns string) {
@@ -272,7 +280,7 @@ func (s *Scaffold) NewAPISIXHttpsClient(host string) *httpexpect.Expect {
 func (s *Scaffold) NewAPISIXClientWithTCPProxy() *httpexpect.Expect {
 	u := url.URL{
 		Scheme: apiv2.SchemeHTTP,
-		Host:   s.apisixTunnels.TCP.Endpoint(),
+		Host:   s.apisixTCPEndpoint(),
 	}
 	return httpexpect.WithConfig(httpexpect.Config{
 		BaseURL: u.String(),
