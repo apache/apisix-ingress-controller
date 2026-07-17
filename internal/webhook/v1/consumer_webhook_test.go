@@ -27,11 +27,39 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	apisixv1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	"github.com/apache/apisix-ingress-controller/internal/controller"
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 )
+
+// authNS is a foreign namespace used for cross-namespace secretRef tests.
+const authNS = "auth"
+
+// enableReferenceGrant turns on the cross-namespace ReferenceGrant gate for the
+// duration of a test and resets it afterwards.
+func enableReferenceGrant(t *testing.T) {
+	t.Helper()
+	controller.SetEnableReferenceGrant(true)
+	t.Cleanup(func() { controller.SetEnableReferenceGrant(false) })
+}
+
+// consumerToSecretGrant permits Consumers in fromNS to reference Secrets in grantNS.
+func consumerToSecretGrant(grantNS, fromNS string) *v1beta1.ReferenceGrant {
+	return &v1beta1.ReferenceGrant{
+		ObjectMeta: metav1.ObjectMeta{Name: "allow-consumer", Namespace: grantNS},
+		Spec: v1beta1.ReferenceGrantSpec{
+			From: []v1beta1.ReferenceGrantFrom{{
+				Group:     v1beta1.Group(apisixv1alpha1.GroupVersion.Group),
+				Kind:      "Consumer",
+				Namespace: v1beta1.Namespace(fromNS),
+			}},
+			To: []v1beta1.ReferenceGrantTo{{Group: "", Kind: "Secret"}},
+		},
+	}
+}
 
 func buildConsumerValidator(t *testing.T, objects ...runtime.Object) *ConsumerCustomValidator {
 	t.Helper()
@@ -40,6 +68,7 @@ func buildConsumerValidator(t *testing.T, objects ...runtime.Object) *ConsumerCu
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
 	require.NoError(t, apisixv1alpha1.AddToScheme(scheme))
 	require.NoError(t, gatewayv1.Install(scheme))
+	require.NoError(t, v1beta1.Install(scheme))
 
 	managed := []runtime.Object{
 		&gatewayv1.GatewayClass{
@@ -90,7 +119,7 @@ func TestConsumerValidator_MissingSecretDefaultNamespace(t *testing.T) {
 }
 
 func TestConsumerValidator_MissingSecretCustomNamespace(t *testing.T) {
-	ns := "auth"
+	ns := authNS
 	consumer := &apisixv1alpha1.Consumer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo",
@@ -108,7 +137,8 @@ func TestConsumerValidator_MissingSecretCustomNamespace(t *testing.T) {
 		},
 	}
 
-	validator := buildConsumerValidator(t)
+	enableReferenceGrant(t)
+	validator := buildConsumerValidator(t, consumerToSecretGrant(authNS, "default"))
 
 	warnings, err := validator.ValidateCreate(context.Background(), consumer)
 	require.NoError(t, err)
@@ -116,8 +146,37 @@ func TestConsumerValidator_MissingSecretCustomNamespace(t *testing.T) {
 	require.Contains(t, warnings[0], "Referenced Secret 'auth/jwt-secret' not found")
 }
 
+// A cross-namespace secretRef without a permitting ReferenceGrant is rejected at admission.
+func TestConsumerValidator_CrossNamespaceSecretRefDeniedWithoutGrant(t *testing.T) {
+	enableReferenceGrant(t)
+	ns := authNS
+	consumer := &apisixv1alpha1.Consumer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+		},
+		Spec: apisixv1alpha1.ConsumerSpec{
+			GatewayRef: apisixv1alpha1.GatewayRef{Name: "test-gateway"},
+			Credentials: []apisixv1alpha1.Credential{{
+				Type: "jwt-auth",
+				SecretRef: &apisixv1alpha1.SecretReference{
+					Name:      "jwt-secret",
+					Namespace: &ns,
+				},
+			}},
+		},
+	}
+
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "jwt-secret", Namespace: authNS}}
+	validator := buildConsumerValidator(t, secret)
+
+	_, err := validator.ValidateCreate(context.Background(), consumer)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "not permitted by any ReferenceGrant")
+}
+
 func TestConsumerValidator_NoWarnings(t *testing.T) {
-	ns := "auth"
+	ns := authNS
 	consumer := &apisixv1alpha1.Consumer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo",
@@ -140,9 +199,11 @@ func TestConsumerValidator_NoWarnings(t *testing.T) {
 		},
 	}
 
+	enableReferenceGrant(t)
 	objs := []runtime.Object{
-		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "jwt-secret", Namespace: "auth"}},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "jwt-secret", Namespace: authNS}},
 		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "key-secret", Namespace: "default"}},
+		consumerToSecretGrant(authNS, "default"),
 	}
 
 	validator := buildConsumerValidator(t, objs...)
