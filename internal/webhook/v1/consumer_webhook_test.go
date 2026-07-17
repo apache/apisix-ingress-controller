@@ -17,6 +17,7 @@ package v1
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -175,6 +176,50 @@ func TestConsumerValidator_CrossNamespaceSecretRefDeniedWithoutGrant(t *testing.
 	require.Contains(t, err.Error(), "not permitted by any ReferenceGrant")
 }
 
+// The rejection above must not double as an existence oracle: a cross-namespace ref
+// that no ReferenceGrant permits produces the same response whether or not the
+// Secret exists.
+func TestConsumerValidator_CrossNamespaceSecretOracleSuppressed(t *testing.T) {
+	enableReferenceGrant(t)
+	ns := authNS
+	newConsumer := func() *apisixv1alpha1.Consumer {
+		return &apisixv1alpha1.Consumer{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "demo",
+				Namespace: "default",
+			},
+			Spec: apisixv1alpha1.ConsumerSpec{
+				GatewayRef: apisixv1alpha1.GatewayRef{Name: "test-gateway"},
+				Credentials: []apisixv1alpha1.Credential{{
+					Type: "jwt-auth",
+					SecretRef: &apisixv1alpha1.SecretReference{
+						Name:      "jwt-secret",
+						Namespace: &ns,
+					},
+				}},
+			},
+		}
+	}
+
+	// Secret present in the foreign namespace, no ReferenceGrant permitting the ref.
+	present := buildConsumerValidator(t, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "jwt-secret", Namespace: authNS},
+	})
+	presentWarnings, presentErr := present.ValidateCreate(context.Background(), newConsumer())
+	require.Error(t, presentErr)
+
+	// Same request, Secret absent.
+	absent := buildConsumerValidator(t)
+	absentWarnings, absentErr := absent.ValidateCreate(context.Background(), newConsumer())
+	require.Error(t, absentErr)
+
+	// Identical response either way: no existence oracle.
+	require.Equal(t, absentWarnings, presentWarnings)
+	require.Equal(t, absentErr.Error(), presentErr.Error())
+	require.Len(t, presentWarnings, 1)
+	require.Contains(t, presentWarnings[0], "Referenced Secret 'auth/jwt-secret' is not accessible from this Consumer without a ReferenceGrant")
+}
+
 func TestConsumerValidator_NoWarnings(t *testing.T) {
 	ns := authNS
 	consumer := &apisixv1alpha1.Consumer{
@@ -252,4 +297,52 @@ func TestConsumerValidator_DenyDuplicateKeyAuthCredential(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), `duplicate key-auth credential key "shared-key"`)
 	require.Contains(t, err.Error(), "default/existing")
+}
+
+// The duplicate-key check must not become a cross-namespace oracle: a key-auth
+// credential whose secretRef points across namespaces without a ReferenceGrant
+// must respond the same whether the Secret exists with a colliding key or is
+// absent, and must never leak the duplicate-key error.
+func TestConsumerValidator_CrossNamespaceKeyAuthDuplicateOracleSuppressed(t *testing.T) {
+	enableReferenceGrant(t)
+	ns := authNS
+
+	existing := &apisixv1alpha1.Consumer{
+		ObjectMeta: metav1.ObjectMeta{Name: "existing", Namespace: "default"},
+		Spec: apisixv1alpha1.ConsumerSpec{
+			GatewayRef: apisixv1alpha1.GatewayRef{Name: "test-gateway"},
+			Credentials: []apisixv1alpha1.Credential{{
+				Type:   "key-auth",
+				Config: apiextensionsv1.JSON{Raw: []byte(`{"key":"shared-key"}`)},
+			}},
+		},
+	}
+	newConsumer := func() *apisixv1alpha1.Consumer {
+		return &apisixv1alpha1.Consumer{
+			ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
+			Spec: apisixv1alpha1.ConsumerSpec{
+				GatewayRef: apisixv1alpha1.GatewayRef{Name: "test-gateway"},
+				Credentials: []apisixv1alpha1.Credential{{
+					Type:      "key-auth",
+					SecretRef: &apisixv1alpha1.SecretReference{Name: "key-secret", Namespace: &ns},
+				}},
+			},
+		}
+	}
+
+	// Cross-namespace Secret exists and holds the colliding key, but no grant permits it.
+	collides := buildConsumerValidator(t, existing, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "key-secret", Namespace: authNS},
+		Data:       map[string][]byte{"key": []byte("shared-key")},
+	})
+	collidesWarnings, collidesErr := collides.ValidateCreate(context.Background(), newConsumer())
+
+	// Same request, Secret absent.
+	absent := buildConsumerValidator(t, existing)
+	absentWarnings, absentErr := absent.ValidateCreate(context.Background(), newConsumer())
+
+	// Identical response either way, and no duplicate-key error ever surfaces.
+	require.Equal(t, absentWarnings, collidesWarnings)
+	require.Equal(t, fmt.Sprint(absentErr), fmt.Sprint(collidesErr))
+	require.NotContains(t, fmt.Sprint(collidesErr), "duplicate key-auth credential key")
 }

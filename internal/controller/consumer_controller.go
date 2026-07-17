@@ -35,7 +35,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
@@ -255,21 +254,8 @@ func (r *ConsumerReconciler) processSpec(ctx context.Context, tctx *provider.Tra
 			ns = *credential.SecretRef.Namespace
 		}
 		// A cross-namespace SecretRef needs a ReferenceGrant, same as routes.
-		secretNS := gatewayv1.Namespace(ns)
-		if permitted := checkReferenceGrant(ctx,
-			r.Client,
-			v1beta1.ReferenceGrantFrom{
-				Group:     v1beta1.Group(v1alpha1.GroupVersion.Group),
-				Kind:      v1beta1.Kind(internaltypes.KindConsumer),
-				Namespace: v1beta1.Namespace(consumer.GetNamespace()),
-			},
-			gatewayv1.ObjectReference{
-				Group:     corev1.GroupName,
-				Kind:      KindSecret,
-				Name:      gatewayv1.ObjectName(credential.SecretRef.Name),
-				Namespace: &secretNS,
-			},
-		); !permitted {
+		secretNN := types.NamespacedName{Namespace: ns, Name: credential.SecretRef.Name}
+		if !CheckConsumerSecretRef(ctx, r.Client, consumer.GetNamespace(), secretNN) {
 			r.Log.Error(nil, "cross-namespace secret reference not permitted by any ReferenceGrant",
 				"consumer", utils.NamespacedName(consumer), "secret", client.ObjectKey{Namespace: ns, Name: credential.SecretRef.Name})
 			return fmt.Errorf("cross-namespace secret reference from Consumer %s/%s to Secret %s/%s is not permitted by any ReferenceGrant",

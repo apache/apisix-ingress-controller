@@ -1353,6 +1353,25 @@ func checkReferenceGrant(ctx context.Context, cli client.Client, obj v1beta1.Ref
 	return false
 }
 
+// CheckConsumerSecretRef reports whether a Consumer in fromNamespace may reference
+// the Secret at secretNN, honoring ReferenceGrant for cross-namespace references.
+func CheckConsumerSecretRef(ctx context.Context, cli client.Client, fromNamespace string, secretNN k8stypes.NamespacedName) bool {
+	secretNS := secretNN.Namespace
+	return checkReferenceGrant(ctx, cli,
+		v1beta1.ReferenceGrantFrom{
+			Group:     v1beta1.Group(v1alpha1.GroupVersion.Group),
+			Kind:      types.KindConsumer,
+			Namespace: v1beta1.Namespace(fromNamespace),
+		},
+		gatewayv1.ObjectReference{
+			Group:     corev1.GroupName,
+			Kind:      types.KindSecret,
+			Name:      gatewayv1.ObjectName(secretNN.Name),
+			Namespace: (*gatewayv1.Namespace)(&secretNS),
+		},
+	)
+}
+
 func ListRequests(
 	ctx context.Context,
 	c client.Client,

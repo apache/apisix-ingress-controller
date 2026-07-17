@@ -134,6 +134,14 @@ func (v *ConsumerCustomValidator) collectWarnings(ctx context.Context, consumer 
 		}
 		visited[nn] = struct{}{}
 
+		// Don't probe cross-namespace Secrets that no ReferenceGrant permits: the
+		// found/not-found warning difference would leak Secret existence across
+		// namespaces. Emit a uniform message and skip the lookup.
+		if namespace != defaultNamespace && !controller.CheckConsumerSecretRef(ctx, v.Client, defaultNamespace, nn) {
+			warnings = append(warnings, fmt.Sprintf("Referenced Secret '%s/%s' is not accessible from this Consumer without a ReferenceGrant", nn.Namespace, nn.Name))
+			continue
+		}
+
 		warnings = append(warnings, v.checker.Secret(ctx, reference.SecretRef{
 			Object:         consumer,
 			NamespacedName: nn,
@@ -212,8 +220,16 @@ func (v *ConsumerCustomValidator) extractCredentialKey(ctx context.Context, cons
 			namespace = *credential.SecretRef.Namespace
 		}
 
+		nn := types.NamespacedName{Namespace: namespace, Name: credential.SecretRef.Name}
+		// Don't read a cross-namespace Secret that no ReferenceGrant permits:
+		// duplicate detection would otherwise reveal its existence and key. Treat
+		// it as absent; the reference is denied later during admission anyway.
+		if namespace != consumer.Namespace && !controller.CheckConsumerSecretRef(ctx, v.Client, consumer.Namespace, nn) {
+			return "", nil
+		}
+
 		var secret corev1.Secret
-		err := v.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: credential.SecretRef.Name}, &secret)
+		err := v.Client.Get(ctx, nn, &secret)
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
 				return "", nil
