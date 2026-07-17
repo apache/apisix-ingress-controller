@@ -99,7 +99,7 @@ func (d *apisixProvider) Register(pathPrefix string, mux *http.ServeMux) {
 }
 
 func (d *apisixProvider) Update(ctx context.Context, tctx *provider.TranslateContext, obj client.Object) error {
-	d.log.V(1).Info("updating object", "object", obj)
+	d.log.V(1).Info("updating object", "object", utils.NamespacedNameKind(obj))
 	var (
 		result        *translator.TranslateResult
 		resourceTypes []string

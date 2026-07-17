@@ -70,7 +70,7 @@ func (r *ApisixConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 				APIVersion: apiv2.GroupVersion.String(),
 			}
 			if err := r.Provider.Delete(ctx, ac); err != nil {
-				r.Log.Error(err, "failed to delete provider", "ApisixConsumer", ac)
+				r.Log.Error(err, "failed to delete provider", "ApisixConsumer", utils.NamespacedName(ac))
 				return ctrl.Result{}, err
 			}
 		}
@@ -97,12 +97,12 @@ func (r *ApisixConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	}
 
 	if err = r.processSpec(ctx, tctx, ac); err != nil {
-		r.Log.Error(err, "failed to process ApisixConsumer spec", "object", ac)
+		r.Log.Error(err, "failed to process ApisixConsumer spec", "object", utils.NamespacedName(ac))
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	if err = r.Provider.Update(ctx, tctx, ac); err != nil {
-		r.Log.Error(err, "failed to update provider", "ApisixConsumer", ac)
+		r.Log.Error(err, "failed to update provider", "ApisixConsumer", utils.NamespacedName(ac))
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil

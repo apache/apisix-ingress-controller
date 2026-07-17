@@ -61,6 +61,23 @@ type Resources struct {
 	SSLs           []*SSL           `json:"ssls,omitempty" yaml:"ssls,omitempty"`
 }
 
+// MarshalLog implements logr.Marshaler so logging Resources emits only counts,
+// never the secret-bearing bodies (SSL private keys, consumer credentials).
+// It affects logging only, not the JSON sent to the data plane.
+func (r *Resources) MarshalLog() any {
+	if r == nil {
+		return nil
+	}
+	return map[string]int{
+		"consumerGroups": len(r.ConsumerGroups),
+		"consumers":      len(r.Consumers),
+		"globalRules":    len(r.GlobalRules),
+		"pluginMetadata": len(r.PluginMetadata),
+		"services":       len(r.Services),
+		"ssls":           len(r.SSLs),
+	}
+}
+
 type GlobalRule Plugins
 
 func (g *GlobalRule) DeepCopy() GlobalRule {

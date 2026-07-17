@@ -256,7 +256,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if isRouteAccepted(gateways) && err == nil {
 		routeToUpdate := hr
 		if filteredHTTPRoute != nil {
-			r.Log.V(1).Info("filtered httproute", "httproute", filteredHTTPRoute)
+			r.Log.V(1).Info("filtered httproute", "httproute", utils.NamespacedName(filteredHTTPRoute))
 			routeToUpdate = filteredHTTPRoute
 		}
 		if err := r.Provider.Update(ctx, tctx, routeToUpdate); err != nil {

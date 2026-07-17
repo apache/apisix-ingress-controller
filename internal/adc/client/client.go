@@ -81,6 +81,24 @@ type Task struct {
 	Resources     *adctypes.Resources
 }
 
+// MarshalLog implements logr.Marshaler so logging a Task never dumps the
+// secret-bearing Resources bodies (SSL private keys, consumer credentials).
+// Configs redact their own Token via Config.MarshalJSON.
+func (t Task) MarshalLog() any {
+	configNames := make([]string, 0, len(t.Configs))
+	for _, cfg := range t.Configs {
+		configNames = append(configNames, cfg.Name)
+	}
+	return map[string]any{
+		"key":           t.Key,
+		"name":          t.Name,
+		"labels":        t.Labels,
+		"resourceTypes": t.ResourceTypes,
+		"configs":       configNames,
+		"resources":     t.Resources.MarshalLog(),
+	}
+}
+
 type StoreDelta struct {
 	Deleted map[types.NamespacedNameKind]adctypes.Config
 	Applied map[types.NamespacedNameKind]adctypes.Config

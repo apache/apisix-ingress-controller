@@ -82,6 +82,22 @@ type ADCServerOpts struct {
 	CacheKey            string            `json:"cacheKey"`
 }
 
+// MarshalLog implements logr.Marshaler so logging the request body redacts the
+// AdminKey token and the secret-bearing config resources. It affects logging
+// only, not the JSON actually sent to the ADC server.
+func (r ADCServerRequest) MarshalLog() any {
+	return map[string]any{
+		"backend":             r.Task.Opts.Backend,
+		"server":              r.Task.Opts.Server,
+		"token":               "[REDACTED]",
+		"labelSelector":       r.Task.Opts.LabelSelector,
+		"includeResourceType": r.Task.Opts.IncludeResourceType,
+		"tlsSkipVerify":       r.Task.Opts.TlsSkipVerify,
+		"cacheKey":            r.Task.Opts.CacheKey,
+		"config":              r.Task.Config.MarshalLog(),
+	}
+}
+
 type ADCValidateResult struct {
 	Success      *bool                       `json:"success,omitempty"`
 	ErrorMessage string                      `json:"message,omitempty"`

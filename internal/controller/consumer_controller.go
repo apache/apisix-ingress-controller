@@ -230,12 +230,12 @@ func (r *ConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	if err := r.processSpec(ctx, tctx, consumer); err != nil {
-		r.Log.Error(err, "failed to process consumer spec", "consumer", consumer)
+		r.Log.Error(err, "failed to process consumer spec", "consumer", utils.NamespacedName(consumer))
 		statusErr = err
 	}
 
 	if err := r.Provider.Update(ctx, tctx, consumer); err != nil {
-		r.Log.Error(err, "failed to update consumer", "consumer", consumer)
+		r.Log.Error(err, "failed to update consumer", "consumer", utils.NamespacedName(consumer))
 		statusErr = err
 	}
 
