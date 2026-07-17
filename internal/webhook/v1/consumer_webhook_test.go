@@ -192,3 +192,67 @@ func TestConsumerValidator_DenyDuplicateKeyAuthCredential(t *testing.T) {
 	require.Contains(t, err.Error(), `duplicate key-auth credential key "shared-key"`)
 	require.Contains(t, err.Error(), "default/existing")
 }
+
+// A duplicate-key inline config ({"key":123,"key":"K"}) is unreadable to Go's
+// struct decoder but resolves to "K" downstream via cjson. The webhook must
+// reject it instead of silently skipping the duplicate check.
+func TestConsumerValidator_DenyDuplicateKeyAuthCredential_ParserDivergence(t *testing.T) {
+	existing := &apisixv1alpha1.Consumer{
+		ObjectMeta: metav1.ObjectMeta{Name: "existing", Namespace: "default"},
+		Spec: apisixv1alpha1.ConsumerSpec{
+			GatewayRef: apisixv1alpha1.GatewayRef{Name: "test-gateway"},
+			Credentials: []apisixv1alpha1.Credential{{
+				Type:   "key-auth",
+				Config: apiextensionsv1.JSON{Raw: []byte(`{"key":"victims-key"}`)},
+			}},
+		},
+	}
+	consumer := &apisixv1alpha1.Consumer{
+		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
+		Spec: apisixv1alpha1.ConsumerSpec{
+			GatewayRef: apisixv1alpha1.GatewayRef{Name: "test-gateway"},
+			Credentials: []apisixv1alpha1.Credential{{
+				Type:   "key-auth",
+				Config: apiextensionsv1.JSON{Raw: []byte(`{"key":123,"key":"victims-key"}`)},
+			}},
+		},
+	}
+
+	validator := buildConsumerValidator(t, existing)
+
+	_, err := validator.ValidateCreate(context.Background(), consumer)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid key-auth credential config")
+}
+
+func TestParseInlineKeyAuthKey(t *testing.T) {
+	tests := []struct {
+		name    string
+		raw     string
+		wantKey string
+		wantErr bool
+	}{
+		{name: "plain string key", raw: `{"key":"K"}`, wantKey: "K"},
+		{name: "extra fields ignored", raw: `{"key":"K","foo":{"a":1}}`, wantKey: "K"},
+		{name: "duplicate key members", raw: `{"key":"a","key":"b"}`, wantErr: true},
+		{name: "number then string (divergence PoC)", raw: `{"key":123,"key":"K"}`, wantErr: true},
+		{name: "non-string key", raw: `{"key":123}`, wantErr: true},
+		{name: "object key", raw: `{"key":{"nested":1}}`, wantErr: true},
+		{name: "null key skipped", raw: `{"key":null}`, wantKey: ""},
+		{name: "no key member", raw: `{"foo":"bar"}`, wantKey: ""},
+		{name: "exact-case only, Key ignored", raw: `{"Key":"K"}`, wantKey: ""},
+		{name: "malformed json skipped", raw: `{"key":`, wantKey: ""},
+		{name: "non-object skipped", raw: `["key","K"]`, wantKey: ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			key, err := parseInlineKeyAuthKey([]byte(tt.raw))
+			if tt.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.wantKey, key)
+		})
+	}
+}

@@ -16,6 +16,7 @@
 package v1
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -227,15 +228,101 @@ func (v *ConsumerCustomValidator) extractCredentialKey(ctx context.Context, cons
 		return "", nil
 	}
 
-	var cfg struct {
-		Key string `json:"key"`
+	key, err := parseInlineKeyAuthKey(credential.Config.Raw)
+	if err != nil {
+		return "", fmt.Errorf("invalid key-auth credential config for Consumer %s/%s: %w",
+			consumer.Namespace, consumer.Name, err)
 	}
-	if err := json.Unmarshal(credential.Config.Raw, &cfg); err != nil {
-		// Malformed JSON is not a hard error: skip duplicate detection for this
-		// credential so existing consumers with bad config are not suddenly denied.
-		consumerLog.V(1).Info("skipping duplicate key-auth check: malformed credential config",
-			"consumer", consumer.Name, "error", err)
+	return key, nil
+}
+
+// parseInlineKeyAuthKey extracts the key-auth "key" from an inline credential
+// config the same way downstream cjson does: exact-case, string-valued,
+// last-wins. Ambiguous configs that Go's struct decoder would silently reject
+// while cjson still resolves to a live key (duplicate "key" members, or a
+// non-string "key") are returned as errors so they can't bypass the duplicate
+// check. Genuinely malformed JSON that cjson also rejects returns ("", nil) so
+// existing consumers with broken config are skipped, not suddenly denied.
+func parseInlineKeyAuthKey(raw []byte) (string, error) {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+
+	// Top level must be an object, else there is no usable key.
+	tok, err := dec.Token()
+	if err != nil {
 		return "", nil
 	}
-	return cfg.Key, nil
+	if delim, ok := tok.(json.Delim); !ok || delim != '{' {
+		return "", nil
+	}
+
+	var (
+		key      string
+		keyCount int
+	)
+	for dec.More() {
+		nameTok, err := dec.Token()
+		if err != nil {
+			return "", nil
+		}
+		name, ok := nameTok.(string)
+		if !ok {
+			return "", nil
+		}
+		if name != "key" {
+			if err := skipJSONValue(dec); err != nil {
+				return "", nil
+			}
+			continue
+		}
+
+		keyCount++
+		valTok, err := dec.Token()
+		if err != nil {
+			return "", nil
+		}
+		switch val := valTok.(type) {
+		case string:
+			key = val
+		case nil:
+			// null key: no usable value, but still counts for dup detection.
+		default:
+			// number/bool/object/array: cjson would deliver a value here while
+			// Go's struct decoder errors and skips. Reject instead.
+			return "", fmt.Errorf("key-auth credential \"key\" must be a string")
+		}
+	}
+
+	if keyCount > 1 {
+		return "", fmt.Errorf("key-auth credential config has duplicate \"key\" members")
+	}
+	return key, nil
+}
+
+// skipJSONValue consumes a single JSON value (scalar or a whole object/array)
+// from the decoder so the token stream stays aligned.
+func skipJSONValue(dec *json.Decoder) error {
+	tok, err := dec.Token()
+	if err != nil {
+		return err
+	}
+	delim, ok := tok.(json.Delim)
+	if !ok || (delim != '{' && delim != '[') {
+		return nil
+	}
+	depth := 1
+	for depth > 0 {
+		t, err := dec.Token()
+		if err != nil {
+			return err
+		}
+		if d, ok := t.(json.Delim); ok {
+			switch d {
+			case '{', '[':
+				depth++
+			case '}', ']':
+				depth--
+			}
+		}
+	}
+	return nil
 }
