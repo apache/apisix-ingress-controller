@@ -244,6 +244,14 @@ func (v *ConsumerCustomValidator) extractCredentialKey(ctx context.Context, cons
 // check. Genuinely malformed JSON that cjson also rejects returns ("", nil) so
 // existing consumers with broken config are skipped, not suddenly denied.
 func parseInlineKeyAuthKey(raw []byte) (string, error) {
+	// cjson rejects malformed input (truncation, trailing data, multiple
+	// top-level values); mirror that by skipping anything that is not exactly
+	// one well-formed JSON value. Duplicate keys stay valid here and are caught
+	// by the token walk below.
+	if !json.Valid(raw) {
+		return "", nil
+	}
+
 	dec := json.NewDecoder(bytes.NewReader(raw))
 
 	// Top level must be an object, else there is no usable key.

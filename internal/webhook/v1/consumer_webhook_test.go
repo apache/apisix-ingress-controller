@@ -242,6 +242,9 @@ func TestParseInlineKeyAuthKey(t *testing.T) {
 		{name: "no key member", raw: `{"foo":"bar"}`, wantKey: ""},
 		{name: "exact-case only, Key ignored", raw: `{"Key":"K"}`, wantKey: ""},
 		{name: "malformed json skipped", raw: `{"key":`, wantKey: ""},
+		{name: "truncated object skipped", raw: `{"key":"K"`, wantKey: ""},
+		{name: "multiple top-level values skipped", raw: `{"key":"K"}{"key":"X"}`, wantKey: ""},
+		{name: "trailing garbage skipped", raw: `{"key":"K"} junk`, wantKey: ""},
 		{name: "non-object skipped", raw: `["key","K"]`, wantKey: ""},
 	}
 	for _, tt := range tests {
