@@ -101,7 +101,10 @@ func (t *Translator) TranslateApisixConsumer(tctx *provider.TranslateContext, ac
 		if !plugin.Enable {
 			continue
 		}
-		config := t.buildPluginConfig(plugin, ac.Namespace, tctx.Secrets)
+		config, err := t.buildPluginConfig(plugin, ac.Namespace, tctx.Secrets)
+		if err != nil {
+			return nil, err
+		}
 		plugins[plugin.Name] = config
 	}
 
