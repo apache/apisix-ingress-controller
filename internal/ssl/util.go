@@ -218,6 +218,25 @@ func wildcardCovers(wildcard, host string) bool {
 	return label != "" && !strings.Contains(label, ".")
 }
 
+// HostCoveredBy reports whether a certificate SAN covers an SNI host. Coverage
+// is directional: an exact SAN covers only the identical host; a wildcard SAN
+// "*.suffix" covers single-label subdomains "<label>.suffix". A wildcard host is
+// covered only by an identical wildcard SAN (an exact SAN can't serve it).
+func HostCoveredBy(host, san string) bool {
+	host = strings.ToLower(strings.TrimSpace(host))
+	san = strings.ToLower(strings.TrimSpace(san))
+	if host == "" || san == "" {
+		return false
+	}
+	if host == san {
+		return true
+	}
+	if strings.HasPrefix(san, "*.") {
+		return wildcardCovers(san, host)
+	}
+	return false
+}
+
 // ParentWildcard returns the single-label covering wildcard for an exact host,
 // e.g. "app.example.com" -> "*.example.com". Returns "" if host is empty, is
 // itself a wildcard, or has no parent label.

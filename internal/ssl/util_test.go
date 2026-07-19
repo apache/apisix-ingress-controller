@@ -41,6 +41,28 @@ func TestHostsOverlap(t *testing.T) {
 	}
 }
 
+func TestHostCoveredBy(t *testing.T) {
+	cases := []struct {
+		host, san string
+		want      bool
+	}{
+		{"app.example.com", "app.example.com", true},       // exact SAN covers exact host
+		{"app.example.com", "*.example.com", true},         // wildcard SAN covers subdomain
+		{"App.Example.com", "*.EXAMPLE.com", true},         // case-insensitive
+		{"*.example.com", "*.example.com", true},           // wildcard host needs identical wildcard SAN
+		{"*.example.com", "app.example.com", false},        // exact SAN can't cover a wildcard host
+		{"a.b.example.com", "*.example.com", false},        // wildcard SAN is single-label only
+		{"shop.example.com", "internal.corp.local", false}, // unrelated SAN
+		{"example.com", "*.example.com", false},            // apex not covered by its wildcard
+		{"app.example.com", "", false},                     // empty SAN
+	}
+	for _, c := range cases {
+		if got := HostCoveredBy(c.host, c.san); got != c.want {
+			t.Errorf("HostCoveredBy(%q, %q) = %v, want %v", c.host, c.san, got, c.want)
+		}
+	}
+}
+
 func TestParentWildcard(t *testing.T) {
 	cases := []struct {
 		host, want string
