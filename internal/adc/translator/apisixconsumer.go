@@ -20,6 +20,7 @@ package translator
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 	k8stypes "k8s.io/apimachinery/pkg/types"
@@ -307,15 +308,25 @@ func (t *Translator) translateConsumerHMACAuthPlugin(tctx *provider.TranslateCon
 	}
 
 	clockSkewRaw := sec.Data["clock_skew"]
-	clockSkew, _ := strconv.ParseInt(string(clockSkewRaw), 10, 64)
+	var clockSkew int64
+	if len(clockSkewRaw) > 0 {
+		var err error
+		clockSkew, err = strconv.ParseInt(string(clockSkewRaw), 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("hmac-auth: invalid clock_skew %q in secret: %w", string(clockSkewRaw), err)
+		}
+	}
 	if clockSkew < 0 {
 		clockSkew = _hmacAuthClockSkewDefaultValue
 	}
 
+	// comma-separated header names, not raw bytes
 	signedHeadersRaw := sec.Data["signed_headers"]
-	signedHeaders := make([]string, 0, len(signedHeadersRaw))
-	for _, b := range signedHeadersRaw {
-		signedHeaders = append(signedHeaders, string(b))
+	var signedHeaders []string
+	for _, h := range strings.Split(string(signedHeadersRaw), ",") {
+		if h = strings.TrimSpace(h); h != "" {
+			signedHeaders = append(signedHeaders, h)
+		}
 	}
 
 	var keepHeader bool
@@ -355,7 +366,14 @@ func (t *Translator) translateConsumerHMACAuthPlugin(tctx *provider.TranslateCon
 	}
 
 	maxReqBodyRaw := sec.Data["max_req_body"]
-	maxReqBody, _ := strconv.ParseInt(string(maxReqBodyRaw), 10, 64)
+	var maxReqBody int64
+	if len(maxReqBodyRaw) > 0 {
+		var err error
+		maxReqBody, err = strconv.ParseInt(string(maxReqBodyRaw), 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("hmac-auth: invalid max_req_body %q in secret: %w", string(maxReqBodyRaw), err)
+		}
+	}
 	if maxReqBody < 0 {
 		maxReqBody = _hmacAuthMaxReqBodyDefaultValue
 	}

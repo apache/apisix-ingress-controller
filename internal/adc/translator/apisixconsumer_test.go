@@ -23,12 +23,63 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 
+	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 )
+
+func hmacConsumerWithSecret(name string) *apiv2.ApisixConsumer {
+	return &apiv2.ApisixConsumer{
+		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
+		Spec: apiv2.ApisixConsumerSpec{
+			AuthParameter: &apiv2.ApisixConsumerAuthParameter{
+				HMACAuth: &apiv2.ApisixConsumerHMACAuth{
+					SecretRef: &corev1.LocalObjectReference{Name: name},
+				},
+			},
+		},
+	}
+}
+
+func TestTranslateApisixConsumer_HMACAuthSignedHeadersFromSecret(t *testing.T) {
+	translator := NewTranslator(logr.Discard(), "")
+	tctx := provider.NewDefaultTranslateContext(context.Background())
+	tctx.Secrets[k8stypes.NamespacedName{Namespace: "default", Name: "hmac"}] = &corev1.Secret{
+		Data: map[string][]byte{
+			"key_id":         []byte("my-key"),
+			"secret_key":     []byte("my-secret"),
+			"signed_headers": []byte("X-Date, Host"),
+		},
+	}
+
+	result, err := translator.TranslateApisixConsumer(tctx, hmacConsumerWithSecret("hmac"))
+	require.NoError(t, err)
+	require.Len(t, result.Consumers, 1)
+
+	cfg := result.Consumers[0].Plugins["hmac-auth"].(*adctypes.HMACAuthConsumerConfig)
+	require.Equal(t, []string{"X-Date", "Host"}, cfg.SignedHeaders)
+}
+
+func TestTranslateApisixConsumer_HMACAuthRejectsInvalidClockSkew(t *testing.T) {
+	translator := NewTranslator(logr.Discard(), "")
+	tctx := provider.NewDefaultTranslateContext(context.Background())
+	tctx.Secrets[k8stypes.NamespacedName{Namespace: "default", Name: "hmac"}] = &corev1.Secret{
+		Data: map[string][]byte{
+			"key_id":     []byte("my-key"),
+			"secret_key": []byte("my-secret"),
+			"clock_skew": []byte("3O0"), // typo: letter O
+		},
+	}
+
+	_, err := translator.TranslateApisixConsumer(tctx, hmacConsumerWithSecret("hmac"))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "clock_skew")
+}
 
 func TestTranslateApisixConsumer_UsesMetadataLabelsWithoutOverwritingControllerLabels(t *testing.T) {
 	translator := NewTranslator(logr.Discard(), "")
