@@ -312,7 +312,7 @@ ControlPlaneProvider defines configuration for control plane provider.
 | `mode` _string_ | Mode specifies the mode of control plane provider. Can be `apisix` or `apisix-standalone`. |
 | `endpoints` _string array_ | Endpoints specifies the list of control plane endpoints. |
 | `service` _[ProviderService](#providerservice)_ |  |
-| `tlsVerify` _boolean_ | TlsVerify specifies whether to verify the TLS certificate of the control plane. |
+| `tlsVerify` _boolean_ | TlsVerify specifies whether to verify the TLS certificate of the control plane. Defaults to true. Setting it to false disables certificate verification and exposes the AdminKey to man-in-the-middle attacks over https endpoints. |
 | `auth` _[ControlPlaneAuth](#controlplaneauth)_ | Auth specifies the authentication configuration. |
 
 

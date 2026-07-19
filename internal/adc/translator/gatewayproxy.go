@@ -52,6 +52,9 @@ func (t *Translator) TranslateGatewayProxyToConfig(tctx *provider.TranslateConte
 		BackendType: cp.Mode,
 	}
 
+	// Verify the control plane's TLS certificate by default; only an explicit
+	// tlsVerify:false opts out.
+	cfg.TlsVerify = true
 	if cp.TlsVerify != nil {
 		cfg.TlsVerify = *cp.TlsVerify
 	}
