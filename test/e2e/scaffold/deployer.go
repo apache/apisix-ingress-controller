@@ -45,7 +45,11 @@ type DeployDataplaneOptions struct {
 	SkipCreateTunnels bool
 	ServiceHTTPPort   int
 	ServiceHTTPSPort  int
-	Replicas          *int
-	AdminKey          string
-	ProviderType      string
+	// ServiceHTTPSTargetPort overrides the APISIX container port the HTTPS
+	// service port forwards to. Point it at the TLS stream-proxy port to serve
+	// TLS passthrough (TLSRoute) instead of TLS termination.
+	ServiceHTTPSTargetPort int
+	Replicas               *int
+	AdminKey               string
+	ProviderType           string
 }

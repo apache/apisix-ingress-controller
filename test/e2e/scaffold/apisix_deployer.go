@@ -42,6 +42,9 @@ type APISIXDeployOptions struct {
 	ServiceType      string
 	ServiceHTTPPort  int
 	ServiceHTTPSPort int
+	// ServiceHTTPSTargetPort is the APISIX container port the HTTPS service port
+	// forwards to; 9443 terminates TLS, 9110 passes it through.
+	ServiceHTTPSTargetPort int
 
 	ConfigProvider string
 	Replicas       *int
@@ -193,6 +196,9 @@ func (s *APISIXDeployer) DeployDataplane(deployOpts DeployDataplaneOptions) {
 	}
 	if deployOpts.ServiceHTTPSPort != 0 {
 		opts.ServiceHTTPSPort = deployOpts.ServiceHTTPSPort
+	}
+	if deployOpts.ServiceHTTPSTargetPort != 0 {
+		opts.ServiceHTTPSTargetPort = deployOpts.ServiceHTTPSTargetPort
 	}
 	if deployOpts.AdminKey != "" {
 		opts.AdminKey = deployOpts.AdminKey

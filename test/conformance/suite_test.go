@@ -154,6 +154,10 @@ func TestMain(m *testing.M) {
 		ServiceType:       "LoadBalancer",
 		ServiceHTTPPort:   80,
 		ServiceHTTPSPort:  443,
+		// TLSRoute conformance drives TLS passthrough on the listener port, so
+		// 443 must reach APISIX's TLS stream proxy rather than the port that
+		// terminates TLS. HTTPS-termination tests are skipped for the same reason.
+		ServiceHTTPSTargetPort: 9110,
 	})
 	svc := s.GetDataplaneService()
 
