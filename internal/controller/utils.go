@@ -456,6 +456,32 @@ func ParseRouteParentRefs(
 	return gateways, nil
 }
 
+// routeKindsForProtocol returns the route kinds a listener of the given protocol
+// can serve. Kinds outside this set are rejected with InvalidRouteKinds so the
+// listener still advertises what it actually supports.
+func routeKindsForProtocol(protocol gatewayv1.ProtocolType) []gatewayv1.RouteGroupKind {
+	group := gatewayv1.Group(gatewayv1.GroupName)
+	kinds := func(names ...gatewayv1.Kind) []gatewayv1.RouteGroupKind {
+		out := make([]gatewayv1.RouteGroupKind, 0, len(names))
+		for _, name := range names {
+			out = append(out, gatewayv1.RouteGroupKind{Group: &group, Kind: name})
+		}
+		return out
+	}
+
+	switch protocol {
+	case gatewayv1.TLSProtocolType:
+		return kinds(types.KindTLSRoute)
+	case gatewayv1.TCPProtocolType:
+		return kinds(types.KindTCPRoute)
+	case gatewayv1.UDPProtocolType:
+		return kinds(types.KindUDPRoute)
+	case gatewayv1.HTTPProtocolType, gatewayv1.HTTPSProtocolType:
+		return kinds(types.KindGRPCRoute, types.KindHTTPRoute)
+	}
+	return []gatewayv1.RouteGroupKind{}
+}
+
 func SetApisixCRDConditionAccepted(status *apiv2.ApisixStatus, generation int64, err error) {
 	var condition = metav1.Condition{
 		Type:               string(apiv2.ConditionTypeAccepted),
@@ -836,37 +862,11 @@ func getListenerStatus(
 			supportedKinds = []gatewayv1.RouteGroupKind{}
 		)
 
+		// Route kinds this listener's protocol is able to serve.
+		protocolKinds := routeKindsForProtocol(listener.Protocol)
+
 		if listener.AllowedRoutes == nil || listener.AllowedRoutes.Kinds == nil {
-			group := gatewayv1.Group(gatewayv1.GroupName)
-			supportedKinds = []gatewayv1.RouteGroupKind{}
-			switch listener.Protocol {
-			case gatewayv1.TLSProtocolType:
-				supportedKinds = append(supportedKinds, gatewayv1.RouteGroupKind{
-					Group: &group,
-					Kind:  types.KindTLSRoute,
-				})
-			case gatewayv1.TCPProtocolType:
-				supportedKinds = append(supportedKinds, gatewayv1.RouteGroupKind{
-					Group: &group,
-					Kind:  types.KindTCPRoute,
-				})
-			case gatewayv1.UDPProtocolType:
-				supportedKinds = append(supportedKinds, gatewayv1.RouteGroupKind{
-					Group: &group,
-					Kind:  types.KindUDPRoute,
-				})
-			case gatewayv1.HTTPProtocolType, gatewayv1.HTTPSProtocolType:
-				supportedKinds = append(supportedKinds, []gatewayv1.RouteGroupKind{
-					{
-						Group: &group,
-						Kind:  types.KindGRPCRoute,
-					},
-					{
-						Group: &group,
-						Kind:  types.KindHTTPRoute,
-					},
-				}...)
-			}
+			supportedKinds = protocolKinds
 		} else {
 			for _, kind := range listener.AllowedRoutes.Kinds {
 				if kind.Group != nil && *kind.Group != gatewayv1.GroupName {
@@ -874,14 +874,26 @@ func getListenerStatus(
 					conditionResolvedRefs.Reason = string(gatewayv1.ListenerReasonInvalidRouteKinds)
 					continue
 				}
-				switch kind.Kind {
-				case KindHTTPRoute, types.KindGRPCRoute, types.KindTLSRoute, types.KindTCPRoute, types.KindUDPRoute:
-					supportedKinds = append(supportedKinds, kind)
-				default:
+				// A kind the listener's protocol cannot serve is invalid; the listener
+				// still advertises the kinds it does support.
+				if !slices.ContainsFunc(protocolKinds, func(k gatewayv1.RouteGroupKind) bool {
+					return k.Kind == kind.Kind
+				}) {
 					conditionResolvedRefs.Status = metav1.ConditionFalse
 					conditionResolvedRefs.Reason = string(gatewayv1.ListenerReasonInvalidRouteKinds)
+					continue
 				}
+				supportedKinds = append(supportedKinds, kind)
 			}
+		}
+
+		// A TLS-protocol listener carries TLSRoute traffic, which APISIX can only
+		// pass through; TLS termination for TLSRoute is not implemented.
+		if listener.Protocol == gatewayv1.TLSProtocolType && listener.TLS != nil &&
+			listener.TLS.Mode != nil && *listener.TLS.Mode == gatewayv1.TLSModeTerminate {
+			conditionAccepted.Status = metav1.ConditionFalse
+			conditionAccepted.Reason = string(gatewayv1.ListenerReasonUnsupportedValue)
+			conditionAccepted.Message = "TLS mode Terminate is not supported on a TLS protocol listener"
 		}
 
 		if listener.TLS != nil {

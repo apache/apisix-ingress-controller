@@ -72,11 +72,23 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 	if tctx.Secrets == nil {
 		return nil, nil
 	}
+	sslObjs := make([]*adctypes.SSL, 0)
+
+	// TLS is terminated at the gateway unless the listener explicitly asks for
+	// passthrough, in which case certificateRefs are not needed (and are ignored
+	// per the Gateway API spec).
+	mode := gatewayv1.TLSModeTerminate
+	if listener.TLS.Mode != nil {
+		mode = *listener.TLS.Mode
+	}
+	if mode == gatewayv1.TLSModePassthrough {
+		return sslObjs, nil
+	}
+
 	if listener.TLS.CertificateRefs == nil {
 		return nil, fmt.Errorf("no certificateRefs found in listener %s", listener.Name)
 	}
-	sslObjs := make([]*adctypes.SSL, 0)
-	switch *listener.TLS.Mode {
+	switch mode {
 	case gatewayv1.TLSModeTerminate:
 		// frontendValidation configures downstream mTLS: clients must present a
 		// certificate signed by one of the referenced CAs during the TLS handshake.
@@ -134,11 +146,8 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 			}
 
 		}
-	// Only supported on TLSRoute. The certificateRefs field is ignored in this mode.
-	case gatewayv1.TLSModePassthrough:
-		return sslObjs, nil
 	default:
-		return nil, fmt.Errorf("unknown TLS mode %s", *listener.TLS.Mode)
+		return nil, fmt.Errorf("unknown TLS mode %s", mode)
 	}
 
 	return sslObjs, nil

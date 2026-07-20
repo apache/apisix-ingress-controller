@@ -98,6 +98,32 @@ func newTranslateContextWithTLS() *provider.TranslateContext {
 	return tctx
 }
 
+func TestTranslateSecret_Passthrough(t *testing.T) {
+	// A TLS passthrough listener does not terminate TLS, so it carries no
+	// certificateRefs; translating it must not error, otherwise the whole Gateway
+	// is rejected with Accepted=False.
+	tr := &Translator{Log: logr.Discard()}
+	gateway := &gatewayv1.Gateway{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "gw"},
+		Spec: gatewayv1.GatewaySpec{
+			Listeners: []gatewayv1.Listener{
+				{
+					Name:     "tls-passthrough",
+					Protocol: gatewayv1.TLSProtocolType,
+					Port:     443,
+					TLS: &gatewayv1.ListenerTLSConfig{
+						Mode: ptr.To(gatewayv1.TLSModePassthrough),
+					},
+				},
+			},
+		},
+	}
+
+	sslObjs, err := tr.translateSecret(newTranslateContextWithTLS(), gateway.Spec.Listeners[0], gateway)
+	require.NoError(t, err)
+	assert.Empty(t, sslObjs, "passthrough listener should not produce SSL objects")
+}
+
 func TestTranslateSecret_FrontendValidation(t *testing.T) {
 	t.Run("with frontendValidation sets downstream mTLS client CA", func(t *testing.T) {
 		tr := &Translator{Log: logr.Discard()}
