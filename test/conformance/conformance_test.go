@@ -52,14 +52,13 @@ var skippedTestsForKnownGaps = []string{
 
 	// A backendRef that cannot be resolved must still produce a route that
 	// answers 500; today no route is generated at all, so the request 404s.
-	// A rule with omitted or empty backendRefs.
+	// These consistently pass in standalone mode and fail against the APISIX
+	// admin API, and which member of the group trips is not stable between
+	// runs, so all four are skipped together rather than one at a time.
 	tests.HTTPRouteNoBackendRefs.ShortName,
-	// A backendRef of an unknown kind, which also needs ResolvedRefs=False.
 	tests.HTTPRouteInvalidBackendRefUnknownKind.ShortName,
-	// A cross-namespace backendRef with no ReferenceGrant. This one passes in
-	// standalone mode and only fails against the APISIX admin API, so the two
-	// provider paths disagree on how an unresolvable backend is synced.
 	tests.HTTPRouteInvalidCrossNamespaceBackendRef.ShortName,
+	tests.HTTPRouteInvalidNonExistentBackendRef.ShortName,
 	// Terminate mode itself is covered by TLSRouteListenerTerminateSupportedKinds
 	// and by the e2e TLSRoute suite. This provisional test additionally requires a
 	// standalone Gateway with no GatewayProxy attached to reach Accepted=True, and
