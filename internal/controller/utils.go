@@ -460,6 +460,36 @@ func ParseRouteParentRefs(
 	return gateways, nil
 }
 
+// portsWithConflictingTLSMode returns the ports carrying TLS listeners that
+// disagree on tls.mode. APISIX binds one stream proxy behaviour per port, so a
+// port cannot terminate TLS for one hostname while passing it through for
+// another. Such listeners are reported as ProtocolConflict instead of being
+// silently accepted with undefined behaviour.
+func portsWithConflictingTLSMode(gateway *gatewayv1.Gateway) map[gatewayv1.PortNumber]bool {
+	modesByPort := make(map[gatewayv1.PortNumber]map[gatewayv1.TLSModeType]struct{})
+	for _, listener := range gateway.Spec.Listeners {
+		if listener.Protocol != gatewayv1.TLSProtocolType {
+			continue
+		}
+		mode := gatewayv1.TLSModeTerminate
+		if listener.TLS != nil && listener.TLS.Mode != nil {
+			mode = *listener.TLS.Mode
+		}
+		if modesByPort[listener.Port] == nil {
+			modesByPort[listener.Port] = make(map[gatewayv1.TLSModeType]struct{})
+		}
+		modesByPort[listener.Port][mode] = struct{}{}
+	}
+
+	conflicting := make(map[gatewayv1.PortNumber]bool)
+	for port, modes := range modesByPort {
+		if len(modes) > 1 {
+			conflicting[port] = true
+		}
+	}
+	return conflicting
+}
+
 // routeKindsForProtocol returns the route kinds a listener of the given protocol
 // can serve. Kinds outside this set are rejected with InvalidRouteKinds so the
 // listener still advertises what it actually supports.
@@ -827,6 +857,7 @@ func getListenerStatus(
 	gateway *gatewayv1.Gateway,
 ) ([]gatewayv1.ListenerStatus, error) {
 	statusArray := make([]gatewayv1.ListenerStatus, 0, len(gateway.Spec.Listeners))
+	tlsModeConflictPorts := portsWithConflictingTLSMode(gateway)
 	for i, listener := range gateway.Spec.Listeners {
 		attachedRoutes, err := getAttachedRoutesForListener(ctx, mrgc, *gateway, listener)
 		if err != nil {
@@ -865,6 +896,31 @@ func getListenerStatus(
 
 			supportedKinds = []gatewayv1.RouteGroupKind{}
 		)
+
+		// A port serving more than one TLS mode cannot be programmed, so the
+		// listener is rejected rather than accepted with undefined behaviour.
+		if listener.Protocol == gatewayv1.TLSProtocolType && tlsModeConflictPorts[listener.Port] {
+			conditionAccepted.Status = metav1.ConditionFalse
+			conditionAccepted.Reason = string(gatewayv1.ListenerReasonProtocolConflict)
+			conditionAccepted.Message = "listeners on this port disagree on tls.mode"
+			conditionConflicted.Status = metav1.ConditionTrue
+			conditionConflicted.Reason = string(gatewayv1.ListenerReasonProtocolConflict)
+			conditionProgrammed.Status = metav1.ConditionFalse
+			conditionProgrammed.Reason = string(gatewayv1.ListenerReasonInvalid)
+
+			statusArray = append(statusArray, gatewayv1.ListenerStatus{
+				Name: listener.Name,
+				Conditions: []metav1.Condition{
+					conditionProgrammed,
+					conditionAccepted,
+					conditionConflicted,
+					conditionResolvedRefs,
+				},
+				SupportedKinds: supportedKinds,
+				AttachedRoutes: attachedRoutes,
+			})
+			continue
+		}
 
 		// Route kinds this listener's protocol is able to serve.
 		protocolKinds := routeKindsForProtocol(listener.Protocol)
