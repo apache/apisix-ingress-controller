@@ -383,6 +383,10 @@ func ParseRouteParentRefs(
 			}
 
 			if ok, _ := routeMatchesListenerType(route, listener); !ok {
+				// The listener exists but its protocol cannot carry this route kind,
+				// which the spec reports as NotAllowedByListeners. A parentRef that
+				// matches no listener at all stays NoMatchingParent.
+				reason = gatewayv1.RouteReasonNotAllowedByListeners
 				continue
 			}
 
@@ -894,6 +898,8 @@ func getListenerStatus(
 			conditionAccepted.Status = metav1.ConditionFalse
 			conditionAccepted.Reason = string(gatewayv1.ListenerReasonUnsupportedValue)
 			conditionAccepted.Message = "TLS mode Terminate is not supported on a TLS protocol listener"
+			// The listener serves nothing, so it must not advertise any route kind.
+			supportedKinds = []gatewayv1.RouteGroupKind{}
 		}
 
 		if listener.TLS != nil {
