@@ -54,6 +54,13 @@ var skippedTestsForKnownGaps = []string{
 	tests.HTTPRouteNoBackendRefs.ShortName,
 	// A backendRef of an unknown kind must answer 500 with ResolvedRefs=False.
 	tests.HTTPRouteInvalidBackendRefUnknownKind.ShortName,
+	// Terminate mode itself is covered by TLSRouteListenerTerminateSupportedKinds
+	// and by the e2e TLSRoute suite. This provisional test additionally requires a
+	// standalone Gateway with no GatewayProxy attached to reach Accepted=True, and
+	// a stream proxy listening on the port it picks; neither holds here, so the
+	// Gateway is rejected with "gateway proxy not found" before any traffic flows.
+	tests.TLSRouteTerminateSimpleSameNamespace.ShortName,
+
 	// A single HTTPRoute attached to several Gateways is not served from each
 	// parent independently.
 	tests.HTTPRouteMultipleGateways.ShortName,
