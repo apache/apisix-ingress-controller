@@ -164,7 +164,7 @@ spec:
     - port: {{ .ServiceHTTPSPort }}
       name: https
       protocol: TCP
-      targetPort: {{ .ServiceHTTPSTargetPort | default 9443 }}
+      targetPort: 9443
     - port: 9180
       name: admin
       protocol: TCP

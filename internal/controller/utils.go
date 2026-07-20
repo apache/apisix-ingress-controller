@@ -891,17 +891,6 @@ func getListenerStatus(
 			}
 		}
 
-		// A TLS-protocol listener carries TLSRoute traffic, which APISIX can only
-		// pass through; TLS termination for TLSRoute is not implemented.
-		if listener.Protocol == gatewayv1.TLSProtocolType && listener.TLS != nil &&
-			listener.TLS.Mode != nil && *listener.TLS.Mode == gatewayv1.TLSModeTerminate {
-			conditionAccepted.Status = metav1.ConditionFalse
-			conditionAccepted.Reason = string(gatewayv1.ListenerReasonUnsupportedValue)
-			conditionAccepted.Message = "TLS mode Terminate is not supported on a TLS protocol listener"
-			// The listener serves nothing, so it must not advertise any route kind.
-			supportedKinds = []gatewayv1.RouteGroupKind{}
-		}
-
 		if listener.TLS != nil {
 			// TODO: support TLS
 			var (

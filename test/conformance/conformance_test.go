@@ -30,7 +30,9 @@ var skippedTestsForSSL = []string{
 	tests.HTTPRouteHTTPSListener.ShortName,
 	tests.HTTPRouteRedirectPortAndScheme.ShortName,
 
-	// SAN of the conformance certificate does not cover the hostname used here.
+	// APISIX terminates TLS on its stream proxy and routes by SNI, so TLSRoute
+	// works in Terminate mode but not in Passthrough mode, which the core
+	// TLSRoute conformance tests require.
 	tests.TLSRouteSimpleSameNamespace.ShortName,
 }
 
