@@ -197,6 +197,48 @@ func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
 			},
 			expected: singlePortVars,
 		},
+		{
+			// Listeners sharing a port but differing by hostname are isolated by
+			// their hostname (service.hosts), not by port. Injecting a server_port
+			// var here adds no isolation and, worse, pins the route to the Gateway's
+			// declared port which need not equal APISIX's actual node_listen port,
+			// dropping every request to 404. So no server_port var must be emitted.
+			name: "auto mode: no injection when sectionName target listener has hostname",
+			mode: config.ListenerPortMatchModeAuto,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", SectionName: &sectionName},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(80), Hostname: ptr.To(gatewayv1.Hostname("bar.com"))},
+			},
+			expected: nil,
+		},
+		{
+			name: "auto mode: no injection for same-port listeners differing by hostname",
+			mode: config.ListenerPortMatchModeAuto,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", SectionName: &sectionName},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(80), Hostname: ptr.To(gatewayv1.Hostname("bar.com"))},
+				{Name: "http-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(80), Hostname: ptr.To(gatewayv1.Hostname("foo.bar.com"))},
+			},
+			expected: nil,
+		},
+		{
+			// A route bound to a listener with a hostname keeps port isolation only
+			// for the sibling listeners that lack a hostname (port-based routing).
+			name: "explicit mode: inject only ports of hostname-less listeners",
+			mode: config.ListenerPortMatchModeExplicit,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", SectionName: &sectionName},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(80), Hostname: ptr.To(gatewayv1.Hostname("bar.com"))},
+				{Name: "http-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
+			},
+			expected: singlePortVars,
+		},
 	}
 
 	for _, tt := range tests {

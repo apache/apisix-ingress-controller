@@ -66,6 +66,27 @@ func hasExplicitListenerTarget(parentRefs []gatewayv1.ParentReference) bool {
 	return false
 }
 
+// collectServerPortMatchPorts returns the set of listener ports that should be
+// enforced through a server_port var.
+//
+// Listeners carrying a hostname are isolated by that hostname (service.hosts),
+// which is the correct discriminator when several listeners share a single port.
+// A server_port var adds no isolation for them and actively breaks routing: it
+// pins the route to the Gateway's declared listener port, which need not equal
+// the port APISIX actually accepts the connection on (node_listen), turning
+// every request into a 404. Only hostname-less listeners rely on port-based
+// isolation, so only their ports contribute here.
+func collectServerPortMatchPorts(listeners []gatewayv1.Listener) map[int32]struct{} {
+	ports := make(map[int32]struct{})
+	for _, listener := range listeners {
+		if listener.Hostname != nil && *listener.Hostname != "" {
+			continue
+		}
+		ports[listener.Port] = struct{}{}
+	}
+	return ports
+}
+
 func (t *Translator) shouldInjectServerPortVars(parentRefs []gatewayv1.ParentReference, ports map[int32]struct{}) bool {
 	if len(ports) == 0 {
 		return false

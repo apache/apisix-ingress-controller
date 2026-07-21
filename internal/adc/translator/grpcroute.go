@@ -309,11 +309,9 @@ func (t *Translator) TranslateGRPCRoute(tctx *provider.TranslateContext, grpcRou
 			routes = append(routes, route)
 		}
 
-		// Collect unique listener ports for port-based routing.
-		listenerPorts := make(map[int32]struct{})
-		for _, listener := range tctx.Listeners {
-			listenerPorts[listener.Port] = struct{}{}
-		}
+		// Collect unique listener ports for port-based routing. Listeners isolated
+		// by hostname are excluded, since host matching already discriminates them.
+		listenerPorts := collectServerPortMatchPorts(tctx.Listeners)
 
 		if t.shouldInjectServerPortVars(tctx.RouteParentRefs, listenerPorts) {
 			for _, route := range routes {

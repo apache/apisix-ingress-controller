@@ -45,11 +45,6 @@ var skippedTestsForTLSPassthrough = []string{
 // Known gaps tracked for follow-up. These are genuine feature gaps rather than
 // architectural limits, so they are expected to shrink over time.
 var skippedTestsForKnownGaps = []string{
-	// Listeners sharing a port but differing by hostname are not isolated from
-	// each other yet, so requests fall through to a 404.
-	tests.HTTPRouteListenerHostnameMatching.ShortName,
-	tests.GRPCRouteListenerHostnameMatching.ShortName,
-
 	// A backendRef that cannot be resolved must still produce a route that
 	// answers 500; today no route is generated at all, so the request 404s.
 	// These consistently pass in standalone mode and fail against the APISIX
