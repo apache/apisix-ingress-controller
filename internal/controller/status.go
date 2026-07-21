@@ -24,6 +24,7 @@ import (
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
+	cutils "github.com/apache/apisix-ingress-controller/internal/controller/utils"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 )
 
@@ -47,7 +48,7 @@ func NewCondition(observedGeneration int64, status bool, message string) metav1.
 		Type:               ConditionTypeAvailable,
 		Reason:             reason,
 		Status:             condition,
-		Message:            message,
+		Message:            cutils.TruncateConditionMessage(message),
 		ObservedGeneration: observedGeneration,
 	}
 }
@@ -79,7 +80,7 @@ func NewPolicyCondition(observedGeneration int64, status bool, message string) m
 		Type:               string(gatewayv1alpha2.PolicyConditionAccepted),
 		Reason:             reason,
 		Status:             conditionStatus,
-		Message:            message,
+		Message:            cutils.TruncateConditionMessage(message),
 		ObservedGeneration: observedGeneration,
 		LastTransitionTime: metav1.Now(),
 	}
@@ -90,7 +91,7 @@ func NewPolicyConflictCondition(observedGeneration int64, message string) metav1
 		Type:               string(gatewayv1alpha2.PolicyConditionAccepted),
 		Reason:             string(gatewayv1alpha2.PolicyReasonConflicted),
 		Status:             metav1.ConditionFalse,
-		Message:            message,
+		Message:            cutils.TruncateConditionMessage(message),
 		ObservedGeneration: observedGeneration,
 		LastTransitionTime: metav1.Now(),
 	}
