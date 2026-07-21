@@ -641,7 +641,11 @@ func (t *Translator) translateBackendsToUpstreams(
 		}
 	}
 
-	if backendErr != nil && (service.Upstream == nil || len(service.Upstream.Nodes) == 0) {
+	// A rule whose backendRefs are omitted/empty, or whose backendRefs all fail
+	// to resolve, must explicitly respond with 500 (Gateway API). A backend that
+	// resolves but currently has no ready endpoints is left to the upstream's own
+	// "no healthy nodes" handling (503) and must not be turned into a 500 here.
+	if (backendErr != nil || len(rule.BackendRefs) == 0) && (service.Upstream == nil || len(service.Upstream.Nodes) == 0) {
 		if service.Plugins == nil {
 			service.Plugins = make(map[string]any)
 		}
