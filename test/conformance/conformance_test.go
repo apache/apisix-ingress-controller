@@ -50,12 +50,11 @@ var skippedTestsForKnownGaps = []string{
 	tests.HTTPRouteListenerHostnameMatching.ShortName,
 	tests.GRPCRouteListenerHostnameMatching.ShortName,
 
-	// A backendRef that cannot be resolved must still produce a route that
-	// answers 500; today no route is generated at all, so the request 404s.
-	// These consistently pass in standalone mode and fail against the APISIX
-	// admin API, and which member of the group trips is not stable between
-	// runs, so all four are skipped together rather than one at a time.
-	tests.HTTPRouteNoBackendRefs.ShortName,
+	// An unresolvable or unknown-kind backendRef must respond 500. The
+	// translator already injects fault-injection for these, but they still trip
+	// against the APISIX admin API: UnknownKind fails consistently (passes in
+	// standalone), while the cross-namespace and nonexistent cases are flaky
+	// across runs. Kept skipped until the empty-upstream sync is sorted out.
 	tests.HTTPRouteInvalidBackendRefUnknownKind.ShortName,
 	tests.HTTPRouteInvalidCrossNamespaceBackendRef.ShortName,
 	tests.HTTPRouteInvalidNonExistentBackendRef.ShortName,
