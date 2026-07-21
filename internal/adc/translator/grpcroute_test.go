@@ -22,6 +22,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
@@ -183,6 +184,21 @@ func TestTranslateGRPCRouteServerPortVarsByMode(t *testing.T) {
 				{Name: "grpc-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
 			},
 			expected: singlePortVars,
+		},
+		{
+			// Same-port listeners differing by hostname are isolated by host, not by
+			// port, so no server_port var must be emitted (it would pin the route to
+			// the Gateway port and drop every request to 404).
+			name: "auto mode: no injection for same-port listeners differing by hostname",
+			mode: config.ListenerPortMatchModeAuto,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", SectionName: &sectionName},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "grpc-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(80), Hostname: ptr.To(gatewayv1.Hostname("bar.com"))},
+				{Name: "grpc-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(80), Hostname: ptr.To(gatewayv1.Hostname("foo.bar.com"))},
+			},
+			expected: nil,
 		},
 	}
 

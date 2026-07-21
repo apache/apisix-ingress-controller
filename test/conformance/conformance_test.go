@@ -45,11 +45,6 @@ var skippedTestsForTLSPassthrough = []string{
 // Known gaps tracked for follow-up. These are genuine feature gaps rather than
 // architectural limits, so they are expected to shrink over time.
 var skippedTestsForKnownGaps = []string{
-	// Listeners sharing a port but differing by hostname are not isolated from
-	// each other yet, so requests fall through to a 404.
-	tests.HTTPRouteListenerHostnameMatching.ShortName,
-	tests.GRPCRouteListenerHostnameMatching.ShortName,
-
 	// An unresolvable or unknown-kind backendRef must respond 500. The
 	// translator already injects fault-injection for these, but they still trip
 	// against the APISIX admin API: UnknownKind fails consistently (passes in
