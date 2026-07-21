@@ -43,7 +43,9 @@ spec:
   listeners:
   - name: tcp
     protocol: TCP
-    port: 80
+    # APISIX stream_proxy listens on 9100; the listener port must match it so the
+    # StreamRoute server_port (derived from this listener) isolates traffic (#2802).
+    port: 9100
     allowedRoutes:
       kinds:
       - kind: TCPRoute
@@ -123,7 +125,9 @@ spec:
   listeners:
   - name: tcp
     protocol: TCP
-    port: 80
+    # APISIX stream_proxy listens on 9100; the listener port must match it so the
+    # StreamRoute server_port (derived from this listener) isolates traffic (#2802).
+    port: 9100
     allowedRoutes:
       kinds:
       - kind: TCPRoute
