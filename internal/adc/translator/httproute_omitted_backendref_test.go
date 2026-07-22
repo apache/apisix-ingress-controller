@@ -63,3 +63,33 @@ func TestTranslateHTTPRouteOmittedBackendRefs(t *testing.T) {
 		})
 	}
 }
+
+// A rule with no backendRefs but a RequestRedirect filter answers via the
+// filter, so it must NOT be turned into a fault-injection 500. Regression guard
+// for HTTPRouteRedirectPort / RedirectScheme / RedirectHostAndStatus.
+func TestTranslateHTTPRouteRedirectNoFaultInjection(t *testing.T) {
+	translator := NewTranslator(logr.Discard(), "")
+	tctx := provider.NewDefaultTranslateContext(context.Background())
+
+	port := gatewayv1.PortNumber(8083)
+	route := &gatewayv1.HTTPRoute{
+		ObjectMeta: metav1.ObjectMeta{Name: "redirect", Namespace: "default"},
+		Spec: gatewayv1.HTTPRouteSpec{
+			Rules: []gatewayv1.HTTPRouteRule{{
+				Filters: []gatewayv1.HTTPRouteFilter{{
+					Type:            gatewayv1.HTTPRouteFilterRequestRedirect,
+					RequestRedirect: &gatewayv1.HTTPRequestRedirectFilter{Port: &port},
+				}},
+			}},
+		},
+	}
+
+	result, err := translator.TranslateHTTPRoute(tctx, route)
+	require.NoError(t, err)
+	require.Len(t, result.Services, 1)
+
+	if plugins := result.Services[0].Plugins; plugins != nil {
+		_, hasFI := plugins["fault-injection"]
+		assert.False(t, hasFI, "redirect rule must not carry a fault-injection plugin")
+	}
+}

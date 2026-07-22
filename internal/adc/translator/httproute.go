@@ -527,6 +527,18 @@ func calculateHTTPRoutePriority(match *gatewayv1.HTTPRouteMatch, ruleIndex int, 
 	return priority
 }
 
+// ruleProducesResponse reports whether the rule answers requests on its own,
+// without a backend — currently a RequestRedirect filter. Such a rule is valid
+// with no backendRefs and must not be turned into a fault-injection 500.
+func ruleProducesResponse(rule gatewayv1.HTTPRouteRule) bool {
+	for _, f := range rule.Filters {
+		if f.Type == gatewayv1.HTTPRouteFilterRequestRedirect {
+			return true
+		}
+	}
+	return false
+}
+
 // translateBackendsToUpstreams processes the BackendRefs of an HTTPRouteRule,
 // builds upstreams, assigns them to the service (single upstream or traffic-split
 // plugin for multiple), and injects fault-injection on backend errors.
@@ -642,10 +654,14 @@ func (t *Translator) translateBackendsToUpstreams(
 	}
 
 	// A rule whose backendRefs are omitted/empty, or whose backendRefs all fail
-	// to resolve, must explicitly respond with 500 (Gateway API). A backend that
-	// resolves but currently has no ready endpoints is left to the upstream's own
-	// "no healthy nodes" handling (503) and must not be turned into a 500 here.
-	if (backendErr != nil || len(rule.BackendRefs) == 0) && (service.Upstream == nil || len(service.Upstream.Nodes) == 0) {
+	// to resolve, must explicitly respond with 500 (Gateway API). Exceptions:
+	//   - a rule that produces its own response (e.g. a RequestRedirect filter)
+	//     is valid without backendRefs; the filter answers, so it must not be
+	//     turned into a 500.
+	//   - a backend that resolves but currently has no ready endpoints is left to
+	//     the upstream's own "no healthy nodes" handling (503).
+	noUsableBackend := backendErr != nil || (len(rule.BackendRefs) == 0 && !ruleProducesResponse(rule))
+	if noUsableBackend && (service.Upstream == nil || len(service.Upstream.Nodes) == 0) {
 		if service.Plugins == nil {
 			service.Plugins = make(map[string]any)
 		}
