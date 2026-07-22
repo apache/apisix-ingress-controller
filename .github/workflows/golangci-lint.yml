@@ -34,7 +34,7 @@ jobs:
       - name: Setup Go Env
         uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.25"
 
       - name: check go path for debug
         run: go env
