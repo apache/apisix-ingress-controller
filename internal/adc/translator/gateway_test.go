@@ -78,6 +78,43 @@ func newTLSGateway(frontendValidation *gatewayv1.FrontendTLSValidation) *gateway
 	}
 }
 
+// TestTranslateGateway_InsecureFallbackIsContained pins the blast radius of an
+// unsupported frontendValidation mode: it must cost only the listener that asked
+// for it, not the whole Gateway. A per-port override is the cheapest way for a
+// user to trip this, and returning an error here would abort TranslateGateway and
+// stop every SSL object, global rule and plugin metadata for the Gateway.
+func TestTranslateGateway_InsecureFallbackIsContained(t *testing.T) {
+	tr := &Translator{Log: logr.Discard()}
+	gateway := newTLSGateway(nil)
+	gateway.Spec.TLS.Frontend.PerPort = []gatewayv1.TLSPortConfig{
+		{
+			Port: gatewayv1.PortNumber(8443),
+			TLS: gatewayv1.TLSConfig{
+				Validation: &gatewayv1.FrontendTLSValidation{
+					Mode: gatewayv1.AllowInsecureFallback,
+					CACertificateRefs: []gatewayv1.ObjectReference{
+						{Group: "", Kind: "ConfigMap", Name: "ca-cm"},
+					},
+				},
+			},
+		},
+	}
+	// A second HTTPS listener on the overridden port; the first one stays on 443.
+	unsupported := *gateway.Spec.Listeners[0].DeepCopy()
+	unsupported.Name = "https-8443"
+	unsupported.Port = gatewayv1.PortNumber(8443)
+	unsupported.Hostname = ptr.To(gatewayv1.Hostname("fallback.example.com"))
+	gateway.Spec.Listeners = append(gateway.Spec.Listeners, unsupported)
+
+	result, err := tr.TranslateGateway(newTranslateContextWithTLS(), gateway)
+	require.NoError(t, err, "one unsupported listener must not fail the Gateway")
+	require.NotNil(t, result)
+	// Only the listener on 443 is programmed; the 8443 one contributes nothing.
+	require.Len(t, result.SSL, 1)
+	assert.Contains(t, result.SSL[0].Snis, "example.com")
+	assert.NotContains(t, result.SSL[0].Snis, "fallback.example.com")
+}
+
 func newTranslateContextWithTLS() *provider.TranslateContext {
 	tctx := provider.NewDefaultTranslateContext(context.Background())
 	tctx.Secrets[types.NamespacedName{Namespace: "default", Name: "server-cert"}] = &corev1.Secret{
@@ -187,7 +224,11 @@ func TestTranslateSecret_FrontendValidation(t *testing.T) {
 		assert.Nil(t, sslObjs[0].Client)
 	})
 
-	t.Run("AllowInsecureFallback mode is rejected", func(t *testing.T) {
+	t.Run("AllowInsecureFallback emits no SSL for that listener", func(t *testing.T) {
+		// The mode cannot be expressed on APISIX, so the listener is reported
+		// Accepted=False/UnsupportedValue and programmed with nothing. Serving TLS
+		// without the requested client validation would be less safe than serving
+		// nothing, and failing here would take down the whole Gateway translation.
 		tr := &Translator{Log: logr.Discard()}
 		gateway := newTLSGateway(&gatewayv1.FrontendTLSValidation{
 			Mode: gatewayv1.AllowInsecureFallback,
@@ -197,9 +238,9 @@ func TestTranslateSecret_FrontendValidation(t *testing.T) {
 		})
 		tctx := newTranslateContextWithTLS()
 
-		_, err := tr.translateSecret(tctx, gateway.Spec.Listeners[0], gateway)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "AllowInsecureFallback")
+		sslObjs, err := tr.translateSecret(tctx, gateway.Spec.Listeners[0], gateway)
+		require.NoError(t, err)
+		assert.Empty(t, sslObjs)
 	})
 
 	t.Run("frontendValidation is ignored on a non-HTTPS listener", func(t *testing.T) {

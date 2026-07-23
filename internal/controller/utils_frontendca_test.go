@@ -87,8 +87,15 @@ func TestValidateListenerFrontendValidation(t *testing.T) {
 		assert.Equal(t, string(gatewayv1.ListenerReasonNoValidCACertificate), accepted.Reason)
 	})
 
-	t.Run("AllowInsecureFallback mode is not programmable", func(t *testing.T) {
-		cli := fake.NewClientBuilder().WithScheme(scheme).Build()
+	t.Run("AllowInsecureFallback is rejected with UnsupportedValue", func(t *testing.T) {
+		// The mode is an Extended feature this implementation does not support, which
+		// Gateway API v1.6 expresses as Accepted=False/UnsupportedValue. The CA ref is
+		// valid here, so ResolvedRefs must stay True.
+		validCM := &corev1.ConfigMap{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "ca"},
+			Data:       map[string]string{corev1.ServiceAccountRootCAKey: frontendCACert},
+		}
+		cli := fake.NewClientBuilder().WithScheme(scheme).WithObjects(validCM).Build()
 		resolvedRefs, programmed, accepted := newFrontendConditions()
 		validateListenerFrontendValidation(context.Background(), cli, gateway,
 			&gatewayv1.FrontendTLSValidation{
@@ -97,8 +104,31 @@ func TestValidateListenerFrontendValidation(t *testing.T) {
 			},
 			&resolvedRefs, &programmed, &accepted)
 
+		assert.Equal(t, metav1.ConditionFalse, accepted.Status)
+		assert.Equal(t, string(gatewayv1.ListenerReasonUnsupportedValue), accepted.Reason)
+		assert.Contains(t, accepted.Message, "AllowInsecureFallback")
 		assert.Equal(t, metav1.ConditionFalse, programmed.Status)
-		assert.Contains(t, programmed.Message, "AllowInsecureFallback")
+		assert.Equal(t, metav1.ConditionTrue, resolvedRefs.Status)
+	})
+
+	t.Run("AllowInsecureFallback keeps reporting unresolvable CA refs", func(t *testing.T) {
+		// The unsupported mode must not short-circuit CA validation, otherwise a
+		// missing CA would be hidden behind ResolvedRefs=True.
+		cli := fake.NewClientBuilder().WithScheme(scheme).Build()
+		resolvedRefs, programmed, accepted := newFrontendConditions()
+		validateListenerFrontendValidation(context.Background(), cli, gateway,
+			&gatewayv1.FrontendTLSValidation{
+				Mode:              gatewayv1.AllowInsecureFallback,
+				CACertificateRefs: []gatewayv1.ObjectReference{ref("ConfigMap", "missing")},
+			},
+			&resolvedRefs, &programmed, &accepted)
+
+		assert.Equal(t, metav1.ConditionFalse, resolvedRefs.Status)
+		assert.Equal(t, string(gatewayv1.ListenerReasonInvalidCACertificateRef), resolvedRefs.Reason)
+		// UnsupportedValue is the more specific reason and must not be replaced by
+		// NoValidCACertificate.
+		assert.Equal(t, string(gatewayv1.ListenerReasonUnsupportedValue), accepted.Reason)
+		assert.Equal(t, metav1.ConditionFalse, programmed.Status)
 	})
 
 	t.Run("one valid ref keeps Accepted True while ResolvedRefs stays False", func(t *testing.T) {

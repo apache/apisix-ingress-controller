@@ -1104,14 +1104,19 @@ func validateListenerFrontendValidation(
 	frontendValidation *gatewayv1.FrontendTLSValidation,
 	conditionResolvedRefs, conditionProgrammed, conditionAccepted *metav1.Condition,
 ) {
-	// AllowInsecureFallback cannot be represented on APISIX (see translateFrontendValidation),
-	// so the listener is not programmable. Surface that on the status too, otherwise the
-	// listener would report Programmed=True while translation fails.
-	if frontendValidation.Mode == gatewayv1.AllowInsecureFallback {
+	// AllowInsecureFallback is an Extended feature (the conformance suite tracks it
+	// separately as GatewayFrontendClientCertificateValidationInsecureFallback) that
+	// APISIX cannot express: verification is all-or-nothing per SSL object, with no
+	// way to request a client certificate without enforcing it. Gateway API v1.6 uses
+	// Accepted=False/UnsupportedValue for exactly this case. The CA references are
+	// still validated below so ResolvedRefs keeps reporting whether they resolve.
+	modeUnsupported := frontendValidation.Mode == gatewayv1.AllowInsecureFallback
+	if modeUnsupported {
+		conditionAccepted.Status = metav1.ConditionFalse
+		conditionAccepted.Reason = string(gatewayv1.ListenerReasonUnsupportedValue)
+		conditionAccepted.Message = "frontendValidation mode AllowInsecureFallback is not supported: APISIX cannot accept a connection whose client certificate is missing or fails verification"
 		conditionProgrammed.Status = metav1.ConditionFalse
 		conditionProgrammed.Reason = string(gatewayv1.ListenerReasonInvalid)
-		conditionProgrammed.Message = "frontendValidation mode AllowInsecureFallback is not supported: APISIX cannot make client certificate verification optional"
-		return
 	}
 
 	setInvalid := func(reason gatewayv1.ListenerConditionReason, message string) {
@@ -1189,7 +1194,9 @@ func validateListenerFrontendValidation(
 		valid++
 	}
 
-	if valid == 0 {
+	// An unsupported mode already rejected the listener with a more specific reason;
+	// do not overwrite it with NoValidCACertificate.
+	if valid == 0 && !modeUnsupported {
 		conditionAccepted.Status = metav1.ConditionFalse
 		conditionAccepted.Reason = string(gatewayv1.ListenerReasonNoValidCACertificate)
 		conditionAccepted.Message = "no valid CA certificate for frontend client validation"

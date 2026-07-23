@@ -94,6 +94,14 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 		// certificate signed by one of the referenced CAs during the TLS handshake.
 		client, err := t.translateFrontendValidation(tctx, listener, obj)
 		if err != nil {
+			// The mode is unsupported on this listener only. Emit no SSL for it
+			// (matching its Accepted=False status) and leave the rest of the
+			// Gateway - other listeners, global rules, plugin metadata - intact.
+			if errors.Is(err, errInsecureFallbackUnsupported) {
+				t.Log.V(1).Info("skipping listener with unsupported frontendValidation mode",
+					"gateway", obj.Name, "listener", listener.Name)
+				return sslObjs, nil
+			}
 			return nil, err
 		}
 		for refIndex, ref := range listener.TLS.CertificateRefs {
@@ -176,6 +184,11 @@ func frontendTLSValidation(obj *gatewayv1.Gateway, listener gatewayv1.Listener) 
 	return frontend.Default.Validation
 }
 
+// errInsecureFallbackUnsupported marks a listener whose frontendValidation asks for
+// the Extended AllowInsecureFallback mode. It is handled in translateSecret by
+// skipping that listener only; it must never fail the whole Gateway translation.
+var errInsecureFallbackUnsupported = errors.New("frontendValidation mode AllowInsecureFallback is not supported")
+
 // translateFrontendValidation builds the downstream mTLS client configuration from the
 // Gateway's frontendValidation that applies to the listener. The referenced CA
 // certificates (ConfigMap, key `ca.crt`) are bundled into a single trust anchor used
@@ -187,10 +200,11 @@ func (t *Translator) translateFrontendValidation(tctx *provider.TranslateContext
 	}
 	// APISIX can only enforce strict client-certificate verification (setting ca
 	// turns on ssl_verify_client). AllowInsecureFallback ("accept even if the
-	// client cert is missing or fails verification") cannot be expressed, so
-	// reject it instead of silently programming the opposite, strict behaviour.
+	// client cert is missing or fails verification") cannot be expressed, so the
+	// listener is reported Accepted=False/UnsupportedValue and programmed with no
+	// SSL at all, rather than silently serving the opposite, strict behaviour.
 	if validation.Mode == gatewayv1.AllowInsecureFallback {
-		return nil, fmt.Errorf("unsupported frontendValidation mode %q in listener %s: APISIX cannot make client certificate verification optional", validation.Mode, listener.Name)
+		return nil, errInsecureFallbackUnsupported
 	}
 
 	cas := make([]string, 0, len(validation.CACertificateRefs))
