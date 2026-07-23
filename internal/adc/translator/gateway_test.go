@@ -61,6 +61,7 @@ func newTLSGateway(frontendValidation *gatewayv1.FrontendTLSValidation) *gateway
 			Listeners: []gatewayv1.Listener{
 				{
 					Name:     "https",
+					Protocol: gatewayv1.HTTPSProtocolType,
 					Hostname: ptr.To(gatewayv1.Hostname("example.com")),
 					TLS: &gatewayv1.ListenerTLSConfig{
 						Mode: ptr.To(gatewayv1.TLSModeTerminate),
@@ -184,6 +185,39 @@ func TestTranslateSecret_FrontendValidation(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, sslObjs, 1)
 		assert.Nil(t, sslObjs[0].Client)
+	})
+
+	t.Run("AllowInsecureFallback mode is rejected", func(t *testing.T) {
+		tr := &Translator{Log: logr.Discard()}
+		gateway := newTLSGateway(&gatewayv1.FrontendTLSValidation{
+			Mode: gatewayv1.AllowInsecureFallback,
+			CACertificateRefs: []gatewayv1.ObjectReference{
+				{Group: "", Kind: "ConfigMap", Name: "ca-cm"},
+			},
+		})
+		tctx := newTranslateContextWithTLS()
+
+		_, err := tr.translateSecret(tctx, gateway.Spec.Listeners[0], gateway)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "AllowInsecureFallback")
+	})
+
+	t.Run("frontendValidation is ignored on a non-HTTPS listener", func(t *testing.T) {
+		// spec.tls.frontend applies only to HTTPS listeners in Gateway API v1.6, so a
+		// TLS (Terminate) listener must not get downstream mTLS attached.
+		tr := &Translator{Log: logr.Discard()}
+		gateway := newTLSGateway(&gatewayv1.FrontendTLSValidation{
+			CACertificateRefs: []gatewayv1.ObjectReference{
+				{Group: "", Kind: "ConfigMap", Name: "ca-cm"},
+			},
+		})
+		gateway.Spec.Listeners[0].Protocol = gatewayv1.TLSProtocolType
+		tctx := newTranslateContextWithTLS()
+
+		sslObjs, err := tr.translateSecret(tctx, gateway.Spec.Listeners[0], gateway)
+		require.NoError(t, err)
+		require.Len(t, sslObjs, 1)
+		assert.Nil(t, sslObjs[0].Client, "client mTLS must not be set for a non-HTTPS listener")
 	})
 
 	t.Run("missing CA ConfigMap returns error", func(t *testing.T) {

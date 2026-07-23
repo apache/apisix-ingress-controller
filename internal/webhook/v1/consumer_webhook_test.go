@@ -189,6 +189,8 @@ func TestConsumerValidator_DenyDuplicateKeyAuthCredential(t *testing.T) {
 	warnings, err := validator.ValidateCreate(context.Background(), consumer)
 	require.Empty(t, warnings)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), `duplicate key-auth credential key "shared-key"`)
+	require.Contains(t, err.Error(), "duplicate key-auth credential")
 	require.Contains(t, err.Error(), "default/existing")
+	// The credential value must never leak into the error returned to clients/logs.
+	require.NotContains(t, err.Error(), "shared-key")
 }

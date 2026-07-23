@@ -365,6 +365,15 @@ func ParseRouteParentRefs(
 		var listenerName string
 		var matchedListener gatewayv1.Listener
 		var matchedListeners []gatewayv1.Listener
+		// Aggregate the reasons listeners were rejected so the final parent reason
+		// does not depend on listener order: a hostname mismatch on an otherwise
+		// compatible listener is preserved over an unrelated incompatible listener.
+		var hostnameMismatch, notAllowed bool
+
+		// A TLS listener on a port whose tls.mode conflicts cannot be programmed, so
+		// routes must not attach to it; otherwise the route would be translated and
+		// served even though the listener reports Accepted=False/Programmed=False.
+		tlsConflictPorts := portsWithConflictingTLSMode(&gateway)
 
 		// Track if sectionName was explicitly specified
 		sectionNameSpecified := parentRef.SectionName != nil && *parentRef.SectionName != ""
@@ -382,16 +391,20 @@ func ParseRouteParentRefs(
 				}
 			}
 
+			if listener.Protocol == gatewayv1.TLSProtocolType && tlsConflictPorts[listener.Port] {
+				notAllowed = true
+				continue
+			}
+
 			if ok, _ := routeMatchesListenerType(route, listener); !ok {
 				// The listener exists but its protocol cannot carry this route kind,
-				// which the spec reports as NotAllowedByListeners. A parentRef that
-				// matches no listener at all stays NoMatchingParent.
-				reason = gatewayv1.RouteReasonNotAllowedByListeners
+				// which the spec reports as NotAllowedByListeners.
+				notAllowed = true
 				continue
 			}
 
 			if !routeHostnamesIntersectsWithListenerHostname(route, listener) {
-				reason = gatewayv1.RouteReasonNoMatchingListenerHostname
+				hostnameMismatch = true
 				continue
 			}
 
@@ -403,7 +416,7 @@ func ParseRouteParentRefs(
 					"gateway", gateway.Name)
 			}
 			if !ok {
-				reason = gatewayv1.RouteReasonNotAllowedByListeners
+				notAllowed = true
 				continue
 			}
 
@@ -425,6 +438,19 @@ func ParseRouteParentRefs(
 			// Only break if sectionName was explicitly specified
 			if sectionNameSpecified {
 				break
+			}
+		}
+
+		// Select the parent reason after evaluating every listener so the outcome is
+		// independent of listener order. A hostname mismatch on an otherwise
+		// compatible listener is more specific than a generic NotAllowedByListeners;
+		// a parentRef that matches no listener at all stays NoMatchingParent.
+		if !matched {
+			switch {
+			case hostnameMismatch:
+				reason = gatewayv1.RouteReasonNoMatchingListenerHostname
+			case notAllowed:
+				reason = gatewayv1.RouteReasonNotAllowedByListeners
 			}
 		}
 
@@ -468,6 +494,11 @@ func reuseUnchangedListenerStatus(gateway *gatewayv1.Gateway, i int, status gate
 		return status
 	}
 	previous := gateway.Status.Listeners[i]
+	// Listener status is keyed by name, not position: if the spec listeners were
+	// reordered, index i now points at a different listener, so never reuse it.
+	if previous.Name != status.Name {
+		return status
+	}
 	if previous.AttachedRoutes != status.AttachedRoutes {
 		return status
 	}
@@ -784,6 +815,12 @@ func routeMatchesListenerType(route client.Object, listener gatewayv1.Listener) 
 }
 
 func getAttachedRoutesForListener(ctx context.Context, mgrc client.Client, gateway gatewayv1.Gateway, listener gatewayv1.Listener) (int32, error) {
+	// A TLS listener on a port with a conflicting tls.mode is not programmable, so
+	// no route attaches to it; report zero attached routes to match that.
+	if listener.Protocol == gatewayv1.TLSProtocolType && portsWithConflictingTLSMode(&gateway)[listener.Port] {
+		return 0, nil
+	}
+
 	routes := []types.RouteAdapter{}
 	routeList := []client.ObjectList{}
 
@@ -1036,7 +1073,7 @@ func getListenerStatus(
 			// In Gateway API v1.6 it is declared at the Gateway level (spec.tls.frontend).
 			if validation := frontendTLSValidationForListener(gateway, listener); validation != nil &&
 				(listener.TLS.Mode == nil || *listener.TLS.Mode == gatewayv1.TLSModeTerminate) {
-				validateListenerFrontendValidation(ctx, mrgc, gateway, validation, &conditionResolvedRefs, &conditionProgrammed)
+				validateListenerFrontendValidation(ctx, mrgc, gateway, validation, &conditionResolvedRefs, &conditionProgrammed, &conditionAccepted)
 			}
 		}
 
@@ -1065,8 +1102,18 @@ func validateListenerFrontendValidation(
 	mrgc client.Client,
 	gateway *gatewayv1.Gateway,
 	frontendValidation *gatewayv1.FrontendTLSValidation,
-	conditionResolvedRefs, conditionProgrammed *metav1.Condition,
+	conditionResolvedRefs, conditionProgrammed, conditionAccepted *metav1.Condition,
 ) {
+	// AllowInsecureFallback cannot be represented on APISIX (see translateFrontendValidation),
+	// so the listener is not programmable. Surface that on the status too, otherwise the
+	// listener would report Programmed=True while translation fails.
+	if frontendValidation.Mode == gatewayv1.AllowInsecureFallback {
+		conditionProgrammed.Status = metav1.ConditionFalse
+		conditionProgrammed.Reason = string(gatewayv1.ListenerReasonInvalid)
+		conditionProgrammed.Message = "frontendValidation mode AllowInsecureFallback is not supported: APISIX cannot make client certificate verification optional"
+		return
+	}
+
 	setInvalid := func(reason gatewayv1.ListenerConditionReason, message string) {
 		conditionResolvedRefs.Status = metav1.ConditionFalse
 		conditionResolvedRefs.Reason = string(reason)
@@ -1075,20 +1122,24 @@ func validateListenerFrontendValidation(
 		conditionProgrammed.Reason = string(gatewayv1.ListenerReasonInvalid)
 	}
 
+	// Count the CA references that resolve to a usable certificate. Any invalid
+	// ref makes ResolvedRefs=False; only when none remain valid is the listener
+	// Accepted=False with NoValidCACertificate (Gateway API v1.6 semantics).
+	valid := 0
 	for _, ref := range frontendValidation.CACertificateRefs {
 		if ref.Group != "" && string(ref.Group) != corev1.GroupName {
-			setInvalid(gatewayv1.ListenerReasonInvalidCertificateRef,
+			setInvalid(gatewayv1.ListenerReasonInvalidCACertificateKind,
 				fmt.Sprintf(`Invalid Group for caCertificateRef, expect "", got "%s"`, ref.Group))
-			return
+			continue
 		}
 		kind := KindConfigMap
 		if ref.Kind != "" {
 			kind = string(ref.Kind)
 		}
 		if kind != KindConfigMap && kind != KindSecret {
-			setInvalid(gatewayv1.ListenerReasonInvalidCertificateRef,
+			setInvalid(gatewayv1.ListenerReasonInvalidCACertificateKind,
 				fmt.Sprintf(`Invalid Kind for caCertificateRef, expect "ConfigMap" or "Secret", got "%s"`, ref.Kind))
-			return
+			continue
 		}
 		if permitted := checkReferenceGrant(ctx,
 			mrgc,
@@ -1105,7 +1156,7 @@ func validateListenerFrontendValidation(
 			},
 		); !permitted {
 			setInvalid(gatewayv1.ListenerReasonRefNotPermitted, "caCertificateRefs cross namespaces is not permitted")
-			return
+			continue
 		}
 		nn := k8stypes.NamespacedName{
 			Namespace: string(*cmp.Or(ref.Namespace, (*gatewayv1.Namespace)(&gateway.Namespace))),
@@ -1115,26 +1166,33 @@ func validateListenerFrontendValidation(
 		case KindConfigMap:
 			var configMap corev1.ConfigMap
 			if err := mrgc.Get(ctx, nn, &configMap); err != nil {
-				setInvalid(gatewayv1.ListenerReasonInvalidCertificateRef, err.Error())
-				return
+				setInvalid(gatewayv1.ListenerReasonInvalidCACertificateRef, err.Error())
+				continue
 			}
 			if _, err := sslutils.ExtractCAFromConfigMap(&configMap); err != nil {
-				setInvalid(gatewayv1.ListenerReasonInvalidCertificateRef,
+				setInvalid(gatewayv1.ListenerReasonInvalidCACertificateRef,
 					fmt.Sprintf("Malformed CA ConfigMap referenced: %s", err.Error()))
-				return
+				continue
 			}
 		case KindSecret:
 			var secret corev1.Secret
 			if err := mrgc.Get(ctx, nn, &secret); err != nil {
-				setInvalid(gatewayv1.ListenerReasonInvalidCertificateRef, err.Error())
-				return
+				setInvalid(gatewayv1.ListenerReasonInvalidCACertificateRef, err.Error())
+				continue
 			}
 			if _, err := sslutils.ExtractCAFromSecret(&secret); err != nil {
-				setInvalid(gatewayv1.ListenerReasonInvalidCertificateRef,
+				setInvalid(gatewayv1.ListenerReasonInvalidCACertificateRef,
 					fmt.Sprintf("Malformed CA Secret referenced: %s", err.Error()))
-				return
+				continue
 			}
 		}
+		valid++
+	}
+
+	if valid == 0 {
+		conditionAccepted.Status = metav1.ConditionFalse
+		conditionAccepted.Reason = string(gatewayv1.ListenerReasonNoValidCACertificate)
+		conditionAccepted.Message = "no valid CA certificate for frontend client validation"
 	}
 }
 

@@ -174,7 +174,9 @@ func (v *ConsumerCustomValidator) validateDuplicateKeyAuthCredentials(ctx contex
 		}
 		for key := range existingKeys {
 			if _, ok := keys[key]; ok {
-				return fmt.Errorf("duplicate key-auth credential key %q already used by Consumer %s/%s", key, existing.Namespace, existing.Name)
+				// Do not include the credential value in the error: it is returned to
+				// API clients and logged, which would leak the secret key material.
+				return fmt.Errorf("duplicate key-auth credential already used by Consumer %s/%s", existing.Namespace, existing.Name)
 			}
 		}
 	}
