@@ -87,6 +87,20 @@ func TestValidateListenerFrontendValidation(t *testing.T) {
 		assert.Equal(t, string(gatewayv1.ListenerReasonNoValidCACertificate), accepted.Reason)
 	})
 
+	t.Run("AllowInsecureFallback mode is not programmable", func(t *testing.T) {
+		cli := fake.NewClientBuilder().WithScheme(scheme).Build()
+		resolvedRefs, programmed, accepted := newFrontendConditions()
+		validateListenerFrontendValidation(context.Background(), cli, gateway,
+			&gatewayv1.FrontendTLSValidation{
+				Mode:              gatewayv1.AllowInsecureFallback,
+				CACertificateRefs: []gatewayv1.ObjectReference{ref("ConfigMap", "ca")},
+			},
+			&resolvedRefs, &programmed, &accepted)
+
+		assert.Equal(t, metav1.ConditionFalse, programmed.Status)
+		assert.Contains(t, programmed.Message, "AllowInsecureFallback")
+	})
+
 	t.Run("one valid ref keeps Accepted True while ResolvedRefs stays False", func(t *testing.T) {
 		validCM := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "ca"},

@@ -1104,6 +1104,16 @@ func validateListenerFrontendValidation(
 	frontendValidation *gatewayv1.FrontendTLSValidation,
 	conditionResolvedRefs, conditionProgrammed, conditionAccepted *metav1.Condition,
 ) {
+	// AllowInsecureFallback cannot be represented on APISIX (see translateFrontendValidation),
+	// so the listener is not programmable. Surface that on the status too, otherwise the
+	// listener would report Programmed=True while translation fails.
+	if frontendValidation.Mode == gatewayv1.AllowInsecureFallback {
+		conditionProgrammed.Status = metav1.ConditionFalse
+		conditionProgrammed.Reason = string(gatewayv1.ListenerReasonInvalid)
+		conditionProgrammed.Message = "frontendValidation mode AllowInsecureFallback is not supported: APISIX cannot make client certificate verification optional"
+		return
+	}
+
 	setInvalid := func(reason gatewayv1.ListenerConditionReason, message string) {
 		conditionResolvedRefs.Status = metav1.ConditionFalse
 		conditionResolvedRefs.Reason = string(reason)
