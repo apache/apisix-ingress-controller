@@ -77,7 +77,7 @@ func TestGatewayAPIConformance(t *testing.T) {
 		Organization: "APISIX",
 		Project:      "apisix-ingress-controller",
 		URL:          "https://github.com/apache/apisix-ingress-controller.git",
-		Version:      "v2.0.0",
+		Version:      "v2.1.0",
 		Contact:      []string{"https://github.com/apache/apisix-ingress-controller/issues"},
 	}
 
