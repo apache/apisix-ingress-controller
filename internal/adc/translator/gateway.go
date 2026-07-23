@@ -159,6 +159,11 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 // spec.tls.frontend: Default applies to all HTTPS listeners, and a PerPort entry
 // overrides it for listeners on the matching port.
 func frontendTLSValidation(obj *gatewayv1.Gateway, listener gatewayv1.Listener) *gatewayv1.FrontendTLSValidation {
+	// Downstream mTLS only applies where the Gateway terminates TLS (HTTPS/TLS
+	// listeners); never enable client-cert validation on plaintext listeners.
+	if listener.Protocol != gatewayv1.HTTPSProtocolType && listener.Protocol != gatewayv1.TLSProtocolType {
+		return nil
+	}
 	if obj.Spec.TLS == nil || obj.Spec.TLS.Frontend == nil {
 		return nil
 	}

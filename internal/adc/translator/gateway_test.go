@@ -61,6 +61,7 @@ func newTLSGateway(frontendValidation *gatewayv1.FrontendTLSValidation) *gateway
 			Listeners: []gatewayv1.Listener{
 				{
 					Name:     "https",
+					Protocol: gatewayv1.HTTPSProtocolType,
 					Hostname: ptr.To(gatewayv1.Hostname("example.com")),
 					TLS: &gatewayv1.ListenerTLSConfig{
 						Mode: ptr.To(gatewayv1.TLSModeTerminate),

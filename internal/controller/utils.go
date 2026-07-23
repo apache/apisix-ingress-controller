@@ -1035,6 +1035,12 @@ func getListenerStatus(
 
 		changed := false
 		if len(gateway.Status.Listeners) > i {
+			// Listener status is keyed by name, not position: if the spec listeners
+			// were reordered, index i now points at a different listener, so it must
+			// not be reused for this one.
+			if gateway.Status.Listeners[i].Name != listener.Name {
+				changed = true
+			}
 			if gateway.Status.Listeners[i].AttachedRoutes != attachedRoutes {
 				changed = true
 			}
