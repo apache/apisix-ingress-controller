@@ -159,9 +159,9 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 // spec.tls.frontend: Default applies to all HTTPS listeners, and a PerPort entry
 // overrides it for listeners on the matching port.
 func frontendTLSValidation(obj *gatewayv1.Gateway, listener gatewayv1.Listener) *gatewayv1.FrontendTLSValidation {
-	// Downstream mTLS only applies where the Gateway terminates TLS (HTTPS/TLS
-	// listeners); never enable client-cert validation on plaintext listeners.
-	if listener.Protocol != gatewayv1.HTTPSProtocolType && listener.Protocol != gatewayv1.TLSProtocolType {
+	// In Gateway API v1.6 spec.tls.frontend applies only to HTTPS listeners, so
+	// never resolve downstream mTLS for any other protocol (including TLS).
+	if listener.Protocol != gatewayv1.HTTPSProtocolType {
 		return nil
 	}
 	if obj.Spec.TLS == nil || obj.Spec.TLS.Frontend == nil {
@@ -184,6 +184,13 @@ func (t *Translator) translateFrontendValidation(tctx *provider.TranslateContext
 	validation := frontendTLSValidation(obj, listener)
 	if validation == nil || len(validation.CACertificateRefs) == 0 {
 		return nil, nil
+	}
+	// APISIX can only enforce strict client-certificate verification (setting ca
+	// turns on ssl_verify_client). AllowInsecureFallback ("accept even if the
+	// client cert is missing or fails verification") cannot be expressed, so
+	// reject it instead of silently programming the opposite, strict behaviour.
+	if validation.Mode == gatewayv1.AllowInsecureFallback {
+		return nil, fmt.Errorf("unsupported frontendValidation mode %q in listener %s: APISIX cannot make client certificate verification optional", validation.Mode, listener.Name)
 	}
 
 	cas := make([]string, 0, len(validation.CACertificateRefs))

@@ -476,9 +476,9 @@ func (r *GatewayReconciler) processInfrastructure(tctx *provider.TranslateContex
 // validation (Gateway API v1.6 spec.tls.frontend) that applies to the given HTTPS
 // listener: a PerPort entry matching the listener's port overrides the Default.
 func frontendTLSValidationForListener(gateway *gatewayv1.Gateway, listener gatewayv1.Listener) *gatewayv1.FrontendTLSValidation {
-	// Downstream mTLS only applies where the Gateway terminates TLS (HTTPS/TLS
-	// listeners); never enable client-cert validation on plaintext listeners.
-	if listener.Protocol != gatewayv1.HTTPSProtocolType && listener.Protocol != gatewayv1.TLSProtocolType {
+	// In Gateway API v1.6 spec.tls.frontend applies only to HTTPS listeners, so
+	// never resolve downstream mTLS for any other protocol (including TLS).
+	if listener.Protocol != gatewayv1.HTTPSProtocolType {
 		return nil
 	}
 	if gateway.Spec.TLS == nil || gateway.Spec.TLS.Frontend == nil {
