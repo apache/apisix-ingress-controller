@@ -937,7 +937,7 @@ func getListenerStatus(
 			}
 			conditionConflicted = metav1.Condition{
 				Type:               string(gatewayv1.ListenerConditionConflicted),
-				Status:             metav1.ConditionTrue,
+				Status:             metav1.ConditionFalse,
 				ObservedGeneration: gateway.GetGeneration(),
 				LastTransitionTime: now,
 				Reason:             string(gatewayv1.ListenerReasonNoConflicts),
