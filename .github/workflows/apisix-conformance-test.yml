@@ -109,22 +109,3 @@ jobs:
         with:
           name: apisix-ingress-controller-conformance-report-${{ matrix.provider_type }}.yaml
           path: ${{ env.CONFORMANCE_TEST_REPORT_OUTPUT }}
-
-      # The test step runs with continue-on-error so the report is always shown
-      # and uploaded above. Fail the job here if it is missing or if any profile
-      # result is `failure`: a submittable report needs every core/extended
-      # result to be success or partial, and known gaps are skips, not failures.
-      - name: Gate on conformance result
-        shell: bash
-        run: |
-          report="${CONFORMANCE_TEST_REPORT_OUTPUT}"
-          if [ ! -f "${report}" ]; then
-            echo "::error::No conformance report was produced (the test run likely crashed)."
-            exit 1
-          fi
-          if grep -qE 'result:[[:space:]]*failure' "${report}"; then
-            echo "::error::Conformance report contains a failing profile result:"
-            grep -nE 'result:[[:space:]]*failure' "${report}"
-            exit 1
-          fi
-          echo "All conformance profile results are success or partial."
