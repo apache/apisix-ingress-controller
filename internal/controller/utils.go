@@ -391,9 +391,9 @@ func ParseRouteParentRefs(
 				}
 			}
 
-			// A listener that cannot be programmed (conflicting tls.mode on the port,
-			// or TLS passthrough) must not have routes attached to it; otherwise the
-			// route would be translated and served even though the listener reports
+			// A listener on a conflicting tls.mode port cannot be programmed, so it
+			// must not have routes attached to it; otherwise the route would be
+			// translated and served even though the listener reports
 			// Accepted=False/Programmed=False.
 			if listenerNotProgrammable(listener, tlsConflictPorts) {
 				notAllowed = true
@@ -545,24 +545,10 @@ func portsWithConflictingTLSMode(gateway *gatewayv1.Gateway) map[gatewayv1.PortN
 }
 
 // listenerNotProgrammable reports whether a listener cannot be programmed by
-// APISIX and therefore must not have routes attached to it: either its tls.mode
-// conflicts with another listener on the same port, or it asks for TLS passthrough.
+// APISIX and therefore must not have routes attached to it: its tls.mode
+// conflicts with another listener on the same port.
 func listenerNotProgrammable(listener gatewayv1.Listener, tlsConflictPorts map[gatewayv1.PortNumber]bool) bool {
-	if listener.Protocol == gatewayv1.TLSProtocolType && tlsConflictPorts[listener.Port] {
-		return true
-	}
-	return isTLSPassthroughListener(listener)
-}
-
-// isTLSPassthroughListener reports whether the listener asks for TLS mode
-// Passthrough. APISIX terminates TLS on its stream proxy and cannot forward the
-// encrypted stream untouched, so a passthrough listener is not programmable; it
-// is reported Accepted=False/UnsupportedValue rather than being silently
-// programmed with nothing while claiming to be healthy.
-func isTLSPassthroughListener(listener gatewayv1.Listener) bool {
-	return listener.Protocol == gatewayv1.TLSProtocolType &&
-		listener.TLS != nil && listener.TLS.Mode != nil &&
-		*listener.TLS.Mode == gatewayv1.TLSModePassthrough
+	return listener.Protocol == gatewayv1.TLSProtocolType && tlsConflictPorts[listener.Port]
 }
 
 // routeKindsForProtocol returns the route kinds a listener of the given protocol
@@ -842,11 +828,7 @@ func routeMatchesListenerType(route client.Object, listener gatewayv1.Listener) 
 func getAttachedRoutesForListener(ctx context.Context, mgrc client.Client, gateway gatewayv1.Gateway, listener gatewayv1.Listener) (int32, error) {
 	// A TLS listener on a port with a conflicting tls.mode is not programmable, so
 	// no route attaches to it; report zero attached routes to match that.
-	if listener.Protocol == gatewayv1.TLSProtocolType && portsWithConflictingTLSMode(&gateway)[listener.Port] {
-		return 0, nil
-	}
-	// A TLS passthrough listener is not programmable either; no route attaches.
-	if isTLSPassthroughListener(listener) {
+	if listenerNotProgrammable(listener, portsWithConflictingTLSMode(&gateway)) {
 		return 0, nil
 	}
 
@@ -990,30 +972,6 @@ func getListenerStatus(
 			conditionAccepted.Message = "listeners on this port disagree on tls.mode"
 			conditionConflicted.Status = metav1.ConditionTrue
 			conditionConflicted.Reason = string(gatewayv1.ListenerReasonProtocolConflict)
-			conditionProgrammed.Status = metav1.ConditionFalse
-			conditionProgrammed.Reason = string(gatewayv1.ListenerReasonInvalid)
-
-			statusArray = append(statusArray, reuseUnchangedListenerStatus(gateway, i, gatewayv1.ListenerStatus{
-				Name: listener.Name,
-				Conditions: []metav1.Condition{
-					conditionProgrammed,
-					conditionAccepted,
-					conditionConflicted,
-					conditionResolvedRefs,
-				},
-				SupportedKinds: supportedKinds,
-				AttachedRoutes: attachedRoutes,
-			}))
-			continue
-		}
-
-		// TLS Passthrough is not supported by APISIX (it terminates TLS on its
-		// stream proxy), so report the listener as not accepted instead of
-		// programming nothing while reporting Accepted=True/Programmed=True.
-		if isTLSPassthroughListener(listener) {
-			conditionAccepted.Status = metav1.ConditionFalse
-			conditionAccepted.Reason = string(gatewayv1.ListenerReasonUnsupportedValue)
-			conditionAccepted.Message = "TLS mode Passthrough is not supported: APISIX terminates TLS and cannot pass the encrypted stream through"
 			conditionProgrammed.Status = metav1.ConditionFalse
 			conditionProgrammed.Reason = string(gatewayv1.ListenerReasonInvalid)
 
