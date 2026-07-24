@@ -161,29 +161,6 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 	return sslObjs, nil
 }
 
-// frontendTLSValidation resolves the Gateway-level frontend TLS client-cert
-// validation that applies to the given HTTPS listener. In Gateway API v1.6,
-// frontendValidation moved from the per-listener TLS config to the Gateway-level
-// spec.tls.frontend: Default applies to all HTTPS listeners, and a PerPort entry
-// overrides it for listeners on the matching port.
-func frontendTLSValidation(obj *gatewayv1.Gateway, listener gatewayv1.Listener) *gatewayv1.FrontendTLSValidation {
-	// In Gateway API v1.6 spec.tls.frontend applies only to HTTPS listeners, so
-	// never resolve downstream mTLS for any other protocol (including TLS).
-	if listener.Protocol != gatewayv1.HTTPSProtocolType {
-		return nil
-	}
-	if obj.Spec.TLS == nil || obj.Spec.TLS.Frontend == nil {
-		return nil
-	}
-	frontend := obj.Spec.TLS.Frontend
-	for i := range frontend.PerPort {
-		if frontend.PerPort[i].Port == listener.Port {
-			return frontend.PerPort[i].TLS.Validation
-		}
-	}
-	return frontend.Default.Validation
-}
-
 // errInsecureFallbackUnsupported marks a listener whose frontendValidation asks for
 // the Extended AllowInsecureFallback mode. It is handled in translateSecret by
 // skipping that listener only; it must never fail the whole Gateway translation.
@@ -194,7 +171,7 @@ var errInsecureFallbackUnsupported = errors.New("frontendValidation mode AllowIn
 // certificates (ConfigMap, key `ca.crt`) are bundled into a single trust anchor used
 // to validate client certificates.
 func (t *Translator) translateFrontendValidation(tctx *provider.TranslateContext, listener gatewayv1.Listener, obj *gatewayv1.Gateway) (*adctypes.ClientClass, error) {
-	validation := frontendTLSValidation(obj, listener)
+	validation := internaltypes.FrontendTLSValidationForListener(obj, listener)
 	if validation == nil || len(validation.CACertificateRefs) == 0 {
 		return nil, nil
 	}

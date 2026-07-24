@@ -1071,7 +1071,7 @@ func getListenerStatus(
 
 			// frontendValidation (downstream mTLS) only applies to Terminate listeners.
 			// In Gateway API v1.6 it is declared at the Gateway level (spec.tls.frontend).
-			if validation := frontendTLSValidationForListener(gateway, listener); validation != nil &&
+			if validation := types.FrontendTLSValidationForListener(gateway, listener); validation != nil &&
 				(listener.TLS.Mode == nil || *listener.TLS.Mode == gatewayv1.TLSModeTerminate) {
 				validateListenerFrontendValidation(ctx, mrgc, gateway, validation, &conditionResolvedRefs, &conditionProgrammed, &conditionAccepted)
 			}
