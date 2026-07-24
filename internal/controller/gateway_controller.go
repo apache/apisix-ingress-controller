@@ -485,6 +485,26 @@ func (r *GatewayReconciler) processListenerConfig(tctx *provider.TranslateContex
 				ns = string(*ref.Namespace)
 			}
 			if ref.Kind != nil && *ref.Kind == KindSecret {
+				// A cross-namespace certificateRef must be authorized by a ReferenceGrant,
+				// or the data plane would program a certificate the target namespace never
+				// permitted. The listener status already reports RefNotPermitted for this.
+				if !checkReferenceGrant(context.Background(), r.Client,
+					v1beta1.ReferenceGrantFrom{
+						Group:     gatewayv1.GroupName,
+						Kind:      KindGateway,
+						Namespace: v1beta1.Namespace(gateway.Namespace),
+					},
+					gatewayv1.ObjectReference{
+						Group:     corev1.GroupName,
+						Kind:      KindSecret,
+						Name:      ref.Name,
+						Namespace: ref.Namespace,
+					},
+				) {
+					r.Log.V(1).Info("skipping cross-namespace certificateRef not permitted by any ReferenceGrant",
+						"listener", listener.Name, "secret", client.ObjectKey{Namespace: ns, Name: string(ref.Name)})
+					continue
+				}
 				if err := r.Get(context.Background(), client.ObjectKey{
 					Namespace: ns,
 					Name:      string(ref.Name),
@@ -511,6 +531,26 @@ func (r *GatewayReconciler) processListenerConfig(tctx *provider.TranslateContex
 				kind := KindConfigMap
 				if ref.Kind != "" {
 					kind = string(ref.Kind)
+				}
+				// A cross-namespace CA ref must be authorized by a ReferenceGrant, or the
+				// data plane would enable downstream mTLS with a CA the target namespace
+				// never permitted. The listener status already reports RefNotPermitted.
+				if !checkReferenceGrant(context.Background(), r.Client,
+					v1beta1.ReferenceGrantFrom{
+						Group:     gatewayv1.GroupName,
+						Kind:      KindGateway,
+						Namespace: v1beta1.Namespace(gateway.Namespace),
+					},
+					gatewayv1.ObjectReference{
+						Group:     corev1.GroupName,
+						Kind:      gatewayv1.Kind(kind),
+						Name:      ref.Name,
+						Namespace: ref.Namespace,
+					},
+				) {
+					r.Log.V(1).Info("skipping cross-namespace caCertificateRef not permitted by any ReferenceGrant",
+						"listener", listener.Name, "ref", nn)
+					continue
 				}
 				switch kind {
 				case KindConfigMap:
