@@ -391,14 +391,11 @@ func ParseRouteParentRefs(
 				}
 			}
 
-			if listener.Protocol == gatewayv1.TLSProtocolType && tlsConflictPorts[listener.Port] {
-				notAllowed = true
-				continue
-			}
-
-			// A TLS passthrough listener is not programmable, so routes must not
-			// attach to it (matching its Accepted=False status).
-			if isTLSPassthroughListener(listener) {
+			// A listener that cannot be programmed (conflicting tls.mode on the port,
+			// or TLS passthrough) must not have routes attached to it; otherwise the
+			// route would be translated and served even though the listener reports
+			// Accepted=False/Programmed=False.
+			if listenerNotProgrammable(listener, tlsConflictPorts) {
 				notAllowed = true
 				continue
 			}
@@ -545,6 +542,16 @@ func portsWithConflictingTLSMode(gateway *gatewayv1.Gateway) map[gatewayv1.PortN
 		}
 	}
 	return conflicting
+}
+
+// listenerNotProgrammable reports whether a listener cannot be programmed by
+// APISIX and therefore must not have routes attached to it: either its tls.mode
+// conflicts with another listener on the same port, or it asks for TLS passthrough.
+func listenerNotProgrammable(listener gatewayv1.Listener, tlsConflictPorts map[gatewayv1.PortNumber]bool) bool {
+	if listener.Protocol == gatewayv1.TLSProtocolType && tlsConflictPorts[listener.Port] {
+		return true
+	}
+	return isTLSPassthroughListener(listener)
 }
 
 // isTLSPassthroughListener reports whether the listener asks for TLS mode
