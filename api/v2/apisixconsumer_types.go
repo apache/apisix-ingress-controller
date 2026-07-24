@@ -164,6 +164,8 @@ type ApisixConsumerJwtAuthValue struct {
 // ApisixConsumerHMACAuth defines configuration for the HMAC authentication.
 type ApisixConsumerHMACAuth struct {
 	// SecretRef references a Kubernetes Secret containing the HMAC credentials.
+	// Unlike Value, the Secret stores signed_headers as a single string listing the
+	// header names separated by commas or whitespace, for example "X-Date, Host".
 	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
 	// Value specifies HMAC authentication credentials.
 	Value *ApisixConsumerHMACAuthValue `json:"value,omitempty" yaml:"value,omitempty"`

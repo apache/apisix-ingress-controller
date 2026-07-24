@@ -896,7 +896,7 @@ ApisixConsumerHMACAuth defines configuration for the HMAC authentication.
 
 | Field | Description |
 | --- | --- |
-| `secretRef` _[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core)_ | SecretRef references a Kubernetes Secret containing the HMAC credentials. |
+| `secretRef` _[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core)_ | SecretRef references a Kubernetes Secret containing the HMAC credentials.<br />Unlike Value, the Secret stores signed_headers as a single string listing the<br />header names separated by commas or whitespace, for example "X-Date, Host". |
 | `value` _[ApisixConsumerHMACAuthValue](#apisixconsumerhmacauthvalue)_ | Value specifies HMAC authentication credentials. |
 
 

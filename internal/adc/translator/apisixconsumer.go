@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/pkg/errors"
 	k8stypes "k8s.io/apimachinery/pkg/types"
@@ -320,14 +321,11 @@ func (t *Translator) translateConsumerHMACAuthPlugin(tctx *provider.TranslateCon
 		clockSkew = _hmacAuthClockSkewDefaultValue
 	}
 
-	// comma-separated header names, not raw bytes
+	// header names are RFC 7230 tokens, so a comma or any space is always a separator
 	signedHeadersRaw := sec.Data["signed_headers"]
-	var signedHeaders []string
-	for _, h := range strings.Split(string(signedHeadersRaw), ",") {
-		if h = strings.TrimSpace(h); h != "" {
-			signedHeaders = append(signedHeaders, h)
-		}
-	}
+	signedHeaders := strings.FieldsFunc(string(signedHeadersRaw), func(r rune) bool {
+		return r == ',' || unicode.IsSpace(r)
+	})
 
 	var keepHeader bool
 	keepHeaderRaw, ok := sec.Data["keep_headers"]
