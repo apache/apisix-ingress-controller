@@ -478,13 +478,16 @@ func (r *GatewayReconciler) processListenerConfig(tctx *provider.TranslateContex
 		if listener.TLS == nil {
 			continue
 		}
-		secret := corev1.Secret{}
 		for _, ref := range listener.TLS.CertificateRefs {
 			ns := gateway.GetNamespace()
 			if ref.Namespace != nil {
 				ns = string(*ref.Namespace)
 			}
 			if ref.Kind != nil && *ref.Kind == KindSecret {
+				// Declared per ref: a listener may carry several certificateRefs, and
+				// each tctx.Secrets entry must point to its own Secret rather than all
+				// aliasing one shared variable that ends up holding the last one loaded.
+				secret := corev1.Secret{}
 				// A cross-namespace certificateRef must be authorized by a ReferenceGrant,
 				// or the data plane would program a certificate the target namespace never
 				// permitted. The listener status already reports RefNotPermitted for this.
