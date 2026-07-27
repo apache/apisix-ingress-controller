@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations"
 	"github.com/apache/apisix-ingress-controller/internal/controller"
 	"github.com/apache/apisix-ingress-controller/internal/webhook/v1/reference"
 	sslvalidator "github.com/apache/apisix-ingress-controller/internal/webhook/v1/ssl"
@@ -82,6 +83,10 @@ func (v *IngressCustomValidator) ValidateCreate(ctx context.Context, obj runtime
 		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
 	}
 
+	if err := validateAnnotations(ingress); err != nil {
+		return nil, err
+	}
+
 	warnings := v.collectReferenceWarnings(ctx, ingress)
 	return warnings, nil
 }
@@ -103,8 +108,26 @@ func (v *IngressCustomValidator) ValidateUpdate(ctx context.Context, oldObj, new
 		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
 	}
 
+	if err := validateAnnotations(ingress); err != nil {
+		return nil, err
+	}
+
 	warnings := v.collectReferenceWarnings(ctx, ingress)
 	return warnings, nil
+}
+
+// validateAnnotations rejects annotation combinations that would otherwise be
+// silently dropped, leaving the route without a requested security plugin.
+// enable-csrf with no csrf-key is refused here so kubectl apply fails loudly
+// instead of programming a route the operator believes is protected.
+func validateAnnotations(ingress *networkingv1.Ingress) error {
+	e := annotations.NewExtractor(ingress.Annotations)
+	if e.GetBoolAnnotation(annotations.AnnotationsEnableCsrf) &&
+		e.GetStringAnnotation(annotations.AnnotationsCsrfKey) == "" {
+		return fmt.Errorf("annotation %q is enabled but %q is missing or empty",
+			annotations.AnnotationsEnableCsrf, annotations.AnnotationsCsrfKey)
+	}
+	return nil
 }
 
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type Ingress.
