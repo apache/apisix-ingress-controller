@@ -240,7 +240,8 @@ func Run(ctx context.Context, logger logr.Logger) error {
 		return err
 	}
 	if !hasReferenceGrant {
-		setupLog.Info("CRD ReferenceGrants is not installed")
+		setupLog.Info("CRD ReferenceGrants is not installed, cross-namespace references will be rejected",
+			"gvk", utils.FormatGVK(&v1beta1.ReferenceGrant{}))
 	}
 	controller.SetEnableReferenceGrant(hasReferenceGrant)
 

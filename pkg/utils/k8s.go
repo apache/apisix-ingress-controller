@@ -20,14 +20,13 @@ package utils
 import (
 	"context"
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/go-logr/logr"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/apimachinery/pkg/version"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -38,18 +37,44 @@ import (
 )
 
 const (
-	// A discovery request that neither succeeds nor gives a definitive answer is
-	// retried a few times to absorb short blips. A longer outage is reported to
-	// the caller instead: it is not this function's job to decide how long the
-	// process should wait for the API server.
-	discoveryRetryInterval = 500 * time.Millisecond
-	discoveryRetryFactor   = 2
-	discoveryRetrySteps    = 4
+	// A discovery request that gives no definitive answer is retried a few times
+	// to absorb short blips. A longer outage is reported to the caller instead:
+	// it is not this function's job to decide how long to wait for the API server.
+	discoveryRetryInitialInterval = 500 * time.Millisecond
+	discoveryRetrySteps           = 5 // ~7.5s in total
 
-	// Interval bounds used while waiting for the API server to become reachable.
+	// The startup wait for the API server is deliberately finite. The health
+	// probe endpoint is only served once mgr.Start runs, so a pod still waiting
+	// here fails its liveness probe and is killed anyway; giving up with an
+	// explicit error and letting the pod restart says more in the logs than
+	// being killed mid-wait. Longer outages are absorbed by the restart backoff.
 	apiServerWaitInitialInterval = 1 * time.Second
-	apiServerWaitMaxInterval     = 30 * time.Second
+	apiServerWaitSteps           = 6 // ~31s in total
+
+	backoffFactor = 2
+	backoffJitter = 0.1
 )
+
+// Neither backoff sets Cap: wait.Backoff zeroes the remaining steps as soon as
+// the capped interval is reached, which would silently cut the retries short.
+
+func discoveryBackoff() wait.Backoff {
+	return wait.Backoff{
+		Duration: discoveryRetryInitialInterval,
+		Factor:   backoffFactor,
+		Jitter:   backoffJitter,
+		Steps:    discoveryRetrySteps,
+	}
+}
+
+func apiServerWaitBackoff() wait.Backoff {
+	return wait.Backoff{
+		Duration: apiServerWaitInitialInterval,
+		Factor:   backoffFactor,
+		Jitter:   backoffJitter,
+		Steps:    apiServerWaitSteps,
+	}
+}
 
 // HasAPIResource reports whether the API resource of obj is served by the cluster.
 //
@@ -71,6 +96,21 @@ func HasAPIResourceWithLogger(mgr ctrl.Manager, obj client.Object, logger logr.L
 		return false, fmt.Errorf("cannot derive GVK from scheme: %w", err)
 	}
 
+	// Create discovery client
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
+	if err != nil {
+		return false, fmt.Errorf("failed to create discovery client: %w", err)
+	}
+
+	return hasAPIResource(discoveryClient, gvk, discoveryBackoff(), logger)
+}
+
+func hasAPIResource(
+	discoveryClient discovery.DiscoveryInterface,
+	gvk schema.GroupVersionKind,
+	backoff wait.Backoff,
+	logger logr.Logger,
+) (bool, error) {
 	groupVersion := gvk.GroupVersion().String()
 
 	logger = logger.WithValues(
@@ -80,23 +120,23 @@ func HasAPIResourceWithLogger(mgr ctrl.Manager, obj client.Object, logger logr.L
 		"groupVersion", groupVersion,
 	)
 
-	// Create discovery client
-	discoveryClient, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
-	if err != nil {
-		return false, fmt.Errorf("failed to create discovery client: %w", err)
-	}
-
 	// Query server resources for the specific group/version
 	var apiResources *metav1.APIResourceList
-	err = discoverWithRetry(func() error {
+	err := retryUntilDefinitive(backoff, logger, func() error {
 		var err error
 		apiResources, err = discoveryClient.ServerResourcesForGroupVersion(groupVersion)
 		return err
-	}, logger, time.Sleep)
+	})
 	switch {
 	case err == nil:
-	case isResourceAbsent(err):
+	case apierrors.IsNotFound(err):
 		logger.Info("group/version not available in cluster", "error", err)
+		return false, nil
+	case apierrors.IsForbidden(err):
+		// Definitive, but a misconfiguration rather than an absent CRD: log loudly
+		// so it is not mistaken for "the CRD was never installed".
+		logger.Error(err, "discovery is forbidden, treating the API resource as not installed; "+
+			"check the discovery permissions of the controller service account")
 		return false, nil
 	default:
 		return false, fmt.Errorf("failed to detect API resource %s: %w", gvk, err)
@@ -113,8 +153,8 @@ func HasAPIResourceWithLogger(mgr ctrl.Manager, obj client.Object, logger logr.L
 	return false, nil
 }
 
-// WaitForAPIServer blocks until the API server answers a discovery request, or
-// ctx is done.
+// WaitForAPIServer blocks until the API server answers a discovery request, ctx
+// is done, or the wait budget is exhausted.
 //
 // Capability detection (field indexes, optional CRDs, ReferenceGrant support) is
 // decided once at startup and cannot be revised afterwards, so it must not run
@@ -124,28 +164,24 @@ func WaitForAPIServer(ctx context.Context, cfg *rest.Config, logger logr.Logger)
 	if err != nil {
 		return fmt.Errorf("failed to create discovery client: %w", err)
 	}
-	backoff := wait.Backoff{
-		Duration: apiServerWaitInitialInterval,
-		Factor:   discoveryRetryFactor,
-		Jitter:   0.1,
-		Cap:      apiServerWaitMaxInterval,
-		// Retry until ctx is done rather than for a fixed number of attempts:
-		// the controller cannot do anything useful without the API server.
-		Steps: math.MaxInt32,
-	}
-	return waitForAPIServer(ctx, discoveryClient.ServerVersion, backoff, logger)
+	return waitForAPIServer(ctx, func() error {
+		_, err := discoveryClient.ServerVersion()
+		return err
+	}, apiServerWaitBackoff(), logger)
 }
 
-func waitForAPIServer(ctx context.Context, probe func() (*version.Info, error), backoff wait.Backoff, logger logr.Logger) error {
+func waitForAPIServer(ctx context.Context, probe func() error, backoff wait.Backoff, logger logr.Logger) error {
 	var lastErr error
 	if err := wait.ExponentialBackoffWithContext(ctx, backoff, func(context.Context) (bool, error) {
-		if _, lastErr = probe(); lastErr != nil {
+		if lastErr = probe(); lastErr != nil {
 			logger.Info("waiting for the Kubernetes API server to become reachable", "error", lastErr)
 			return false, nil
 		}
 		return true, nil
 	}); err != nil {
-		if lastErr != nil {
+		// Report why the API server did not answer; a cancelled ctx is the
+		// caller shutting us down and must stay recognizable as such.
+		if ctx.Err() == nil && lastErr != nil {
 			err = lastErr
 		}
 		return fmt.Errorf("give up waiting for the Kubernetes API server: %w", err)
@@ -153,19 +189,19 @@ func waitForAPIServer(ctx context.Context, probe func() (*version.Info, error), 
 	return nil
 }
 
-// discoverWithRetry runs probe until it returns nil or a definitive answer,
-// retrying at most discoveryRetrySteps times. sleep is injected for testability.
-func discoverWithRetry(probe func() error, logger logr.Logger, sleep func(time.Duration)) error {
-	interval := discoveryRetryInterval
-	for i := 0; ; i++ {
-		err := probe()
-		if err == nil || isResourceAbsent(err) || i == discoveryRetrySteps {
-			return err
+// retryUntilDefinitive runs probe until it returns nil or a definitive answer,
+// and reports the last failure once the retry budget is exhausted.
+func retryUntilDefinitive(backoff wait.Backoff, logger logr.Logger, probe func() error) error {
+	var lastErr error
+	//nolint:errcheck // the loop only ever exhausts its steps; lastErr carries the outcome.
+	_ = wait.ExponentialBackoff(backoff, func() (bool, error) {
+		if lastErr = probe(); lastErr == nil || isResourceAbsent(lastErr) {
+			return true, nil
 		}
-		logger.Info("discovery request failed, retrying", "error", err, "retryIn", interval.String())
-		sleep(interval)
-		interval *= discoveryRetryFactor
-	}
+		logger.Info("discovery request failed, retrying", "error", lastErr)
+		return false, nil
+	})
+	return lastErr
 }
 
 // isResourceAbsent reports whether err definitively means the group/version is
