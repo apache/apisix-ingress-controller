@@ -42,10 +42,20 @@ func fastBackoff(steps int) wait.Backoff {
 	return wait.Backoff{Duration: time.Millisecond, Factor: backoffFactor, Jitter: backoffJitter, Steps: steps}
 }
 
+// declaredBudget is how long a backoff sleeps in total before jitter, i.e. the
+// sum of the intervals between its attempts.
+func declaredBudget(backoff wait.Backoff) time.Duration {
+	var total, interval time.Duration = 0, backoff.Duration
+	for i := 0; i < backoff.Steps-1; i++ {
+		total += interval
+		interval = time.Duration(float64(interval) * backoff.Factor)
+	}
+	return total
+}
+
 // countingBackoff reports how many times a backoff actually runs its condition.
 func countAttempts(backoff wait.Backoff) int {
 	var attempts int
-	//nolint:errcheck // the condition never succeeds, the error is always ErrWaitTimeout.
 	_ = wait.ExponentialBackoff(backoff, func() (bool, error) {
 		attempts++
 		return false, nil
@@ -62,14 +72,17 @@ func TestBackoffsUseAllTheirSteps(t *testing.T) {
 		name    string
 		backoff wait.Backoff
 		steps   int
+		budget  time.Duration // as documented next to the constants
 	}{
-		{"discovery", discoveryBackoff(), discoveryRetrySteps},
-		{"apiServerWait", apiServerWaitBackoff(), apiServerWaitSteps},
+		{"discovery", discoveryBackoff(), discoveryRetrySteps, 7500 * time.Millisecond},
+		{"apiServerWait", apiServerWaitBackoff(), apiServerWaitSteps, 31 * time.Second},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
+			assert.Zero(t, tt.backoff.Cap, "Cap truncates the retries, see wait.delay()")
+			assert.Equal(t, tt.budget, declaredBudget(tt.backoff), "the documented budget must match the backoff")
+
 			b := tt.backoff
 			b.Duration = time.Microsecond // keep the test fast, preserve the shape
-			assert.Zero(t, b.Cap, "Cap truncates the retries, see wait.delay()")
 			assert.Equal(t, tt.steps, countAttempts(b))
 		})
 	}
@@ -147,6 +160,22 @@ func TestRetryUntilDefinitive_DefinitiveAbsent(t *testing.T) {
 	assert.Equal(t, 1, calls, "a definitive NotFound must not be retried")
 }
 
+// TestRetryUntilDefinitive_NeverProbed guards the caller's assumption that a
+// nil error means "the probe succeeded": a backoff with no steps left never runs
+// the condition, and reporting nil there would be read as "resource present".
+func TestRetryUntilDefinitive_NeverProbed(t *testing.T) {
+	var calls int
+	probe := func() error {
+		calls++
+		return nil
+	}
+
+	err := retryUntilDefinitive(wait.Backoff{Steps: 0}, logr.Discard(), probe)
+	require.Error(t, err)
+	assert.Zero(t, calls)
+	assert.False(t, isResourceAbsent(err), "an unattempted probe must not resolve to absent either")
+}
+
 func TestWaitForAPIServer_RetriesUntilReachable(t *testing.T) {
 	var calls int
 	probe := func() error {
@@ -159,6 +188,27 @@ func TestWaitForAPIServer_RetriesUntilReachable(t *testing.T) {
 
 	require.NoError(t, waitForAPIServer(context.Background(), probe, fastBackoff(6), logr.Discard()))
 	assert.Equal(t, 3, calls)
+}
+
+// TestWaitForAPIServer_AuthRejectionIsReachable covers a hardened cluster that
+// does not grant the controller access to the probed endpoint: the API server
+// answered, so startup must proceed instead of stalling until the budget runs
+// out and then failing on a perfectly healthy cluster.
+func TestWaitForAPIServer_AuthRejectionIsReachable(t *testing.T) {
+	for name, probeErr := range map[string]error{
+		"unauthorized": apierrors.NewUnauthorized("no token"),
+		"forbidden":    apierrors.NewForbidden(schema.GroupResource{}, "", errors.New("nope")),
+	} {
+		t.Run(name, func(t *testing.T) {
+			var calls int
+			probe := func() error {
+				calls++
+				return probeErr
+			}
+			require.NoError(t, waitForAPIServer(context.Background(), probe, fastBackoff(5), logr.Discard()))
+			assert.Equal(t, 1, calls, "an answer, even a rejection, must not be retried")
+		})
+	}
 }
 
 func TestWaitForAPIServer_GivesUpWithTheLastError(t *testing.T) {

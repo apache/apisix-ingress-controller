@@ -187,12 +187,27 @@ func Run(ctx context.Context, logger logr.Logger) error {
 		return err
 	}
 
+	// API resource detection runs outside the manager and does not observe
+	// signalCtx, so check between setup phases: now that the signal handler is
+	// installed this early, a shutdown signal would otherwise be swallowed until
+	// mgr.Start.
+	checkShutdown := func() error {
+		if err := signalCtx.Err(); err != nil {
+			setupLog.Info("shutdown requested during setup, stopping", "reason", err)
+			return err
+		}
+		return nil
+	}
+
 	// Check Kubernetes cluster version
 	checkK8sVersion(mgr, setupLog)
 
 	readier := readiness.NewReadinessManager(mgr.GetClient(), logger)
 	if err := registerReadiness(mgr, readier); err != nil {
 		setupLog.Error(err, "unable to register readiness checks")
+		return err
+	}
+	if err := checkShutdown(); err != nil {
 		return err
 	}
 
@@ -233,17 +248,26 @@ func Run(ctx context.Context, logger logr.Logger) error {
 		return err
 	}
 
-	setupLog.Info("check ReferenceGrants is enabled")
-	hasReferenceGrant, err := utils.HasAPIResource(mgr, &v1beta1.ReferenceGrant{})
-	if err != nil {
-		setupLog.Error(err, "unable to detect whether ReferenceGrants is installed")
-		return err
-	}
-	if !hasReferenceGrant {
-		setupLog.Info("CRD ReferenceGrants is not installed, cross-namespace references will be rejected",
-			"gvk", utils.FormatGVK(&v1beta1.ReferenceGrant{}))
+	// ReferenceGrant is a Gateway API kind and only consulted by Gateway API
+	// paths, so skip the detection entirely when Gateway API is disabled.
+	hasReferenceGrant := false
+	if config.ControllerConfig.DisableGatewayAPI {
+		setupLog.Info("Gateway API is disabled, skipping the ReferenceGrants check")
+	} else {
+		setupLog.Info("check ReferenceGrants is enabled")
+		if hasReferenceGrant, err = utils.HasAPIResource(mgr, &v1beta1.ReferenceGrant{}); err != nil {
+			setupLog.Error(err, "unable to detect whether ReferenceGrants is installed")
+			return err
+		}
+		if !hasReferenceGrant {
+			setupLog.Info("CRD ReferenceGrants is not installed, cross-namespace references will be rejected",
+				"gvk", utils.FormatGVK(&v1beta1.ReferenceGrant{}))
+		}
 	}
 	controller.SetEnableReferenceGrant(hasReferenceGrant)
+	if err := checkShutdown(); err != nil {
+		return err
+	}
 
 	setupLog.Info("setting up controllers")
 	controllers, err := setupControllers(ctx, mgr, provider, updater.Writer(), readier)
@@ -254,6 +278,9 @@ func Run(ctx context.Context, logger logr.Logger) error {
 
 	for _, c := range controllers {
 		if err := c.SetupWithManager(mgr); err != nil {
+			return err
+		}
+		if err := checkShutdown(); err != nil {
 			return err
 		}
 	}

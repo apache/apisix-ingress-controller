@@ -19,6 +19,7 @@ package utils
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -41,7 +42,7 @@ const (
 	// to absorb short blips. A longer outage is reported to the caller instead:
 	// it is not this function's job to decide how long to wait for the API server.
 	discoveryRetryInitialInterval = 500 * time.Millisecond
-	discoveryRetrySteps           = 5 // ~7.5s in total
+	discoveryRetrySteps           = 5 // ~7.5s, up to ~8.3s with jitter
 
 	// The startup wait for the API server is deliberately finite. The health
 	// probe endpoint is only served once mgr.Start runs, so a pod still waiting
@@ -49,7 +50,7 @@ const (
 	// explicit error and letting the pod restart says more in the logs than
 	// being killed mid-wait. Longer outages are absorbed by the restart backoff.
 	apiServerWaitInitialInterval = 1 * time.Second
-	apiServerWaitSteps           = 6 // ~31s in total
+	apiServerWaitSteps           = 6 // ~31s, up to ~34s with jitter
 
 	backoffFactor = 2
 	backoffJitter = 0.1
@@ -173,15 +174,19 @@ func WaitForAPIServer(ctx context.Context, cfg *rest.Config, logger logr.Logger)
 func waitForAPIServer(ctx context.Context, probe func() error, backoff wait.Backoff, logger logr.Logger) error {
 	var lastErr error
 	if err := wait.ExponentialBackoffWithContext(ctx, backoff, func(context.Context) (bool, error) {
-		if lastErr = probe(); lastErr != nil {
+		if lastErr = probe(); !apiServerAnswered(lastErr) {
 			logger.Info("waiting for the Kubernetes API server to become reachable", "error", lastErr)
 			return false, nil
 		}
+		if lastErr != nil {
+			logger.Info("the Kubernetes API server rejected the probe but is reachable, continuing", "error", lastErr)
+		}
 		return true, nil
 	}); err != nil {
-		// Report why the API server did not answer; a cancelled ctx is the
-		// caller shutting us down and must stay recognizable as such.
-		if ctx.Err() == nil && lastErr != nil {
+		// ExponentialBackoffWithContext only ever returns ctx.Err() or its own
+		// interrupted error, so this tells cancellation and an exhausted budget
+		// apart without racing against ctx.
+		if !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) && lastErr != nil {
 			err = lastErr
 		}
 		return fmt.Errorf("give up waiting for the Kubernetes API server: %w", err)
@@ -189,18 +194,32 @@ func waitForAPIServer(ctx context.Context, probe func() error, backoff wait.Back
 	return nil
 }
 
+// apiServerAnswered reports whether err still proves the API server responded.
+// An authn/authz rejection is an answer: a hardened cluster may not grant the
+// controller's service account access to the probed endpoint, and that is no
+// reason to hold up startup.
+func apiServerAnswered(err error) bool {
+	return err == nil || apierrors.IsUnauthorized(err) || apierrors.IsForbidden(err)
+}
+
 // retryUntilDefinitive runs probe until it returns nil or a definitive answer,
 // and reports the last failure once the retry budget is exhausted.
 func retryUntilDefinitive(backoff wait.Backoff, logger logr.Logger, probe func() error) error {
+	var probed bool
 	var lastErr error
-	//nolint:errcheck // the loop only ever exhausts its steps; lastErr carries the outcome.
-	_ = wait.ExponentialBackoff(backoff, func() (bool, error) {
+	err := wait.ExponentialBackoff(backoff, func() (bool, error) {
+		probed = true
 		if lastErr = probe(); lastErr == nil || isResourceAbsent(lastErr) {
 			return true, nil
 		}
 		logger.Info("discovery request failed, retrying", "error", lastErr)
 		return false, nil
 	})
+	if !probed {
+		// A backoff with no steps left never runs the condition. Reporting nil
+		// here would be read as "the resource is present" by every caller.
+		return fmt.Errorf("discovery was never attempted: %w", err)
+	}
 	return lastErr
 }
 
