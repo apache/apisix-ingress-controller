@@ -24,7 +24,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/client-go/discovery"
@@ -49,6 +48,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	_ "github.com/apache/apisix-ingress-controller/internal/provider/init"
 	_ "github.com/apache/apisix-ingress-controller/pkg/metrics"
+	"github.com/apache/apisix-ingress-controller/pkg/utils"
 )
 
 var (
@@ -85,6 +85,11 @@ func Run(ctx context.Context, logger logr.Logger) error {
 	cfg := config.ControllerConfig
 
 	setupLog := ctrl.LoggerFrom(ctx).WithName("setup")
+
+	// SetupSignalHandler must be called exactly once. Install it before setup
+	// starts so that a shutdown signal is honored while waiting for the API
+	// server, not only once the manager is running.
+	signalCtx := ctrl.SetupSignalHandler()
 
 	// if the enable-http2 flag is false (the default), http/2 should be disabled
 	// due to its vulnerabilities. More specifically, disabling http/2 will
@@ -171,11 +176,25 @@ func Run(ctx context.Context, logger logr.Logger) error {
 		return err
 	}
 
+	// Which API resources are installed is detected once, below, and gates the
+	// registration of field indexes, controllers and readiness checks for the
+	// whole lifetime of the process. Detecting them against an unreachable API
+	// server would silently classify everything as "not installed" and leave the
+	// controller permanently degraded until it is restarted, so wait for the API
+	// server to answer first.
+	if err := utils.WaitForAPIServer(signalCtx, mgr.GetConfig(), setupLog); err != nil {
+		setupLog.Error(err, "unable to reach the Kubernetes API server")
+		return err
+	}
+
 	// Check Kubernetes cluster version
 	checkK8sVersion(mgr, setupLog)
 
 	readier := readiness.NewReadinessManager(mgr.GetClient(), logger)
-	registerReadiness(mgr, readier)
+	if err := registerReadiness(mgr, readier); err != nil {
+		setupLog.Error(err, "unable to register readiness checks")
+		return err
+	}
 
 	if err := mgr.Add(readier); err != nil {
 		setupLog.Error(err, "unable to add readiness manager")
@@ -215,15 +234,15 @@ func Run(ctx context.Context, logger logr.Logger) error {
 	}
 
 	setupLog.Info("check ReferenceGrants is enabled")
-	_, err = mgr.GetRESTMapper().KindsFor(schema.GroupVersionResource{
-		Group:    v1beta1.GroupVersion.Group,
-		Version:  v1beta1.GroupVersion.Version,
-		Resource: "referencegrants",
-	})
+	hasReferenceGrant, err := utils.HasAPIResource(mgr, &v1beta1.ReferenceGrant{})
 	if err != nil {
-		setupLog.Info("CRD ReferenceGrants is not installed", "err", err)
+		setupLog.Error(err, "unable to detect whether ReferenceGrants is installed")
+		return err
 	}
-	controller.SetEnableReferenceGrant(err == nil)
+	if !hasReferenceGrant {
+		setupLog.Info("CRD ReferenceGrants is not installed")
+	}
+	controller.SetEnableReferenceGrant(hasReferenceGrant)
 
 	setupLog.Info("setting up controllers")
 	controllers, err := setupControllers(ctx, mgr, provider, updater.Writer(), readier)
@@ -263,7 +282,7 @@ func Run(ctx context.Context, logger logr.Logger) error {
 	}
 
 	setupLog.Info("starting controller manager")
-	return mgr.Start(ctrl.SetupSignalHandler())
+	return mgr.Start(signalCtx)
 }
 
 func checkK8sVersion(mgr ctrl.Manager, logger logr.Logger) {

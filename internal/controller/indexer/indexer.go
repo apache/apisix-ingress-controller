@@ -65,12 +65,16 @@ func SetupAPIv1alpha1Indexer(mgr ctrl.Manager) error {
 		&v1alpha1.GatewayProxy{}:         setupGatewayProxyIndexer,
 		&v1alpha1.L4RoutePolicy{}:        setupL4RoutePolicyIndexer,
 	} {
-		if utils.HasAPIResource(mgr, resource) {
-			if err := setup(mgr); err != nil {
-				return err
-			}
-		} else {
+		installed, err := utils.HasAPIResource(mgr, resource)
+		if err != nil {
+			return err
+		}
+		if !installed {
 			setupLog.Info("Skipping indexer setup, API not found in cluster", "api", utils.FormatGVK(resource))
+			continue
+		}
+		if err := setup(mgr); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -87,12 +91,16 @@ func SetupAPIv2Indexer(mgr ctrl.Manager) error {
 		&apiv2.ApisixTls{}:           setupApisixTlsIndexer,
 		&apiv2.ApisixGlobalRule{}:    setupApisixGlobalRuleIndexer,
 	} {
-		if utils.HasAPIResource(mgr, resource) {
-			if err := setup(mgr); err != nil {
-				return err
-			}
-		} else {
+		installed, err := utils.HasAPIResource(mgr, resource)
+		if err != nil {
+			return err
+		}
+		if !installed {
 			setupLog.Info("Skipping indexer setup, API not found in cluster", "api", utils.FormatGVK(resource))
+			continue
+		}
+		if err := setup(mgr); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -110,12 +118,16 @@ func SetupGatewayAPIIndexer(mgr ctrl.Manager) error {
 		&gatewayv1alpha2.TLSRoute{}: setupTLSRouteIndexer,
 		&gatewayv1.GatewayClass{}:   setupGatewayClassIndexer,
 	} {
-		if utils.HasAPIResource(mgr, resource) {
-			if err := setup(mgr); err != nil {
-				return err
-			}
-		} else {
+		installed, err := utils.HasAPIResource(mgr, resource)
+		if err != nil {
+			return err
+		}
+		if !installed {
 			setupLog.Info("Skipping indexer setup, API not found in cluster", "api", utils.FormatGVK(resource))
+			continue
+		}
+		if err := setup(mgr); err != nil {
+			return err
 		}
 	}
 	return nil
