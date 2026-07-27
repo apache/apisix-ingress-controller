@@ -187,7 +187,9 @@ func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
 			expected: nil,
 		},
 		{
-			name: "empty mode normalizes to auto",
+			// An unset mode must not start injecting predicates behind the
+			// operator's back, so it resolves to off rather than to auto.
+			name: "empty mode normalizes to off",
 			mode: "",
 			parentRefs: []gatewayv1.ParentReference{
 				{Name: "gw", Port: &parentPort},
@@ -195,7 +197,7 @@ func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
 			listeners: []gatewayv1.Listener{
 				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
 			},
-			expected: singlePortVars,
+			expected: nil,
 		},
 		{
 			// Listeners sharing a port but differing by hostname are isolated by

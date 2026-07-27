@@ -30,14 +30,16 @@ type Translator struct {
 	ListenerPortMatchMode config.ListenerPortMatchMode
 }
 
+// normalizeMode resolves an unset or unrecognised mode to the default. Emitting a
+// server_port predicate is only correct once an operator has confirmed the data
+// plane listens on the Gateway's declared ports, so anything unclear falls back
+// to off rather than to a mode that injects.
 func normalizeMode(mode config.ListenerPortMatchMode) config.ListenerPortMatchMode {
 	switch mode {
-	case "", config.ListenerPortMatchModeAuto:
-		return config.ListenerPortMatchModeAuto
-	case config.ListenerPortMatchModeExplicit, config.ListenerPortMatchModeOff:
+	case config.ListenerPortMatchModeAuto, config.ListenerPortMatchModeExplicit, config.ListenerPortMatchModeOff:
 		return mode
 	default:
-		return config.ListenerPortMatchModeAuto
+		return config.ListenerPortMatchModeOff
 	}
 }
 
@@ -119,7 +121,7 @@ func (t *Translator) shouldInjectServerPortVars(parentRefs []gatewayv1.ParentRef
 	case config.ListenerPortMatchModeAuto:
 		return explicit || len(ports) > 1
 	default:
-		return explicit || len(ports) > 1
+		return false
 	}
 }
 

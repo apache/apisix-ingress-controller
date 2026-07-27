@@ -175,7 +175,9 @@ func TestTranslateGRPCRouteServerPortVarsByMode(t *testing.T) {
 			expected: nil,
 		},
 		{
-			name: "empty mode normalizes to auto",
+			// An unset mode must not start injecting predicates behind the
+			// operator's back, so it resolves to off rather than to auto.
+			name: "empty mode normalizes to off",
 			mode: "",
 			parentRefs: []gatewayv1.ParentReference{
 				{Name: "gw", Port: &parentPort},
@@ -183,7 +185,7 @@ func TestTranslateGRPCRouteServerPortVarsByMode(t *testing.T) {
 			listeners: []gatewayv1.Listener{
 				{Name: "grpc-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
 			},
-			expected: singlePortVars,
+			expected: nil,
 		},
 		{
 			// Same-port listeners differing by hostname are isolated by host, not by
