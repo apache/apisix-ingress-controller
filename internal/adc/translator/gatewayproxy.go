@@ -18,6 +18,7 @@
 package translator
 
 import (
+	"crypto/x509"
 	"fmt"
 	"net"
 	"strconv"
@@ -54,6 +55,17 @@ func (t *Translator) TranslateGatewayProxyToConfig(tctx *provider.TranslateConte
 
 	if cp.TlsVerify != nil {
 		cfg.TlsVerify = *cp.TlsVerify
+	}
+
+	if cp.CaBundle != "" {
+		// reject unusable CA material here rather than at connect time
+		if !x509.NewCertPool().AppendCertsFromPEM([]byte(cp.CaBundle)) {
+			return nil, errors.New("invalid caBundle: no PEM-encoded certificate found")
+		}
+		if !cfg.TlsVerify {
+			t.Log.Info("caBundle is ignored because tlsVerify is disabled", "gatewayproxy", utils.NamespacedNameKind(gatewayProxy))
+		}
+		cfg.CaBundle = cp.CaBundle
 	}
 
 	if cp.Auth.Type == v1alpha1.AuthTypeAdminKey && cp.Auth.AdminKey != nil {
