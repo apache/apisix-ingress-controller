@@ -23,10 +23,13 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
@@ -90,6 +93,41 @@ func buildConsumerValidator(t *testing.T, objects ...runtime.Object) *ConsumerCu
 		WithScheme(scheme).
 		WithRuntimeObjects(allObjects...).
 		WithIndex(&apisixv1alpha1.Consumer{}, indexer.ConsumerGatewayRef, indexer.ConsumerGatewayRefIndexFunc)
+
+	return NewConsumerCustomValidator(builder.Build())
+}
+
+// buildConsumerValidatorWithInterceptor is buildConsumerValidator with client
+// interceptor funcs, used to simulate API server / cache failures.
+func buildConsumerValidatorWithInterceptor(t *testing.T, funcs interceptor.Funcs, objects ...runtime.Object) *ConsumerCustomValidator {
+	t.Helper()
+
+	scheme := runtime.NewScheme()
+	require.NoError(t, clientgoscheme.AddToScheme(scheme))
+	require.NoError(t, apisixv1alpha1.AddToScheme(scheme))
+	require.NoError(t, gatewayv1.Install(scheme))
+	require.NoError(t, v1beta1.Install(scheme))
+
+	managed := []runtime.Object{
+		&gatewayv1.GatewayClass{
+			ObjectMeta: metav1.ObjectMeta{Name: "apisix-gateway-class"},
+			Spec: gatewayv1.GatewayClassSpec{
+				ControllerName: gatewayv1.GatewayController(config.ControllerConfig.ControllerName),
+			},
+		},
+		&gatewayv1.Gateway{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-gateway", Namespace: "default"},
+			Spec: gatewayv1.GatewaySpec{
+				GatewayClassName: gatewayv1.ObjectName("apisix-gateway-class"),
+			},
+		},
+	}
+	allObjects := append(managed, objects...)
+	builder := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithRuntimeObjects(allObjects...).
+		WithIndex(&apisixv1alpha1.Consumer{}, indexer.ConsumerGatewayRef, indexer.ConsumerGatewayRefIndexFunc).
+		WithInterceptorFuncs(funcs)
 
 	return NewConsumerCustomValidator(builder.Build())
 }
@@ -218,6 +256,41 @@ func TestConsumerValidator_CrossNamespaceSecretOracleSuppressed(t *testing.T) {
 	require.Equal(t, absentErr.Error(), presentErr.Error())
 	require.Len(t, presentWarnings, 1)
 	require.Contains(t, presentWarnings[0], "Referenced Secret 'auth/jwt-secret' is not accessible from this Consumer without a ReferenceGrant")
+}
+
+// A failed ReferenceGrant lookup must not masquerade as "no grant": the Secret
+// probe is skipped and the warning stays neutral, never claiming a grant is missing.
+func TestConsumerValidator_CrossNamespaceSecretGrantLookupError(t *testing.T) {
+	enableReferenceGrant(t)
+	ns := authNS
+	consumer := &apisixv1alpha1.Consumer{
+		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
+		Spec: apisixv1alpha1.ConsumerSpec{
+			GatewayRef: apisixv1alpha1.GatewayRef{Name: "test-gateway"},
+			Credentials: []apisixv1alpha1.Credential{{
+				Type:      "jwt-auth",
+				SecretRef: &apisixv1alpha1.SecretReference{Name: "jwt-secret", Namespace: &ns},
+			}},
+		},
+	}
+
+	// The referenced Secret exists; only the ReferenceGrant List fails.
+	validator := buildConsumerValidatorWithInterceptor(t,
+		interceptor.Funcs{
+			List: func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
+				if _, ok := list.(*v1beta1.ReferenceGrantList); ok {
+					return apierrors.NewInternalError(fmt.Errorf("api server unavailable"))
+				}
+				return c.List(ctx, list, opts...)
+			},
+		},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "jwt-secret", Namespace: authNS}},
+	)
+
+	warnings, _ := validator.ValidateCreate(context.Background(), consumer)
+	require.Len(t, warnings, 1)
+	require.Contains(t, warnings[0], "Could not verify authorization for referenced Secret 'auth/jwt-secret'")
+	require.NotContains(t, warnings[0], "without a ReferenceGrant")
 }
 
 func TestConsumerValidator_NoWarnings(t *testing.T) {

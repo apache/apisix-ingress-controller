@@ -255,7 +255,11 @@ func (r *ConsumerReconciler) processSpec(ctx context.Context, tctx *provider.Tra
 		}
 		// A cross-namespace SecretRef needs a ReferenceGrant, same as routes.
 		secretNN := types.NamespacedName{Namespace: ns, Name: credential.SecretRef.Name}
-		if !CheckConsumerSecretRef(ctx, r.Client, consumer.GetNamespace(), secretNN) {
+		permitted, err := CheckConsumerSecretRef(ctx, r.Client, consumer.GetNamespace(), secretNN)
+		if err != nil {
+			return err
+		}
+		if !permitted {
 			r.Log.Error(nil, "cross-namespace secret reference not permitted by any ReferenceGrant",
 				"consumer", utils.NamespacedName(consumer), "secret", client.ObjectKey{Namespace: ns, Name: credential.SecretRef.Name})
 			return fmt.Errorf("cross-namespace secret reference from Consumer %s/%s to Secret %s/%s is not permitted by any ReferenceGrant",

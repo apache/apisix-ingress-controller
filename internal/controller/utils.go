@@ -1355,21 +1355,41 @@ func checkReferenceGrant(ctx context.Context, cli client.Client, obj v1beta1.Ref
 
 // CheckConsumerSecretRef reports whether a Consumer in fromNamespace may reference
 // the Secret at secretNN, honoring ReferenceGrant for cross-namespace references.
-func CheckConsumerSecretRef(ctx context.Context, cli client.Client, fromNamespace string, secretNN k8stypes.NamespacedName) bool {
-	secretNS := secretNN.Namespace
-	return checkReferenceGrant(ctx, cli,
-		v1beta1.ReferenceGrantFrom{
-			Group:     v1beta1.Group(v1alpha1.GroupVersion.Group),
-			Kind:      types.KindConsumer,
-			Namespace: v1beta1.Namespace(fromNamespace),
-		},
-		gatewayv1.ObjectReference{
-			Group:     corev1.GroupName,
-			Kind:      types.KindSecret,
-			Name:      gatewayv1.ObjectName(secretNN.Name),
-			Namespace: (*gatewayv1.Namespace)(&secretNS),
-		},
-	)
+// A non-nil error means the grant lookup itself failed (API server, RBAC, cache);
+// that is distinct from a permitted value of false, which means no ReferenceGrant
+// allows the reference. Callers must not treat a lookup failure as "denied".
+func CheckConsumerSecretRef(ctx context.Context, cli client.Client, fromNamespace string, secretNN k8stypes.NamespacedName) (bool, error) {
+	if secretNN.Namespace == "" || secretNN.Namespace == fromNamespace {
+		return true, nil
+	}
+	if !GetEnableReferenceGrant() {
+		return false, nil
+	}
+
+	var grantList v1beta1.ReferenceGrantList
+	if err := cli.List(ctx, &grantList, client.InNamespace(secretNN.Namespace)); err != nil {
+		return false, err
+	}
+
+	from := v1beta1.ReferenceGrantFrom{
+		Group:     v1beta1.Group(v1alpha1.GroupVersion.Group),
+		Kind:      types.KindConsumer,
+		Namespace: v1beta1.Namespace(fromNamespace),
+	}
+	for _, grant := range grantList.Items {
+		for _, f := range grant.Spec.From {
+			if f != from {
+				continue
+			}
+			for _, to := range grant.Spec.To {
+				if to.Group == corev1.GroupName && string(to.Kind) == types.KindSecret &&
+					(to.Name == nil || string(*to.Name) == secretNN.Name) {
+					return true, nil
+				}
+			}
+		}
+	}
+	return false, nil
 }
 
 func ListRequests(

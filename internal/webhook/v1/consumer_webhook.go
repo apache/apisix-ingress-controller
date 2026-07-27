@@ -136,10 +136,19 @@ func (v *ConsumerCustomValidator) collectWarnings(ctx context.Context, consumer 
 
 		// Don't probe cross-namespace Secrets that no ReferenceGrant permits: the
 		// found/not-found warning difference would leak Secret existence across
-		// namespaces. Emit a uniform message and skip the lookup.
-		if namespace != defaultNamespace && !controller.CheckConsumerSecretRef(ctx, v.Client, defaultNamespace, nn) {
-			warnings = append(warnings, fmt.Sprintf("Referenced Secret '%s/%s' is not accessible from this Consumer without a ReferenceGrant", nn.Namespace, nn.Name))
-			continue
+		// namespaces. Emit a uniform message and skip the lookup. On a lookup
+		// failure, skip the probe too but warn neutrally, without implying a grant
+		// is missing.
+		if namespace != defaultNamespace {
+			permitted, err := controller.CheckConsumerSecretRef(ctx, v.Client, defaultNamespace, nn)
+			if err != nil {
+				warnings = append(warnings, fmt.Sprintf("Could not verify authorization for referenced Secret '%s/%s'", nn.Namespace, nn.Name))
+				continue
+			}
+			if !permitted {
+				warnings = append(warnings, fmt.Sprintf("Referenced Secret '%s/%s' is not accessible from this Consumer without a ReferenceGrant", nn.Namespace, nn.Name))
+				continue
+			}
 		}
 
 		warnings = append(warnings, v.checker.Secret(ctx, reference.SecretRef{
@@ -223,9 +232,16 @@ func (v *ConsumerCustomValidator) extractCredentialKey(ctx context.Context, cons
 		nn := types.NamespacedName{Namespace: namespace, Name: credential.SecretRef.Name}
 		// Don't read a cross-namespace Secret that no ReferenceGrant permits:
 		// duplicate detection would otherwise reveal its existence and key. Treat
-		// it as absent; the reference is denied later during admission anyway.
-		if namespace != consumer.Namespace && !controller.CheckConsumerSecretRef(ctx, v.Client, consumer.Namespace, nn) {
-			return "", nil
+		// it as absent; the reference is denied later during admission anyway. A
+		// lookup failure is surfaced so admission fails closed rather than admitting.
+		if namespace != consumer.Namespace {
+			permitted, err := controller.CheckConsumerSecretRef(ctx, v.Client, consumer.Namespace, nn)
+			if err != nil {
+				return "", err
+			}
+			if !permitted {
+				return "", nil
+			}
 		}
 
 		var secret corev1.Secret
