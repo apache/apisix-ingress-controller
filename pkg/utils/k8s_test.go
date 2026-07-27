@@ -88,12 +88,12 @@ func TestBackoffsUseAllTheirSteps(t *testing.T) {
 	}
 }
 
-func TestIsResourceAbsent(t *testing.T) {
+func TestIsDefinitive(t *testing.T) {
 	gr := schema.GroupResource{Group: "gateway.networking.k8s.io", Resource: "tcproutes"}
 	tests := []struct {
-		name   string
-		err    error
-		absent bool
+		name       string
+		err        error
+		definitive bool
 	}{
 		// Definitive: the group/version is genuinely not served.
 		{"not found", apierrors.NewNotFound(gr, "tcproutes"), true},
@@ -109,7 +109,7 @@ func TestIsResourceAbsent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equal(t, tt.absent, isResourceAbsent(tt.err))
+			assert.Equal(t, tt.definitive, isDefinitive(tt.err))
 		})
 	}
 }
@@ -127,7 +127,7 @@ func TestRetryUntilDefinitive_ReportsIndeterminateFailure(t *testing.T) {
 
 	err := retryUntilDefinitive(fastBackoff(3), logr.Discard(), probe)
 	require.Error(t, err, "an unreachable API server must not be reported as a definitive answer")
-	assert.False(t, isResourceAbsent(err))
+	assert.False(t, isDefinitive(err))
 	assert.Equal(t, 3, calls, "the whole retry budget must be used")
 }
 
@@ -156,7 +156,7 @@ func TestRetryUntilDefinitive_DefinitiveAbsent(t *testing.T) {
 	}
 
 	err := retryUntilDefinitive(fastBackoff(5), logr.Discard(), probe)
-	assert.True(t, isResourceAbsent(err))
+	assert.True(t, isDefinitive(err))
 	assert.Equal(t, 1, calls, "a definitive NotFound must not be retried")
 }
 
@@ -173,7 +173,7 @@ func TestRetryUntilDefinitive_NeverProbed(t *testing.T) {
 	err := retryUntilDefinitive(wait.Backoff{Steps: 0}, logr.Discard(), probe)
 	require.Error(t, err)
 	assert.Zero(t, calls)
-	assert.False(t, isResourceAbsent(err), "an unattempted probe must not resolve to absent either")
+	assert.False(t, isDefinitive(err), "an unattempted probe must not look like a definitive answer either")
 }
 
 func TestWaitForAPIServer_RetriesUntilReachable(t *testing.T) {
@@ -297,10 +297,15 @@ func TestHasAPIResource(t *testing.T) {
 			wantErr: true,
 		},
 		{
+			// Forbidden is definitive but proves nothing about the resource: the
+			// CRD may well be served and only discovery denied. Resolving it to
+			// "absent" would permanently skip the controller, so it must abort
+			// startup and point at the RBAC instead.
 			name: "discovery forbidden",
 			handler: func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusForbidden)
 			},
+			wantErr: true,
 		},
 	}
 

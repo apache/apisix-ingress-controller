@@ -79,12 +79,12 @@ func apiServerWaitBackoff() wait.Backoff {
 
 // HasAPIResource reports whether the API resource of obj is served by the cluster.
 //
-// An error is returned when discovery cannot produce a definitive answer, for
-// instance because the API server is unreachable. Callers must not fall back to
-// "resource absent" in that case: detection runs once at startup and gates field
-// index, controller and readiness registration, so a temporary API server outage
-// would otherwise leave the controller permanently degraded until it is
-// restarted.
+// Only a 404 from discovery reports the resource as absent. Every other failure
+// returns an error, including a Forbidden discovery request: callers must not
+// fall back to "resource absent" there. Detection runs once at startup and gates
+// field index, controller and readiness registration, so an API server outage or
+// an RBAC mistake would otherwise leave the controller permanently degraded
+// until it is restarted.
 func HasAPIResource(mgr ctrl.Manager, obj client.Object) (bool, error) {
 	return HasAPIResourceWithLogger(mgr, obj, ctrl.Log.WithName("api-detection"))
 }
@@ -134,11 +134,12 @@ func hasAPIResource(
 		logger.Info("group/version not available in cluster", "error", err)
 		return false, nil
 	case apierrors.IsForbidden(err):
-		// Definitive, but a misconfiguration rather than an absent CRD: log loudly
-		// so it is not mistaken for "the CRD was never installed".
-		logger.Error(err, "discovery is forbidden, treating the API resource as not installed; "+
-			"check the discovery permissions of the controller service account")
-		return false, nil
+		// Definitive, but no evidence of absence: the resource may well be served
+		// and only discovery is denied. Resolving it to "absent" would be cached
+		// for the lifetime of the manager and permanently skip the controller, so
+		// an RBAC misconfiguration must abort startup instead.
+		return false, fmt.Errorf("discovery of %s is forbidden, check the discovery "+
+			"permissions of the controller service account: %w", gvk, err)
 	default:
 		return false, fmt.Errorf("failed to detect API resource %s: %w", gvk, err)
 	}
@@ -209,7 +210,7 @@ func retryUntilDefinitive(backoff wait.Backoff, logger logr.Logger, probe func()
 	var lastErr error
 	err := wait.ExponentialBackoff(backoff, func() (bool, error) {
 		probed = true
-		if lastErr = probe(); lastErr == nil || isResourceAbsent(lastErr) {
+		if lastErr = probe(); lastErr == nil || isDefinitive(lastErr) {
 			return true, nil
 		}
 		logger.Info("discovery request failed, retrying", "error", lastErr)
@@ -223,15 +224,16 @@ func retryUntilDefinitive(backoff wait.Backoff, logger logr.Logger, probe func()
 	return lastErr
 }
 
-// isResourceAbsent reports whether err definitively means the group/version is
-// not usable, as opposed to discovery having failed to reach a conclusion.
-func isResourceAbsent(err error) bool {
+// isDefinitive reports whether err settles the discovery request, so that
+// retrying it cannot change the outcome. Only the caller decides what a
+// definitive failure means: NotFound is absence, Forbidden is a misconfiguration.
+func isDefinitive(err error) bool {
 	switch {
 	// Discovery of a group/version that is not installed answers 404.
 	case apierrors.IsNotFound(err):
 		return true
-	// RBAC forbids discovery: the resource is not usable by this controller and
-	// waiting will not change that.
+	// RBAC forbids discovery: waiting will not change that, but it says nothing
+	// about whether the resource is served.
 	case apierrors.IsForbidden(err):
 		return true
 	// Connection refused, timeouts, EOF, 5xx, throttling: the API server may
