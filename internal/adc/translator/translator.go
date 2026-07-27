@@ -66,8 +66,8 @@ func hasExplicitListenerTarget(parentRefs []gatewayv1.ParentReference) bool {
 	return false
 }
 
-// collectServerPortMatchPorts returns the set of listener ports that should be
-// enforced through a server_port var.
+// collectServerPortMatchPorts returns the hostname-less listener ports, which is
+// the set used to decide whether a server_port var is needed at all.
 //
 // Listeners carrying a hostname are isolated by that hostname (service.hosts),
 // which is the correct discriminator when several listeners share a single port.
@@ -75,13 +75,27 @@ func hasExplicitListenerTarget(parentRefs []gatewayv1.ParentReference) bool {
 // pins the route to the Gateway's declared listener port, which need not equal
 // the port APISIX actually accepts the connection on (node_listen), turning
 // every request into a 404. Only hostname-less listeners rely on port-based
-// isolation, so only their ports contribute here.
+// isolation, so only their ports drive the decision to inject.
 func collectServerPortMatchPorts(listeners []gatewayv1.Listener) map[int32]struct{} {
 	ports := make(map[int32]struct{})
 	for _, listener := range listeners {
 		if listener.Hostname != nil && *listener.Hostname != "" {
 			continue
 		}
+		ports[listener.Port] = struct{}{}
+	}
+	return ports
+}
+
+// allListenerPorts returns every targeted listener port. Once a server_port var
+// is emitted it is applied to all of the route's APISIX routes, so it must list
+// every port the route is attached to - including hostname listeners. Otherwise
+// a route bound to both a hostname-less and a hostname listener would carry a
+// predicate for the hostname-less port only, silently dropping traffic that
+// arrives through the hostname listener's port.
+func allListenerPorts(listeners []gatewayv1.Listener) map[int32]struct{} {
+	ports := make(map[int32]struct{})
+	for _, listener := range listeners {
 		ports[listener.Port] = struct{}{}
 	}
 	return ports

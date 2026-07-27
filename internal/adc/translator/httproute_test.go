@@ -226,9 +226,11 @@ func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
 			expected: nil,
 		},
 		{
-			// A route bound to a listener with a hostname keeps port isolation only
-			// for the sibling listeners that lack a hostname (port-based routing).
-			name: "explicit mode: inject only ports of hostname-less listeners",
+			// A hostname-less sibling listener triggers a server_port var, but once
+			// emitted it must cover every targeted port - including the hostname
+			// listener's - or traffic arriving through the hostname listener is
+			// silently dropped. So the predicate lists both ports, not just 9080.
+			name: "explicit mode: mixed hostname and hostname-less listeners keep every targeted port",
 			mode: config.ListenerPortMatchModeExplicit,
 			parentRefs: []gatewayv1.ParentReference{
 				{Name: "gw", SectionName: &sectionName},
@@ -237,7 +239,16 @@ func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
 				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(80), Hostname: ptr.To(gatewayv1.Hostname("bar.com"))},
 				{Name: "http-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
 			},
-			expected: singlePortVars,
+			expected: adctypes.Vars{
+				{
+					{StrVal: "server_port"},
+					{StrVal: "in"},
+					{SliceVal: []adctypes.StringOrSlice{
+						{StrVal: "80"},
+						{StrVal: "9080"},
+					}},
+				},
+			},
 		},
 	}
 
