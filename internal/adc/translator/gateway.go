@@ -72,16 +72,36 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 	if tctx.Secrets == nil {
 		return nil, nil
 	}
+	sslObjs := make([]*adctypes.SSL, 0)
+
+	// TLS is terminated at the gateway unless the listener explicitly asks for
+	// passthrough, in which case certificateRefs are not needed (and are ignored
+	// per the Gateway API spec).
+	mode := gatewayv1.TLSModeTerminate
+	if listener.TLS.Mode != nil {
+		mode = *listener.TLS.Mode
+	}
+	if mode == gatewayv1.TLSModePassthrough {
+		return sslObjs, nil
+	}
+
 	if listener.TLS.CertificateRefs == nil {
 		return nil, fmt.Errorf("no certificateRefs found in listener %s", listener.Name)
 	}
-	sslObjs := make([]*adctypes.SSL, 0)
-	switch *listener.TLS.Mode {
+	switch mode {
 	case gatewayv1.TLSModeTerminate:
 		// frontendValidation configures downstream mTLS: clients must present a
 		// certificate signed by one of the referenced CAs during the TLS handshake.
 		client, err := t.translateFrontendValidation(tctx, listener, obj)
 		if err != nil {
+			// The mode is unsupported on this listener only. Emit no SSL for it
+			// (matching its Accepted=False status) and leave the rest of the
+			// Gateway - other listeners, global rules, plugin metadata - intact.
+			if errors.Is(err, errInsecureFallbackUnsupported) {
+				t.Log.V(1).Info("skipping listener with unsupported frontendValidation mode",
+					"gateway", obj.Name, "listener", listener.Name)
+				return sslObjs, nil
+			}
 			return nil, err
 		}
 		for refIndex, ref := range listener.TLS.CertificateRefs {
@@ -134,26 +154,38 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 			}
 
 		}
-	// Only supported on TLSRoute. The certificateRefs field is ignored in this mode.
-	case gatewayv1.TLSModePassthrough:
-		return sslObjs, nil
 	default:
-		return nil, fmt.Errorf("unknown TLS mode %s", *listener.TLS.Mode)
+		return nil, fmt.Errorf("unknown TLS mode %s", mode)
 	}
 
 	return sslObjs, nil
 }
 
-// translateFrontendValidation builds the downstream mTLS client configuration from a
-// listener's frontendValidation. The referenced CA certificates (ConfigMap, key `ca.crt`)
-// are bundled into a single trust anchor used to validate client certificates.
+// errInsecureFallbackUnsupported marks a listener whose frontendValidation asks for
+// the Extended AllowInsecureFallback mode. It is handled in translateSecret by
+// skipping that listener only; it must never fail the whole Gateway translation.
+var errInsecureFallbackUnsupported = errors.New("frontendValidation mode AllowInsecureFallback is not supported")
+
+// translateFrontendValidation builds the downstream mTLS client configuration from the
+// Gateway's frontendValidation that applies to the listener. The referenced CA
+// certificates (ConfigMap, key `ca.crt`) are bundled into a single trust anchor used
+// to validate client certificates.
 func (t *Translator) translateFrontendValidation(tctx *provider.TranslateContext, listener gatewayv1.Listener, obj *gatewayv1.Gateway) (*adctypes.ClientClass, error) {
-	if listener.TLS.FrontendValidation == nil || len(listener.TLS.FrontendValidation.CACertificateRefs) == 0 {
+	validation := internaltypes.FrontendTLSValidationForListener(obj, listener)
+	if validation == nil || len(validation.CACertificateRefs) == 0 {
 		return nil, nil
 	}
+	// APISIX can only enforce strict client-certificate verification (setting ca
+	// turns on ssl_verify_client). AllowInsecureFallback ("accept even if the
+	// client cert is missing or fails verification") cannot be expressed, so the
+	// listener is reported Accepted=False/UnsupportedValue and programmed with no
+	// SSL at all, rather than silently serving the opposite, strict behaviour.
+	if validation.Mode == gatewayv1.AllowInsecureFallback {
+		return nil, errInsecureFallbackUnsupported
+	}
 
-	cas := make([]string, 0, len(listener.TLS.FrontendValidation.CACertificateRefs))
-	for _, ref := range listener.TLS.FrontendValidation.CACertificateRefs {
+	cas := make([]string, 0, len(validation.CACertificateRefs))
+	for _, ref := range validation.CACertificateRefs {
 		// caCertificateRefs must be in the core API group. ConfigMap is the
 		// Gateway API Core support; Secret is an implementation-specific extension.
 		if ref.Group != "" && string(ref.Group) != corev1.GroupName {

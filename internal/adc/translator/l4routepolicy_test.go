@@ -26,7 +26,7 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
@@ -39,12 +39,12 @@ func makeL4RoutePolicy(namespace, name, targetKind, targetName string, plugins [
 			Name:      name,
 		},
 		Spec: v1alpha1.L4RoutePolicySpec{
-			TargetRefs: []gatewayv1alpha2.LocalPolicyTargetReferenceWithSectionName{
+			TargetRefs: []gatewayv1.LocalPolicyTargetReferenceWithSectionName{
 				{
-					LocalPolicyTargetReference: gatewayv1alpha2.LocalPolicyTargetReference{
-						Group: gatewayv1alpha2.GroupName,
-						Kind:  gatewayv1alpha2.Kind(targetKind),
-						Name:  gatewayv1alpha2.ObjectName(targetName),
+					LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
+						Group: gatewayv1.GroupName,
+						Kind:  gatewayv1.Kind(targetKind),
+						Name:  gatewayv1.ObjectName(targetName),
 					},
 				},
 			},

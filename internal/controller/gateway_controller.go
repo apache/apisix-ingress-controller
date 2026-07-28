@@ -478,13 +478,36 @@ func (r *GatewayReconciler) processListenerConfig(tctx *provider.TranslateContex
 		if listener.TLS == nil {
 			continue
 		}
-		secret := corev1.Secret{}
 		for _, ref := range listener.TLS.CertificateRefs {
 			ns := gateway.GetNamespace()
 			if ref.Namespace != nil {
 				ns = string(*ref.Namespace)
 			}
 			if ref.Kind != nil && *ref.Kind == KindSecret {
+				// Declared per ref: a listener may carry several certificateRefs, and
+				// each tctx.Secrets entry must point to its own Secret rather than all
+				// aliasing one shared variable that ends up holding the last one loaded.
+				secret := corev1.Secret{}
+				// A cross-namespace certificateRef must be authorized by a ReferenceGrant,
+				// or the data plane would program a certificate the target namespace never
+				// permitted. The listener status already reports RefNotPermitted for this.
+				if !checkReferenceGrant(context.Background(), r.Client,
+					v1beta1.ReferenceGrantFrom{
+						Group:     gatewayv1.GroupName,
+						Kind:      KindGateway,
+						Namespace: v1beta1.Namespace(gateway.Namespace),
+					},
+					gatewayv1.ObjectReference{
+						Group:     corev1.GroupName,
+						Kind:      KindSecret,
+						Name:      ref.Name,
+						Namespace: ref.Namespace,
+					},
+				) {
+					r.Log.V(1).Info("skipping cross-namespace certificateRef not permitted by any ReferenceGrant",
+						"listener", listener.Name, "secret", client.ObjectKey{Namespace: ns, Name: string(ref.Name)})
+					continue
+				}
 				if err := r.Get(context.Background(), client.ObjectKey{
 					Namespace: ns,
 					Name:      string(ref.Name),
@@ -499,8 +522,10 @@ func (r *GatewayReconciler) processListenerConfig(tctx *provider.TranslateContex
 			}
 		}
 		// frontendValidation references CA ConfigMaps or Secrets used for downstream mTLS.
-		if listener.TLS.FrontendValidation != nil {
-			for _, ref := range listener.TLS.FrontendValidation.CACertificateRefs {
+		// In Gateway API v1.6 it is declared at the Gateway level (spec.tls.frontend);
+		// resolve the config that applies to this HTTPS listener by its port.
+		if validation := internaltypes.FrontendTLSValidationForListener(gateway, listener); validation != nil {
+			for _, ref := range validation.CACertificateRefs {
 				ns := gateway.GetNamespace()
 				if ref.Namespace != nil {
 					ns = string(*ref.Namespace)
@@ -509,6 +534,26 @@ func (r *GatewayReconciler) processListenerConfig(tctx *provider.TranslateContex
 				kind := KindConfigMap
 				if ref.Kind != "" {
 					kind = string(ref.Kind)
+				}
+				// A cross-namespace CA ref must be authorized by a ReferenceGrant, or the
+				// data plane would enable downstream mTLS with a CA the target namespace
+				// never permitted. The listener status already reports RefNotPermitted.
+				if !checkReferenceGrant(context.Background(), r.Client,
+					v1beta1.ReferenceGrantFrom{
+						Group:     gatewayv1.GroupName,
+						Kind:      KindGateway,
+						Namespace: v1beta1.Namespace(gateway.Namespace),
+					},
+					gatewayv1.ObjectReference{
+						Group:     corev1.GroupName,
+						Kind:      gatewayv1.Kind(kind),
+						Name:      ref.Name,
+						Namespace: ref.Namespace,
+					},
+				) {
+					r.Log.V(1).Info("skipping cross-namespace caCertificateRef not permitted by any ReferenceGrant",
+						"listener", listener.Name, "ref", nn)
+					continue
 				}
 				switch kind {
 				case KindConfigMap:
