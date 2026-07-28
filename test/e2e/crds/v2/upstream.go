@@ -68,7 +68,7 @@ spec:
   retries: 1
   healthCheck:
     active:
-      type: http
+      type: tcp
       httpPath: /ip
       healthy:
         httpCodes: [200]
@@ -77,6 +77,7 @@ spec:
         httpFailures: 2
         interval: 1s
     passive:
+      type: https
       healthy:
         httpCodes: [200]
       unhealthy:
@@ -119,6 +120,7 @@ spec:
 			Expect(ups[0].Nodes).To(HaveLen(3), "the number of upstream nodes")
 			Expect(ups[0].Checks).ToNot(BeNil(), "the healthcheck configuration")
 			Expect(ups[0].Checks.Active).ToNot(BeNil(), "the active healthcheck configuration")
+			Expect(ups[0].Checks.Active.Type).To(Equal(apiv2.HealthCheckTCP), "the active healthcheck type")
 			Expect(ups[0].Checks.Active.Healthy).ToNot(BeNil(), "the active healthy configuration")
 			Expect(ups[0].Checks.Active.Unhealthy).ToNot(BeNil(), "the active unhealthy configuration")
 			Expect(ups[0].Checks.Active.Healthy.Interval).To(Equal(1), "the healthy interval")
@@ -126,6 +128,7 @@ spec:
 			Expect(ups[0].Checks.Active.Unhealthy.Interval).To(Equal(1), "the unhealthy interval")
 			Expect(ups[0].Checks.Active.Unhealthy.HTTPFailures).To(Equal(2), "the unhealthy http failures")
 			Expect(ups[0].Checks.Passive).ToNot(BeNil(), "the passive healthcheck configuration")
+			Expect(ups[0].Checks.Passive.Type).To(Equal(apiv2.HealthCheckHTTPS), "the passive healthcheck type")
 			Expect(ups[0].Checks.Passive.Healthy).ToNot(BeNil(), "the passive healthy configuration")
 			Expect(ups[0].Checks.Passive.Unhealthy).ToNot(BeNil(), "the passive unhealthy configuration")
 			Expect(ups[0].Checks.Passive.Healthy.HTTPStatuses).To(Equal([]int{200}), "the passive healthy http status")
