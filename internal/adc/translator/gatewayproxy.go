@@ -19,6 +19,7 @@ package translator
 
 import (
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"net"
 	"strconv"
@@ -59,8 +60,8 @@ func (t *Translator) TranslateGatewayProxyToConfig(tctx *provider.TranslateConte
 
 	if cp.CaBundle != "" {
 		// reject unusable CA material here rather than at connect time
-		if !x509.NewCertPool().AppendCertsFromPEM([]byte(cp.CaBundle)) {
-			return nil, errors.New("invalid caBundle: no PEM-encoded certificate found")
+		if err := validateCaBundle(cp.CaBundle); err != nil {
+			return nil, err
 		}
 		if !cfg.TlsVerify {
 			t.Log.Info("caBundle is ignored because tlsVerify is disabled", "gatewayproxy", utils.NamespacedNameKind(gatewayProxy))
@@ -153,4 +154,29 @@ func (t *Translator) TranslateGatewayProxyToConfig(tctx *provider.TranslateConte
 	}
 
 	return &cfg, nil
+}
+
+// validateCaBundle parses every certificate in the bundle. x509.CertPool skips
+// blocks it cannot decode, so a bundle whose second certificate is broken would
+// otherwise reach the ADC server and fail there instead.
+func validateCaBundle(caBundle string) error {
+	var count int
+	for rest := []byte(caBundle); len(rest) > 0; {
+		var block *pem.Block
+		block, rest = pem.Decode(rest)
+		if block == nil {
+			break
+		}
+		if block.Type != "CERTIFICATE" {
+			return fmt.Errorf("invalid caBundle: expected a CERTIFICATE block, got %s", block.Type)
+		}
+		if _, err := x509.ParseCertificate(block.Bytes); err != nil {
+			return fmt.Errorf("invalid caBundle: %w", err)
+		}
+		count++
+	}
+	if count == 0 {
+		return errors.New("invalid caBundle: no PEM-encoded certificate found")
+	}
+	return nil
 }

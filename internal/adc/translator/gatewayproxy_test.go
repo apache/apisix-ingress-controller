@@ -78,14 +78,36 @@ func TestTranslateGatewayProxyToConfigCaBundle(t *testing.T) {
 		assert.Empty(t, cfg.CaBundle)
 	})
 
-	t.Run("rejects a CA bundle that is not PEM encoded", func(t *testing.T) {
+	// every certificate is parsed: x509.CertPool silently skips the blocks it
+	// cannot decode, which would let a broken one through to the ADC server.
+	for name, caBundle := range map[string]string{
+		"not PEM at all":                  "not-a-certificate",
+		"a header with no certificate":    "-----BEGIN CERTIFICATE-----",
+		"an unparseable body":             "-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----",
+		"a key rather than a certificate": "-----BEGIN RSA PRIVATE KEY-----\nAAAA\n-----END RSA PRIVATE KEY-----",
+		"one good and one broken certificate": testCACert +
+			"\n-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----",
+	} {
+		t.Run("rejects a CA bundle that is "+name, func(t *testing.T) {
+			tr := &Translator{Log: logr.Discard()}
+			tctx := provider.NewDefaultTranslateContext(context.Background())
+
+			cfg, err := tr.TranslateGatewayProxyToConfig(tctx, newGatewayProxy(ptr.To(true), caBundle), false)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "invalid caBundle")
+			assert.Nil(t, cfg)
+		})
+	}
+
+	t.Run("accepts a bundle of several certificates", func(t *testing.T) {
 		tr := &Translator{Log: logr.Discard()}
 		tctx := provider.NewDefaultTranslateContext(context.Background())
 
-		cfg, err := tr.TranslateGatewayProxyToConfig(tctx, newGatewayProxy(ptr.To(true), "not-a-certificate"), false)
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid caBundle")
-		assert.Nil(t, cfg)
+		bundle := testCACert + "\n" + testCACert
+		cfg, err := tr.TranslateGatewayProxyToConfig(tctx, newGatewayProxy(ptr.To(true), bundle), false)
+		require.NoError(t, err)
+		require.NotNil(t, cfg)
+		assert.Equal(t, bundle, cfg.CaBundle)
 	})
 
 	t.Run("still carries the CA bundle when verification is off", func(t *testing.T) {
