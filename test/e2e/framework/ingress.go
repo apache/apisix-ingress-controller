@@ -54,6 +54,8 @@ type IngressDeployOpts struct {
 	WebhookEnable      bool
 	WebhookPort        int
 	DisableGatewayAPI  bool
+	// Empty falls back to "auto" in the manifest; the shipped default is "off".
+	ListenerPortMatchMode string
 }
 
 func (f *Framework) DeployIngress(opts IngressDeployOpts) {

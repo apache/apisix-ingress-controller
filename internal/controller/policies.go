@@ -197,7 +197,7 @@ func processPolicyStatus(policy *v1alpha1.BackendTrafficPolicy,
 func SetAncestors(status *v1alpha1.PolicyStatus, parentRefs []gatewayv1.ParentReference, condition metav1.Condition) bool {
 	updated := false
 	for _, parent := range parentRefs {
-		ancestorStatus := gatewayv1alpha2.PolicyAncestorStatus{
+		ancestorStatus := gatewayv1.PolicyAncestorStatus{
 			AncestorRef:    parent,
 			Conditions:     []metav1.Condition{condition},
 			ControllerName: gatewayv1alpha2.GatewayController(config.ControllerConfig.ControllerName),
@@ -209,7 +209,7 @@ func SetAncestors(status *v1alpha1.PolicyStatus, parentRefs []gatewayv1.ParentRe
 	return updated
 }
 
-func SetAncestorStatus(status *v1alpha1.PolicyStatus, ancestorStatus gatewayv1alpha2.PolicyAncestorStatus) bool {
+func SetAncestorStatus(status *v1alpha1.PolicyStatus, ancestorStatus gatewayv1.PolicyAncestorStatus) bool {
 	if len(ancestorStatus.Conditions) == 0 {
 		return false
 	}
@@ -308,20 +308,20 @@ func ProcessL4RoutePolicy(
 		var condition metav1.Condition
 		if i == 0 {
 			condition = metav1.Condition{
-				Type:               string(gatewayv1alpha2.PolicyConditionAccepted),
+				Type:               string(gatewayv1.PolicyConditionAccepted),
 				Status:             metav1.ConditionTrue,
 				ObservedGeneration: policy.GetGeneration(),
 				LastTransitionTime: metav1.Now(),
-				Reason:             string(gatewayv1alpha2.PolicyReasonAccepted),
+				Reason:             string(gatewayv1.PolicyReasonAccepted),
 				Message:            "Policy has been accepted",
 			}
 		} else {
 			condition = metav1.Condition{
-				Type:               string(gatewayv1alpha2.PolicyConditionAccepted),
+				Type:               string(gatewayv1.PolicyConditionAccepted),
 				Status:             metav1.ConditionFalse,
 				ObservedGeneration: policy.GetGeneration(),
 				LastTransitionTime: metav1.Now(),
-				Reason:             string(gatewayv1alpha2.PolicyReasonConflicted),
+				Reason:             string(gatewayv1.PolicyReasonConflicted),
 				Message:            fmt.Sprintf("Conflicts with L4RoutePolicy %s/%s which was created earlier", winner.Namespace, winner.Name),
 			}
 		}
@@ -401,7 +401,7 @@ func l4RouteParentRefs(ctx context.Context, c client.Client, kind string, nn typ
 
 func updateL4RoutePolicyDeleteAncestors(updater status.Updater, policy v1alpha1.L4RoutePolicy, parentRefs []gatewayv1.ParentReference) {
 	length := len(policy.Status.Ancestors)
-	policy.Status.Ancestors = slices.DeleteFunc(policy.Status.Ancestors, func(ancestor gatewayv1alpha2.PolicyAncestorStatus) bool {
+	policy.Status.Ancestors = slices.DeleteFunc(policy.Status.Ancestors, func(ancestor gatewayv1.PolicyAncestorStatus) bool {
 		return !slices.ContainsFunc(parentRefs, func(ref gatewayv1.ParentReference) bool {
 			return parentRefValueEqual(ancestor.AncestorRef, ref)
 		})
@@ -412,7 +412,7 @@ func updateL4RoutePolicyDeleteAncestors(updater status.Updater, policy v1alpha1.
 	// status.ancestors is a required field; ensure a fully-cleared list serializes to []
 	// rather than null, which the CRD schema rejects.
 	if policy.Status.Ancestors == nil {
-		policy.Status.Ancestors = []gatewayv1alpha2.PolicyAncestorStatus{}
+		policy.Status.Ancestors = []gatewayv1.PolicyAncestorStatus{}
 	}
 	updater.Update(status.Update{
 		NamespacedName: utils.NamespacedName(&policy),

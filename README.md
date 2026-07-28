@@ -38,7 +38,7 @@ resources.
 
 * go version v1.22.0+.
 * docker version 17.03+.
-* Kubernetes cluster version 1.26+.
+* Kubernetes cluster version 1.31+.
 * kubectl version within one minor version difference of your cluster.
 
 ### To Deploy on the cluster

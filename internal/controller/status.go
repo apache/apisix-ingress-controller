@@ -21,7 +21,7 @@ import (
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	cutils "github.com/apache/apisix-ingress-controller/internal/controller/utils"
@@ -70,14 +70,14 @@ func VerifyConditions(conditions *[]metav1.Condition, newCondition metav1.Condit
 
 func NewPolicyCondition(observedGeneration int64, status bool, message string) metav1.Condition {
 	conditionStatus := metav1.ConditionTrue
-	reason := string(gatewayv1alpha2.PolicyReasonAccepted)
+	reason := string(gatewayv1.PolicyReasonAccepted)
 	if !status {
 		conditionStatus = metav1.ConditionFalse
-		reason = string(gatewayv1alpha2.PolicyReasonInvalid)
+		reason = string(gatewayv1.PolicyReasonInvalid)
 	}
 
 	return metav1.Condition{
-		Type:               string(gatewayv1alpha2.PolicyConditionAccepted),
+		Type:               string(gatewayv1.PolicyConditionAccepted),
 		Reason:             reason,
 		Status:             conditionStatus,
 		Message:            cutils.TruncateConditionMessage(message),
@@ -88,8 +88,8 @@ func NewPolicyCondition(observedGeneration int64, status bool, message string) m
 
 func NewPolicyConflictCondition(observedGeneration int64, message string) metav1.Condition {
 	return metav1.Condition{
-		Type:               string(gatewayv1alpha2.PolicyConditionAccepted),
-		Reason:             string(gatewayv1alpha2.PolicyReasonConflicted),
+		Type:               string(gatewayv1.PolicyConditionAccepted),
+		Reason:             string(gatewayv1.PolicyReasonConflicted),
 		Status:             metav1.ConditionFalse,
 		Message:            cutils.TruncateConditionMessage(message),
 		ObservedGeneration: observedGeneration,
