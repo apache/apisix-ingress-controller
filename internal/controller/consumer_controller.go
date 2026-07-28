@@ -62,7 +62,14 @@ type ConsumerReconciler struct { //nolint:revive
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ConsumerReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if config.ControllerConfig.DisableGatewayAPI || !pkgutils.HasAPIResource(mgr, &gatewayv1.Gateway{}) {
+	hasGatewayAPI := false
+	if !config.ControllerConfig.DisableGatewayAPI {
+		var err error
+		if hasGatewayAPI, err = pkgutils.HasAPIResource(mgr, &gatewayv1.Gateway{}); err != nil {
+			return err
+		}
+	}
+	if !hasGatewayAPI {
 		r.Log.Info("skipping Consumer controller setup as Gateway API is not available")
 		return nil
 	}

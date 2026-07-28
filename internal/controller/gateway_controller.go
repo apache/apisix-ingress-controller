@@ -105,19 +105,31 @@ func (r *GatewayReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			builder.WithPredicates(referenceGrantPredicates(KindGateway)),
 		)
 	}
-	if pkgutils.HasAPIResource(mgr, &gatewayv1alpha2.TCPRoute{}) {
+	hasTCPRoute, err := pkgutils.HasAPIResource(mgr, &gatewayv1alpha2.TCPRoute{})
+	if err != nil {
+		return err
+	}
+	if hasTCPRoute {
 		bdr.Watches(
 			&gatewayv1alpha2.TCPRoute{},
 			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForStatusParentRefs),
 		)
 	}
-	if pkgutils.HasAPIResource(mgr, &gatewayv1alpha2.TLSRoute{}) {
+	hasTLSRoute, err := pkgutils.HasAPIResource(mgr, &gatewayv1alpha2.TLSRoute{})
+	if err != nil {
+		return err
+	}
+	if hasTLSRoute {
 		bdr.Watches(
 			&gatewayv1alpha2.TLSRoute{},
 			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForStatusParentRefs),
 		)
 	}
-	if pkgutils.HasAPIResource(mgr, &gatewayv1alpha2.UDPRoute{}) {
+	hasUDPRoute, err := pkgutils.HasAPIResource(mgr, &gatewayv1alpha2.UDPRoute{})
+	if err != nil {
+		return err
+	}
+	if hasUDPRoute {
 		bdr.Watches(
 			&gatewayv1alpha2.UDPRoute{},
 			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForStatusParentRefs),
