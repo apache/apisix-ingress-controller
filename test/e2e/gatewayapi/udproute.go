@@ -40,9 +40,7 @@ spec:
   listeners:
   - name: udp
     protocol: UDP
-    # APISIX stream_proxy listens UDP on 9200; the listener port must match it so
-    # the StreamRoute server_port (derived from this listener) isolates traffic (#2802).
-    port: 9200
+    port: 80
     allowedRoutes:
       kinds:
       - kind: UDPRoute

@@ -29,6 +29,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
+	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 )
 
@@ -101,7 +102,9 @@ func TestTranslateTCPRouteServerPort(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			translator := NewTranslator(logr.Discard(), "")
+			// listener_port_match_mode defaults to off; these cases assert the
+			// injection behavior, so exercise the translator in auto mode.
+			translator := NewTranslator(logr.Discard(), config.ListenerPortMatchModeAuto)
 			tctx := provider.NewDefaultTranslateContext(context.Background())
 			tctx.Listeners = tt.listeners
 			tctx.RouteParentRefs = tt.parentRefs
@@ -177,7 +180,9 @@ func TestTranslateUDPRouteServerPort(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			translator := NewTranslator(logr.Discard(), "")
+			// listener_port_match_mode defaults to off; these cases assert the
+			// injection behavior, so exercise the translator in auto mode.
+			translator := NewTranslator(logr.Discard(), config.ListenerPortMatchModeAuto)
 			tctx := provider.NewDefaultTranslateContext(context.Background())
 			tctx.Listeners = tt.listeners
 			tctx.RouteParentRefs = tt.parentRefs
