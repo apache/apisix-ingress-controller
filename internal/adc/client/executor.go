@@ -249,7 +249,7 @@ func (e *HTTPADCExecutor) runHTTPSyncForSingleServer(ctx context.Context, server
 	}
 
 	// Build HTTP request
-	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, types, resources, http.MethodPut, pathSync)
+	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, types, resources, pathSync)
 	if err != nil {
 		return fmt.Errorf("failed to build HTTP request: %w", err)
 	}
@@ -283,7 +283,7 @@ func (e *HTTPADCExecutor) runHTTPValidateForSingleServer(ctx context.Context, se
 		return fmt.Errorf("failed to load resources from file %s: %w", filePath, err)
 	}
 
-	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, types, resources, http.MethodPut, pathValidate)
+	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, types, resources, pathValidate)
 	if err != nil {
 		return fmt.Errorf("failed to build validate request: %w", err)
 	}
@@ -354,7 +354,7 @@ func (e *HTTPADCExecutor) loadResourcesFromFile(filePath string) (*adctypes.Reso
 }
 
 // buildHTTPRequest builds the HTTP request for ADC Server
-func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr string, config adctypes.Config, labels map[string]string, types []string, resources *adctypes.Resources, method string, path string) (*http.Request, error) {
+func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr string, config adctypes.Config, labels map[string]string, types []string, resources *adctypes.Resources, path string) (*http.Request, error) {
 	// Prepare request body
 	tlsVerify := config.TlsVerify
 	bypassCache := path == pathSync && config.BypassCache
@@ -395,7 +395,7 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr strin
 	)
 
 	// Create HTTP request
-	req, err := http.NewRequestWithContext(ctx, method, e.serverURL+path, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, e.serverURL+path, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}

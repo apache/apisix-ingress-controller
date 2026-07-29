@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"net/http"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -41,7 +40,7 @@ func TestHTTPADCExecutorBuildHTTPRequestBypassCache(t *testing.T) {
 
 	build := func(config adctypes.Config, path string) (ADCServerOpts, string) {
 		req, err := e.buildHTTPRequest(context.Background(), "http://apisix:9180", config, nil, nil,
-			&adctypes.Resources{}, http.MethodPut, path)
+			&adctypes.Resources{}, path)
 		require.NoError(t, err)
 		body, err := io.ReadAll(req.Body)
 		require.NoError(t, err)
@@ -78,7 +77,7 @@ func TestHTTPADCExecutorBuildHTTPRequestCaCert(t *testing.T) {
 
 	build := func(config adctypes.Config) (ADCServerOpts, string) {
 		req, err := e.buildHTTPRequest(context.Background(), "https://apisix:9180", config, nil, nil,
-			&adctypes.Resources{}, http.MethodPut, pathSync)
+			&adctypes.Resources{}, pathSync)
 		require.NoError(t, err)
 		body, err := io.ReadAll(req.Body)
 		require.NoError(t, err)
