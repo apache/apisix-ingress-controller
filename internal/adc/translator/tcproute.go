@@ -50,7 +50,7 @@ func newDefaultUpstreamWithoutScheme() *adctypes.Upstream {
 func listenerPortSet(tctx *provider.TranslateContext) map[int32]struct{} {
 	portSet := make(map[int32]struct{}, len(tctx.Listeners))
 	for _, listener := range tctx.Listeners {
-		portSet[int32(listener.Port)] = struct{}{}
+		portSet[listener.Port] = struct{}{}
 	}
 	return portSet
 }

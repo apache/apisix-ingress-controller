@@ -37,7 +37,7 @@ func tcpListener(name string, port int32) gatewayv1.Listener {
 	return gatewayv1.Listener{
 		Name:     gatewayv1.SectionName(name),
 		Protocol: gatewayv1.TCPProtocolType,
-		Port:     gatewayv1.PortNumber(port),
+		Port:     port,
 	}
 }
 
@@ -45,7 +45,7 @@ func udpListener(name string, port int32) gatewayv1.Listener {
 	return gatewayv1.Listener{
 		Name:     gatewayv1.SectionName(name),
 		Protocol: gatewayv1.UDPProtocolType,
-		Port:     gatewayv1.PortNumber(port),
+		Port:     port,
 	}
 }
 
