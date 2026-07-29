@@ -17,21 +17,53 @@ package v1
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	apisixv1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	"github.com/apache/apisix-ingress-controller/internal/controller"
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 )
+
+// authNS is a foreign namespace used for cross-namespace secretRef tests.
+const authNS = "auth"
+
+// enableReferenceGrant turns on the cross-namespace ReferenceGrant gate for the
+// duration of a test and resets it afterwards.
+func enableReferenceGrant(t *testing.T) {
+	t.Helper()
+	controller.SetEnableReferenceGrant(true)
+	t.Cleanup(func() { controller.SetEnableReferenceGrant(false) })
+}
+
+// consumerToSecretGrant permits Consumers in fromNS to reference Secrets in grantNS.
+func consumerToSecretGrant(grantNS, fromNS string) *v1beta1.ReferenceGrant {
+	return &v1beta1.ReferenceGrant{
+		ObjectMeta: metav1.ObjectMeta{Name: "allow-consumer", Namespace: grantNS},
+		Spec: v1beta1.ReferenceGrantSpec{
+			From: []v1beta1.ReferenceGrantFrom{{
+				Group:     v1beta1.Group(apisixv1alpha1.GroupVersion.Group),
+				Kind:      "Consumer",
+				Namespace: v1beta1.Namespace(fromNS),
+			}},
+			To: []v1beta1.ReferenceGrantTo{{Group: "", Kind: "Secret"}},
+		},
+	}
+}
 
 func buildConsumerValidator(t *testing.T, objects ...runtime.Object) *ConsumerCustomValidator {
 	t.Helper()
@@ -40,6 +72,7 @@ func buildConsumerValidator(t *testing.T, objects ...runtime.Object) *ConsumerCu
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
 	require.NoError(t, apisixv1alpha1.AddToScheme(scheme))
 	require.NoError(t, gatewayv1.Install(scheme))
+	require.NoError(t, v1beta1.Install(scheme))
 
 	managed := []runtime.Object{
 		&gatewayv1.GatewayClass{
@@ -60,6 +93,41 @@ func buildConsumerValidator(t *testing.T, objects ...runtime.Object) *ConsumerCu
 		WithScheme(scheme).
 		WithRuntimeObjects(allObjects...).
 		WithIndex(&apisixv1alpha1.Consumer{}, indexer.ConsumerGatewayRef, indexer.ConsumerGatewayRefIndexFunc)
+
+	return NewConsumerCustomValidator(builder.Build())
+}
+
+// buildConsumerValidatorWithInterceptor is buildConsumerValidator with client
+// interceptor funcs, used to simulate API server / cache failures.
+func buildConsumerValidatorWithInterceptor(t *testing.T, funcs interceptor.Funcs, objects ...runtime.Object) *ConsumerCustomValidator {
+	t.Helper()
+
+	scheme := runtime.NewScheme()
+	require.NoError(t, clientgoscheme.AddToScheme(scheme))
+	require.NoError(t, apisixv1alpha1.AddToScheme(scheme))
+	require.NoError(t, gatewayv1.Install(scheme))
+	require.NoError(t, v1beta1.Install(scheme))
+
+	managed := []runtime.Object{
+		&gatewayv1.GatewayClass{
+			ObjectMeta: metav1.ObjectMeta{Name: "apisix-gateway-class"},
+			Spec: gatewayv1.GatewayClassSpec{
+				ControllerName: gatewayv1.GatewayController(config.ControllerConfig.ControllerName),
+			},
+		},
+		&gatewayv1.Gateway{
+			ObjectMeta: metav1.ObjectMeta{Name: "test-gateway", Namespace: "default"},
+			Spec: gatewayv1.GatewaySpec{
+				GatewayClassName: gatewayv1.ObjectName("apisix-gateway-class"),
+			},
+		},
+	}
+	allObjects := append(managed, objects...)
+	builder := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithRuntimeObjects(allObjects...).
+		WithIndex(&apisixv1alpha1.Consumer{}, indexer.ConsumerGatewayRef, indexer.ConsumerGatewayRefIndexFunc).
+		WithInterceptorFuncs(funcs)
 
 	return NewConsumerCustomValidator(builder.Build())
 }
@@ -90,7 +158,7 @@ func TestConsumerValidator_MissingSecretDefaultNamespace(t *testing.T) {
 }
 
 func TestConsumerValidator_MissingSecretCustomNamespace(t *testing.T) {
-	ns := "auth"
+	ns := authNS
 	consumer := &apisixv1alpha1.Consumer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo",
@@ -108,7 +176,8 @@ func TestConsumerValidator_MissingSecretCustomNamespace(t *testing.T) {
 		},
 	}
 
-	validator := buildConsumerValidator(t)
+	enableReferenceGrant(t)
+	validator := buildConsumerValidator(t, consumerToSecretGrant(authNS, "default"))
 
 	warnings, err := validator.ValidateCreate(context.Background(), consumer)
 	require.NoError(t, err)
@@ -116,8 +185,116 @@ func TestConsumerValidator_MissingSecretCustomNamespace(t *testing.T) {
 	require.Contains(t, warnings[0], "Referenced Secret 'auth/jwt-secret' not found")
 }
 
+// A cross-namespace secretRef without a permitting ReferenceGrant is rejected at admission.
+func TestConsumerValidator_CrossNamespaceSecretRefDeniedWithoutGrant(t *testing.T) {
+	enableReferenceGrant(t)
+	ns := authNS
+	consumer := &apisixv1alpha1.Consumer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo",
+			Namespace: "default",
+		},
+		Spec: apisixv1alpha1.ConsumerSpec{
+			GatewayRef: apisixv1alpha1.GatewayRef{Name: "test-gateway"},
+			Credentials: []apisixv1alpha1.Credential{{
+				Type: "jwt-auth",
+				SecretRef: &apisixv1alpha1.SecretReference{
+					Name:      "jwt-secret",
+					Namespace: &ns,
+				},
+			}},
+		},
+	}
+
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "jwt-secret", Namespace: authNS}}
+	validator := buildConsumerValidator(t, secret)
+
+	_, err := validator.ValidateCreate(context.Background(), consumer)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "not permitted by any ReferenceGrant")
+}
+
+// The rejection above must not double as an existence oracle: a cross-namespace ref
+// that no ReferenceGrant permits produces the same response whether or not the
+// Secret exists.
+func TestConsumerValidator_CrossNamespaceSecretOracleSuppressed(t *testing.T) {
+	enableReferenceGrant(t)
+	ns := authNS
+	newConsumer := func() *apisixv1alpha1.Consumer {
+		return &apisixv1alpha1.Consumer{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "demo",
+				Namespace: "default",
+			},
+			Spec: apisixv1alpha1.ConsumerSpec{
+				GatewayRef: apisixv1alpha1.GatewayRef{Name: "test-gateway"},
+				Credentials: []apisixv1alpha1.Credential{{
+					Type: "jwt-auth",
+					SecretRef: &apisixv1alpha1.SecretReference{
+						Name:      "jwt-secret",
+						Namespace: &ns,
+					},
+				}},
+			},
+		}
+	}
+
+	// Secret present in the foreign namespace, no ReferenceGrant permitting the ref.
+	present := buildConsumerValidator(t, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "jwt-secret", Namespace: authNS},
+	})
+	presentWarnings, presentErr := present.ValidateCreate(context.Background(), newConsumer())
+	require.Error(t, presentErr)
+
+	// Same request, Secret absent.
+	absent := buildConsumerValidator(t)
+	absentWarnings, absentErr := absent.ValidateCreate(context.Background(), newConsumer())
+	require.Error(t, absentErr)
+
+	// Identical response either way: no existence oracle.
+	require.Equal(t, absentWarnings, presentWarnings)
+	require.Equal(t, absentErr.Error(), presentErr.Error())
+	require.Len(t, presentWarnings, 1)
+	require.Contains(t, presentWarnings[0], "Referenced Secret 'auth/jwt-secret' is not accessible from this Consumer without a ReferenceGrant")
+}
+
+// A failed ReferenceGrant lookup must not masquerade as "no grant": the Secret
+// probe is skipped and the warning stays neutral, never claiming a grant is missing.
+func TestConsumerValidator_CrossNamespaceSecretGrantLookupError(t *testing.T) {
+	enableReferenceGrant(t)
+	ns := authNS
+	consumer := &apisixv1alpha1.Consumer{
+		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
+		Spec: apisixv1alpha1.ConsumerSpec{
+			GatewayRef: apisixv1alpha1.GatewayRef{Name: "test-gateway"},
+			Credentials: []apisixv1alpha1.Credential{{
+				Type:      "jwt-auth",
+				SecretRef: &apisixv1alpha1.SecretReference{Name: "jwt-secret", Namespace: &ns},
+			}},
+		},
+	}
+
+	// The referenced Secret exists; only the ReferenceGrant List fails.
+	validator := buildConsumerValidatorWithInterceptor(t,
+		interceptor.Funcs{
+			List: func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
+				if _, ok := list.(*v1beta1.ReferenceGrantList); ok {
+					return apierrors.NewInternalError(fmt.Errorf("api server unavailable"))
+				}
+				return c.List(ctx, list, opts...)
+			},
+		},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "jwt-secret", Namespace: authNS}},
+	)
+
+	warnings, _ := validator.ValidateCreate(context.Background(), consumer)
+	require.Len(t, warnings, 1)
+	require.Contains(t, warnings[0], "Could not verify authorization for referenced Secret 'auth/jwt-secret'")
+	require.NotContains(t, warnings[0], "without a ReferenceGrant")
+}
+
 func TestConsumerValidator_NoWarnings(t *testing.T) {
-	ns := "auth"
+	ns := authNS
 	consumer := &apisixv1alpha1.Consumer{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "demo",
@@ -140,9 +317,11 @@ func TestConsumerValidator_NoWarnings(t *testing.T) {
 		},
 	}
 
+	enableReferenceGrant(t)
 	objs := []runtime.Object{
-		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "jwt-secret", Namespace: "auth"}},
+		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "jwt-secret", Namespace: authNS}},
 		&corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "key-secret", Namespace: "default"}},
+		consumerToSecretGrant(authNS, "default"),
 	}
 
 	validator := buildConsumerValidator(t, objs...)
@@ -189,6 +368,56 @@ func TestConsumerValidator_DenyDuplicateKeyAuthCredential(t *testing.T) {
 	warnings, err := validator.ValidateCreate(context.Background(), consumer)
 	require.Empty(t, warnings)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), `duplicate key-auth credential key "shared-key"`)
+	require.Contains(t, err.Error(), "duplicate key-auth credential")
 	require.Contains(t, err.Error(), "default/existing")
+	// The credential value must never leak into the error returned to clients/logs.
+	require.NotContains(t, err.Error(), "shared-key")
+}
+
+// The duplicate-key check must not become a cross-namespace oracle: a key-auth
+// credential whose secretRef points across namespaces without a ReferenceGrant
+// must respond the same whether the Secret exists with a colliding key or is
+// absent, and must never leak the duplicate-key error.
+func TestConsumerValidator_CrossNamespaceKeyAuthDuplicateOracleSuppressed(t *testing.T) {
+	enableReferenceGrant(t)
+	ns := authNS
+
+	existing := &apisixv1alpha1.Consumer{
+		ObjectMeta: metav1.ObjectMeta{Name: "existing", Namespace: "default"},
+		Spec: apisixv1alpha1.ConsumerSpec{
+			GatewayRef: apisixv1alpha1.GatewayRef{Name: "test-gateway"},
+			Credentials: []apisixv1alpha1.Credential{{
+				Type:   "key-auth",
+				Config: apiextensionsv1.JSON{Raw: []byte(`{"key":"shared-key"}`)},
+			}},
+		},
+	}
+	newConsumer := func() *apisixv1alpha1.Consumer {
+		return &apisixv1alpha1.Consumer{
+			ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
+			Spec: apisixv1alpha1.ConsumerSpec{
+				GatewayRef: apisixv1alpha1.GatewayRef{Name: "test-gateway"},
+				Credentials: []apisixv1alpha1.Credential{{
+					Type:      "key-auth",
+					SecretRef: &apisixv1alpha1.SecretReference{Name: "key-secret", Namespace: &ns},
+				}},
+			},
+		}
+	}
+
+	// Cross-namespace Secret exists and holds the colliding key, but no grant permits it.
+	collides := buildConsumerValidator(t, existing, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "key-secret", Namespace: authNS},
+		Data:       map[string][]byte{"key": []byte("shared-key")},
+	})
+	collidesWarnings, collidesErr := collides.ValidateCreate(context.Background(), newConsumer())
+
+	// Same request, Secret absent.
+	absent := buildConsumerValidator(t, existing)
+	absentWarnings, absentErr := absent.ValidateCreate(context.Background(), newConsumer())
+
+	// Identical response either way, and no duplicate-key error ever surfaces.
+	require.Equal(t, absentWarnings, collidesWarnings)
+	require.Equal(t, fmt.Sprint(absentErr), fmt.Sprint(collidesErr))
+	require.NotContains(t, fmt.Sprint(collidesErr), "duplicate key-auth credential key")
 }

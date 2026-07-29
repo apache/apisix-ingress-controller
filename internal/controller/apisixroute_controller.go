@@ -115,7 +115,7 @@ func (r *ApisixRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			}
 
 			if err := r.Provider.Delete(ctx, &ar); err != nil {
-				r.Log.Error(err, "failed to delete apisixroute", "apisixroute", ar)
+				r.Log.Error(err, "failed to delete apisixroute", "apisixroute", utils.NamespacedName(&ar))
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{}, nil
@@ -134,7 +134,7 @@ func (r *ApisixRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			"ingressClassName", ar.Spec.IngressClassName,
 			"error", err.Error())
 		if err := r.Provider.Delete(ctx, &ar); err != nil {
-			r.Log.Error(err, "failed to delete apisixroute", "apisixroute", ar)
+			r.Log.Error(err, "failed to delete apisixroute", "apisixroute", utils.NamespacedName(&ar))
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
@@ -153,7 +153,7 @@ func (r *ApisixRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			Reason:  string(apiv2.ConditionReasonSyncFailed),
 			Message: err.Error(),
 		}
-		r.Log.Error(err, "failed to process", "apisixroute", ar)
+		r.Log.Error(err, "failed to process", "apisixroute", utils.NamespacedName(&ar))
 		return ctrl.Result{}, err
 	}
 

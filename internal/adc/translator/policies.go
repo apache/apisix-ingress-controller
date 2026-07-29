@@ -104,7 +104,7 @@ func backendRefMatchesSectionName(ref gatewayv1.BackendRef, namespace, sectionNa
 		return false
 	}
 	for _, port := range svc.Spec.Ports {
-		if port.Port == int32(*ref.Port) {
+		if port.Port == *ref.Port {
 			return port.Name == sectionName
 		}
 	}

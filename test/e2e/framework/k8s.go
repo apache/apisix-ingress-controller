@@ -74,6 +74,14 @@ func (f *Framework) ensureService(name, namespace string, desiredEndpoints int) 
 	return f.ensureServiceWithTimeout(name, namespace, desiredEndpoints, 120)
 }
 
+// EnsureServiceReadyE waits for the named service in the given namespace to have
+// the desired number of ready endpoints, returning an error instead of failing
+// the spec. It is safe to call from background goroutines (e.g. the prewarm
+// pool) because it does not use Ginkgo/Gomega assertions.
+func (f *Framework) EnsureServiceReadyE(namespace, name string, desiredEndpoints int) error {
+	return f.ensureService(name, namespace, desiredEndpoints)
+}
+
 func (f *Framework) ensureServiceWithTimeout(name, namespace string, desiredEndpoints, timeout int) error {
 	backoff := wait.Backoff{
 		Duration: 6 * time.Second,
@@ -285,10 +293,15 @@ func WaitPodsAvailable(t testing.TestingT, kubeOps *k8s.KubectlOptions, opts met
 }
 
 func waitExponentialBackoff(condFunc func() (bool, error)) error {
+	// Poll at a fixed short interval instead of an exponential backoff.
+	// Pods typically become ready in the 10-30s window; an exponential
+	// backoff (0.5,1,2,4,8,16,32,64s) polls very sparsely exactly there, so a
+	// pod ready at t=16s would not be detected until t=31.5s. A constant 2s
+	// interval detects readiness promptly and keeps the same ~180s ceiling.
 	backoff := wait.Backoff{
-		Duration: 500 * time.Millisecond,
-		Factor:   2,
-		Steps:    8,
+		Duration: 2 * time.Second,
+		Factor:   1,
+		Steps:    90,
 	}
 	return wait.ExponentialBackoff(backoff, condFunc)
 }

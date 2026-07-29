@@ -61,7 +61,14 @@ type ConsumerReconciler struct { //nolint:revive
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ConsumerReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if config.ControllerConfig.DisableGatewayAPI || !pkgutils.HasAPIResource(mgr, &gatewayv1.Gateway{}) {
+	hasGatewayAPI := false
+	if !config.ControllerConfig.DisableGatewayAPI {
+		var err error
+		if hasGatewayAPI, err = pkgutils.HasAPIResource(mgr, &gatewayv1.Gateway{}); err != nil {
+			return err
+		}
+	}
+	if !hasGatewayAPI {
 		r.Log.Info("skipping Consumer controller setup as Gateway API is not available")
 		return nil
 	}
@@ -230,12 +237,12 @@ func (r *ConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	if err := r.processSpec(ctx, tctx, consumer); err != nil {
-		r.Log.Error(err, "failed to process consumer spec", "consumer", consumer)
+		r.Log.Error(err, "failed to process consumer spec", "consumer", utils.NamespacedName(consumer))
 		statusErr = err
 	}
 
 	if err := r.Provider.Update(ctx, tctx, consumer); err != nil {
-		r.Log.Error(err, "failed to update consumer", "consumer", consumer)
+		r.Log.Error(err, "failed to update consumer", "consumer", utils.NamespacedName(consumer))
 		statusErr = err
 	}
 
@@ -252,6 +259,18 @@ func (r *ConsumerReconciler) processSpec(ctx context.Context, tctx *provider.Tra
 		ns := consumer.GetNamespace()
 		if credential.SecretRef.Namespace != nil {
 			ns = *credential.SecretRef.Namespace
+		}
+		// A cross-namespace SecretRef needs a ReferenceGrant, same as routes.
+		secretNN := types.NamespacedName{Namespace: ns, Name: credential.SecretRef.Name}
+		permitted, err := CheckConsumerSecretRef(ctx, r.Client, consumer.GetNamespace(), secretNN)
+		if err != nil {
+			return err
+		}
+		if !permitted {
+			r.Log.Error(nil, "cross-namespace secret reference not permitted by any ReferenceGrant",
+				"consumer", utils.NamespacedName(consumer), "secret", client.ObjectKey{Namespace: ns, Name: credential.SecretRef.Name})
+			return fmt.Errorf("cross-namespace secret reference from Consumer %s/%s to Secret %s/%s is not permitted by any ReferenceGrant",
+				consumer.GetNamespace(), consumer.GetName(), ns, credential.SecretRef.Name)
 		}
 		secret := corev1.Secret{}
 		if err := r.Get(ctx, client.ObjectKey{

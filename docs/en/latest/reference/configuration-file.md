@@ -63,11 +63,13 @@ secure_metrics: false                   # The secure metrics configuration.
 exec_adc_timeout: 15s                   # The timeout for the ADC to execute.
                                         # The default value is 15 seconds.
 
-listener_port_match_mode: "auto"        # Mode for injecting server_port route vars from Gateway listener ports.
+listener_port_match_mode: "off"         # Mode for injecting server_port route vars from Gateway listener ports.
+                                        # - "off": never inject server_port vars.
                                         # - "auto": inject when parentRefs explicitly target listeners (sectionName/port) or when multiple listener ports are matched.
                                         # - "explicit": inject only when parentRefs explicitly target listeners.
-                                        # - "off": never inject server_port vars.
-                                        # The default value is "auto".
+                                        # The default value is "off". APISIX matches server_port against the port it
+                                        # accepted the connection on, which is not the port the Gateway listener
+                                        # declares, so only enable this when APISIX listens on the declared ports.
 
 provider:
   type: "apisix"                        # Provider type.

@@ -44,7 +44,7 @@ type TranslateContext struct {
 	context.Context
 	RouteParentRefs  []gatewayv1.ParentReference
 	BackendRefs      []gatewayv1.BackendRef
-	GatewayTLSConfig []gatewayv1.GatewayTLSConfig
+	GatewayTLSConfig []gatewayv1.ListenerTLSConfig
 	Credentials      []v1alpha1.Credential
 	Listeners        []gatewayv1.Listener
 

@@ -101,7 +101,11 @@ func (r *UDPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// L4RoutePolicy is an optional CRD. Only watch it when installed so the
 	// controller still starts if the CRD has not been applied yet (e.g. upgrades).
-	r.supportsL4RoutePolicy = pkgutils.HasAPIResource(mgr, &v1alpha1.L4RoutePolicy{})
+	supportsL4RoutePolicy, err := pkgutils.HasAPIResource(mgr, &v1alpha1.L4RoutePolicy{})
+	if err != nil {
+		return err
+	}
+	r.supportsL4RoutePolicy = supportsL4RoutePolicy
 	if r.supportsL4RoutePolicy {
 		bdr.Watches(&v1alpha1.L4RoutePolicy{},
 			handler.EnqueueRequestsFromMapFunc(r.listUDPRoutesForL4RoutePolicy),
@@ -434,7 +438,7 @@ func (r *UDPRouteReconciler) processUDPRouteBackendRefs(tctx *provider.Translate
 
 		portExists := false
 		for _, port := range service.Spec.Ports {
-			if port.Port == int32(*backend.Port) {
+			if port.Port == *backend.Port {
 				portExists = true
 				break
 			}

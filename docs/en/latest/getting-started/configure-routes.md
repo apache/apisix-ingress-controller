@@ -86,7 +86,7 @@ spec:
       name: apisix-config
 ```
 
-The `port` in the Gateway listener can be used for route matching based on [`listener_port_match_mode`](../reference/configuration-file.md) (`auto`, `explicit`, or `off`). The controller cannot dynamically open new ports on the data plane, so ensure APISIX is configured to listen on the port.
+The `port` in the Gateway listener can be used for route matching based on [`listener_port_match_mode`](../reference/configuration-file.md) (`off` by default; `auto` or `explicit` opt in). The controller cannot dynamically open new ports on the data plane, so ensure APISIX is configured to listen on the port.
 
 </details>
 

@@ -31,7 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
@@ -188,7 +187,9 @@ func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
 			expected: nil,
 		},
 		{
-			name: "empty mode normalizes to auto",
+			// An unset mode must not start injecting predicates behind the
+			// operator's back, so it resolves to off rather than to auto.
+			name: "empty mode normalizes to off",
 			mode: "",
 			parentRefs: []gatewayv1.ParentReference{
 				{Name: "gw", Port: &parentPort},
@@ -196,7 +197,60 @@ func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
 			listeners: []gatewayv1.Listener{
 				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
 			},
-			expected: singlePortVars,
+			expected: nil,
+		},
+		{
+			// Listeners sharing a port but differing by hostname are isolated by
+			// their hostname (service.hosts), not by port. Injecting a server_port
+			// var here adds no isolation and, worse, pins the route to the Gateway's
+			// declared port which need not equal APISIX's actual node_listen port,
+			// dropping every request to 404. So no server_port var must be emitted.
+			name: "auto mode: no injection when sectionName target listener has hostname",
+			mode: config.ListenerPortMatchModeAuto,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", SectionName: &sectionName},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(80), Hostname: ptr.To(gatewayv1.Hostname("bar.com"))},
+			},
+			expected: nil,
+		},
+		{
+			name: "auto mode: no injection for same-port listeners differing by hostname",
+			mode: config.ListenerPortMatchModeAuto,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", SectionName: &sectionName},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(80), Hostname: ptr.To(gatewayv1.Hostname("bar.com"))},
+				{Name: "http-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(80), Hostname: ptr.To(gatewayv1.Hostname("foo.bar.com"))},
+			},
+			expected: nil,
+		},
+		{
+			// A hostname-less sibling listener triggers a server_port var, but once
+			// emitted it must cover every targeted port - including the hostname
+			// listener's - or traffic arriving through the hostname listener is
+			// silently dropped. So the predicate lists both ports, not just 9080.
+			name: "explicit mode: mixed hostname and hostname-less listeners keep every targeted port",
+			mode: config.ListenerPortMatchModeExplicit,
+			parentRefs: []gatewayv1.ParentReference{
+				{Name: "gw", SectionName: &sectionName},
+			},
+			listeners: []gatewayv1.Listener{
+				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(80), Hostname: ptr.To(gatewayv1.Hostname("bar.com"))},
+				{Name: "http-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
+			},
+			expected: adctypes.Vars{
+				{
+					{StrVal: "server_port"},
+					{StrVal: "in"},
+					{SliceVal: []adctypes.StringOrSlice{
+						{StrVal: "80"},
+						{StrVal: "9080"},
+					}},
+				},
+			},
 		},
 	}
 
@@ -308,9 +362,9 @@ func TestTranslateHTTPRouteUpstreamScheme(t *testing.T) {
 					},
 					Spec: v1alpha1.BackendTrafficPolicySpec{
 						TargetRefs: []v1alpha1.BackendPolicyTargetReferenceWithSectionName{{
-							LocalPolicyTargetReference: gatewayv1alpha2.LocalPolicyTargetReference{
-								Name: gatewayv1alpha2.ObjectName(serviceName),
-								Kind: gatewayv1alpha2.Kind(internaltypes.KindService),
+							LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
+								Name: gatewayv1.ObjectName(serviceName),
+								Kind: gatewayv1.Kind(internaltypes.KindService),
 							},
 						}},
 						Scheme: tt.policyScheme,
@@ -329,7 +383,7 @@ func TestTranslateHTTPRouteUpstreamScheme(t *testing.T) {
 							BackendRef: gatewayv1.BackendRef{
 								BackendObjectReference: gatewayv1.BackendObjectReference{
 									Name: gatewayv1.ObjectName(serviceName),
-									Port: ptr.To(gatewayv1.PortNumber(portNumber)),
+									Port: ptr.To(portNumber),
 								},
 							},
 						}},
@@ -616,20 +670,20 @@ func TestAttachBackendTrafficPolicyToUpstreamSectionName(t *testing.T) {
 			BackendObjectReference: gatewayv1.BackendObjectReference{
 				Name:      gatewayv1.ObjectName(serviceName),
 				Namespace: ptr.To(gatewayv1.Namespace(namespace)),
-				Port:      ptr.To(gatewayv1.PortNumber(port)),
+				Port:      ptr.To(port),
 			},
 		}
 	}
 
 	newPolicy := func(name, sectionName, scheme string) *v1alpha1.BackendTrafficPolicy {
 		targetRef := v1alpha1.BackendPolicyTargetReferenceWithSectionName{
-			LocalPolicyTargetReference: gatewayv1alpha2.LocalPolicyTargetReference{
-				Name: gatewayv1alpha2.ObjectName(serviceName),
-				Kind: gatewayv1alpha2.Kind(internaltypes.KindService),
+			LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
+				Name: gatewayv1.ObjectName(serviceName),
+				Kind: gatewayv1.Kind(internaltypes.KindService),
 			},
 		}
 		if sectionName != "" {
-			targetRef.SectionName = ptr.To(gatewayv1alpha2.SectionName(sectionName))
+			targetRef.SectionName = ptr.To(gatewayv1.SectionName(sectionName))
 		}
 		return &v1alpha1.BackendTrafficPolicy{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
@@ -687,9 +741,9 @@ func TestAttachBackendTrafficPolicyToUpstreamSectionName(t *testing.T) {
 					ObjectMeta: metav1.ObjectMeta{Name: "p", Namespace: namespace},
 					Spec: v1alpha1.BackendTrafficPolicySpec{
 						TargetRefs: []v1alpha1.BackendPolicyTargetReferenceWithSectionName{{
-							LocalPolicyTargetReference: gatewayv1alpha2.LocalPolicyTargetReference{
-								Name: gatewayv1alpha2.ObjectName(serviceName),
-								Kind: gatewayv1alpha2.Kind("ServiceImport"),
+							LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
+								Name: gatewayv1.ObjectName(serviceName),
+								Kind: gatewayv1.Kind("ServiceImport"),
 							},
 						}},
 						Scheme: apiv2.SchemeHTTPS,
