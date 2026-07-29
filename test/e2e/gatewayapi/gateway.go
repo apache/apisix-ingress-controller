@@ -265,6 +265,8 @@ metadata:
 spec:
   controllerName: "%s"
 `
+			// Gateway API v1.6 moved frontendValidation from the listener TLS config
+			// to the Gateway-level spec.tls.frontend.
 			var defaultGateway = fmt.Sprintf(`
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
@@ -272,6 +274,14 @@ metadata:
   name: %s
 spec:
   gatewayClassName: %s
+  tls:
+    frontend:
+      default:
+        validation:
+          caCertificateRefs:
+          - kind: ConfigMap
+            group: ""
+            name: %s
   listeners:
     - name: http1
       protocol: HTTPS
@@ -282,17 +292,12 @@ spec:
         - kind: Secret
           group: ""
           name: %s
-        frontendValidation:
-          caCertificateRefs:
-          - kind: ConfigMap
-            group: ""
-            name: %s
   infrastructure:
     parametersRef:
       group: apisix.apache.org
       kind: GatewayProxy
       name: apisix-proxy-config
-`, s.Namespace(), gatewayClassName, host, secretName, caConfigMapName)
+`, s.Namespace(), gatewayClassName, caConfigMapName, host, secretName)
 
 			By("create GatewayClass")
 			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()), "")

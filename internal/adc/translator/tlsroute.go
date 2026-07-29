@@ -74,7 +74,7 @@ func (t *Translator) TranslateTLSRoute(tctx *provider.TranslateContext, tlsRoute
 				kind = string(*backend.Kind)
 			}
 			if backend.Port != nil {
-				port = int32(*backend.Port)
+				port = *backend.Port
 			}
 			namespace := string(*backend.Namespace)
 			name := string(backend.Name)

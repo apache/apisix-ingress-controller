@@ -18,11 +18,47 @@
 package utils
 
 import (
+	"unicode/utf8"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
+
+const (
+	// maxConditionMessageBytes is the hard limit Kubernetes enforces on a
+	// status condition Message (status.conditions[].message). Updates whose
+	// message exceeds this are rejected with "Too long: may not be more than
+	// 32768 bytes".
+	maxConditionMessageBytes = 32768
+
+	// conditionMessageTruncationMarker is appended to a message that had to be
+	// truncated to fit within maxConditionMessageBytes.
+	conditionMessageTruncationMarker = " ... (truncated)"
+)
+
+// TruncateConditionMessage caps a condition Message so a status update is never
+// rejected for exceeding Kubernetes' 32768-byte limit. Truncation is rune-safe:
+// it trims back to a UTF-8 rune boundary (never splitting a multi-byte rune) and
+// appends conditionMessageTruncationMarker to signal that content was dropped.
+func TruncateConditionMessage(msg string) string {
+	if len(msg) <= maxConditionMessageBytes {
+		return msg
+	}
+
+	budget := maxConditionMessageBytes - len(conditionMessageTruncationMarker)
+	truncated := msg[:budget]
+	// Back off any partial trailing rune left by the byte-wise cut.
+	for len(truncated) > 0 {
+		if r, size := utf8.DecodeLastRuneInString(truncated); r == utf8.RuneError && size <= 1 {
+			truncated = truncated[:len(truncated)-1]
+			continue
+		}
+		break
+	}
+	return truncated + conditionMessageTruncationMarker
+}
 
 func SetApisixCRDConditionWithGeneration(status *apiv2.ApisixStatus, generation int64, condition metav1.Condition) {
 	condition.ObservedGeneration = generation
@@ -51,7 +87,7 @@ func NewConditionTypeAccepted(reason apiv2.ApisixRouteConditionReason, status bo
 		ObservedGeneration: generation,
 		LastTransitionTime: metav1.Now(),
 		Reason:             string(reason),
-		Message:            msg,
+		Message:            TruncateConditionMessage(msg),
 	}
 	return condition
 }

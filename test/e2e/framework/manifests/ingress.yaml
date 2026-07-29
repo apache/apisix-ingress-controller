@@ -295,6 +295,11 @@ data:
                                             # will wait between tries of actions with the controller.
       disable: false                        # Whether to disable leader election.
     exec_adc_timeout: {{ env "E2E_EXEC_ADC_TIMEOUT" | default "5s" }}
+    # Opt in to server_port route vars. The shipped default is "off", because a
+    # Gateway listener port is not the port APISIX accepts the connection on. The
+    # listeners under test declare APISIX's own node_listen ports, so here the
+    # predicate is meaningful and the port-based routing specs can exercise it.
+    listener_port_match_mode: {{ .ListenerPortMatchMode | default "auto" }}
     provider:
       type: {{ .ProviderType | default "apisix" }}
       sync_period: {{ .ProviderSyncPeriod | default "0s" }}

@@ -23,12 +23,87 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 
+	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 )
+
+func hmacConsumerWithSecret(secretName string) *apiv2.ApisixConsumer {
+	return &apiv2.ApisixConsumer{
+		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
+		Spec: apiv2.ApisixConsumerSpec{
+			AuthParameter: &apiv2.ApisixConsumerAuthParameter{
+				HMACAuth: &apiv2.ApisixConsumerHMACAuth{
+					SecretRef: &corev1.LocalObjectReference{Name: secretName},
+				},
+			},
+		},
+	}
+}
+
+func hmacSecret(data map[string][]byte) *corev1.Secret {
+	data["key_id"] = []byte("my-key")
+	data["secret_key"] = []byte("my-secret")
+	return &corev1.Secret{Data: data}
+}
+
+func TestTranslateApisixConsumer_HMACAuthSignedHeadersFromSecret(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		raw      string
+		expected []string
+	}{
+		{name: "comma separated", raw: "X-Date,Host", expected: []string{"X-Date", "Host"}},
+		{name: "padding and empty entries", raw: " X-Date, , Host, ", expected: []string{"X-Date", "Host"}},
+		{name: "newline separated", raw: "X-Date\nHost", expected: []string{"X-Date", "Host"}},
+		{name: "space separated", raw: "X-Date Host", expected: []string{"X-Date", "Host"}},
+		{name: "single header", raw: "X-Date", expected: []string{"X-Date"}},
+		{name: "empty", raw: "", expected: []string{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			translator := NewTranslator(logr.Discard(), "")
+			tctx := provider.NewDefaultTranslateContext(context.Background())
+			tctx.Secrets[k8stypes.NamespacedName{Namespace: "default", Name: "hmac"}] = hmacSecret(map[string][]byte{
+				"signed_headers": []byte(tc.raw),
+			})
+
+			result, err := translator.TranslateApisixConsumer(tctx, hmacConsumerWithSecret("hmac"))
+			require.NoError(t, err)
+			require.Len(t, result.Consumers, 1)
+
+			cfg := result.Consumers[0].Plugins["hmac-auth"].(*adctypes.HMACAuthConsumerConfig)
+			require.Equal(t, tc.expected, cfg.SignedHeaders)
+		})
+	}
+}
+
+func TestTranslateApisixConsumer_HMACAuthRejectsUnparseableNumbers(t *testing.T) {
+	for _, tc := range []struct {
+		key string
+		raw string
+	}{
+		{key: "clock_skew", raw: "3O0"}, // typo: letter O
+		{key: "max_req_body", raw: "invalid"},
+	} {
+		t.Run(tc.key, func(t *testing.T) {
+			translator := NewTranslator(logr.Discard(), "")
+			tctx := provider.NewDefaultTranslateContext(context.Background())
+			tctx.Secrets[k8stypes.NamespacedName{Namespace: "default", Name: "hmac"}] = hmacSecret(map[string][]byte{
+				tc.key: []byte(tc.raw),
+			})
+
+			_, err := translator.TranslateApisixConsumer(tctx, hmacConsumerWithSecret("hmac"))
+			require.Error(t, err)
+			require.Contains(t, err.Error(), tc.key)
+			require.Contains(t, err.Error(), "default/hmac")
+		})
+	}
+}
 
 func TestTranslateApisixConsumer_UsesMetadataLabelsWithoutOverwritingControllerLabels(t *testing.T) {
 	translator := NewTranslator(logr.Discard(), "")

@@ -43,6 +43,7 @@ const (
 	KindGRPCRoute            = "GRPCRoute"
 	KindTLSRoute             = "TLSRoute"
 	KindGatewayClass         = "GatewayClass"
+	KindReferenceGrant       = "ReferenceGrant"
 	KindIngress              = "Ingress"
 	KindIngressClass         = "IngressClass"
 	KindGatewayProxy         = "GatewayProxy"
@@ -86,6 +87,8 @@ func KindOf(obj any) string {
 		return KindTLSRoute
 	case *gatewayv1.GatewayClass:
 		return KindGatewayClass
+	case *gatewayv1beta1.ReferenceGrant:
+		return KindReferenceGrant
 	case *netv1.Ingress:
 		return KindIngress
 	case *netv1.IngressClass:
@@ -129,11 +132,11 @@ func GvkOf(obj any) schema.GroupVersionKind {
 	kind := KindOf(obj)
 	switch obj.(type) {
 	case *gatewayv1.Gateway, *gatewayv1.HTTPRoute, *gatewayv1.GatewayClass, *gatewayv1.GRPCRoute:
-		return gatewayv1.SchemeGroupVersion.WithKind(kind)
+		return schema.GroupVersion(gatewayv1.GroupVersion).WithKind(kind)
 	case *gatewayv1alpha2.TCPRoute, *gatewayv1alpha2.UDPRoute, *gatewayv1alpha2.TLSRoute:
-		return gatewayv1alpha2.SchemeGroupVersion.WithKind(kind)
+		return schema.GroupVersion(gatewayv1alpha2.GroupVersion).WithKind(kind)
 	case *gatewayv1beta1.ReferenceGrant:
-		return gatewayv1beta1.SchemeGroupVersion.WithKind(kind)
+		return schema.GroupVersion(gatewayv1beta1.GroupVersion).WithKind(kind)
 	case *netv1.Ingress, *netv1.IngressClass:
 		return netv1.SchemeGroupVersion.WithKind(kind)
 	case *corev1.Secret, *corev1.Service:
@@ -222,4 +225,32 @@ func GetEffectiveIngressClassName(ingress *netv1.Ingress) string {
 		return cls
 	}
 	return ingress.GetAnnotations()[IngressClassNameAnnotation]
+}
+
+// FrontendTLSValidationForListener resolves the Gateway-level frontend TLS
+// client-certificate validation that applies to the given listener.
+//
+// In Gateway API v1.6 frontendValidation moved from the per-listener TLS config
+// to spec.tls.frontend, and it applies only to Listeners handling HTTPS traffic:
+// Default applies to all HTTPS listeners, and a PerPort entry overrides it for
+// listeners on the matching port. It returns nil for any non-HTTPS listener or
+// when no frontend config is set.
+//
+// This is the single source of truth for that resolution; the gateway
+// translator, the gateway controller and the indexer all rely on it agreeing,
+// otherwise a listener's status and its programmed config would silently diverge.
+func FrontendTLSValidationForListener(gateway *gatewayv1.Gateway, listener gatewayv1.Listener) *gatewayv1.FrontendTLSValidation {
+	if listener.Protocol != gatewayv1.HTTPSProtocolType {
+		return nil
+	}
+	if gateway.Spec.TLS == nil || gateway.Spec.TLS.Frontend == nil {
+		return nil
+	}
+	frontend := gateway.Spec.TLS.Frontend
+	for i := range frontend.PerPort {
+		if frontend.PerPort[i].Port == listener.Port {
+			return frontend.PerPort[i].TLS.Validation
+		}
+	}
+	return frontend.Default.Validation
 }

@@ -191,7 +191,9 @@ func (t *Translator) fillPluginFromHTTPCORSFilter(plugins adctypes.Plugins, cors
 		}
 		plugin.ExposeHeaders = strings.Join(exposeHeaders, ",")
 	}
-	plugin.AllowCredential = bool(cors.AllowCredentials)
+	if cors.AllowCredentials != nil {
+		plugin.AllowCredential = *cors.AllowCredentials
+	}
 }
 
 func (t *Translator) fillPluginFromHTTPRequestHeaderFilter(plugins adctypes.Plugins, reqHeaderModifier *gatewayv1.HTTPHeaderFilter) {
@@ -525,6 +527,18 @@ func calculateHTTPRoutePriority(match *gatewayv1.HTTPRouteMatch, ruleIndex int, 
 	return priority
 }
 
+// ruleProducesResponse reports whether the rule answers requests on its own,
+// without a backend — currently a RequestRedirect filter. Such a rule is valid
+// with no backendRefs and must not be turned into a fault-injection 500.
+func ruleProducesResponse(rule gatewayv1.HTTPRouteRule) bool {
+	for _, f := range rule.Filters {
+		if f.Type == gatewayv1.HTTPRouteFilterRequestRedirect {
+			return true
+		}
+	}
+	return false
+}
+
 // translateBackendsToUpstreams processes the BackendRefs of an HTTPRouteRule,
 // builds upstreams, assigns them to the service (single upstream or traffic-split
 // plugin for multiple), and injects fault-injection on backend errors.
@@ -570,7 +584,7 @@ func (t *Translator) translateBackendsToUpstreams(
 			kind = string(*backend.Kind)
 		}
 		if backend.Port != nil {
-			port = int32(*backend.Port)
+			port = *backend.Port
 		}
 		namespace := string(*backend.Namespace)
 		name := string(backend.Name)
@@ -639,7 +653,15 @@ func (t *Translator) translateBackendsToUpstreams(
 		}
 	}
 
-	if backendErr != nil && (service.Upstream == nil || len(service.Upstream.Nodes) == 0) {
+	// A rule whose backendRefs are omitted/empty, or whose backendRefs all fail
+	// to resolve, must explicitly respond with 500 (Gateway API). Exceptions:
+	//   - a rule that produces its own response (e.g. a RequestRedirect filter)
+	//     is valid without backendRefs; the filter answers, so it must not be
+	//     turned into a 500.
+	//   - a backend that resolves but currently has no ready endpoints is left to
+	//     the upstream's own "no healthy nodes" handling (503).
+	noUsableBackend := backendErr != nil || (len(rule.BackendRefs) == 0 && !ruleProducesResponse(rule))
+	if noUsableBackend && (service.Upstream == nil || len(service.Upstream.Nodes) == 0) {
 		if service.Plugins == nil {
 			service.Plugins = make(map[string]any)
 		}
@@ -712,17 +734,18 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 			routes = append(routes, route)
 		}
 
-		// Collect unique listener ports for port-based routing
-		listenerPorts := make(map[int32]struct{})
-		for _, listener := range tctx.Listeners {
-			listenerPorts[int32(listener.Port)] = struct{}{}
-		}
+		// Hostname-less listener ports decide whether a server_port var is needed;
+		// hostname listeners are isolated by host, not port.
+		listenerPorts := collectServerPortMatchPorts(tctx.Listeners)
 
 		// Add server_port matching only when a route explicitly targets a listener
-		// or when multiple listener ports need to be disambiguated.
+		// or when multiple listener ports need to be disambiguated. When it is added,
+		// match on every targeted listener port so a route attached to both a
+		// hostname-less and a hostname listener is not dropped on the hostname port.
 		if t.shouldInjectServerPortVars(tctx.RouteParentRefs, listenerPorts) {
+			matchPorts := allListenerPorts(tctx.Listeners)
 			for _, route := range routes {
-				addServerPortVars(route, listenerPorts)
+				addServerPortVars(route, matchPorts)
 			}
 		}
 

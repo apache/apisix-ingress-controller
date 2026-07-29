@@ -23,6 +23,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/gavv/httpexpect/v2"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	. "github.com/onsi/ginkgo/v2" //nolint:staticcheck
 	. "github.com/onsi/gomega"    //nolint:staticcheck
@@ -146,9 +147,8 @@ func (s *APISIXDeployer) AfterEach() {
 			_, _ = fmt.Fprintln(GinkgoWriter, output)
 		}
 		if framework.ProviderType == framework.ProviderTypeAPISIXStandalone && s.adminTunnel != nil {
-			client := NewClient("http", s.adminTunnel.Endpoint())
 			reporter := &ErrorReporter{}
-			body := client.GET("/apisix/admin/configs").WithHeader("X-API-KEY", s.AdminKey()).WithReporter(reporter).Expect().Body().Raw()
+			body := s.AdminAPIClient().GET("/apisix/admin/configs").WithHeader("X-API-KEY", s.AdminKey()).WithReporter(reporter).Expect().Body().Raw()
 			_, _ = fmt.Fprintln(GinkgoWriter, "Dumping APISIX configs:")
 			_, _ = fmt.Fprintln(GinkgoWriter, body)
 		}
@@ -357,6 +357,14 @@ func (s *APISIXDeployer) createAdminTunnel(svc *corev1.Service) (*k8s.Tunnel, er
 	s.addFinalizers(s.closeAdminTunnel)
 
 	return adminTunnel, nil
+}
+
+// AdminAPIClient returns a client for the data plane Admin API, reachable through the
+// tunnel the scaffold forwards to it. In standalone mode it is the only way to read or
+// write the configuration APISIX actually holds, bypassing the controller.
+func (s *APISIXDeployer) AdminAPIClient() *httpexpect.Expect {
+	Expect(s.adminTunnel).NotTo(BeNil(), "admin tunnel should be created")
+	return NewClient("http", s.adminTunnel.Endpoint())
 }
 
 func (s *APISIXDeployer) closeAdminTunnel() {
