@@ -282,10 +282,15 @@ func clientConfigHash(client *apiv2.ApisixMutualTlsClientConfig) string {
 	}
 	regexes := append([]string(nil), client.SkipMTLSUriRegex...)
 	sort.Strings(regexes)
-	canonical := fmt.Sprintf("ca=%s/%s;depth=%d;skip=%s",
-		client.CASecret.Namespace, client.CASecret.Name, client.Depth,
-		strings.Join(regexes, ","))
-	sum := sha256.Sum256([]byte(canonical))
+	// Length-prefix each regex so entries containing commas can't alias
+	// (e.g. {"a,b"} vs {"a","b"}), which would collide the hash.
+	var b strings.Builder
+	fmt.Fprintf(&b, "ca=%s/%s;depth=%d;skip=%d:",
+		client.CASecret.Namespace, client.CASecret.Name, client.Depth, len(regexes))
+	for _, r := range regexes {
+		fmt.Fprintf(&b, "%d:%s", len(r), r)
+	}
+	sum := sha256.Sum256([]byte(b.String()))
 	return hex.EncodeToString(sum[:])
 }
 

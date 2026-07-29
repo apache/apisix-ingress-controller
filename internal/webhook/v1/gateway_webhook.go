@@ -88,13 +88,14 @@ func (v *GatewayCustomValidator) ValidateCreate(ctx context.Context, obj runtime
 	}
 
 	detector := sslvalidator.NewConflictDetector(v.Client)
-	conflicts := detector.DetectConflicts(ctx, gateway)
-	if len(conflicts) > 0 {
-		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
-	}
-
 	warnings := v.warnIfMissingGatewayProxyForGateway(ctx, gateway)
 	warnings = append(warnings, v.collectReferenceWarnings(ctx, gateway)...)
+
+	// Overlapping SSL config is advisory: APISIX serves overlapping objects and
+	// resolves by SNI, so warn instead of denying.
+	if conflicts := detector.DetectConflicts(ctx, gateway); len(conflicts) > 0 {
+		warnings = append(warnings, sslvalidator.FormatConflicts(conflicts))
+	}
 
 	return warnings, nil
 }
@@ -117,13 +118,14 @@ func (v *GatewayCustomValidator) ValidateUpdate(ctx context.Context, oldObj, new
 	}
 
 	detector := sslvalidator.NewConflictDetector(v.Client)
-	conflicts := detector.DetectConflicts(ctx, gateway)
-	if len(conflicts) > 0 {
-		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
-	}
-
 	warnings := v.warnIfMissingGatewayProxyForGateway(ctx, gateway)
 	warnings = append(warnings, v.collectReferenceWarnings(ctx, gateway)...)
+
+	// Overlapping SSL config is advisory: APISIX serves overlapping objects and
+	// resolves by SNI, so warn instead of denying.
+	if conflicts := detector.DetectConflicts(ctx, gateway); len(conflicts) > 0 {
+		warnings = append(warnings, sslvalidator.FormatConflicts(conflicts))
+	}
 
 	return warnings, nil
 }

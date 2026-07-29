@@ -74,16 +74,17 @@ func (v *ApisixTlsCustomValidator) ValidateCreate(ctx context.Context, obj runti
 	}
 
 	detector := sslvalidator.NewConflictDetector(v.Client)
-	conflicts := detector.DetectConflicts(ctx, tls)
-	if len(conflicts) > 0 {
-		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
-	}
-
 	warnings := v.collectWarnings(ctx, tls)
+	// Overlapping SSL config is advisory: APISIX serves overlapping objects and
+	// resolves by SNI, so warn instead of denying.
+	skipADCValidation := v.initErr != nil || len(warnings) > 0
+	if conflicts := detector.DetectConflicts(ctx, tls); len(conflicts) > 0 {
+		warnings = append(warnings, sslvalidator.FormatConflicts(conflicts))
+	}
 	// Skip ADC validation when secrets are missing: the translator cannot
 	// load cert/key material, so validation would always fail. The missing-
 	// secret warnings are sufficient to inform the user.
-	if v.initErr != nil || len(warnings) > 0 {
+	if skipADCValidation {
 		return warnings, nil
 	}
 

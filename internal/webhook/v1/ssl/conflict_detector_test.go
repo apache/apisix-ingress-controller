@@ -575,6 +575,21 @@ func TestConflictDetectorAllowsIdenticalMTLS(t *testing.T) {
 	}
 }
 
+// TestClientConfigHashInjectiveOnCommaRegex guards the skip-regex encoding:
+// {"a,b"} and {"a","b"} are different configs and must not hash alike.
+func TestClientConfigHashInjectiveOnCommaRegex(t *testing.T) {
+	ca := apiv2.ApisixSecret{Name: "client-ca", Namespace: testNamespace}
+	single := clientConfigHash(&apiv2.ApisixMutualTlsClientConfig{
+		CASecret: ca, SkipMTLSUriRegex: []string{"a,b"},
+	})
+	split := clientConfigHash(&apiv2.ApisixMutualTlsClientConfig{
+		CASecret: ca, SkipMTLSUriRegex: []string{"a", "b"},
+	})
+	if single == split {
+		t.Fatalf("distinct skip-regex configs collided: %s", single)
+	}
+}
+
 func generateCertificate(t *testing.T, hosts []string) ([]byte, []byte) {
 	t.Helper()
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
