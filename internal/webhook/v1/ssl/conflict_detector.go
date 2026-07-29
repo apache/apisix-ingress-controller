@@ -136,12 +136,12 @@ func FormatConflicts(conflicts []SSLConflict) string {
 	if len(conflicts) == 0 {
 		return ""
 	}
-	var sb strings.Builder
-	sb.WriteString("SSL configuration conflicts detected:")
+	// Single line: admission warnings are HTTP headers, so newlines are dropped.
+	parts := make([]string, 0, len(conflicts))
 	for _, conflict := range conflicts {
-		sb.WriteString(fmt.Sprintf("\n- Host '%s' is already configured with a different certificate in %s", conflict.Host, conflict.ConflictingResource))
+		parts = append(parts, fmt.Sprintf("host '%s' is already configured with a different certificate in %s", conflict.Host, conflict.ConflictingResource))
 	}
-	return sb.String()
+	return "SSL configuration conflicts detected: " + strings.Join(parts, "; ")
 }
 
 // BuildGatewayMappings calculates host-to-certificate mappings for a Gateway.
