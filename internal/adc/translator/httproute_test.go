@@ -404,14 +404,22 @@ func TestTranslateHTTPRouteUpstreamScheme(t *testing.T) {
 
 func TestTranslateHTTPRouteExternalNameAppProtocol(t *testing.T) {
 	tests := []struct {
-		name        string
-		appProtocol string
-		wantScheme  string
+		name          string
+		appProtocol   string
+		wantScheme    string
+		wantWebsocket *bool
 	}{
 		{
-			name:        "ExternalName with websocket appProtocol",
-			appProtocol: internaltypes.AppProtocolWSS,
-			wantScheme:  apiv2.SchemeHTTPS,
+			name:          "ExternalName with wss appProtocol",
+			appProtocol:   internaltypes.AppProtocolWSS,
+			wantScheme:    apiv2.SchemeHTTPS,
+			wantWebsocket: ptr.To(true),
+		},
+		{
+			name:          "ExternalName with ws appProtocol",
+			appProtocol:   internaltypes.AppProtocolWS,
+			wantScheme:    apiv2.SchemeHTTP,
+			wantWebsocket: ptr.To(true),
 		},
 		{
 			name:        "ExternalName with http appProtocol",
@@ -421,7 +429,7 @@ func TestTranslateHTTPRouteExternalNameAppProtocol(t *testing.T) {
 		{
 			name:        "ExternalName without appProtocol",
 			appProtocol: "",
-			wantScheme:  apiv2.SchemeHTTP,
+			wantScheme:  "",
 		},
 	}
 
@@ -433,8 +441,13 @@ func TestTranslateHTTPRouteExternalNameAppProtocol(t *testing.T) {
 			const (
 				namespace   = "default"
 				serviceName = "external-backend"
-				portNumber  = int32(5000)
+				portNumber  = 5000
 			)
+
+			var appProtocol *string
+			if tt.appProtocol != "" {
+				appProtocol = ptr.To(tt.appProtocol)
+			}
 
 			serviceKey := types.NamespacedName{Namespace: namespace, Name: serviceName}
 			tctx.Services[serviceKey] = &corev1.Service{
@@ -448,7 +461,7 @@ func TestTranslateHTTPRouteExternalNameAppProtocol(t *testing.T) {
 					Ports: []corev1.ServicePort{{
 						Name:        "web",
 						Port:        portNumber,
-						AppProtocol: ptr.To(tt.appProtocol),
+						AppProtocol: appProtocol,
 					}},
 				},
 			}
@@ -476,9 +489,11 @@ func TestTranslateHTTPRouteExternalNameAppProtocol(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, result.Services, 1)
 			require.NotNil(t, result.Services[0].Upstream)
+			require.Len(t, result.Services[0].Routes, 1)
 
 			assert.Equal(t, tt.wantScheme, result.Services[0].Upstream.Scheme)
 			assert.Equal(t, "example.com", result.Services[0].Upstream.Nodes[0].Host)
+			assert.Equal(t, tt.wantWebsocket, result.Services[0].Routes[0].EnableWebsocket)
 		})
 	}
 }
