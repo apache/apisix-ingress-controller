@@ -162,7 +162,6 @@ spec:
 			By("create IngressClass")
 			err := s.CreateResourceFromStringWithNamespace(s.GetIngressClassYaml(), "")
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
-			time.Sleep(5 * time.Second)
 		})
 		It("retries", func() {
 			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressRetries, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
@@ -606,7 +605,6 @@ spec:
 			By("create IngressClass")
 			err := s.CreateResourceFromStringWithNamespace(s.GetIngressClassYaml(), "")
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
-			time.Sleep(5 * time.Second)
 		})
 		It("redirect", func() {
 			Expect(s.CreateResourceFromString(fmt.Sprintf(tohttps, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
@@ -643,17 +641,16 @@ spec:
 		It("csrf", func() {
 			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressCSRF, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
 
-			time.Sleep(5 * time.Second)
-
 			By("Request without CSRF token should fail")
-			msg401 := s.NewAPISIXClient().
-				POST("/anything").
-				WithHeader("Host", "httpbin.example").
-				Expect().
-				Status(http.StatusUnauthorized).
-				Body().
-				Raw()
-			Expect(msg401).To(ContainSubstring("no csrf token in headers"), "checking error message")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "POST",
+				Path:   "/anything",
+				Host:   "httpbin.example",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusUnauthorized),
+					scaffold.WithExpectedBodyContains("no csrf token in headers"),
+				},
+			})
 
 			By("GET request should succeed and return CSRF token in cookie")
 			resp := s.NewAPISIXClient().
@@ -1128,7 +1125,6 @@ spec:
 			By("create IngressClass")
 			err = s.CreateResourceFromStringWithNamespace(s.GetIngressClassYaml(), "")
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
-			time.Sleep(5 * time.Second)
 		})
 		AfterEach(func() {
 			s.DeleteNamespace(ns)
@@ -1176,7 +1172,6 @@ spec:
 			By("create IngressClass")
 			err := s.CreateResourceFromStringWithNamespace(s.GetIngressClassYaml(), "")
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
-			time.Sleep(5 * time.Second)
 		})
 		It("regex match", func() {
 			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressRegex, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")

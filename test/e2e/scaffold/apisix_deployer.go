@@ -23,6 +23,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/gavv/httpexpect/v2"
 	"github.com/gruntwork-io/terratest/modules/k8s"
 	. "github.com/onsi/ginkgo/v2" //nolint:staticcheck
 	. "github.com/onsi/gomega"    //nolint:staticcheck
@@ -59,6 +60,34 @@ func NewAPISIXDeployer(s *Scaffold) Deployer {
 }
 
 func (s *APISIXDeployer) BeforeEach() {
+	// Fast path: pick up a prewarmed environment so the deploy/readiness
+	// latency is paid by a background worker (overlapping the previous spec)
+	// instead of on this spec's critical path. Only the default profile is
+	// pooled; anything else, or any provisioning failure, falls back to the
+	// synchronous deploy below.
+	if prewarmEnabled() && isPoolable(s.opts) && specPrewarmable() {
+		fw, opts := s.Framework, s.opts
+		pool := getOrStartPool(profileKey(opts), prewarmDepth(), func() *pooledEnv {
+			return provisionAPISIXEnv(fw, opts)
+		})
+		env := pool.acquire()
+		if env != nil && env.err == nil {
+			if err := s.loadPooledEnv(env); err != nil {
+				s.Logf("prewarm tunnel setup failed, falling back to synchronous deploy: %v", err)
+				destroyPooledEnv(env)
+			} else {
+				return
+			}
+		} else if env != nil && env.err != nil {
+			s.Logf("prewarm provision failed, falling back to synchronous deploy: %v", env.err)
+			destroyPooledEnv(env)
+		}
+	}
+
+	s.beforeEachSync()
+}
+
+func (s *APISIXDeployer) beforeEachSync() {
 	s.runtimeOpts = s.opts
 	s.namespace = fmt.Sprintf("ingress-apisix-e2e-tests-%s-%d", s.runtimeOpts.Name, time.Now().Nanosecond())
 	s.kubectlOptions = &k8s.KubectlOptions{
@@ -118,9 +147,8 @@ func (s *APISIXDeployer) AfterEach() {
 			_, _ = fmt.Fprintln(GinkgoWriter, output)
 		}
 		if framework.ProviderType == framework.ProviderTypeAPISIXStandalone && s.adminTunnel != nil {
-			client := NewClient("http", s.adminTunnel.Endpoint())
 			reporter := &ErrorReporter{}
-			body := client.GET("/apisix/admin/configs").WithHeader("X-API-KEY", s.AdminKey()).WithReporter(reporter).Expect().Body().Raw()
+			body := s.AdminAPIClient().GET("/apisix/admin/configs").WithHeader("X-API-KEY", s.AdminKey()).WithReporter(reporter).Expect().Body().Raw()
 			_, _ = fmt.Fprintln(GinkgoWriter, "Dumping APISIX configs:")
 			_, _ = fmt.Fprintln(GinkgoWriter, body)
 		}
@@ -329,6 +357,14 @@ func (s *APISIXDeployer) createAdminTunnel(svc *corev1.Service) (*k8s.Tunnel, er
 	s.addFinalizers(s.closeAdminTunnel)
 
 	return adminTunnel, nil
+}
+
+// AdminAPIClient returns a client for the data plane Admin API, reachable through the
+// tunnel the scaffold forwards to it. In standalone mode it is the only way to read or
+// write the configuration APISIX actually holds, bypassing the controller.
+func (s *APISIXDeployer) AdminAPIClient() *httpexpect.Expect {
+	Expect(s.adminTunnel).NotTo(BeNil(), "admin tunnel should be created")
+	return NewClient("http", s.adminTunnel.Endpoint())
 }
 
 func (s *APISIXDeployer) closeAdminTunnel() {

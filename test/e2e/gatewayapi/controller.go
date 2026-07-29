@@ -93,7 +93,6 @@ spec:
 				),
 				fmt.Sprintf("checking %s condition status", resourType),
 			)
-		time.Sleep(3 * time.Second)
 	}
 	var beforeEach = func(s *scaffold.Scaffold) {
 		By(fmt.Sprintf("create GatewayClass for controller %s", s.GetControllerName()))
@@ -104,29 +103,30 @@ spec:
 		gatewayProxy := fmt.Sprintf(gatewayProxyYaml, gatewayProxyName, s.Deployer.GetAdminEndpoint(), s.AdminKey())
 		err := s.CreateResourceFromStringWithNamespace(gatewayProxy, gatewayName)
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-		time.Sleep(5 * time.Second)
 
 		gatewayClassName := s.Namespace()
 		err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defautlGatewayClass, gatewayClassName, gatewayName, s.GetControllerName()), gatewayName)
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
-		time.Sleep(10 * time.Second)
 
 		By("check GatewayClass condition")
-		gcyaml, err := s.GetResourceYamlFromNamespace(types.KindGatewayClass, gatewayClassName, s.Namespace())
-		Expect(err).NotTo(HaveOccurred(), "getting GatewayClass yaml")
-		Expect(gcyaml).To(ContainSubstring(`status: "True"`), "checking GatewayClass condition status")
-		Expect(gcyaml).To(ContainSubstring("message: the gatewayclass has been accepted by the apisix-ingress-controller"), "checking GatewayClass condition message")
+		s.RetryAssertion(func() (string, error) {
+			return s.GetResourceYamlFromNamespace(types.KindGatewayClass, gatewayClassName, s.Namespace())
+		}).Should(And(
+			ContainSubstring(`status: "True"`),
+			ContainSubstring("message: the gatewayclass has been accepted by the apisix-ingress-controller"),
+		), "checking GatewayClass condition")
 
 		By("create Gateway")
 		err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defautlGateway, gatewayName, gatewayName, gatewayClassName, gatewayProxyName), gatewayName)
 		Expect(err).NotTo(HaveOccurred(), "creating Gateway")
-		time.Sleep(10 * time.Second)
 
 		By("check Gateway condition")
-		gwyaml, err := s.GetResourceYamlFromNamespace(types.KindGateway, gatewayName, gatewayName)
-		Expect(err).NotTo(HaveOccurred(), "getting Gateway yaml")
-		Expect(gwyaml).To(ContainSubstring(`status: "True"`), "checking Gateway condition status")
-		Expect(gwyaml).To(ContainSubstring("message: the gateway has been accepted by the apisix-ingress-controller"), "checking Gateway condition message")
+		s.RetryAssertion(func() (string, error) {
+			return s.GetResourceYamlFromNamespace(types.KindGateway, gatewayName, gatewayName)
+		}).Should(And(
+			ContainSubstring(`status: "True"`),
+			ContainSubstring("message: the gateway has been accepted by the apisix-ingress-controller"),
+		), "checking Gateway condition")
 	}
 
 	Context("Create resource with first controller", func() {
@@ -212,7 +212,12 @@ spec:
 		})
 		It("Apply resource ", func() {
 			ResourceApplied(s2, types.KindHTTPRoute, "httpbin2", s2.Namespace(), fmt.Sprintf(route2, s2.Namespace(), s2.Namespace()), 1)
-			time.Sleep(5 * time.Second)
+
+			s2.RetryAssertion(func() int {
+				routes, _ := s2.DefaultDataplaneResource().Route().List(s2.Context)
+				return len(routes)
+			}).WithInterval(3*time.Second).Should(Equal(1), "checking route count")
+
 			routes, err := s2.DefaultDataplaneResource().Route().List(s2.Context)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(routes).To(HaveLen(1))

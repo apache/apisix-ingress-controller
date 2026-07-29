@@ -25,7 +25,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
@@ -36,9 +35,8 @@ import (
 var httpRouteLog = logf.Log.WithName("httproute-resource")
 
 func SetupHTTPRouteWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&gatewayv1.HTTPRoute{}).
-		WithValidator(NewHTTPRouteCustomValidator(mgr.GetClient())).
+	return ctrl.NewWebhookManagedBy(mgr, &gatewayv1.HTTPRoute{}).
+		WithCustomValidator(NewHTTPRouteCustomValidator(mgr.GetClient())).
 		Complete()
 }
 
@@ -49,7 +47,7 @@ type HTTPRouteCustomValidator struct {
 	checker reference.Checker
 }
 
-var _ webhook.CustomValidator = &HTTPRouteCustomValidator{}
+var _ admission.Validator[runtime.Object] = &HTTPRouteCustomValidator{}
 
 func NewHTTPRouteCustomValidator(c client.Client) *HTTPRouteCustomValidator {
 	return &HTTPRouteCustomValidator{

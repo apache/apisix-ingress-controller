@@ -19,7 +19,6 @@ package gatewayapi
 
 import (
 	"fmt"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -106,9 +105,9 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "dig github.com via apisix udp proxy")
 			Expect(output).To(ContainSubstring("ADDITIONAL SECTION"))
 
-			time.Sleep(3 * time.Second)
-			output = s.GetDeploymentLogs(scaffold.CoreDNSDeployment)
-			Expect(output).To(ContainSubstring("github.com. udp"))
+			Eventually(func(g Gomega) {
+				g.Expect(s.GetDeploymentLogs(scaffold.CoreDNSDeployment)).To(ContainSubstring("github.com. udp"))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 	})
 })

@@ -19,7 +19,6 @@ package v1alpha1
 
 import (
 	"fmt"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -78,17 +77,14 @@ spec:
 		By("create GatewayProxy, control plane using endpoints")
 		err = s.CreateResourceFromString(s.GetGatewayProxySpec())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-		time.Sleep(time.Second)
 
 		By("create GatewayClass")
 		err = s.CreateResourceFromString(s.GetGatewayClassYaml())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
-		time.Sleep(time.Second)
 
 		By("create Gateway")
 		err = s.CreateResourceFromString(s.GetGatewayYaml())
 		Expect(err).NotTo(HaveOccurred(), "creating Gateway")
-		time.Sleep(time.Second)
 
 		By("create HTTPRoute")
 		s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, fmt.Sprintf(defaultHTTPRoute, s.Namespace()))

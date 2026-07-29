@@ -36,12 +36,10 @@ var _ = Describe("Test ApisixRoute With StreamRoute", Label("apisix.apache.org",
 		By("create GatewayProxy")
 		err := s.CreateResourceFromString(s.GetGatewayProxySpec())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-		time.Sleep(5 * time.Second)
 
 		By("create IngressClass")
 		err = s.CreateResourceFromStringWithNamespace(s.GetIngressClassYaml(), "")
 		Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
-		time.Sleep(5 * time.Second)
 	})
 
 	Context("TCP Proxy", func() {
@@ -125,18 +123,20 @@ spec:
 			dnsSvc := s.NewCoreDNSService()
 			err := s.CreateResourceFromString(fmt.Sprintf(apisixRoute, s.Namespace(), dnsSvc.Name, dnsSvc.Spec.Ports[0].Port))
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixRoute")
-			time.Sleep(20 * time.Second)
 
 			svc := s.GetDataplaneService()
 
 			// test dns query
-			output, err := s.RunDigDNSClientFromK8s(fmt.Sprintf("@%s", svc.Name), "-p", "9200", "github.com")
-			Expect(err).NotTo(HaveOccurred(), "dig github.com via apisix udp proxy")
-			Expect(output).To(ContainSubstring("ADDITIONAL SECTION"))
+			Eventually(func(g Gomega) {
+				output, err := s.RunDigDNSClientFromK8s(fmt.Sprintf("@%s", svc.Name), "-p", "9200", "github.com")
+				g.Expect(err).NotTo(HaveOccurred(), "dig github.com via apisix udp proxy")
+				g.Expect(output).To(ContainSubstring("ADDITIONAL SECTION"))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 
-			time.Sleep(3 * time.Second)
-			output = s.GetDeploymentLogs(scaffold.CoreDNSDeployment)
-			Expect(output).To(ContainSubstring("github.com. udp"))
+			Eventually(func(g Gomega) {
+				output := s.GetDeploymentLogs(scaffold.CoreDNSDeployment)
+				g.Expect(output).To(ContainSubstring("github.com. udp"))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 	})
 

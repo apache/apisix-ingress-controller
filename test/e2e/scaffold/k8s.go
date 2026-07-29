@@ -239,7 +239,7 @@ func (s *Scaffold) ApplyHTTPRoutePolicy(refNN, hrpNN types.NamespacedName, spec 
 	if len(conditions) == 0 {
 		conditions = []metav1.Condition{
 			{
-				Type:   string(v1alpha2.PolicyConditionAccepted),
+				Type:   string(gatewayv1.PolicyConditionAccepted),
 				Status: metav1.ConditionTrue,
 			},
 		}
@@ -292,6 +292,22 @@ func (s *Scaffold) RunCurlFromK8s(args ...string) (string, error) {
 	}
 	kubectlArgs = append(kubectlArgs, args...)
 	return s.RunKubectlAndGetOutput(kubectlArgs...)
+}
+
+func (s *Scaffold) ApplyL4RoutePolicy(refNN, policyNN types.NamespacedName, spec string, conditions ...metav1.Condition) {
+	err := s.CreateResourceFromString(spec)
+	Expect(err).NotTo(HaveOccurred(), "creating L4RoutePolicy %s", policyNN)
+	if len(conditions) == 0 {
+		conditions = []metav1.Condition{
+			{
+				Type:   string(gatewayv1.PolicyConditionAccepted),
+				Status: metav1.ConditionTrue,
+			},
+		}
+	}
+	for _, condition := range conditions {
+		framework.L4RoutePolicyMustHaveCondition(s.GinkgoT, s.K8sClient, 8*time.Second, refNN, policyNN, condition)
+	}
 }
 
 func (s *Scaffold) GetGatewayProxySpec() string {

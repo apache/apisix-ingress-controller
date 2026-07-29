@@ -76,7 +76,7 @@ func TestConflictDetectorDetectsGatewayConflict(t *testing.T) {
 					Protocol: gatewayv1.HTTPSProtocolType,
 					Port:     443,
 					Hostname: &hostname,
-					TLS: &gatewayv1.GatewayTLSConfig{
+					TLS: &gatewayv1.ListenerTLSConfig{
 						Mode: &modeTerminate,
 						CertificateRefs: []gatewayv1.SecretObjectReference{
 							{Name: gatewayv1.ObjectName(secretA.Name)},
@@ -181,7 +181,7 @@ func TestConflictDetectorAllowedWhenCertificateMatches(t *testing.T) {
 					Protocol: gatewayv1.HTTPSProtocolType,
 					Port:     443,
 					Hostname: &listenerHostname,
-					TLS: &gatewayv1.GatewayTLSConfig{
+					TLS: &gatewayv1.ListenerTLSConfig{
 						Mode:            &modeTerminate,
 						CertificateRefs: []gatewayv1.SecretObjectReference{{Name: gatewayv1.ObjectName(secret.Name)}},
 					},
@@ -305,7 +305,7 @@ func TestConflictDetectorDetectsSelfConflict(t *testing.T) {
 					Protocol: gatewayv1.HTTPSProtocolType,
 					Port:     443,
 					Hostname: &hostname,
-					TLS: &gatewayv1.GatewayTLSConfig{
+					TLS: &gatewayv1.ListenerTLSConfig{
 						Mode: &modeTerminate,
 						CertificateRefs: []gatewayv1.SecretObjectReference{
 							{Name: gatewayv1.ObjectName(secretA.Name)},
@@ -317,7 +317,7 @@ func TestConflictDetectorDetectsSelfConflict(t *testing.T) {
 					Protocol: gatewayv1.HTTPSProtocolType,
 					Port:     8443,
 					Hostname: &hostname,
-					TLS: &gatewayv1.GatewayTLSConfig{
+					TLS: &gatewayv1.ListenerTLSConfig{
 						Mode: &modeTerminate,
 						CertificateRefs: []gatewayv1.SecretObjectReference{
 							{Name: gatewayv1.ObjectName(secretB.Name)},

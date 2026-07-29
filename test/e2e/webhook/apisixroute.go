@@ -19,7 +19,6 @@ package webhook
 
 import (
 	"fmt"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -37,12 +36,10 @@ var _ = Describe("Test ApisixRoute Webhook", Label("webhook"), func() {
 		By("creating GatewayProxy")
 		err := s.CreateResourceFromString(s.GetGatewayProxySpec())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-		time.Sleep(5 * time.Second)
 
 		By("creating IngressClass")
 		err = s.CreateResourceFromStringWithNamespace(s.GetIngressClassYaml(), "")
 		Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
-		time.Sleep(5 * time.Second)
 	})
 
 	It("should warn on missing service references", func() { //nolint:dupl
@@ -68,9 +65,11 @@ spec:
       servicePort: 80
 `
 
-		output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(routeYAML, routeName, s.Namespace(), s.Namespace(), missingService))
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Referenced Service '%s/%s' not found", s.Namespace(), missingService)))
+		Eventually(func(g Gomega) {
+			output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(routeYAML, routeName, s.Namespace(), s.Namespace(), missingService))
+			g.Expect(err).ShouldNot(HaveOccurred())
+			g.Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Referenced Service '%s/%s' not found", s.Namespace(), missingService)))
+		}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 
 		By("creating referenced Service")
 		serviceYAML := fmt.Sprintf(`
@@ -87,14 +86,14 @@ spec:
     targetPort: 80
   type: ClusterIP
 `, missingService)
-		err = s.CreateResourceFromString(serviceYAML)
+		err := s.CreateResourceFromString(serviceYAML)
 		Expect(err).NotTo(HaveOccurred(), "creating backend service placeholder")
 
-		time.Sleep(2 * time.Second)
-
-		output, err = s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(routeYAML, routeName, s.Namespace(), s.Namespace(), missingService))
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced Service '%s/%s' not found", s.Namespace(), missingService)))
+		Eventually(func(g Gomega) {
+			output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(routeYAML, routeName, s.Namespace(), s.Namespace(), missingService))
+			g.Expect(err).ShouldNot(HaveOccurred())
+			g.Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced Service '%s/%s' not found", s.Namespace(), missingService)))
+		}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 	})
 
 	It("should reject routes that fail ADC validation", func() {

@@ -50,13 +50,13 @@ jobs:
           submodules: recursive
 
       - name: Setup Go Env
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.26"
 
       - name: Install kind
         run: |
-          go install sigs.k8s.io/kind@v0.23.0
+          go install sigs.k8s.io/kind@v0.27.0
 
       - name: Build images
         env:

@@ -25,7 +25,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	"github.com/apache/apisix-ingress-controller/internal/controller"
@@ -37,8 +36,8 @@ var ingresslog = logf.Log.WithName("ingress-resource")
 
 // SetupIngressWebhookWithManager registers the webhook for Ingress in the manager.
 func SetupIngressWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).For(&networkingv1.Ingress{}).
-		WithValidator(NewIngressCustomValidator(mgr.GetClient())).
+	return ctrl.NewWebhookManagedBy(mgr, &networkingv1.Ingress{}).
+		WithCustomValidator(NewIngressCustomValidator(mgr.GetClient())).
 		Complete()
 }
 
@@ -56,7 +55,7 @@ type IngressCustomValidator struct {
 	checker reference.Checker
 }
 
-var _ webhook.CustomValidator = &IngressCustomValidator{}
+var _ admission.Validator[runtime.Object] = &IngressCustomValidator{}
 
 func NewIngressCustomValidator(c client.Client) *IngressCustomValidator {
 	return &IngressCustomValidator{

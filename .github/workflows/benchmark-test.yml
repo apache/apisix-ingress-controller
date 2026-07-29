@@ -60,13 +60,13 @@ jobs:
           submodules: recursive
 
       - name: Setup Go Env
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
+          go-version: "1.26"
 
       - name: Install kind
         run: |
-          go install sigs.k8s.io/kind@v0.23.0
+          go install sigs.k8s.io/kind@v0.27.0
 
       - name: Install ginkgo
         run: |
@@ -98,7 +98,9 @@ jobs:
         if: ${{ env.ADC_VERSION == 'dev' }}
         run: |
           docker create --name adc-temp ghcr.io/api7/adc:dev
-          docker cp adc-temp:main.cjs adc.js
+          # main.cjs lives in the image's WORKDIR, not at the container root,
+          # and docker cp resolves a relative SRC_PATH against the root.
+          docker cp "adc-temp:$(docker inspect -f '{{.Config.WorkingDir}}' adc-temp)/main.cjs" adc.js
           docker rm adc-temp
           node $(pwd)/adc.js -v
           echo "ADC_BIN=node $(pwd)/adc.js" >> $GITHUB_ENV

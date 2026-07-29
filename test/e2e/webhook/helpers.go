@@ -19,7 +19,6 @@ package webhook
 
 import (
 	"fmt"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -50,17 +49,14 @@ func setupGatewayResources(s *scaffold.Scaffold) {
 	By("creating GatewayProxy")
 	err := s.CreateResourceFromString(s.GetGatewayProxySpec())
 	Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-	time.Sleep(5 * time.Second)
 
 	By("creating GatewayClass")
 	err = s.CreateResourceFromString(s.GetGatewayClassYaml())
 	Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
-	time.Sleep(2 * time.Second)
 
 	By("creating Gateway")
 	err = s.CreateResourceFromString(s.GetGatewayYaml())
 	Expect(err).NotTo(HaveOccurred(), "creating Gateway")
-	time.Sleep(5 * time.Second)
 }
 
 func verifyMissingBackendWarnings(s *scaffold.Scaffold, tc routeWebhookTestCase) {
@@ -88,15 +84,16 @@ spec:
 	missingBackendWarning := fmt.Sprintf("Warning: Referenced Service '%s/%s' not found", gatewayName, tc.missingService)
 	mirrorBackendWarning := fmt.Sprintf("Warning: Referenced Service '%s/%s' not found", gatewayName, tc.mirrorService)
 
-	output, err := s.CreateResourceFromStringAndGetOutput(routeYAML)
-	Expect(err).ShouldNot(HaveOccurred())
-	Expect(output).To(ContainSubstring(missingBackendWarning))
-	Expect(output).To(ContainSubstring(mirrorBackendWarning))
+	Eventually(func(g Gomega) {
+		output, err := s.CreateResourceFromStringAndGetOutput(routeYAML)
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(output).To(ContainSubstring(missingBackendWarning))
+		g.Expect(output).To(ContainSubstring(mirrorBackendWarning))
+	}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 
 	By("delete the " + tc.routeKind)
-	err = s.DeleteResource(tc.routeKind, tc.routeName)
+	err := s.DeleteResource(tc.routeKind, tc.routeName)
 	Expect(err).NotTo(HaveOccurred())
-	time.Sleep(2 * time.Second)
 
 	By(fmt.Sprintf("creating referenced backend services for %s", tc.routeKind))
 	serviceYAML := `
@@ -122,24 +119,22 @@ spec:
 	err = s.CreateResourceFromString(mirrorService)
 	Expect(err).NotTo(HaveOccurred(), "creating mirror backend service")
 
-	time.Sleep(2 * time.Second)
-
-	output, err = s.CreateResourceFromStringAndGetOutput(routeYAML)
-	Expect(err).ShouldNot(HaveOccurred())
-	Expect(output).NotTo(ContainSubstring(missingBackendWarning))
-	Expect(output).NotTo(ContainSubstring(mirrorBackendWarning))
+	Eventually(func(g Gomega) {
+		output, err := s.CreateResourceFromStringAndGetOutput(routeYAML)
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(output).NotTo(ContainSubstring(missingBackendWarning))
+		g.Expect(output).NotTo(ContainSubstring(mirrorBackendWarning))
+	}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 }
 
 func setupSimpleGatewayWithProtocol(s *scaffold.Scaffold, protocol, listenerName string, port int) {
 	By("creating GatewayProxy")
 	err := s.CreateResourceFromString(s.GetGatewayProxySpec())
 	Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-	time.Sleep(5 * time.Second)
 
 	By("creating GatewayClass")
 	err = s.CreateResourceFromString(s.GetGatewayClassYaml())
 	Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
-	time.Sleep(2 * time.Second)
 
 	gatewayYAML := fmt.Sprintf(`
 apiVersion: gateway.networking.k8s.io/v1
@@ -165,7 +160,6 @@ spec:
 	By(fmt.Sprintf("creating Gateway with %s listener", protocol))
 	err = s.CreateResourceFromString(gatewayYAML)
 	Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("creating %s-capable Gateway", protocol))
-	time.Sleep(5 * time.Second)
 }
 
 func expectAdmissionDenied(s *scaffold.Scaffold, resourceType, resourceName string, err error) {
@@ -204,14 +198,15 @@ spec:
 
 	missingBackendWarning := fmt.Sprintf("Warning: Referenced Service '%s/%s' not found", gatewayName, tc.missingService)
 
-	output, err := s.CreateResourceFromStringAndGetOutput(routeYAML)
-	Expect(err).ShouldNot(HaveOccurred())
-	Expect(output).To(ContainSubstring(missingBackendWarning))
+	Eventually(func(g Gomega) {
+		output, err := s.CreateResourceFromStringAndGetOutput(routeYAML)
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(output).To(ContainSubstring(missingBackendWarning))
+	}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 
 	By("delete the " + tc.routeKind)
-	err = s.DeleteResource(tc.routeKind, tc.routeName)
+	err := s.DeleteResource(tc.routeKind, tc.routeName)
 	Expect(err).NotTo(HaveOccurred())
-	time.Sleep(2 * time.Second)
 
 	By("creating referenced backend service")
 	serviceYAML := `
@@ -246,9 +241,9 @@ spec:
 	err = s.CreateResourceFromString(backendService)
 	Expect(err).NotTo(HaveOccurred(), fmt.Sprintf("creating %s backend service", tc.servicePortName))
 
-	time.Sleep(2 * time.Second)
-
-	output, err = s.CreateResourceFromStringAndGetOutput(routeYAML)
-	Expect(err).ShouldNot(HaveOccurred())
-	Expect(output).NotTo(ContainSubstring(missingBackendWarning))
+	Eventually(func(g Gomega) {
+		output, err := s.CreateResourceFromStringAndGetOutput(routeYAML)
+		g.Expect(err).ShouldNot(HaveOccurred())
+		g.Expect(output).NotTo(ContainSubstring(missingBackendWarning))
+	}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 }

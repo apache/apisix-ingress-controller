@@ -23,9 +23,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// The default is off: APISIX matches server_port against the port it accepted the
+// connection on, which is not the port the Gateway listener declares, so injecting
+// a predicate by default would 404 every route on a Service that maps 80 to 9080.
 func TestNewDefaultConfigListenerPortMatchMode(t *testing.T) {
 	cfg := NewDefaultConfig()
-	assert.Equal(t, ListenerPortMatchModeAuto, cfg.ListenerPortMatchMode)
+	assert.Equal(t, ListenerPortMatchModeOff, cfg.ListenerPortMatchMode)
 }
 
 func TestConfigValidateListenerPortMatchMode(t *testing.T) {

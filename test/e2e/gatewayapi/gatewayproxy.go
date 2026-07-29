@@ -19,7 +19,6 @@ package gatewayapi
 
 import (
 	"fmt"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -133,29 +132,30 @@ spec:
 		gatewayClassName = s.Namespace()
 		err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()), "")
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
-		time.Sleep(5 * time.Second)
 
 		By("Check GatewayClass condition")
-		gcYaml, err := s.GetResourceYaml(types.KindGatewayClass, gatewayClassName)
-		Expect(err).NotTo(HaveOccurred(), "getting GatewayClass yaml")
-		Expect(gcYaml).To(ContainSubstring(`status: "True"`), "checking GatewayClass condition status")
-		Expect(gcYaml).To(ContainSubstring("message: the gatewayclass has been accepted by the apisix-ingress-controller"), "checking GatewayClass condition message")
+		s.RetryAssertion(func() (string, error) {
+			return s.GetResourceYaml(types.KindGatewayClass, gatewayClassName)
+		}).Should(And(
+			ContainSubstring(`status: "True"`),
+			ContainSubstring("message: the gatewayclass has been accepted by the apisix-ingress-controller"),
+		), "checking GatewayClass condition")
 
 		By("Create GatewayProxy with enabled plugin")
 		err = s.CreateResourceFromString(fmt.Sprintf(gatewayProxyWithEnabledPlugin, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey()))
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy with enabled plugin")
-		time.Sleep(5 * time.Second)
 
 		By("Create Gateway with GatewayProxy")
 		err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(gatewayWithProxy, s.Namespace(), gatewayClassName, s.Namespace()), s.Namespace())
 		Expect(err).NotTo(HaveOccurred(), "creating Gateway with GatewayProxy")
-		time.Sleep(5 * time.Second)
 
 		By("check Gateway condition")
-		gwyaml, err := s.GetResourceYaml(types.KindGateway, s.Namespace())
-		Expect(err).NotTo(HaveOccurred(), "getting Gateway yaml")
-		Expect(gwyaml).To(ContainSubstring(`status: "True"`), "checking Gateway condition status")
-		Expect(gwyaml).To(ContainSubstring("message: the gateway has been accepted by the apisix-ingress-controller"), "checking Gateway condition message")
+		s.RetryAssertion(func() (string, error) {
+			return s.GetResourceYaml(types.KindGateway, s.Namespace())
+		}).Should(And(
+			ContainSubstring(`status: "True"`),
+			ContainSubstring("message: the gateway has been accepted by the apisix-ingress-controller"),
+		), "checking Gateway condition")
 	})
 
 	Context("Test Gateway with enabled GatewayProxy plugin", func() {

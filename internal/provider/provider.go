@@ -44,16 +44,18 @@ type TranslateContext struct {
 	context.Context
 	RouteParentRefs  []gatewayv1.ParentReference
 	BackendRefs      []gatewayv1.BackendRef
-	GatewayTLSConfig []gatewayv1.GatewayTLSConfig
+	GatewayTLSConfig []gatewayv1.ListenerTLSConfig
 	Credentials      []v1alpha1.Credential
 	Listeners        []gatewayv1.Listener
 
 	EndpointSlices         map[k8stypes.NamespacedName][]discoveryv1.EndpointSlice
 	Secrets                map[k8stypes.NamespacedName]*corev1.Secret
+	ConfigMaps             map[k8stypes.NamespacedName]*corev1.ConfigMap
 	PluginConfigs          map[k8stypes.NamespacedName]*v1alpha1.PluginConfig
 	ApisixPluginConfigs    map[k8stypes.NamespacedName]*apiv2.ApisixPluginConfig
 	Services               map[k8stypes.NamespacedName]*corev1.Service
 	BackendTrafficPolicies map[k8stypes.NamespacedName]*v1alpha1.BackendTrafficPolicy
+	L4RoutePolicies        map[k8stypes.NamespacedName]*v1alpha1.L4RoutePolicy
 	Upstreams              map[k8stypes.NamespacedName]*apiv2.ApisixUpstream
 	GatewayProxies         map[types.NamespacedNameKind]v1alpha1.GatewayProxy
 	ResourceParentRefs     map[types.NamespacedNameKind][]types.NamespacedNameKind
@@ -69,10 +71,12 @@ func NewDefaultTranslateContext(ctx context.Context) *TranslateContext {
 		Context:                ctx,
 		EndpointSlices:         make(map[k8stypes.NamespacedName][]discoveryv1.EndpointSlice),
 		Secrets:                make(map[k8stypes.NamespacedName]*corev1.Secret),
+		ConfigMaps:             make(map[k8stypes.NamespacedName]*corev1.ConfigMap),
 		PluginConfigs:          make(map[k8stypes.NamespacedName]*v1alpha1.PluginConfig),
 		ApisixPluginConfigs:    make(map[k8stypes.NamespacedName]*apiv2.ApisixPluginConfig),
 		Services:               make(map[k8stypes.NamespacedName]*corev1.Service),
 		BackendTrafficPolicies: make(map[k8stypes.NamespacedName]*v1alpha1.BackendTrafficPolicy),
+		L4RoutePolicies:        make(map[k8stypes.NamespacedName]*v1alpha1.L4RoutePolicy),
 		Upstreams:              make(map[k8stypes.NamespacedName]*apiv2.ApisixUpstream),
 		GatewayProxies:         make(map[types.NamespacedNameKind]v1alpha1.GatewayProxy),
 		ResourceParentRefs:     make(map[types.NamespacedNameKind][]types.NamespacedNameKind),

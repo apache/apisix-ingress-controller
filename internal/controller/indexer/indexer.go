@@ -45,6 +45,7 @@ const (
 	ParentRefs                = "parentRefs"
 	IngressClass              = "ingressClass"
 	SecretIndexRef            = "secretRefs"
+	ConfigMapIndexRef         = "configMapRefs"
 	IngressClassRef           = "ingressClassRef"
 	IngressClassParametersRef = "ingressClassParametersRef"
 	ConsumerGatewayRef        = "consumerGatewayRef"
@@ -62,13 +63,18 @@ func SetupAPIv1alpha1Indexer(mgr ctrl.Manager) error {
 		&v1alpha1.BackendTrafficPolicy{}: setupBackendTrafficPolicyIndexer,
 		&v1alpha1.Consumer{}:             setupConsumerIndexer,
 		&v1alpha1.GatewayProxy{}:         setupGatewayProxyIndexer,
+		&v1alpha1.L4RoutePolicy{}:        setupL4RoutePolicyIndexer,
 	} {
-		if utils.HasAPIResource(mgr, resource) {
-			if err := setup(mgr); err != nil {
-				return err
-			}
-		} else {
+		installed, err := utils.HasAPIResource(mgr, resource)
+		if err != nil {
+			return err
+		}
+		if !installed {
 			setupLog.Info("Skipping indexer setup, API not found in cluster", "api", utils.FormatGVK(resource))
+			continue
+		}
+		if err := setup(mgr); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -85,12 +91,16 @@ func SetupAPIv2Indexer(mgr ctrl.Manager) error {
 		&apiv2.ApisixTls{}:           setupApisixTlsIndexer,
 		&apiv2.ApisixGlobalRule{}:    setupApisixGlobalRuleIndexer,
 	} {
-		if utils.HasAPIResource(mgr, resource) {
-			if err := setup(mgr); err != nil {
-				return err
-			}
-		} else {
+		installed, err := utils.HasAPIResource(mgr, resource)
+		if err != nil {
+			return err
+		}
+		if !installed {
 			setupLog.Info("Skipping indexer setup, API not found in cluster", "api", utils.FormatGVK(resource))
+			continue
+		}
+		if err := setup(mgr); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -108,12 +118,16 @@ func SetupGatewayAPIIndexer(mgr ctrl.Manager) error {
 		&gatewayv1alpha2.TLSRoute{}: setupTLSRouteIndexer,
 		&gatewayv1.GatewayClass{}:   setupGatewayClassIndexer,
 	} {
-		if utils.HasAPIResource(mgr, resource) {
-			if err := setup(mgr); err != nil {
-				return err
-			}
-		} else {
+		installed, err := utils.HasAPIResource(mgr, resource)
+		if err != nil {
+			return err
+		}
+		if !installed {
 			setupLog.Info("Skipping indexer setup, API not found in cluster", "api", utils.FormatGVK(resource))
+			continue
+		}
+		if err := setup(mgr); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -154,6 +168,15 @@ func setupGatewayIndexer(mgr ctrl.Manager) error {
 		&gatewayv1.Gateway{},
 		SecretIndexRef,
 		GatewaySecretIndexFunc,
+	); err != nil {
+		return err
+	}
+
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&gatewayv1.Gateway{},
+		ConfigMapIndexRef,
+		GatewayConfigMapIndexFunc,
 	); err != nil {
 		return err
 	}
@@ -487,6 +510,18 @@ func setupBackendTrafficPolicyIndexer(mgr ctrl.Manager) error {
 	return nil
 }
 
+func setupL4RoutePolicyIndexer(mgr ctrl.Manager) error {
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&v1alpha1.L4RoutePolicy{},
+		PolicyTargetRefs,
+		L4RoutePolicyIndexFunc,
+	); err != nil {
+		return err
+	}
+	return nil
+}
+
 func IngressClassIndexFunc(rawObj client.Object) []string {
 	ingressClass := rawObj.(*networkingv1.IngressClass)
 	if ingressClass.Spec.Controller == "" {
@@ -547,12 +582,72 @@ func IngressSecretIndexFunc(rawObj client.Object) []string {
 func GatewaySecretIndexFunc(rawObj client.Object) (keys []string) {
 	gateway := rawObj.(*gatewayv1.Gateway)
 	var m = make(map[string]struct{})
+	add := func(namespace, name string) {
+		key := GenIndexKey(namespace, name)
+		if _, ok := m[key]; !ok {
+			m[key] = struct{}{}
+			keys = append(keys, key)
+		}
+	}
 	for _, listener := range gateway.Spec.Listeners {
-		if listener.TLS == nil || len(listener.TLS.CertificateRefs) == 0 {
+		if listener.TLS == nil {
 			continue
 		}
 		for _, ref := range listener.TLS.CertificateRefs {
 			if ref.Kind == nil || *ref.Kind != internaltypes.KindSecret {
+				continue
+			}
+			namespace := gateway.GetNamespace()
+			if ref.Namespace != nil {
+				namespace = string(*ref.Namespace)
+			}
+			add(namespace, string(ref.Name))
+		}
+	}
+	// frontendValidation CA references that are Secrets. In Gateway API v1.6 these
+	// live at the Gateway level (spec.tls.frontend), not on individual listeners.
+	for _, validation := range gatewayFrontendValidations(gateway) {
+		for _, ref := range validation.CACertificateRefs {
+			if string(ref.Kind) != internaltypes.KindSecret {
+				continue
+			}
+			namespace := gateway.GetNamespace()
+			if ref.Namespace != nil {
+				namespace = string(*ref.Namespace)
+			}
+			add(namespace, string(ref.Name))
+		}
+	}
+	return keys
+}
+
+// gatewayFrontendValidations returns all frontend TLS client-cert validation configs
+// declared on a Gateway (the Default plus every PerPort override).
+func gatewayFrontendValidations(gateway *gatewayv1.Gateway) []*gatewayv1.FrontendTLSValidation {
+	if gateway.Spec.TLS == nil || gateway.Spec.TLS.Frontend == nil {
+		return nil
+	}
+	frontend := gateway.Spec.TLS.Frontend
+	validations := make([]*gatewayv1.FrontendTLSValidation, 0, len(frontend.PerPort)+1)
+	if frontend.Default.Validation != nil {
+		validations = append(validations, frontend.Default.Validation)
+	}
+	for i := range frontend.PerPort {
+		if frontend.PerPort[i].TLS.Validation != nil {
+			validations = append(validations, frontend.PerPort[i].TLS.Validation)
+		}
+	}
+	return validations
+}
+
+// GatewayConfigMapIndexFunc indexes Gateways by the CA ConfigMaps referenced via
+// Gateway TLS frontendValidation, so that ConfigMap changes can trigger reconciliation.
+func GatewayConfigMapIndexFunc(rawObj client.Object) (keys []string) {
+	gateway := rawObj.(*gatewayv1.Gateway)
+	var m = make(map[string]struct{})
+	for _, validation := range gatewayFrontendValidations(gateway) {
+		for _, ref := range validation.CACertificateRefs {
+			if ref.Kind != "" && string(ref.Kind) != internaltypes.KindConfigMap {
 				continue
 			}
 			namespace := gateway.GetNamespace()
@@ -849,6 +944,20 @@ func BackendTrafficPolicyIndexFunc(rawObj client.Object) []string {
 				string(ref.Name),
 			),
 		)
+	}
+	return keys
+}
+
+func L4RoutePolicyIndexFunc(rawObj client.Object) []string {
+	lrp := rawObj.(*v1alpha1.L4RoutePolicy)
+	keys := make([]string, 0, len(lrp.Spec.TargetRefs))
+	m := make(map[string]struct{})
+	for _, ref := range lrp.Spec.TargetRefs {
+		key := GenIndexKeyWithGK(string(ref.Group), string(ref.Kind), lrp.GetNamespace(), string(ref.Name))
+		if _, ok := m[key]; !ok {
+			m[key] = struct{}{}
+			keys = append(keys, key)
+		}
 	}
 	return keys
 }

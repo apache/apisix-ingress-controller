@@ -18,6 +18,7 @@
 package scaffold
 
 import (
+	"github.com/gavv/httpexpect/v2"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -34,6 +35,7 @@ type Deployer interface {
 	CleanupAdditionalGateway(identifier string) error
 	GetAdminEndpoint(...*corev1.Service) string
 	GetAdminServiceName() string
+	AdminAPIClient() *httpexpect.Expect
 	DefaultDataplaneResource() DataplaneResource
 }
 

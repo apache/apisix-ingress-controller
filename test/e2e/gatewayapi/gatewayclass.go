@@ -65,22 +65,24 @@ spec:
 			By("create default GatewayClass")
 			err := s.CreateResourceFromString(fmt.Sprintf(defautlGatewayClass, gatewayClassName, s.GetControllerName()))
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
-			time.Sleep(5 * time.Second)
 
-			gcyaml, err := s.GetResourceYaml("GatewayClass", gatewayClassName)
-			Expect(err).NotTo(HaveOccurred(), "getting GatewayClass yaml")
-			Expect(gcyaml).To(ContainSubstring(`status: "True"`), "checking GatewayClass condition status")
-			Expect(gcyaml).To(ContainSubstring("message: the gatewayclass has been accepted by the apisix-ingress-controller"), "checking GatewayClass condition message")
+			s.RetryAssertion(func() (string, error) {
+				return s.GetResourceYaml("GatewayClass", gatewayClassName)
+			}).Should(And(
+				ContainSubstring(`status: "True"`),
+				ContainSubstring("message: the gatewayclass has been accepted by the apisix-ingress-controller"),
+			), "checking GatewayClass condition")
 
 			By("create GatewayClass with not accepted")
 			err = s.CreateResourceFromString(noGatewayClass)
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
-			time.Sleep(5 * time.Second)
 
-			gcyaml, err = s.GetResourceYaml("GatewayClass", "apisix-not-accepeted")
-			Expect(err).NotTo(HaveOccurred(), "getting GatewayClass yaml")
-			Expect(gcyaml).To(ContainSubstring(`status: Unknown`), "checking GatewayClass condition status")
-			Expect(gcyaml).To(ContainSubstring("message: Waiting for controller"), "checking GatewayClass condition message")
+			s.RetryAssertion(func() (string, error) {
+				return s.GetResourceYaml("GatewayClass", "apisix-not-accepeted")
+			}).Should(And(
+				ContainSubstring(`status: Unknown`),
+				ContainSubstring("message: Waiting for controller"),
+			), "checking GatewayClass condition")
 		})
 
 		It("Delete GatewayClass", func() {
@@ -98,7 +100,6 @@ spec:
 			gatewayName := s.Namespace()
 			err = s.CreateResourceFromString(fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName))
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
-			time.Sleep(time.Second)
 
 			By("try to delete the GatewayClass")
 			_, err = s.RunKubectlAndGetOutput("delete", "GatewayClass", gatewayClassName, "--wait=false")
@@ -107,27 +108,30 @@ spec:
 			_, err = s.GetResourceYaml("GatewayClass", gatewayClassName)
 			Expect(err).NotTo(HaveOccurred(), "get resource yaml")
 
-			output, err := s.RunKubectlAndGetOutput("describe", "GatewayClass", gatewayClassName)
-			Expect(err).NotTo(HaveOccurred(), "describe GatewayClass apisix")
-			Expect(output).To(And(
-				ContainSubstring("Warning"),
-				ContainSubstring("DeletionBlocked"),
-				ContainSubstring("gatewayclass-controller"),
-				ContainSubstring("the GatewayClass is still used by Gateways"),
-			))
+			Eventually(func(g Gomega) {
+				output, err := s.RunKubectlAndGetOutput("describe", "GatewayClass", gatewayClassName)
+				g.Expect(err).NotTo(HaveOccurred(), "describe GatewayClass apisix")
+				g.Expect(output).To(And(
+					ContainSubstring("Warning"),
+					ContainSubstring("DeletionBlocked"),
+					ContainSubstring("gatewayclass-controller"),
+					ContainSubstring("the GatewayClass is still used by Gateways"),
+				))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 
 			By("delete the Gateway")
 			err = s.DeleteResource("Gateway", gatewayName)
 			Expect(err).NotTo(HaveOccurred(), "deleting Gateway")
-			time.Sleep(time.Second)
 
 			By("try to delete the GatewayClass again")
 			err = s.DeleteResource("GatewayClass", gatewayClassName)
 			Expect(err).NotTo(HaveOccurred())
 
-			_, err = s.GetResourceYaml("GatewayClass", gatewayClassName)
-			Expect(err).To(HaveOccurred(), "get resource yaml")
-			Expect(err.Error()).To(ContainSubstring("not found"))
+			Eventually(func(g Gomega) {
+				_, err := s.GetResourceYaml("GatewayClass", gatewayClassName)
+				g.Expect(err).To(HaveOccurred(), "get resource yaml")
+				g.Expect(err.Error()).To(ContainSubstring("not found"))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 	})
 })

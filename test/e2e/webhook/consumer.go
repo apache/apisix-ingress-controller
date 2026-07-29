@@ -19,7 +19,6 @@ package webhook
 
 import (
 	"fmt"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -37,17 +36,14 @@ var _ = Describe("Test Consumer Webhook", Label("webhook"), func() {
 		By("creating GatewayProxy")
 		err := s.CreateResourceFromString(s.GetGatewayProxySpec())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-		time.Sleep(5 * time.Second)
 
 		By("creating GatewayClass")
 		err = s.CreateResourceFromString(s.GetGatewayClassYaml())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
-		time.Sleep(2 * time.Second)
 
 		By("creating Gateway")
 		err = s.CreateResourceFromString(s.GetGatewayYaml())
 		Expect(err).NotTo(HaveOccurred(), "creating Gateway")
-		time.Sleep(5 * time.Second)
 	})
 
 	It("should warn on missing secret references", func() {
@@ -68,9 +64,11 @@ spec:
       name: %s
 `
 
-		output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(consumerYAML, consumerName, gatewayName, missingSecret))
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), missingSecret)))
+		Eventually(func(g Gomega) {
+			output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(consumerYAML, consumerName, gatewayName, missingSecret))
+			g.Expect(err).ShouldNot(HaveOccurred())
+			g.Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), missingSecret)))
+		}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 
 		By("creating referenced secret")
 		secretYAML := fmt.Sprintf(`
@@ -81,14 +79,14 @@ metadata:
 stringData:
   token: %s
 `, missingSecret, s.AdminKey())
-		err = s.CreateResourceFromString(secretYAML)
+		err := s.CreateResourceFromString(secretYAML)
 		Expect(err).NotTo(HaveOccurred(), "creating consumer secret")
 
-		time.Sleep(2 * time.Second)
-
-		output, err = s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(consumerYAML, consumerName, gatewayName, missingSecret))
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), missingSecret)))
+		Eventually(func(g Gomega) {
+			output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(consumerYAML, consumerName, gatewayName, missingSecret))
+			g.Expect(err).ShouldNot(HaveOccurred())
+			g.Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), missingSecret)))
+		}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 	})
 
 	It("should reject invalid plugin config during ADC validation", func() {

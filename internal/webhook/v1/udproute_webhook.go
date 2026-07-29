@@ -25,7 +25,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
@@ -36,9 +35,8 @@ import (
 var udpRouteLog = logf.Log.WithName("udproute-resource")
 
 func SetupUDPRouteWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&gatewayv1alpha2.UDPRoute{}).
-		WithValidator(NewUDPRouteCustomValidator(mgr.GetClient())).
+	return ctrl.NewWebhookManagedBy(mgr, &gatewayv1alpha2.UDPRoute{}).
+		WithCustomValidator(NewUDPRouteCustomValidator(mgr.GetClient())).
 		Complete()
 }
 
@@ -49,7 +47,7 @@ type UDPRouteCustomValidator struct {
 	checker reference.Checker
 }
 
-var _ webhook.CustomValidator = &UDPRouteCustomValidator{}
+var _ admission.Validator[runtime.Object] = &UDPRouteCustomValidator{}
 
 func NewUDPRouteCustomValidator(c client.Client) *UDPRouteCustomValidator {
 	return &UDPRouteCustomValidator{

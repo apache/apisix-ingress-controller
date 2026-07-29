@@ -19,7 +19,6 @@ package webhook
 
 import (
 	"fmt"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -37,12 +36,10 @@ var _ = Describe("Test ApisixTls Webhook", Label("webhook"), func() {
 		By("creating GatewayProxy")
 		err := s.CreateResourceFromString(s.GetGatewayProxySpec())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-		time.Sleep(5 * time.Second)
 
 		By("creating IngressClass")
 		err = s.CreateResourceFromStringWithNamespace(s.GetIngressClassYaml(), "")
 		Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
-		time.Sleep(5 * time.Second)
 	})
 
 	It("should warn on missing TLS secrets", func() {
@@ -68,26 +65,28 @@ spec:
       namespace: %s
 `
 
-		output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(tlsYAML, tlsName, s.Namespace(), s.Namespace(), serverSecret, s.Namespace(), clientSecret, s.Namespace()))
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), serverSecret)))
-		Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), clientSecret)))
+		Eventually(func(g Gomega) {
+			output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(tlsYAML, tlsName, s.Namespace(), s.Namespace(), serverSecret, s.Namespace(), clientSecret, s.Namespace()))
+			g.Expect(err).ShouldNot(HaveOccurred())
+			g.Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), serverSecret)))
+			g.Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), clientSecret)))
+		}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 
 		By("creating referenced TLS secrets with valid certificate material")
 		serverCert, serverKey := s.GenerateCert(GinkgoT(), []string{"webhook.example.com"})
-		err = s.NewKubeTlsSecret(serverSecret, serverCert.String(), serverKey.String())
+		err := s.NewKubeTlsSecret(serverSecret, serverCert.String(), serverKey.String())
 		Expect(err).NotTo(HaveOccurred(), "creating server TLS secret")
 
 		caCert, _, _, _, _ := s.GenerateMACert(GinkgoT(), []string{"webhook.example.com"})
 		err = s.NewClientCASecret(clientSecret, caCert.String(), "")
 		Expect(err).NotTo(HaveOccurred(), "creating client CA secret")
 
-		time.Sleep(2 * time.Second)
-
-		output, err = s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(tlsYAML, tlsName, s.Namespace(), s.Namespace(), serverSecret, s.Namespace(), clientSecret, s.Namespace()))
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), serverSecret)))
-		Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), clientSecret)))
+		Eventually(func(g Gomega) {
+			output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(tlsYAML, tlsName, s.Namespace(), s.Namespace(), serverSecret, s.Namespace(), clientSecret, s.Namespace()))
+			g.Expect(err).ShouldNot(HaveOccurred())
+			g.Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), serverSecret)))
+			g.Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced Secret '%s/%s' not found", s.Namespace(), clientSecret)))
+		}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 	})
 
 	It("should reject invalid TLS material during ADC validation", func() {
@@ -137,12 +136,12 @@ spec:
 		err = s.NewKubeTlsSecret(serverSecret, serverCert.String(), serverKey.String())
 		Expect(err).NotTo(HaveOccurred(), "creating valid server TLS secret")
 
-		// Wait for the webhook cache to reflect the recreated Secret before submitting ApisixTls.
-		time.Sleep(2 * time.Second)
-
 		By("creating corrected ApisixTls")
-		err = s.CreateResourceFromString(tlsYAML)
-		Expect(err).NotTo(HaveOccurred(), "creating corrected ApisixTls")
+		// Retry until the webhook cache reflects the recreated Secret.
+		Eventually(func(g Gomega) {
+			err := s.CreateResourceFromString(tlsYAML)
+			g.Expect(err).NotTo(HaveOccurred(), "creating corrected ApisixTls")
+		}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 	})
 
 	It("should reject TLS update with invalid certificate material", func() {

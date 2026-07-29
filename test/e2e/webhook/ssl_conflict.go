@@ -19,7 +19,6 @@ package webhook
 
 import (
 	"fmt"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -37,17 +36,14 @@ var _ = Describe("Test SSL/TLS Conflict Detection", Label("webhook"), func() {
 		By("creating GatewayProxy")
 		err := s.CreateResourceFromString(s.GetGatewayProxySpec())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-		time.Sleep(5 * time.Second)
 
 		By("creating GatewayClass")
 		err = s.CreateResourceFromString(s.GetGatewayClassYaml())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
-		time.Sleep(2 * time.Second)
 
 		By("creating IngressClass")
 		err = s.CreateResourceFromStringWithNamespace(s.GetIngressClassYaml(), "")
 		Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
-		time.Sleep(2 * time.Second)
 	})
 
 	Context("ApisixTls conflict detection", func() {
@@ -59,7 +55,6 @@ var _ = Describe("Test SSL/TLS Conflict Detection", Label("webhook"), func() {
 			By("creating two different TLS secrets")
 			createApisixTLSSecret(s, secretA, host, "creating secret A")
 			createApisixTLSSecret(s, secretB, host, "creating secret B")
-			time.Sleep(2 * time.Second)
 
 			By("creating first ApisixTls with certificate A")
 			tlsAYAML := fmt.Sprintf(`
@@ -79,8 +74,6 @@ spec:
 			err := s.CreateResourceFromString(tlsAYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixTls A")
 
-			time.Sleep(2 * time.Second)
-
 			By("attempting to create second ApisixTls with certificate B for same host")
 			tlsBYAML := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -96,11 +89,13 @@ spec:
     name: %s
     namespace: %s
 `, s.Namespace(), s.Namespace(), host, secretB, s.Namespace())
-			err = s.CreateResourceFromString(tlsBYAML)
-			Expect(err).Should(HaveOccurred(), "expecting conflict when creating ApisixTls B")
-			Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-			Expect(err.Error()).To(ContainSubstring(host))
-			Expect(err.Error()).To(ContainSubstring("ApisixTls"))
+			Eventually(func(g Gomega) {
+				err = s.CreateResourceFromString(tlsBYAML)
+				g.Expect(err).Should(HaveOccurred(), "expecting conflict when creating ApisixTls B")
+				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(err.Error()).To(ContainSubstring(host))
+				g.Expect(err.Error()).To(ContainSubstring("ApisixTls"))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 
 		It("should allow ApisixTls with same certificate for same host", func() {
@@ -109,8 +104,6 @@ spec:
 
 			By("creating a shared TLS secret")
 			createKubeTLSSecret(s, sharedSecret, host, "creating shared secret")
-
-			time.Sleep(2 * time.Second)
 
 			By("creating first ApisixTls with shared certificate")
 			tls1YAML := fmt.Sprintf(`
@@ -130,8 +123,6 @@ spec:
 			err := s.CreateResourceFromString(tls1YAML)
 			Expect(err).NotTo(HaveOccurred(), "creating first ApisixTls")
 
-			time.Sleep(2 * time.Second)
-
 			By("creating second ApisixTls with same certificate for same host")
 			tls2YAML := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -147,8 +138,10 @@ spec:
     name: %s
     namespace: %s
 `, s.Namespace(), s.Namespace(), host, sharedSecret, s.Namespace())
-			err = s.CreateResourceFromString(tls2YAML)
-			Expect(err).NotTo(HaveOccurred(), "second ApisixTls should be allowed with same certificate")
+			Eventually(func(g Gomega) {
+				err = s.CreateResourceFromString(tls2YAML)
+				g.Expect(err).NotTo(HaveOccurred(), "second ApisixTls should be allowed with same certificate")
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 	})
 
@@ -161,8 +154,6 @@ spec:
 			By("creating two different TLS secrets")
 			createKubeTLSSecret(s, secretA, host, "creating secret A")
 			createKubeTLSSecret(s, secretB, host, "creating secret B")
-
-			time.Sleep(2 * time.Second)
 
 			By("creating ApisixTls with certificate A")
 			tlsYAML := fmt.Sprintf(`
@@ -181,8 +172,6 @@ spec:
 `, s.Namespace(), s.Namespace(), host, secretA, s.Namespace())
 			err := s.CreateResourceFromString(tlsYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixTls")
-
-			time.Sleep(2 * time.Second)
 
 			By("attempting to create Gateway with certificate B for same host")
 			hostname := host
@@ -209,10 +198,12 @@ spec:
       kind: GatewayProxy
       name: apisix-proxy-config
 `, s.Namespace(), s.Namespace(), hostname, secretB)
-			err = s.CreateResourceFromString(gatewayYAML)
-			Expect(err).Should(HaveOccurred(), "expecting conflict when creating Gateway")
-			Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-			Expect(err.Error()).To(ContainSubstring(host))
+			Eventually(func(g Gomega) {
+				err = s.CreateResourceFromString(gatewayYAML)
+				g.Expect(err).Should(HaveOccurred(), "expecting conflict when creating Gateway")
+				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(err.Error()).To(ContainSubstring(host))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 
 		It("should allow Gateway with same certificate as existing ApisixTls", func() {
@@ -221,8 +212,6 @@ spec:
 
 			By("creating a shared TLS secret")
 			createKubeTLSSecret(s, sharedSecret, host, "creating shared secret")
-
-			time.Sleep(2 * time.Second)
 
 			By("creating ApisixTls with shared certificate")
 			tlsYAML := fmt.Sprintf(`
@@ -241,8 +230,6 @@ spec:
 `, s.Namespace(), s.Namespace(), host, sharedSecret, s.Namespace())
 			err := s.CreateResourceFromString(tlsYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixTls")
-
-			time.Sleep(2 * time.Second)
 
 			By("creating Gateway with same certificate")
 			hostname := host
@@ -269,8 +256,10 @@ spec:
       kind: GatewayProxy
       name: apisix-proxy-config
 `, s.Namespace(), s.Namespace(), hostname, sharedSecret)
-			err = s.CreateResourceFromString(gatewayYAML)
-			Expect(err).NotTo(HaveOccurred(), "Gateway should be allowed with same certificate")
+			Eventually(func(g Gomega) {
+				err = s.CreateResourceFromString(gatewayYAML)
+				g.Expect(err).NotTo(HaveOccurred(), "Gateway should be allowed with same certificate")
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 
 		It("should reject ApisixTls when Gateway without hostname uses different certificate", func() {
@@ -281,8 +270,6 @@ spec:
 			By("creating two different TLS secrets")
 			createKubeTLSSecret(s, secretA, host, "creating secret A")
 			createKubeTLSSecret(s, secretB, host, "creating secret B")
-
-			time.Sleep(2 * time.Second)
 
 			By("creating Gateway without explicit hostname using certificate A")
 			gatewayYAML := fmt.Sprintf(`
@@ -310,8 +297,6 @@ spec:
 			err := s.CreateResourceFromString(gatewayYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway without hostname")
 
-			time.Sleep(2 * time.Second)
-
 			By("attempting to create ApisixTls with certificate B for same host")
 			tlsYAML := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -327,10 +312,12 @@ spec:
     name: %s
     namespace: %s
 `, s.Namespace(), s.Namespace(), host, secretB, s.Namespace())
-			err = s.CreateResourceFromString(tlsYAML)
-			Expect(err).Should(HaveOccurred(), "expecting conflict when creating ApisixTls without hostname on existing Gateway")
-			Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-			Expect(err.Error()).To(ContainSubstring(host))
+			Eventually(func(g Gomega) {
+				err = s.CreateResourceFromString(tlsYAML)
+				g.Expect(err).Should(HaveOccurred(), "expecting conflict when creating ApisixTls without hostname on existing Gateway")
+				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(err.Error()).To(ContainSubstring(host))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 	})
 
@@ -343,8 +330,6 @@ spec:
 			By("creating two different TLS secrets")
 			createKubeTLSSecret(s, secretA, host, "creating secret A")
 			createKubeTLSSecret(s, secretB, host, "creating secret B")
-
-			time.Sleep(2 * time.Second)
 
 			By("attempting to create Gateway with two listeners using different certificates for same host")
 			hostname := host
@@ -379,10 +364,12 @@ spec:
       kind: GatewayProxy
       name: apisix-proxy-config
 `, s.Namespace(), s.Namespace(), hostname, secretA, hostname, secretB)
-			err := s.CreateResourceFromString(gatewayYAML)
-			Expect(err).Should(HaveOccurred(), "expecting self-conflict in Gateway")
-			Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-			Expect(err.Error()).To(ContainSubstring(host))
+			Eventually(func(g Gomega) {
+				err := s.CreateResourceFromString(gatewayYAML)
+				g.Expect(err).Should(HaveOccurred(), "expecting self-conflict in Gateway")
+				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(err.Error()).To(ContainSubstring(host))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 	})
 
@@ -395,8 +382,6 @@ spec:
 			By("creating two different TLS secrets")
 			createKubeTLSSecret(s, secretA, host, "creating secret A")
 			createKubeTLSSecret(s, secretB, host, "creating secret B")
-
-			time.Sleep(2 * time.Second)
 
 			By("creating a backend service for Ingress")
 			serviceYAML := fmt.Sprintf(`
@@ -414,8 +399,6 @@ spec:
 `, s.Namespace())
 			err := s.CreateResourceFromString(serviceYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating service")
-
-			time.Sleep(2 * time.Second)
 
 			By("attempting to create Ingress with two TLS configs using different certificates for same host")
 			ingressYAML := fmt.Sprintf(`
@@ -445,10 +428,12 @@ spec:
             port:
               number: 80
 `, s.Namespace(), s.Namespace(), host, secretA, host, secretB, host)
-			err = s.CreateResourceFromString(ingressYAML)
-			Expect(err).Should(HaveOccurred(), "expecting self-conflict in Ingress")
-			Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-			Expect(err.Error()).To(ContainSubstring(host))
+			Eventually(func(g Gomega) {
+				err = s.CreateResourceFromString(ingressYAML)
+				g.Expect(err).Should(HaveOccurred(), "expecting self-conflict in Ingress")
+				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(err.Error()).To(ContainSubstring(host))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 
 		It("should reject Ingress with conflicting certificate against existing ApisixTls", func() {
@@ -459,8 +444,6 @@ spec:
 			By("creating two different TLS secrets")
 			createKubeTLSSecret(s, secretA, host, "creating secret A")
 			createKubeTLSSecret(s, secretB, host, "creating secret B")
-
-			time.Sleep(2 * time.Second)
 
 			By("creating ApisixTls with certificate A")
 			tlsYAML := fmt.Sprintf(`
@@ -480,8 +463,6 @@ spec:
 			err := s.CreateResourceFromString(tlsYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixTls")
 
-			time.Sleep(2 * time.Second)
-
 			By("creating a backend service for Ingress")
 			serviceYAML := fmt.Sprintf(`
 apiVersion: v1
@@ -498,8 +479,6 @@ spec:
 `, s.Namespace())
 			err = s.CreateResourceFromString(serviceYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating service")
-
-			time.Sleep(2 * time.Second)
 
 			By("attempting to create Ingress with certificate B for same host")
 			ingressYAML := fmt.Sprintf(`
@@ -526,10 +505,12 @@ spec:
             port:
               number: 80
 `, s.Namespace(), s.Namespace(), host, secretB, host)
-			err = s.CreateResourceFromString(ingressYAML)
-			Expect(err).Should(HaveOccurred(), "expecting conflict when creating Ingress")
-			Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-			Expect(err.Error()).To(ContainSubstring(host))
+			Eventually(func(g Gomega) {
+				err = s.CreateResourceFromString(ingressYAML)
+				g.Expect(err).Should(HaveOccurred(), "expecting conflict when creating Ingress")
+				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(err.Error()).To(ContainSubstring(host))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 
 		It("should allow Ingress with same certificate as existing Gateway", func() {
@@ -538,8 +519,6 @@ spec:
 
 			By("creating a shared TLS secret")
 			createKubeTLSSecret(s, sharedSecret, host, "creating shared secret")
-
-			time.Sleep(2 * time.Second)
 
 			By("creating Gateway with shared certificate")
 			hostname := host
@@ -569,8 +548,6 @@ spec:
 			err := s.CreateResourceFromString(gatewayYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
 
-			time.Sleep(2 * time.Second)
-
 			By("creating a backend service for Ingress")
 			serviceYAML := fmt.Sprintf(`
 apiVersion: v1
@@ -587,8 +564,6 @@ spec:
 `, s.Namespace())
 			err = s.CreateResourceFromString(serviceYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating service")
-
-			time.Sleep(2 * time.Second)
 
 			By("creating Ingress with same certificate")
 			ingressYAML := fmt.Sprintf(`
@@ -615,8 +590,10 @@ spec:
             port:
               number: 80
 `, s.Namespace(), s.Namespace(), host, sharedSecret, host)
-			err = s.CreateResourceFromString(ingressYAML)
-			Expect(err).NotTo(HaveOccurred(), "Ingress should be allowed with same certificate")
+			Eventually(func(g Gomega) {
+				err = s.CreateResourceFromString(ingressYAML)
+				g.Expect(err).NotTo(HaveOccurred(), "Ingress should be allowed with same certificate")
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 
 		It("should reject Ingress when Gateway without hostname uses different certificate", func() {
@@ -627,8 +604,6 @@ spec:
 			By("creating two different TLS secrets")
 			createKubeTLSSecret(s, secretA, host, "creating secret A")
 			createKubeTLSSecret(s, secretB, host, "creating secret B")
-
-			time.Sleep(2 * time.Second)
 
 			By("creating Gateway without explicit hostname using certificate A")
 			gatewayYAML := fmt.Sprintf(`
@@ -656,8 +631,6 @@ spec:
 			err := s.CreateResourceFromString(gatewayYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway without hostname")
 
-			time.Sleep(2 * time.Second)
-
 			By("creating a backend service for Ingress")
 			serviceYAML := fmt.Sprintf(`
 apiVersion: v1
@@ -674,8 +647,6 @@ spec:
 `, s.Namespace())
 			err = s.CreateResourceFromString(serviceYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating service")
-
-			time.Sleep(2 * time.Second)
 
 			By("attempting to create Ingress without explicit host using certificate B")
 			ingressYAML := fmt.Sprintf(`
@@ -699,10 +670,12 @@ spec:
             port:
               number: 80
 `, s.Namespace(), s.Namespace(), secretB)
-			err = s.CreateResourceFromString(ingressYAML)
-			Expect(err).Should(HaveOccurred(), "expecting conflict when creating Ingress without hostname")
-			Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-			Expect(err.Error()).To(ContainSubstring(host))
+			Eventually(func(g Gomega) {
+				err = s.CreateResourceFromString(ingressYAML)
+				g.Expect(err).Should(HaveOccurred(), "expecting conflict when creating Ingress without hostname")
+				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(err.Error()).To(ContainSubstring(host))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 	})
 
@@ -737,8 +710,6 @@ spec:
 			err := s.CreateResourceFromStringWithNamespace(defaultIngressClassYAML, "")
 			Expect(err).NotTo(HaveOccurred(), "creating default IngressClass")
 
-			time.Sleep(2 * time.Second)
-
 			By("creating backend service for default ingress test")
 			serviceYAML := fmt.Sprintf(`
 apiVersion: v1
@@ -755,8 +726,6 @@ spec:
 `, s.Namespace())
 			err = s.CreateResourceFromString(serviceYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating service")
-
-			time.Sleep(2 * time.Second)
 
 			By("creating baseline Ingress with certificate A")
 			ingressAYAML := fmt.Sprintf(`
@@ -785,8 +754,6 @@ spec:
 			err = s.CreateResourceFromString(ingressAYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating baseline Ingress")
 
-			time.Sleep(2 * time.Second)
-
 			By("attempting to create second Ingress with conflicting certificate via default class")
 			ingressBYAML := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
@@ -811,10 +778,12 @@ spec:
             port:
               number: 80
 `, s.Namespace(), host, secretB, host)
-			err = s.CreateResourceFromString(ingressBYAML)
-			Expect(err).Should(HaveOccurred(), "expecting conflict when creating second Ingress")
-			Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-			Expect(err.Error()).To(ContainSubstring(host))
+			Eventually(func(g Gomega) {
+				err = s.CreateResourceFromString(ingressBYAML)
+				g.Expect(err).Should(HaveOccurred(), "expecting conflict when creating second Ingress")
+				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(err.Error()).To(ContainSubstring(host))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 
 		It("should reject ApisixTls without explicit class when default class uses a different certificate", func() {
@@ -847,8 +816,6 @@ spec:
 			err := s.CreateResourceFromStringWithNamespace(defaultIngressClassYAML, "")
 			Expect(err).NotTo(HaveOccurred(), "creating default IngressClass")
 
-			time.Sleep(2 * time.Second)
-
 			By("creating baseline ApisixTls without explicit ingress class")
 			tlsAYAML := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -866,8 +833,6 @@ spec:
 			err = s.CreateResourceFromString(tlsAYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating baseline ApisixTls")
 
-			time.Sleep(2 * time.Second)
-
 			By("attempting to create ApisixTls with conflicting certificate without class override")
 			tlsBYAML := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -882,10 +847,12 @@ spec:
     name: %s
     namespace: %s
 `, s.Namespace(), host, secretB, s.Namespace())
-			err = s.CreateResourceFromString(tlsBYAML)
-			Expect(err).Should(HaveOccurred(), "expecting conflict when creating second ApisixTls")
-			Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-			Expect(err.Error()).To(ContainSubstring(host))
+			Eventually(func(g Gomega) {
+				err = s.CreateResourceFromString(tlsBYAML)
+				g.Expect(err).Should(HaveOccurred(), "expecting conflict when creating second ApisixTls")
+				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(err.Error()).To(ContainSubstring(host))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 	})
 
@@ -917,8 +884,6 @@ spec:
 			err := s.CreateResourceFromString(tlsYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating baseline ApisixTls for ingress update")
 
-			time.Sleep(2 * time.Second)
-
 			By("creating backend service for ingress update test")
 			serviceYAML := fmt.Sprintf(`
 apiVersion: v1
@@ -935,8 +900,6 @@ spec:
 `, s.Namespace())
 			err = s.CreateResourceFromString(serviceYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating service")
-
-			time.Sleep(2 * time.Second)
 
 			By("creating initial Ingress with matching certificate")
 			ingressBaseYAML := fmt.Sprintf(`
@@ -966,8 +929,6 @@ spec:
 			err = s.CreateResourceFromString(ingressBaseYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating initial Ingress")
 
-			time.Sleep(2 * time.Second)
-
 			By("attempting to update Ingress to use conflicting certificate B")
 			ingressUpdatedYAML := fmt.Sprintf(`
 apiVersion: networking.k8s.io/v1
@@ -993,10 +954,12 @@ spec:
             port:
               number: 80
 `, s.Namespace(), s.Namespace(), host, secretB, host)
-			err = s.CreateResourceFromString(ingressUpdatedYAML)
-			Expect(err).Should(HaveOccurred(), "expecting conflict when updating Ingress certificate")
-			Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-			Expect(err.Error()).To(ContainSubstring(host))
+			Eventually(func(g Gomega) {
+				err = s.CreateResourceFromString(ingressUpdatedYAML)
+				g.Expect(err).Should(HaveOccurred(), "expecting conflict when updating Ingress certificate")
+				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(err.Error()).To(ContainSubstring(host))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 
 		It("should reject Gateway update that switches to a conflicting certificate", func() {
@@ -1026,8 +989,6 @@ spec:
 			err := s.CreateResourceFromString(tlsYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating baseline ApisixTls for gateway update")
 
-			time.Sleep(2 * time.Second)
-
 			By("creating initial Gateway using certificate A")
 			gatewayBaseYAML := fmt.Sprintf(`
 apiVersion: gateway.networking.k8s.io/v1
@@ -1055,8 +1016,6 @@ spec:
 			err = s.CreateResourceFromString(gatewayBaseYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating initial Gateway")
 
-			time.Sleep(2 * time.Second)
-
 			By("attempting to update Gateway to use conflicting certificate B")
 			gatewayUpdatedYAML := fmt.Sprintf(`
 apiVersion: gateway.networking.k8s.io/v1
@@ -1081,10 +1040,12 @@ spec:
       kind: GatewayProxy
       name: apisix-proxy-config
 `, s.Namespace(), s.Namespace(), host, secretB)
-			err = s.CreateResourceFromString(gatewayUpdatedYAML)
-			Expect(err).Should(HaveOccurred(), "expecting conflict when updating Gateway certificate")
-			Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-			Expect(err.Error()).To(ContainSubstring(host))
+			Eventually(func(g Gomega) {
+				err = s.CreateResourceFromString(gatewayUpdatedYAML)
+				g.Expect(err).Should(HaveOccurred(), "expecting conflict when updating Gateway certificate")
+				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(err.Error()).To(ContainSubstring(host))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 	})
 
@@ -1099,8 +1060,6 @@ spec:
 			createKubeTLSSecret(s, secretA, host, "creating secret A")
 			createKubeTLSSecret(s, secretB, host, "creating secret B")
 			createKubeTLSSecret(s, secretC, host, "creating secret C")
-
-			time.Sleep(2 * time.Second)
 
 			By("creating Gateway with certificate A")
 			hostname := host
@@ -1130,8 +1089,6 @@ spec:
 			err := s.CreateResourceFromString(gatewayYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating Gateway with cert A")
 
-			time.Sleep(2 * time.Second)
-
 			By("attempting to create ApisixTls with certificate B")
 			tlsYAML := fmt.Sprintf(`
 apiVersion: apisix.apache.org/v2
@@ -1147,9 +1104,11 @@ spec:
     name: %s
     namespace: %s
 `, s.Namespace(), s.Namespace(), host, secretB, s.Namespace())
-			err = s.CreateResourceFromString(tlsYAML)
-			Expect(err).Should(HaveOccurred(), "expecting conflict when creating ApisixTls with different cert")
-			Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+			Eventually(func(g Gomega) {
+				err = s.CreateResourceFromString(tlsYAML)
+				g.Expect(err).Should(HaveOccurred(), "expecting conflict when creating ApisixTls with different cert")
+				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 
 			By("creating a backend service")
 			serviceYAML := fmt.Sprintf(`
@@ -1167,8 +1126,6 @@ spec:
 `, s.Namespace())
 			err = s.CreateResourceFromString(serviceYAML)
 			Expect(err).NotTo(HaveOccurred(), "creating service")
-
-			time.Sleep(2 * time.Second)
 
 			By("attempting to create Ingress with certificate C")
 			ingressYAML := fmt.Sprintf(`
@@ -1195,9 +1152,11 @@ spec:
             port:
               number: 80
 `, s.Namespace(), s.Namespace(), host, secretC, host)
-			err = s.CreateResourceFromString(ingressYAML)
-			Expect(err).Should(HaveOccurred(), "expecting conflict when creating Ingress with different cert")
-			Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+			Eventually(func(g Gomega) {
+				err = s.CreateResourceFromString(ingressYAML)
+				g.Expect(err).Should(HaveOccurred(), "expecting conflict when creating Ingress with different cert")
+				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 	})
 })

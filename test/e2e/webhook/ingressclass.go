@@ -19,7 +19,6 @@ package webhook
 
 import (
 	"fmt"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -52,28 +51,31 @@ spec:
     scope: "Namespace"
 `
 
-			output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(icYAML, s.GetControllerName(), missingName, s.Namespace()))
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Referenced GatewayProxy '%s/%s' not found.", s.Namespace(), missingName)))
-
-			time.Sleep(2 * time.Second)
+			Eventually(func(g Gomega) {
+				output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(icYAML, s.GetControllerName(), missingName, s.Namespace()))
+				g.Expect(err).ShouldNot(HaveOccurred())
+				g.Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Referenced GatewayProxy '%s/%s' not found.", s.Namespace(), missingName)))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 
 			By("updating IngressClass to reference another missing GatewayProxy")
 			missingName2 := "missing-proxy-2"
-			output, err = s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(icYAML, s.GetControllerName(), missingName2, s.Namespace()))
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Referenced GatewayProxy '%s/%s' not found.", s.Namespace(), missingName2)))
+			Eventually(func(g Gomega) {
+				output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(icYAML, s.GetControllerName(), missingName2, s.Namespace()))
+				g.Expect(err).ShouldNot(HaveOccurred())
+				g.Expect(output).To(ContainSubstring(fmt.Sprintf("Warning: Referenced GatewayProxy '%s/%s' not found.", s.Namespace(), missingName2)))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 
 			By("create GatewayProxy")
-			err = s.CreateResourceFromString(s.GetGatewayProxySpec())
+			err := s.CreateResourceFromString(s.GetGatewayProxySpec())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-			time.Sleep(5 * time.Second)
 
 			By("updating IngressClass to reference an existing GatewayProxy")
 			existingName := "apisix-proxy-config"
-			output, err = s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(icYAML, s.GetControllerName(), existingName, s.Namespace()))
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced GatewayProxy '%s/%s' not found.", s.Namespace(), existingName)))
+			Eventually(func(g Gomega) {
+				output, err := s.CreateResourceFromStringAndGetOutput(fmt.Sprintf(icYAML, s.GetControllerName(), existingName, s.Namespace()))
+				g.Expect(err).ShouldNot(HaveOccurred())
+				g.Expect(output).NotTo(ContainSubstring(fmt.Sprintf("Warning: Referenced GatewayProxy '%s/%s' not found.", s.Namespace(), existingName)))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 
 			By("deleting IngressClass")
 			err = s.DeleteResource("IngressClass", "apisix-with-missing")

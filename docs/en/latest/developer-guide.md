@@ -36,7 +36,7 @@ Before you get started make sure you have:
 1. Installed [Go 1.23](https://golang.org/dl/) or later
 2. A Kubernetes cluster available. We recommend using [kind](https://kind.sigs.k8s.io/).
 3. Installed APISIX in Kubernetes using [Helm](https://github.com/apache/apisix-helm-chart).
-4. Installed [ADC v0.20.0+](https://github.com/api7/adc/releases)
+4. Installed [ADC v0.27.0+](https://github.com/api7/adc/releases)
 
 ## Fork and clone
 
@@ -125,7 +125,7 @@ make build-image
 make kind-load-images
 ```
 
-Currently, we use Kind version `0.26.0` and Kubernetes version `1.26+` for running the tests.
+Currently, we use Kind version `0.26.0` and Kubernetes version `1.31+` for running the tests.
 
 ```shell
 make e2e-test

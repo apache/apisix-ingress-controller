@@ -93,6 +93,10 @@ func (r *GatewayReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(
 			&corev1.Secret{},
 			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForSecret),
+		).
+		Watches(
+			&corev1.ConfigMap{},
+			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForConfigMap),
 		)
 
 	if GetEnableReferenceGrant() {
@@ -101,19 +105,31 @@ func (r *GatewayReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			builder.WithPredicates(referenceGrantPredicates(KindGateway)),
 		)
 	}
-	if pkgutils.HasAPIResource(mgr, &gatewayv1alpha2.TCPRoute{}) {
+	hasTCPRoute, err := pkgutils.HasAPIResource(mgr, &gatewayv1alpha2.TCPRoute{})
+	if err != nil {
+		return err
+	}
+	if hasTCPRoute {
 		bdr.Watches(
 			&gatewayv1alpha2.TCPRoute{},
 			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForStatusParentRefs),
 		)
 	}
-	if pkgutils.HasAPIResource(mgr, &gatewayv1alpha2.TLSRoute{}) {
+	hasTLSRoute, err := pkgutils.HasAPIResource(mgr, &gatewayv1alpha2.TLSRoute{})
+	if err != nil {
+		return err
+	}
+	if hasTLSRoute {
 		bdr.Watches(
 			&gatewayv1alpha2.TLSRoute{},
 			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForStatusParentRefs),
 		)
 	}
-	if pkgutils.HasAPIResource(mgr, &gatewayv1alpha2.UDPRoute{}) {
+	hasUDPRoute, err := pkgutils.HasAPIResource(mgr, &gatewayv1alpha2.UDPRoute{})
+	if err != nil {
+		return err
+	}
+	if hasUDPRoute {
 		bdr.Watches(
 			&gatewayv1alpha2.UDPRoute{},
 			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForStatusParentRefs),
@@ -399,6 +415,34 @@ func (r *GatewayReconciler) listGatewaysForSecret(ctx context.Context, obj clien
 	return requests
 }
 
+func (r *GatewayReconciler) listGatewaysForConfigMap(ctx context.Context, obj client.Object) (requests []reconcile.Request) {
+	configMap, ok := obj.(*corev1.ConfigMap)
+	if !ok {
+		r.Log.Error(
+			errors.New("unexpected object type"),
+			"ConfigMap watch predicate received unexpected object type",
+			"expected", FullTypeName(new(corev1.ConfigMap)), "found", FullTypeName(obj),
+		)
+		return nil
+	}
+	var gatewayList gatewayv1.GatewayList
+	if err := r.List(ctx, &gatewayList, client.MatchingFields{
+		indexer.ConfigMapIndexRef: indexer.GenIndexKey(configMap.GetNamespace(), configMap.GetName()),
+	}); err != nil {
+		r.Log.Error(err, "failed to list gateways for configmap")
+		return nil
+	}
+	for _, gateway := range gatewayList.Items {
+		requests = append(requests, reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Namespace: gateway.GetNamespace(),
+				Name:      gateway.GetName(),
+			},
+		})
+	}
+	return requests
+}
+
 func (r *GatewayReconciler) listReferenceGrantsForGateway(ctx context.Context, obj client.Object) (requests []reconcile.Request) {
 	grant, ok := obj.(*v1beta1.ReferenceGrant)
 	if !ok {
@@ -443,16 +487,39 @@ func (r *GatewayReconciler) processInfrastructure(tctx *provider.TranslateContex
 func (r *GatewayReconciler) processListenerConfig(tctx *provider.TranslateContext, gateway *gatewayv1.Gateway) {
 	listeners := gateway.Spec.Listeners
 	for _, listener := range listeners {
-		if listener.TLS == nil || listener.TLS.CertificateRefs == nil {
+		if listener.TLS == nil {
 			continue
 		}
-		secret := corev1.Secret{}
 		for _, ref := range listener.TLS.CertificateRefs {
 			ns := gateway.GetNamespace()
 			if ref.Namespace != nil {
 				ns = string(*ref.Namespace)
 			}
 			if ref.Kind != nil && *ref.Kind == KindSecret {
+				// Declared per ref: a listener may carry several certificateRefs, and
+				// each tctx.Secrets entry must point to its own Secret rather than all
+				// aliasing one shared variable that ends up holding the last one loaded.
+				secret := corev1.Secret{}
+				// A cross-namespace certificateRef must be authorized by a ReferenceGrant,
+				// or the data plane would program a certificate the target namespace never
+				// permitted. The listener status already reports RefNotPermitted for this.
+				if !checkReferenceGrant(context.Background(), r.Client,
+					v1beta1.ReferenceGrantFrom{
+						Group:     gatewayv1.GroupName,
+						Kind:      KindGateway,
+						Namespace: v1beta1.Namespace(gateway.Namespace),
+					},
+					gatewayv1.ObjectReference{
+						Group:     corev1.GroupName,
+						Kind:      KindSecret,
+						Name:      ref.Name,
+						Namespace: ref.Namespace,
+					},
+				) {
+					r.Log.V(1).Info("skipping cross-namespace certificateRef not permitted by any ReferenceGrant",
+						"listener", listener.Name, "secret", client.ObjectKey{Namespace: ns, Name: string(ref.Name)})
+					continue
+				}
 				if err := r.Get(context.Background(), client.ObjectKey{
 					Namespace: ns,
 					Name:      string(ref.Name),
@@ -464,6 +531,64 @@ func (r *GatewayReconciler) processListenerConfig(tctx *provider.TranslateContex
 				}
 				r.Log.Info("Setting secret for listener", "listener", listener.Name, "secret", secret.Name, " namespace", ns)
 				tctx.Secrets[types.NamespacedName{Namespace: ns, Name: string(ref.Name)}] = &secret
+			}
+		}
+		// frontendValidation references CA ConfigMaps or Secrets used for downstream mTLS.
+		// In Gateway API v1.6 it is declared at the Gateway level (spec.tls.frontend);
+		// resolve the config that applies to this HTTPS listener by its port.
+		if validation := internaltypes.FrontendTLSValidationForListener(gateway, listener); validation != nil {
+			for _, ref := range validation.CACertificateRefs {
+				ns := gateway.GetNamespace()
+				if ref.Namespace != nil {
+					ns = string(*ref.Namespace)
+				}
+				nn := types.NamespacedName{Namespace: ns, Name: string(ref.Name)}
+				kind := KindConfigMap
+				if ref.Kind != "" {
+					kind = string(ref.Kind)
+				}
+				// A cross-namespace CA ref must be authorized by a ReferenceGrant, or the
+				// data plane would enable downstream mTLS with a CA the target namespace
+				// never permitted. The listener status already reports RefNotPermitted.
+				if !checkReferenceGrant(context.Background(), r.Client,
+					v1beta1.ReferenceGrantFrom{
+						Group:     gatewayv1.GroupName,
+						Kind:      KindGateway,
+						Namespace: v1beta1.Namespace(gateway.Namespace),
+					},
+					gatewayv1.ObjectReference{
+						Group:     corev1.GroupName,
+						Kind:      gatewayv1.Kind(kind),
+						Name:      ref.Name,
+						Namespace: ref.Namespace,
+					},
+				) {
+					r.Log.V(1).Info("skipping cross-namespace caCertificateRef not permitted by any ReferenceGrant",
+						"listener", listener.Name, "ref", nn)
+					continue
+				}
+				switch kind {
+				case KindConfigMap:
+					configMap := corev1.ConfigMap{}
+					if err := r.Get(context.Background(), nn, &configMap); err != nil {
+						r.Log.Error(err, "failed to get CA configmap", "namespace", ns, "name", ref.Name)
+						SetGatewayListenerConditionProgrammed(gateway, string(listener.Name), false, err.Error())
+						SetGatewayListenerConditionResolvedRefs(gateway, string(listener.Name), false, err.Error())
+						continue
+					}
+					r.Log.Info("Setting CA configmap for listener", "listener", listener.Name, "configmap", configMap.Name, "namespace", ns)
+					tctx.ConfigMaps[nn] = &configMap
+				case KindSecret:
+					caSecret := corev1.Secret{}
+					if err := r.Get(context.Background(), nn, &caSecret); err != nil {
+						r.Log.Error(err, "failed to get CA secret", "namespace", ns, "name", ref.Name)
+						SetGatewayListenerConditionProgrammed(gateway, string(listener.Name), false, err.Error())
+						SetGatewayListenerConditionResolvedRefs(gateway, string(listener.Name), false, err.Error())
+						continue
+					}
+					r.Log.Info("Setting CA secret for listener", "listener", listener.Name, "secret", caSecret.Name, "namespace", ns)
+					tctx.Secrets[nn] = &caSecret
+				}
 			}
 		}
 	}

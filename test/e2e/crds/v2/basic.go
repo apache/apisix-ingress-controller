@@ -84,13 +84,11 @@ spec:
 
 			err := s.CreateResourceFromString(s.GetGatewayProxySpec())
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-			time.Sleep(5 * time.Second)
 
 			By("create IngressClass")
 			ingressClass := fmt.Sprintf(ingressClassYaml, s.Namespace(), s.Namespace(), s.GetControllerName())
 			err = s.CreateResourceFromString(ingressClass)
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
-			time.Sleep(5 * time.Second)
 
 			const apisixRouteSpec = `
 apiVersion: apisix.apache.org/v2

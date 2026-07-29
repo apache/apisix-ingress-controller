@@ -187,7 +187,7 @@ func (t *Translator) resolveIngressUpstream(
 		ns = config.ServiceNamespace
 	}
 	backendRef := convertBackendRef(ns, backendService.Name, internaltypes.KindService)
-	t.AttachBackendTrafficPolicyToUpstream(backendRef, tctx.BackendTrafficPolicies, upstream)
+	t.AttachBackendTrafficPolicyToUpstream(backendRef, tctx.BackendTrafficPolicies, upstream, tctx.Services)
 	if config != nil {
 		upConfig := config.Upstream
 		if upConfig.Scheme != "" {
@@ -282,7 +282,7 @@ func (t *Translator) buildRouteFromIngressPath(
 			prefix := strings.TrimSuffix(path.Path, "/") + "/*"
 			uris = append(uris, prefix)
 		case networkingv1.PathTypeImplementationSpecific:
-			if config.UseRegex {
+			if config != nil && config.UseRegex {
 				uris = []string{"/*"}
 				vars := apiv2.ApisixRouteHTTPMatchExprs{
 					apiv2.ApisixRouteHTTPMatchExpr{

@@ -102,6 +102,38 @@ func PollUntilHTTPRoutePolicyHaveStatus(cli client.Client, timeout time.Duration
 	return genericPollResource(new(v1alpha1.HTTPRoutePolicy), cli, timeout, hrpNN, f)
 }
 
+func L4RoutePolicyMustHaveCondition(t testing.TestingT, client client.Client, timeout time.Duration, refNN, policyNN types.NamespacedName,
+	condition metav1.Condition) {
+	err := PollUntilL4RoutePolicyHaveStatus(client, timeout, policyNN, func(policy *v1alpha1.L4RoutePolicy) bool {
+		for _, ancestor := range policy.Status.Ancestors {
+			if err := kubernetes.ConditionsHaveLatestObservedGeneration(policy, ancestor.Conditions); err != nil {
+				log.Printf("L4RoutePolicy %s (ancestorRef=%v) %v", policyNN, parentRefToString(ancestor.AncestorRef), err)
+				return false
+			}
+
+			if ancestor.AncestorRef.Name == gatewayv1.ObjectName(refNN.Name) &&
+				(refNN.Namespace == "" || (ancestor.AncestorRef.Namespace != nil && string(*ancestor.AncestorRef.Namespace) == refNN.Namespace)) {
+				if findConditionInList(ancestor.Conditions, condition) {
+					log.Printf("found condition %v in list %v for %s reference %s", condition, ancestor.Conditions, policyNN, refNN)
+					return true
+				}
+				log.Printf("NOT FOUND condition %v in %v for %s reference %s", condition, ancestor.Conditions, policyNN, refNN)
+			}
+		}
+		return false
+	})
+
+	require.NoError(t, err, "error waiting for L4RoutePolicy %s status to have a Condition matching %+v", policyNN, condition)
+}
+
+func PollUntilL4RoutePolicyHaveStatus(cli client.Client, timeout time.Duration, policyNN types.NamespacedName,
+	f func(policy *v1alpha1.L4RoutePolicy) bool) error {
+	if err := v1alpha1.AddToScheme(cli.Scheme()); err != nil {
+		return err
+	}
+	return genericPollResource(new(v1alpha1.L4RoutePolicy), cli, timeout, policyNN, f)
+}
+
 func APIv2MustHaveCondition(t testing.TestingT, cli client.Client, timeout time.Duration, nn types.NamespacedName, obj client.Object, cond metav1.Condition) {
 	f := func(object client.Object) bool {
 		value := reflect.Indirect(reflect.ValueOf(object))

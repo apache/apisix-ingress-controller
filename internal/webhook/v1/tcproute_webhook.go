@@ -25,7 +25,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
@@ -36,9 +35,8 @@ import (
 var tcpRouteLog = logf.Log.WithName("tcproute-resource")
 
 func SetupTCPRouteWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&gatewayv1alpha2.TCPRoute{}).
-		WithValidator(NewTCPRouteCustomValidator(mgr.GetClient())).
+	return ctrl.NewWebhookManagedBy(mgr, &gatewayv1alpha2.TCPRoute{}).
+		WithCustomValidator(NewTCPRouteCustomValidator(mgr.GetClient())).
 		Complete()
 }
 
@@ -49,7 +47,7 @@ type TCPRouteCustomValidator struct {
 	checker reference.Checker
 }
 
-var _ webhook.CustomValidator = &TCPRouteCustomValidator{}
+var _ admission.Validator[runtime.Object] = &TCPRouteCustomValidator{}
 
 func NewTCPRouteCustomValidator(c client.Client) *TCPRouteCustomValidator {
 	return &TCPRouteCustomValidator{

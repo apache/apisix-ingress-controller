@@ -1,10 +1,12 @@
 ---
-title: Gateway API
+title: Kubernetes Gateway API Support
 keywords:
   - APISIX Ingress
   - Apache APISIX
   - Kubernetes Ingress
-  - Gateway API
+  - Kubernetes Gateway API
+  - K8s Gateway API
+description: Learn which Kubernetes Gateway API resources, API versions, and fields are supported by the APISIX Ingress Controller.
 ---
 <!--
 #
@@ -25,9 +27,9 @@ keywords:
 #
 -->
 
-Gateway API is dedicated to achieving expressive and scalable Kubernetes service networking through various custom resources.
+Kubernetes Gateway API provides portable, role-oriented resources for managing L4 and L7 traffic in Kubernetes. APISIX Ingress Controller watches supported Gateway API resources and translates them into Apache APISIX configuration.
 
-By supporting Gateway API, the APISIX Ingress controller can realize richer functions, including Gateway management, multi-cluster support, and other features. It is also possible to manage running instances of the APISIX gateway through Gateway API resource management.
+This page summarizes the resources, API versions, and fields that APISIX Ingress Controller supports. To create a route with Gateway API, follow [Configure Routes](../getting-started/configure-routes.md).
 
 ## Concepts
 
@@ -41,7 +43,7 @@ By supporting Gateway API, the APISIX Ingress controller can realize richer func
 - **UDPRoute**: Configures routing for UDP traffic.
 - **BackendTLSPolicy**: Specifies how a Gateway should validate TLS connections to its backends, including trusted certificate authorities and verification modes.
 
-## Gateway API Support Level
+## Supported Kubernetes Gateway API Resources
 
 | Resource         | Core Support Level  | Extended Support Level | Implementation-Specific Support Level | API Version |
 | ---------------- | ------------------- | ---------------------- | ------------------------------------- | ----------- |
@@ -57,7 +59,7 @@ By supporting Gateway API, the APISIX Ingress controller can realize richer func
 
 ## Examples
 
-For configuration examples, see the Gateway API tabs in [Configuration Examples](../reference/example.md).
+For configuration examples, see the Gateway API tabs in [Configuration Examples](../reference/example.md). For APISIX-specific extensions to Gateway API, see [APISIX Ingress Controller Resources](./resources.md#gateway-api-extensions).
 
 For a complete list of configuration options, refer to the [Gateway API Reference](https://gateway-api.sigs.k8s.io/reference/1.3/spec/). Be aware that some fields are not supported, or partially supported.
 
@@ -78,8 +80,9 @@ The fields below are specified in the Gateway API specification but are either p
 
 | Fields                                               | Status               | Notes                                                                                          |
 |------------------------------------------------------|----------------------|------------------------------------------------------------------------------------------------|
-| `spec.listeners[].port`               | Partially supported | Controls `server_port` route-var injection; behaviour is configured via [`listener_port_match_mode`](../reference/configuration-file.md) (`auto` / `explicit` / `off`). The controller cannot dynamically open data plane ports, so APISIX must already listen on the specified port. |
+| `spec.listeners[].port`               | Partially supported | Controls `server_port` route-var injection; off by default and enabled via [`listener_port_match_mode`](../reference/configuration-file.md) (`auto` / `explicit`). The controller cannot dynamically open data plane ports, so APISIX must already listen on the specified port. |
 | `spec.listeners[].tls.certificateRefs[].group` | Partially supported | Only `""` is supported; other group values cause validation failure. |
 | `spec.listeners[].tls.certificateRefs[].kind`        | Partially supported  | Only `Secret` is supported.                                                                    |
 | `spec.listeners[].tls.mode`                          | Partially supported  | `Terminate` is implemented; `Passthrough` is effectively unsupported for Gateway listeners.    |
+| `spec.listeners[].tls.frontendValidation`            | Partially supported  | Enables downstream (client) mTLS. `caCertificateRefs` may reference a `ConfigMap` (Gateway API Core support) or a `Secret` (implementation-specific) holding the CA certificate under the `ca.crt` key; clients are then required to present a certificate signed by one of the referenced CAs. |
 | `spec.addresses`                                     | Not supported        | Controller does not read or act on `spec.addresses`.                                           |

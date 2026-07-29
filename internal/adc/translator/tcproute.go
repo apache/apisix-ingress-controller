@@ -69,7 +69,7 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 				continue
 			}
 			// TODO: Confirm BackendTrafficPolicy attachment with e2e test case.
-			t.AttachBackendTrafficPolicyToUpstream(backend, tctx.BackendTrafficPolicies, upstream)
+			t.AttachBackendTrafficPolicyToUpstream(backend, tctx.BackendTrafficPolicies, upstream, tctx.Services)
 			upstream.Nodes = upNodes
 			var (
 				kind string
@@ -81,7 +81,7 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 				kind = string(*backend.Kind)
 			}
 			if backend.Port != nil {
-				port = int32(*backend.Port)
+				port = *backend.Port
 			}
 			namespace := string(*backend.Namespace)
 			name := string(backend.Name)
@@ -156,7 +156,12 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 		streamRoute.ID = id.GenID(streamRouteName)
 		streamRoute.Labels = labels
 		// TODO: support remote_addr, server_addr, sni, server_port
+		// Attach L4RoutePolicy plugins at the stream_route level: the APISIX stream proxy
+		// applies plugins from the stream_route, not from the service.
+		streamRoute.Plugins = make(adctypes.Plugins)
+		t.AttachL4RoutePolicyPlugins(tctx.L4RoutePolicies, tcpRoute.Namespace, tcpRoute.Name, "TCPRoute", streamRoute.Plugins)
 		service.StreamRoutes = append(service.StreamRoutes, streamRoute)
+
 		result.Services = append(result.Services, service)
 	}
 	return result, nil

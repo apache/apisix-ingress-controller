@@ -20,7 +20,6 @@ package v1alpha1
 import (
 	"context"
 	"fmt"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -63,17 +62,14 @@ spec:
 		By("create GatewayProxy")
 		err = s.CreateResourceFromString(s.GetGatewayProxySpec())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
-		time.Sleep(5 * time.Second)
 
 		By("create GatewayClass")
 		err = s.CreateResourceFromString(s.GetGatewayClassYaml())
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
-		time.Sleep(5 * time.Second)
 
 		By("create Gateway")
 		err = s.CreateResourceFromString(s.GetGatewayYaml())
 		Expect(err).NotTo(HaveOccurred(), "creating Gateway")
-		time.Sleep(5 * time.Second)
 
 		By("create HTTPRoute")
 		s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, fmt.Sprintf(defaultHTTPRoute, s.Namespace(), s.Namespace()))
@@ -164,6 +160,110 @@ spec:
 		})
 	})
 
+	Context("Section Name", func() {
+		// httpbin-service-e2e-test exposes two named ports backed by the same pod:
+		// "http" (80) and "http-v2" (8080). A single HTTPRoute routes /get to port
+		// 80 and /headers to port 8080, so the two rules share the same Service but
+		// resolve to different ports.
+		var routeWithTwoPorts = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: httpbin
+  namespace: %s
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - "httpbin.org"
+  rules:
+  - matches:
+    - path:
+        type: Exact
+        value: /get
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+  - matches:
+    - path:
+        type: Exact
+        value: /headers
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 8080
+`
+
+		// sectionPolicy is scoped to the http-v2 (8080) port via sectionName.
+		var sectionPolicy = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: httpbin-section
+spec:
+  targetRefs:
+  - name: httpbin-service-e2e-test
+    kind: Service
+    group: ""
+    sectionName: http-v2
+  passHost: rewrite
+  upstreamHost: section.http-v2.example.com
+`
+
+		// wholePolicy has no sectionName, so it targets the whole Service.
+		var wholePolicy = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: httpbin-whole
+spec:
+  targetRefs:
+  - name: httpbin-service-e2e-test
+    kind: Service
+    group: ""
+  passHost: rewrite
+  upstreamHost: whole.service.example.com
+`
+
+		BeforeEach(func() {
+			gatewayBeforeEach()
+			By("recreate the HTTPRoute with two rules to ports 80 and 8080")
+			s.ApplyHTTPRoute(types.NamespacedName{Namespace: s.Namespace(), Name: "httpbin"}, fmt.Sprintf(routeWithTwoPorts, s.Namespace(), s.Namespace()))
+		})
+
+		It("applies the sectionName-scoped policy only to the matching port", func() {
+			s.ResourceApplied("BackendTrafficPolicy", "httpbin-section", sectionPolicy, 1)
+			s.ResourceApplied("BackendTrafficPolicy", "httpbin-whole", wholePolicy, 1)
+
+			// /headers -> port 8080: both policies match by name, but the
+			// sectionName-scoped one wins, so the http-v2 host is used.
+			By("the http-v2 (8080) port uses the sectionName-scoped policy")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/headers",
+				Host:   "httpbin.org",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(200),
+					scaffold.WithExpectedBodyContains("section.http-v2.example.com"),
+					scaffold.WithExpectedBodyNotContains("whole.service.example.com"),
+				},
+			})
+
+			// /get -> port 80: the sectionName-scoped policy does not match this
+			// port, so only the whole-Service policy applies.
+			By("the http (80) port falls back to the whole-Service policy")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.org",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(200),
+					scaffold.WithExpectedBodyContains("whole.service.example.com"),
+					scaffold.WithExpectedBodyNotContains("section.http-v2.example.com"),
+				},
+			})
+		})
+	})
+
 	Context("Health Check", func() {
 		var policyWithActiveHealthCheck = `
 apiVersion: apisix.apache.org/v1alpha1
@@ -232,28 +332,28 @@ spec:
 					scaffold.WithExpectedStatus(200),
 				},
 			})
-			time.Sleep(2 * time.Second)
+			Eventually(func(g Gomega) {
+				ups, err := s.DefaultDataplaneResource().Upstream().List(context.Background())
+				g.Expect(err).ToNot(HaveOccurred(), "listing upstreams")
+				g.Expect(ups).NotTo(BeEmpty(), "upstreams should not be empty")
 
-			ups, err := s.DefaultDataplaneResource().Upstream().List(context.Background())
-			Expect(err).ToNot(HaveOccurred(), "listing upstreams")
-			Expect(ups).NotTo(BeEmpty(), "upstreams should not be empty")
-
-			var target *adctypes.Upstream
-			for _, u := range ups {
-				if u.Checks != nil {
-					target = u
-					break
+				var target *adctypes.Upstream
+				for _, u := range ups {
+					if u.Checks != nil {
+						target = u
+						break
+					}
 				}
-			}
-			Expect(target).NotTo(BeNil(), "upstream with health check should exist")
-			Expect(target.Checks.Active).NotTo(BeNil(), "active health check should be configured")
-			Expect(target.Checks.Active.HTTPPath).To(Equal("/get"), "active health check http path")
-			Expect(target.Checks.Active.Healthy.Interval).To(Equal(1), "active healthy interval")
-			Expect(target.Checks.Active.Healthy.HTTPStatuses).To(Equal([]int{200}), "active healthy http codes")
-			Expect(target.Checks.Active.Unhealthy.Interval).To(Equal(1), "active unhealthy interval")
-			Expect(target.Checks.Active.Unhealthy.HTTPFailures).To(Equal(2), "active unhealthy http failures")
-			Expect(target.Checks.Active.Unhealthy.HTTPStatuses).To(Equal([]int{500}), "active unhealthy http codes")
-			Expect(target.Checks.Passive).To(BeNil(), "passive health check should not be configured")
+				g.Expect(target).NotTo(BeNil(), "upstream with health check should exist")
+				g.Expect(target.Checks.Active).NotTo(BeNil(), "active health check should be configured")
+				g.Expect(target.Checks.Active.HTTPPath).To(Equal("/get"), "active health check http path")
+				g.Expect(target.Checks.Active.Healthy.Interval).To(Equal(1), "active healthy interval")
+				g.Expect(target.Checks.Active.Healthy.HTTPStatuses).To(Equal([]int{200}), "active healthy http codes")
+				g.Expect(target.Checks.Active.Unhealthy.Interval).To(Equal(1), "active unhealthy interval")
+				g.Expect(target.Checks.Active.Unhealthy.HTTPFailures).To(Equal(2), "active unhealthy http failures")
+				g.Expect(target.Checks.Active.Unhealthy.HTTPStatuses).To(Equal([]int{500}), "active unhealthy http codes")
+				g.Expect(target.Checks.Passive).To(BeNil(), "passive health check should not be configured")
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 
 		It("should configure active and passive health checks on upstream", func() {
@@ -268,31 +368,31 @@ spec:
 					scaffold.WithExpectedStatus(200),
 				},
 			})
-			time.Sleep(2 * time.Second)
+			Eventually(func(g Gomega) {
+				ups, err := s.DefaultDataplaneResource().Upstream().List(context.Background())
+				g.Expect(err).ToNot(HaveOccurred(), "listing upstreams")
+				g.Expect(ups).NotTo(BeEmpty(), "upstreams should not be empty")
 
-			ups, err := s.DefaultDataplaneResource().Upstream().List(context.Background())
-			Expect(err).ToNot(HaveOccurred(), "listing upstreams")
-			Expect(ups).NotTo(BeEmpty(), "upstreams should not be empty")
-
-			var target *adctypes.Upstream
-			for _, u := range ups {
-				if u.Checks != nil && u.Checks.Passive != nil {
-					target = u
-					break
+				var target *adctypes.Upstream
+				for _, u := range ups {
+					if u.Checks != nil && u.Checks.Passive != nil {
+						target = u
+						break
+					}
 				}
-			}
-			Expect(target).NotTo(BeNil(), "upstream with active and passive health check should exist")
+				g.Expect(target).NotTo(BeNil(), "upstream with active and passive health check should exist")
 
-			// Verify active health check
-			Expect(target.Checks.Active).NotTo(BeNil(), "active health check should be configured")
-			Expect(target.Checks.Active.HTTPPath).To(Equal("/get"), "active health check http path")
-			Expect(target.Checks.Active.Healthy.HTTPStatuses).To(Equal([]int{200}), "active healthy http codes")
-			Expect(target.Checks.Active.Unhealthy.HTTPFailures).To(Equal(2), "active unhealthy http failures")
+				// Verify active health check
+				g.Expect(target.Checks.Active).NotTo(BeNil(), "active health check should be configured")
+				g.Expect(target.Checks.Active.HTTPPath).To(Equal("/get"), "active health check http path")
+				g.Expect(target.Checks.Active.Healthy.HTTPStatuses).To(Equal([]int{200}), "active healthy http codes")
+				g.Expect(target.Checks.Active.Unhealthy.HTTPFailures).To(Equal(2), "active unhealthy http failures")
 
-			// Verify passive health check
-			Expect(target.Checks.Passive.Healthy.HTTPStatuses).To(Equal([]int{200}), "passive healthy http codes")
-			Expect(target.Checks.Passive.Unhealthy.HTTPStatuses).To(Equal([]int{502, 503}), "passive unhealthy http codes")
-			Expect(target.Checks.Passive.Unhealthy.HTTPFailures).To(Equal(3), "passive unhealthy http failures")
+				// Verify passive health check
+				g.Expect(target.Checks.Passive.Healthy.HTTPStatuses).To(Equal([]int{200}), "passive healthy http codes")
+				g.Expect(target.Checks.Passive.Unhealthy.HTTPStatuses).To(Equal([]int{502, 503}), "passive unhealthy http codes")
+				g.Expect(target.Checks.Passive.Unhealthy.HTTPFailures).To(Equal(3), "passive unhealthy http failures")
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 
 		It("should remove health check when policy is deleted", func() {
@@ -307,32 +407,33 @@ spec:
 					scaffold.WithExpectedStatus(200),
 				},
 			})
-			time.Sleep(2 * time.Second)
-
 			// Verify health check is present on the target upstream
-			ups, err := s.DefaultDataplaneResource().Upstream().List(context.Background())
-			Expect(err).ToNot(HaveOccurred())
-			hasHealthCheck := false
-			for _, u := range ups {
-				if u.Checks != nil {
-					hasHealthCheck = true
-					break
+			Eventually(func(g Gomega) {
+				ups, err := s.DefaultDataplaneResource().Upstream().List(context.Background())
+				g.Expect(err).ToNot(HaveOccurred())
+				hasHealthCheck := false
+				for _, u := range ups {
+					if u.Checks != nil {
+						hasHealthCheck = true
+						break
+					}
 				}
-			}
-			Expect(hasHealthCheck).To(BeTrue(), "upstream should have health check before policy deletion")
+				g.Expect(hasHealthCheck).To(BeTrue(), "upstream should have health check before policy deletion")
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 
 			// Delete the policy
 			err = s.DeleteResourceFromString(policyWithActiveHealthCheck)
 			Expect(err).NotTo(HaveOccurred(), "deleting BackendTrafficPolicy")
-			time.Sleep(3 * time.Second)
 
 			// Verify health check is removed from the target upstream
-			ups, err = s.DefaultDataplaneResource().Upstream().List(context.Background())
-			Expect(err).ToNot(HaveOccurred())
-			Expect(ups).NotTo(BeEmpty(), "upstreams should still exist after policy deletion")
-			for _, u := range ups {
-				Expect(u.Checks).To(BeNil(), "upstream should not have health check after policy deletion")
-			}
+			Eventually(func(g Gomega) {
+				ups, err := s.DefaultDataplaneResource().Upstream().List(context.Background())
+				g.Expect(err).ToNot(HaveOccurred())
+				g.Expect(ups).NotTo(BeEmpty(), "upstreams should still exist after policy deletion")
+				for _, u := range ups {
+					g.Expect(u.Checks).To(BeNil(), "upstream should not have health check after policy deletion")
+				}
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 	})
 })

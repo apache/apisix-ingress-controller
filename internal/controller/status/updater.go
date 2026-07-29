@@ -236,6 +236,12 @@ func statusEqual(a, b any, opts ...cmp.Option) bool {
 			return false
 		}
 		statusA, statusB = a.Status, b.Status
+	case *v1alpha1.L4RoutePolicy:
+		b, ok := b.(*v1alpha1.L4RoutePolicy)
+		if !ok {
+			return false
+		}
+		statusA, statusB = a.Status, b.Status
 	case *v1alpha1.BackendTrafficPolicy:
 		b, ok := b.(*v1alpha1.BackendTrafficPolicy)
 		if !ok {
