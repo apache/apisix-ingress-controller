@@ -402,6 +402,102 @@ func TestTranslateHTTPRouteUpstreamScheme(t *testing.T) {
 	}
 }
 
+func TestTranslateHTTPRouteExternalNameAppProtocol(t *testing.T) {
+	tests := []struct {
+		name          string
+		appProtocol   string
+		wantScheme    string
+		wantWebsocket *bool
+	}{
+		{
+			name:          "ExternalName with wss appProtocol",
+			appProtocol:   internaltypes.AppProtocolWSS,
+			wantScheme:    apiv2.SchemeHTTPS,
+			wantWebsocket: ptr.To(true),
+		},
+		{
+			name:          "ExternalName with ws appProtocol",
+			appProtocol:   internaltypes.AppProtocolWS,
+			wantScheme:    apiv2.SchemeHTTP,
+			wantWebsocket: ptr.To(true),
+		},
+		{
+			name:        "ExternalName with http appProtocol",
+			appProtocol: internaltypes.AppProtocolHTTP,
+			wantScheme:  apiv2.SchemeHTTP,
+		},
+		{
+			name:        "ExternalName without appProtocol",
+			appProtocol: "",
+			wantScheme:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			translator := NewTranslator(logr.Discard(), "")
+			tctx := provider.NewDefaultTranslateContext(context.Background())
+
+			const (
+				namespace   = "default"
+				serviceName = "external-backend"
+				portNumber  = 5000
+			)
+
+			var appProtocol *string
+			if tt.appProtocol != "" {
+				appProtocol = ptr.To(tt.appProtocol)
+			}
+
+			serviceKey := types.NamespacedName{Namespace: namespace, Name: serviceName}
+			tctx.Services[serviceKey] = &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      serviceName,
+					Namespace: namespace,
+				},
+				Spec: corev1.ServiceSpec{
+					Type:         corev1.ServiceTypeExternalName,
+					ExternalName: "example.com",
+					Ports: []corev1.ServicePort{{
+						Name:        "web",
+						Port:        portNumber,
+						AppProtocol: appProtocol,
+					}},
+				},
+			}
+
+			route := &gatewayv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "demo",
+					Namespace: namespace,
+				},
+				Spec: gatewayv1.HTTPRouteSpec{
+					Rules: []gatewayv1.HTTPRouteRule{{
+						BackendRefs: []gatewayv1.HTTPBackendRef{{
+							BackendRef: gatewayv1.BackendRef{
+								BackendObjectReference: gatewayv1.BackendObjectReference{
+									Name: gatewayv1.ObjectName(serviceName),
+									Port: ptr.To(gatewayv1.PortNumber(portNumber)),
+								},
+							},
+						}},
+					}},
+				},
+			}
+
+			result, err := translator.TranslateHTTPRoute(tctx, route)
+			require.NoError(t, err)
+			require.Len(t, result.Services, 1)
+			require.NotNil(t, result.Services[0].Upstream)
+			require.Len(t, result.Services[0].Routes, 1)
+
+			assert.Equal(t, tt.wantScheme, result.Services[0].Upstream.Scheme)
+			assert.Equal(t, "example.com", result.Services[0].Upstream.Nodes[0].Host)
+			assert.Equal(t, tt.wantWebsocket, result.Services[0].Routes[0].EnableWebsocket)
+		})
+	}
+}
+
 func TestAttachBackendTrafficPolicyHealthCheck(t *testing.T) {
 	trueVal := true
 	falseVal := false
