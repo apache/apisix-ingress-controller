@@ -31,9 +31,6 @@ import (
 )
 
 func TestTranslateGRPCRouteServerPortVarsByMode(t *testing.T) {
-	sectionName := gatewayv1.SectionName("grpc-main")
-	parentPort := gatewayv1.PortNumber(9080)
-
 	singlePortVars := adctypes.Vars{
 		{
 			{StrVal: "server_port"},
@@ -53,40 +50,27 @@ func TestTranslateGRPCRouteServerPortVarsByMode(t *testing.T) {
 	}
 
 	tests := []struct {
-		name       string
-		mode       config.ListenerPortMatchMode
-		parentRefs []gatewayv1.ParentReference
-		listeners  []gatewayv1.Listener
-		expected   adctypes.Vars
+		name string
+		mode config.ListenerPortMatchMode
+		// explicit is the provenance-aware signal the controller stores on tctx
+		// (HasExplicitListenerMatch); the cross-Gateway sectionName/port
+		// resolution that computes it is covered by the controller tests.
+		explicit  bool
+		listeners []gatewayv1.Listener
+		expected  adctypes.Vars
 	}{
 		{
 			name: "auto mode: no injection for single listener without explicit target",
 			mode: config.ListenerPortMatchModeAuto,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw"},
-			},
 			listeners: []gatewayv1.Listener{
 				{Name: "grpc-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
 			},
 			expected: nil,
 		},
 		{
-			name: "auto mode: inject for sectionName target",
-			mode: config.ListenerPortMatchModeAuto,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw", SectionName: &sectionName},
-			},
-			listeners: []gatewayv1.Listener{
-				{Name: "grpc-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
-			},
-			expected: singlePortVars,
-		},
-		{
-			name: "auto mode: inject for port target",
-			mode: config.ListenerPortMatchModeAuto,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw", Port: &parentPort},
-			},
+			name:     "auto mode: inject for explicit sectionName target",
+			mode:     config.ListenerPortMatchModeAuto,
+			explicit: true,
 			listeners: []gatewayv1.Listener{
 				{Name: "grpc-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
 			},
@@ -95,9 +79,6 @@ func TestTranslateGRPCRouteServerPortVarsByMode(t *testing.T) {
 		{
 			name: "auto mode: inject for multiple listener ports",
 			mode: config.ListenerPortMatchModeAuto,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw"},
-			},
 			listeners: []gatewayv1.Listener{
 				{Name: "grpc-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9081)},
 				{Name: "grpc-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
@@ -105,35 +86,9 @@ func TestTranslateGRPCRouteServerPortVarsByMode(t *testing.T) {
 			expected: multiPortVars,
 		},
 		{
-			name: "auto mode: inject for multiple listener ports when listener names collide across gateways",
-			mode: config.ListenerPortMatchModeAuto,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw-a"},
-				{Name: "gw-b"},
-			},
-			listeners: []gatewayv1.Listener{
-				{Name: "http", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9081)},
-				{Name: "http", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
-			},
-			expected: multiPortVars,
-		},
-		{
-			name: "explicit mode: inject for sectionName target",
-			mode: config.ListenerPortMatchModeExplicit,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw", SectionName: &sectionName},
-			},
-			listeners: []gatewayv1.Listener{
-				{Name: "grpc-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
-			},
-			expected: singlePortVars,
-		},
-		{
-			name: "explicit mode: inject for port target",
-			mode: config.ListenerPortMatchModeExplicit,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw", Port: &parentPort},
-			},
+			name:     "explicit mode: inject for explicit target",
+			mode:     config.ListenerPortMatchModeExplicit,
+			explicit: true,
 			listeners: []gatewayv1.Listener{
 				{Name: "grpc-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
 			},
@@ -142,9 +97,6 @@ func TestTranslateGRPCRouteServerPortVarsByMode(t *testing.T) {
 		{
 			name: "explicit mode: no injection for multiple listener ports without explicit target",
 			mode: config.ListenerPortMatchModeExplicit,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw"},
-			},
 			listeners: []gatewayv1.Listener{
 				{Name: "grpc-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9081)},
 				{Name: "grpc-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
@@ -152,11 +104,9 @@ func TestTranslateGRPCRouteServerPortVarsByMode(t *testing.T) {
 			expected: nil,
 		},
 		{
-			name: "off mode: no injection even with sectionName target",
-			mode: config.ListenerPortMatchModeOff,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw", SectionName: &sectionName},
-			},
+			name:     "off mode: no injection even with explicit target",
+			mode:     config.ListenerPortMatchModeOff,
+			explicit: true,
 			listeners: []gatewayv1.Listener{
 				{Name: "grpc-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
 			},
@@ -165,9 +115,6 @@ func TestTranslateGRPCRouteServerPortVarsByMode(t *testing.T) {
 		{
 			name: "off mode: no injection for multiple listener ports",
 			mode: config.ListenerPortMatchModeOff,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw"},
-			},
 			listeners: []gatewayv1.Listener{
 				{Name: "grpc-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9081)},
 				{Name: "grpc-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
@@ -177,11 +124,9 @@ func TestTranslateGRPCRouteServerPortVarsByMode(t *testing.T) {
 		{
 			// An unset mode must not start injecting predicates behind the
 			// operator's back, so it resolves to off rather than to auto.
-			name: "empty mode normalizes to off",
-			mode: "",
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw", Port: &parentPort},
-			},
+			name:     "empty mode normalizes to off",
+			mode:     "",
+			explicit: true,
 			listeners: []gatewayv1.Listener{
 				{Name: "grpc-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
 			},
@@ -191,11 +136,9 @@ func TestTranslateGRPCRouteServerPortVarsByMode(t *testing.T) {
 			// Same-port listeners differing by hostname are isolated by host, not by
 			// port, so no server_port var must be emitted (it would pin the route to
 			// the Gateway port and drop every request to 404).
-			name: "auto mode: no injection for same-port listeners differing by hostname",
-			mode: config.ListenerPortMatchModeAuto,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw", SectionName: &sectionName},
-			},
+			name:     "auto mode: no injection for same-port listeners differing by hostname",
+			mode:     config.ListenerPortMatchModeAuto,
+			explicit: true,
 			listeners: []gatewayv1.Listener{
 				{Name: "grpc-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(80), Hostname: ptr.To(gatewayv1.Hostname("bar.com"))},
 				{Name: "grpc-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(80), Hostname: ptr.To(gatewayv1.Hostname("foo.bar.com"))},
@@ -207,11 +150,9 @@ func TestTranslateGRPCRouteServerPortVarsByMode(t *testing.T) {
 			// emitted it must cover every targeted port - including the hostname
 			// listener's - or traffic arriving through the hostname listener is
 			// silently dropped. So the predicate lists both ports, not just 9080.
-			name: "explicit mode: mixed hostname and hostname-less listeners keep every targeted port",
-			mode: config.ListenerPortMatchModeExplicit,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw", SectionName: &sectionName},
-			},
+			name:     "explicit mode: mixed hostname and hostname-less listeners keep every targeted port",
+			mode:     config.ListenerPortMatchModeExplicit,
+			explicit: true,
 			listeners: []gatewayv1.Listener{
 				{Name: "grpc-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(80), Hostname: ptr.To(gatewayv1.Hostname("bar.com"))},
 				{Name: "grpc-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
@@ -232,7 +173,7 @@ func TestTranslateGRPCRouteServerPortVarsByMode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tctx := provider.NewDefaultTranslateContext(context.Background())
-			tctx.RouteParentRefs = tt.parentRefs
+			tctx.HasExplicitListenerMatch = tt.explicit
 			tctx.Listeners = tt.listeners
 
 			grpcRoute := &gatewayv1.GRPCRoute{

@@ -50,39 +50,6 @@ func NewTranslator(log logr.Logger, mode config.ListenerPortMatchMode) *Translat
 	}
 }
 
-// hasExplicitListenerTarget reports whether the route explicitly targets one of
-// the listeners it actually matched. The explicit signal is derived from the
-// matched listeners, not the raw parentRefs: a parentRef whose sectionName/port
-// does not resolve to any matched listener (e.g. a sectionName pointing at a
-// non-existent listener) must not force server_port injection on an unrelated
-// implicit parentRef, which would pin the route to a logical port that need not
-// equal APISIX's physical listen port and make it unreachable.
-func hasExplicitListenerTarget(parentRefs []gatewayv1.ParentReference, listeners []gatewayv1.Listener) bool {
-	for _, parentRef := range parentRefs {
-		// Skip non-Gateway parentRefs (e.g. GAMMA Service mesh refs) — they
-		// are not relevant to listener port injection.
-		if parentRef.Kind != nil && *parentRef.Kind != "Gateway" {
-			continue
-		}
-		if parentRef.SectionName != nil && *parentRef.SectionName != "" {
-			for _, listener := range listeners {
-				if listener.Name == *parentRef.SectionName {
-					return true
-				}
-			}
-		}
-		if parentRef.Port != nil {
-			for _, listener := range listeners {
-				if listener.Port == *parentRef.Port {
-					return true
-				}
-			}
-		}
-	}
-
-	return false
-}
-
 // collectServerPortMatchPorts returns the hostname-less listener ports, which is
 // the set used to decide whether a server_port var is needed at all.
 //
@@ -118,17 +85,24 @@ func allListenerPorts(listeners []gatewayv1.Listener) map[int32]struct{} {
 	return ports
 }
 
-func (t *Translator) shouldInjectServerPortVars(parentRefs []gatewayv1.ParentReference, ports map[int32]struct{}, listeners []gatewayv1.Listener) bool {
+// shouldInjectServerPortVars decides whether to pin the route to the matched
+// listener port(s) via a server_port predicate.
+//
+// explicit reports whether the route attached to its Gateway through an explicit
+// sectionName or port. It is computed by the controller from the matched
+// RouteParentRefContext (provider.TranslateContext.HasExplicitListenerMatch),
+// where each parentRef's Gateway and matched listeners are known, so an invalid
+// explicit ref on one Gateway can never be satisfied by a same-named/ported
+// listener matched through a different parentRef's Gateway.
+func (t *Translator) shouldInjectServerPortVars(explicit bool, ports map[int32]struct{}) bool {
 	if len(ports) == 0 {
 		return false
 	}
 
-	explicit := hasExplicitListenerTarget(parentRefs, listeners)
-
 	switch t.ListenerPortMatchMode {
 	case config.ListenerPortMatchModeOff:
 		if explicit {
-			t.Log.V(1).Info("listener_port_match_mode is 'off'; ignoring explicit listener targeting", "parent_refs", len(parentRefs))
+			t.Log.V(1).Info("listener_port_match_mode is 'off'; ignoring explicit listener targeting")
 		}
 		return false
 	case config.ListenerPortMatchModeExplicit:

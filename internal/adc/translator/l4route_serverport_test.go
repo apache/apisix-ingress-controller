@@ -25,7 +25,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
@@ -49,32 +48,23 @@ func udpListener(name string, port int32) gatewayv1.Listener {
 	}
 }
 
-// sectionParentRefs builds the parentRefs a controller would set on tctx when a
-// route explicitly targets a listener by sectionName.
-func sectionParentRefs(section string) []gatewayv1.ParentReference {
-	return []gatewayv1.ParentReference{
-		{
-			Name:        "gw",
-			SectionName: ptr.To(gatewayv1.SectionName(section)),
-		},
-	}
-}
-
 func TestTranslateTCPRouteServerPort(t *testing.T) {
 	tests := []struct {
 		name string
 		// listeners the controller would have matched for this route's parentRefs
 		listeners []gatewayv1.Listener
-		// parentRefs the controller stored on tctx (drives server_port injection)
-		parentRefs  []gatewayv1.ParentReference
+		// explicit is the provenance-aware signal the controller stores on tctx
+		// (HasExplicitListenerMatch) when the route targeted a listener by an
+		// explicit sectionName or port.
+		explicit    bool
 		wantPorts   []int32
 		wantNoMatch bool
 	}{
 		{
-			name:       "explicit sectionName injects the matching listener port",
-			listeners:  []gatewayv1.Listener{tcpListener("tcp-a", 9100)},
-			parentRefs: sectionParentRefs("tcp-a"),
-			wantPorts:  []int32{9100},
+			name:      "explicit sectionName injects the matching listener port",
+			listeners: []gatewayv1.Listener{tcpListener("tcp-a", 9100)},
+			explicit:  true,
+			wantPorts: []int32{9100},
 		},
 		{
 			name:      "multiple listener ports fan out even without explicit targeting",
@@ -82,10 +72,10 @@ func TestTranslateTCPRouteServerPort(t *testing.T) {
 			wantPorts: []int32{9100, 9101},
 		},
 		{
-			name:       "duplicate ports across gateways are de-duplicated",
-			listeners:  []gatewayv1.Listener{tcpListener("tcp-a", 9100), tcpListener("tcp-a2", 9100)},
-			parentRefs: sectionParentRefs("tcp-a"),
-			wantPorts:  []int32{9100},
+			name:      "duplicate ports across gateways are de-duplicated",
+			listeners: []gatewayv1.Listener{tcpListener("tcp-a", 9100), tcpListener("tcp-a2", 9100)},
+			explicit:  true,
+			wantPorts: []int32{9100},
 		},
 		{
 			name:        "single listener without explicit targeting keeps a portless StreamRoute",
@@ -95,7 +85,7 @@ func TestTranslateTCPRouteServerPort(t *testing.T) {
 		{
 			name:        "no matched listener falls back to a single portless StreamRoute",
 			listeners:   nil,
-			parentRefs:  sectionParentRefs("tcp-a"),
+			explicit:    true,
 			wantNoMatch: true,
 		},
 	}
@@ -107,7 +97,7 @@ func TestTranslateTCPRouteServerPort(t *testing.T) {
 			translator := NewTranslator(logr.Discard(), config.ListenerPortMatchModeAuto)
 			tctx := provider.NewDefaultTranslateContext(context.Background())
 			tctx.Listeners = tt.listeners
-			tctx.RouteParentRefs = tt.parentRefs
+			tctx.HasExplicitListenerMatch = tt.explicit
 
 			route := &gatewayv1alpha2.TCPRoute{
 				ObjectMeta: metav1.ObjectMeta{Name: "my-tcp", Namespace: "default"},
@@ -150,15 +140,15 @@ func TestTranslateUDPRouteServerPort(t *testing.T) {
 	tests := []struct {
 		name        string
 		listeners   []gatewayv1.Listener
-		parentRefs  []gatewayv1.ParentReference
+		explicit    bool
 		wantPorts   []int32
 		wantNoMatch bool
 	}{
 		{
-			name:       "explicit sectionName injects the matching listener port",
-			listeners:  []gatewayv1.Listener{udpListener("udp-a", 9200)},
-			parentRefs: sectionParentRefs("udp-a"),
-			wantPorts:  []int32{9200},
+			name:      "explicit sectionName injects the matching listener port",
+			listeners: []gatewayv1.Listener{udpListener("udp-a", 9200)},
+			explicit:  true,
+			wantPorts: []int32{9200},
 		},
 		{
 			name:      "two listeners on different ports produce distinct StreamRoutes",
@@ -173,7 +163,7 @@ func TestTranslateUDPRouteServerPort(t *testing.T) {
 		{
 			name:        "no matched listener falls back to a single portless StreamRoute",
 			listeners:   nil,
-			parentRefs:  sectionParentRefs("udp-a"),
+			explicit:    true,
 			wantNoMatch: true,
 		},
 	}
@@ -185,7 +175,7 @@ func TestTranslateUDPRouteServerPort(t *testing.T) {
 			translator := NewTranslator(logr.Discard(), config.ListenerPortMatchModeAuto)
 			tctx := provider.NewDefaultTranslateContext(context.Background())
 			tctx.Listeners = tt.listeners
-			tctx.RouteParentRefs = tt.parentRefs
+			tctx.HasExplicitListenerMatch = tt.explicit
 
 			route := &gatewayv1alpha2.UDPRoute{
 				ObjectMeta: metav1.ObjectMeta{Name: "my-udp", Namespace: "default"},

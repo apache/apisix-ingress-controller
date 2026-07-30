@@ -300,6 +300,7 @@ func (r *UDPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		} else if gateway.Listener != nil {
 			tctx.Listeners = appendListeners(tctx.Listeners, *gateway.Listener)
 		}
+		tctx.HasExplicitListenerMatch = tctx.HasExplicitListenerMatch || gateway.ExplicitListenerMatch
 	}
 
 	var backendRefErr error

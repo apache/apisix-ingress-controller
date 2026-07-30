@@ -316,6 +316,16 @@ func SetRouteParentRef(routeParentStatus *gatewayv1.RouteParentStatus, gatewayNa
 	routeParentStatus.ControllerName = gatewayv1.GatewayController(config.ControllerConfig.ControllerName)
 }
 
+// parentRefTargetsListenerExplicitly reports whether a parentRef names a
+// specific listener, via a non-empty sectionName or an explicit port. It is only
+// meaningful for a parentRef that already matched a listener on its Gateway.
+func parentRefTargetsListenerExplicitly(parentRef gatewayv1.ParentReference) bool {
+	if parentRef.SectionName != nil && *parentRef.SectionName != "" {
+		return true
+	}
+	return parentRef.Port != nil
+}
+
 func ParseRouteParentRefs(
 	ctx context.Context,
 	mgrc client.Client,
@@ -464,6 +474,10 @@ func ParseRouteParentRefs(
 				ListenerName: listenerName,
 				Listener:     &matchedListener,
 				Listeners:    matchedListeners,
+				// The parentRef explicitly targeted a listener only when an
+				// explicit sectionName or port was given and it resolved to a
+				// matched listener on this Gateway (we are in the matched branch).
+				ExplicitListenerMatch: parentRefTargetsListenerExplicitly(parentRef),
 				Conditions: []metav1.Condition{{
 					Type:               string(gatewayv1.RouteConditionAccepted),
 					Status:             metav1.ConditionTrue,
