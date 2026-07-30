@@ -77,14 +77,14 @@ func (v *IngressCustomValidator) ValidateCreate(ctx context.Context, obj runtime
 		return nil, nil
 	}
 
+	if err := validateAnnotations(ingress); err != nil {
+		return nil, err
+	}
+
 	detector := sslvalidator.NewConflictDetector(v.Client)
 	conflicts := detector.DetectConflicts(ctx, ingress)
 	if len(conflicts) > 0 {
 		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
-	}
-
-	if err := validateAnnotations(ingress); err != nil {
-		return nil, err
 	}
 
 	warnings := v.collectReferenceWarnings(ctx, ingress)
@@ -102,14 +102,14 @@ func (v *IngressCustomValidator) ValidateUpdate(ctx context.Context, oldObj, new
 		return nil, nil
 	}
 
+	if err := validateAnnotations(ingress); err != nil {
+		return nil, err
+	}
+
 	detector := sslvalidator.NewConflictDetector(v.Client)
 	conflicts := detector.DetectConflicts(ctx, ingress)
 	if len(conflicts) > 0 {
 		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
-	}
-
-	if err := validateAnnotations(ingress); err != nil {
-		return nil, err
 	}
 
 	warnings := v.collectReferenceWarnings(ctx, ingress)
