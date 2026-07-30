@@ -70,7 +70,7 @@ func listenerPortSet(tctx *provider.TranslateContext) map[int32]struct{} {
 // single portless StreamRoute, preserving backward compatibility.
 func (t *Translator) buildL4StreamRoutes(tctx *provider.TranslateContext, namespace, name string, ruleIndex int, typ, routeKind string, labels map[string]string) []*adctypes.StreamRoute {
 	var ports []int32
-	if portSet := listenerPortSet(tctx); t.shouldInjectServerPortVars(tctx.RouteParentRefs, portSet) {
+	if portSet := listenerPortSet(tctx); t.shouldInjectServerPortVars(tctx.RouteParentRefs, portSet, tctx.Listeners) {
 		ports = make([]int32, 0, len(portSet))
 		for port := range portSet {
 			ports = append(ports, port)

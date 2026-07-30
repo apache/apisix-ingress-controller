@@ -315,7 +315,7 @@ func (t *Translator) TranslateGRPCRoute(tctx *provider.TranslateContext, grpcRou
 		// and a hostname listener is not dropped on the hostname port.
 		listenerPorts := collectServerPortMatchPorts(tctx.Listeners)
 
-		if t.shouldInjectServerPortVars(tctx.RouteParentRefs, listenerPorts) {
+		if t.shouldInjectServerPortVars(tctx.RouteParentRefs, listenerPorts, tctx.Listeners) {
 			matchPorts := allListenerPorts(tctx.Listeners)
 			for _, route := range routes {
 				addServerPortVars(route, matchPorts)

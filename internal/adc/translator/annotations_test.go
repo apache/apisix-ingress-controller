@@ -458,13 +458,18 @@ func TestAddServerPortVars(t *testing.T) {
 
 func TestShouldInjectServerPortVars(t *testing.T) {
 	sectionName := gatewayv1.SectionName("http-main")
+	missingSection := gatewayv1.SectionName("does-not-exist")
 	port := gatewayv1.PortNumber(9080)
+	// matchedListener is the listener http-main/9080 the explicit parentRefs
+	// below actually resolve to; the explicit signal is derived from it.
+	matchedListener := gatewayv1.Listener{Name: sectionName, Port: port}
 
 	tests := []struct {
 		name       string
 		mode       config.ListenerPortMatchMode
 		parentRefs []gatewayv1.ParentReference
 		ports      map[int32]struct{}
+		listeners  []gatewayv1.Listener
 		expected   bool
 	}{
 		{
@@ -493,7 +498,24 @@ func TestShouldInjectServerPortVars(t *testing.T) {
 			ports: map[int32]struct{}{
 				9080: {},
 			},
-			expected: true,
+			listeners: []gatewayv1.Listener{matchedListener},
+			expected:  true,
+		},
+		{
+			name: "auto mode: unmatched sectionName does not force injection on an implicit single-listener route",
+			mode: config.ListenerPortMatchModeAuto,
+			parentRefs: []gatewayv1.ParentReference{
+				// Explicit but unresolved: no listener named "does-not-exist"
+				// was matched, so it must not count as an explicit target.
+				{Name: "gw", SectionName: &missingSection},
+				// Valid implicit parentRef that matched the single listener.
+				{Name: "gw"},
+			},
+			ports: map[int32]struct{}{
+				9080: {},
+			},
+			listeners: []gatewayv1.Listener{matchedListener},
+			expected:  false,
 		},
 		{
 			name: "multiple ports without sectionName",
@@ -528,7 +550,8 @@ func TestShouldInjectServerPortVars(t *testing.T) {
 			ports: map[int32]struct{}{
 				9080: {},
 			},
-			expected: true,
+			listeners: []gatewayv1.Listener{matchedListener},
+			expected:  true,
 		},
 		{
 			name: "explicit mode with single port and no explicit target",
@@ -593,7 +616,7 @@ func TestShouldInjectServerPortVars(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			translator := &Translator{ListenerPortMatchMode: tt.mode}
-			assert.Equal(t, tt.expected, translator.shouldInjectServerPortVars(tt.parentRefs, tt.ports))
+			assert.Equal(t, tt.expected, translator.shouldInjectServerPortVars(tt.parentRefs, tt.ports, tt.listeners))
 		})
 	}
 }
