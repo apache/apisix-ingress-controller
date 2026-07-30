@@ -43,7 +43,10 @@ spec:
   listeners:
   - name: tcp
     protocol: TCP
-    port: 80
+    # Must equal APISIX's physical stream_proxy TCP port: the e2e controller runs
+    # with listener_port_match_mode=auto, so sectionName targeting injects
+    # server_port from this listener; it must match the port connections arrive on.
+    port: 9100
     allowedRoutes:
       kinds:
       - kind: TCPRoute
@@ -123,7 +126,10 @@ spec:
   listeners:
   - name: tcp
     protocol: TCP
-    port: 80
+    # Must equal APISIX's physical stream_proxy TCP port: the e2e controller runs
+    # with listener_port_match_mode=auto, so sectionName targeting injects
+    # server_port from this listener; it must match the port connections arrive on.
+    port: 9100
     allowedRoutes:
       kinds:
       - kind: TCPRoute
