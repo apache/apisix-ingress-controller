@@ -83,13 +83,13 @@ func (t *Translator) fillPluginFromExtensionRef(plugins adctypes.Plugins, namesp
 		}
 		for _, plugin := range pluginconfig.Spec.Plugins {
 			pluginName := plugin.Name
-			pluginconfig := make(map[string]any)
+			config := make(map[string]any)
 			if len(plugin.Config.Raw) > 0 {
-				if err := json.Unmarshal(plugin.Config.Raw, &pluginconfig); err != nil {
+				if err := json.Unmarshal(plugin.Config.Raw, &config); err != nil {
 					return fmt.Errorf("failed to unmarshal config of plugin %s: %w", plugin.Name, err)
 				}
 			}
-			plugins[pluginName] = pluginconfig
+			plugins[pluginName] = config
 		}
 		t.Log.V(1).Info("fill plugin from extension ref", "plugins", plugins)
 	}

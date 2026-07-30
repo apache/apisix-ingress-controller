@@ -120,6 +120,48 @@ func TestBuildPlugins_MalformedReferencedPluginConfigFailsTranslation(t *testing
 	assert.Nil(t, plugins)
 }
 
+func TestTranslateStreamRule_MalformedPluginConfigFailsTranslation(t *testing.T) {
+	translator := NewTranslator(logr.Discard(), "")
+	tctx := provider.NewDefaultTranslateContext(context.Background())
+
+	ar := &apiv2.ApisixRoute{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-route", Namespace: "default"},
+	}
+	part := apiv2.ApisixRouteStream{
+		Name:     "stream1",
+		Protocol: "TCP",
+		Plugins: []apiv2.ApisixRoutePlugin{{
+			Name:   "ip-restriction",
+			Enable: true,
+			Config: apiextensionsv1.JSON{Raw: []byte(`["10.0.0.0/8"]`)},
+		}},
+	}
+
+	svc, err := translator.translateStreamRule(tctx, ar, part)
+	assert.Error(t, err)
+	assert.Nil(t, svc)
+}
+
+func TestTranslateApisixConsumer_MalformedPluginConfigFailsTranslation(t *testing.T) {
+	translator := NewTranslator(logr.Discard(), "")
+	tctx := provider.NewDefaultTranslateContext(context.Background())
+
+	ac := &apiv2.ApisixConsumer{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-consumer", Namespace: "default"},
+		Spec: apiv2.ApisixConsumerSpec{
+			Plugins: []apiv2.ApisixRoutePlugin{{
+				Name:   "ip-restriction",
+				Enable: true,
+				Config: apiextensionsv1.JSON{Raw: []byte(`["10.0.0.0/8"]`)},
+			}},
+		},
+	}
+
+	result, err := translator.TranslateApisixConsumer(tctx, ac)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
 func TestTranslateApisixGlobalRule_MalformedPluginConfigFailsTranslation(t *testing.T) {
 	translator := NewTranslator(logr.Discard(), "")
 	tctx := provider.NewDefaultTranslateContext(context.Background())
