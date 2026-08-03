@@ -208,6 +208,7 @@ func (r *GRPCRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			// Fallback for backward compatibility
 			tctx.Listeners = appendListeners(tctx.Listeners, *gateway.Listener)
 		}
+		tctx.HasExplicitListenerMatch = tctx.HasExplicitListenerMatch || gateway.ExplicitListenerMatch
 	}
 
 	var backendRefErr error

@@ -47,6 +47,11 @@ type TranslateContext struct {
 	GatewayTLSConfig []gatewayv1.ListenerTLSConfig
 	Credentials      []v1alpha1.Credential
 	Listeners        []gatewayv1.Listener
+	// HasExplicitListenerMatch is true when any accepted parentRef attached to
+	// its Gateway through an explicit sectionName or port. It gates server_port
+	// injection (see Translator.shouldInjectServerPortVars) and is computed from
+	// the matched RouteParentRefContext, preserving each parentRef's Gateway.
+	HasExplicitListenerMatch bool
 
 	EndpointSlices         map[k8stypes.NamespacedName][]discoveryv1.EndpointSlice
 	Secrets                map[k8stypes.NamespacedName]*corev1.Secret

@@ -748,7 +748,7 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 		// or when multiple listener ports need to be disambiguated. When it is added,
 		// match on every targeted listener port so a route attached to both a
 		// hostname-less and a hostname listener is not dropped on the hostname port.
-		if t.shouldInjectServerPortVars(tctx.RouteParentRefs, listenerPorts) {
+		if t.shouldInjectServerPortVars(tctx.HasExplicitListenerMatch, listenerPorts) {
 			matchPorts := allListenerPorts(tctx.Listeners)
 			for _, route := range routes {
 				addServerPortVars(route, matchPorts)

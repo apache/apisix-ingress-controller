@@ -107,6 +107,98 @@ func TestParseRouteParentRefs_ReasonOrderIndependent(t *testing.T) {
 	}
 }
 
+// TestParseRouteParentRefs_ExplicitListenerMatch verifies ExplicitListenerMatch
+// is derived per parentRef against its own Gateway. In particular a sectionName
+// or port that does not resolve on the referenced Gateway must not be treated as
+// an explicit match just because another Gateway, matched through a different
+// parentRef, happens to have an identically named or ported listener.
+func TestParseRouteParentRefs_ExplicitListenerMatch(t *testing.T) {
+	scheme := parentRefTestScheme(t)
+
+	// gwA only has a listener named "other"; a sectionName "web" reference to it
+	// resolves to nothing.
+	gwA := &gatewayv1.Gateway{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "gw-a"},
+		Spec: gatewayv1.GatewaySpec{
+			GatewayClassName: "apisix",
+			Listeners: []gatewayv1.Listener{
+				{Name: "other", Port: 80, Protocol: gatewayv1.HTTPProtocolType},
+			},
+		},
+	}
+	// gwB has a listener named "web" on port 8080 that an implicit reference matches.
+	gwB := &gatewayv1.Gateway{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "gw-b"},
+		Spec: gatewayv1.GatewaySpec{
+			GatewayClassName: "apisix",
+			Listeners: []gatewayv1.Listener{
+				{Name: "web", Port: 8080, Protocol: gatewayv1.HTTPProtocolType},
+			},
+		},
+	}
+	route := &gatewayv1.HTTPRoute{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "r"},
+	}
+	cli := fake.NewClientBuilder().WithScheme(scheme).
+		WithObjects(newParentRefGatewayClass(), gwA, gwB).Build()
+
+	webSection := gatewayv1.SectionName("web")
+	port8080 := gatewayv1.PortNumber(8080)
+
+	t.Run("invalid explicit ref is not satisfied by another gateway's listener", func(t *testing.T) {
+		got, err := ParseRouteParentRefs(context.Background(), cli, logr.Discard(), route,
+			[]gatewayv1.ParentReference{
+				// Explicit sectionName "web" on gw-a, which has no such listener.
+				{Name: "gw-a", SectionName: &webSection},
+				// Implicit ref to gw-b, which does have a "web" listener.
+				{Name: "gw-b"},
+			})
+		require.NoError(t, err)
+		require.Len(t, got, 2)
+
+		byGateway := map[string]RouteParentRefContext{}
+		for _, ctx := range got {
+			byGateway[ctx.Gateway.Name] = ctx
+		}
+		// gw-a's explicit ref matched no listener, so it is neither Accepted nor
+		// an explicit match.
+		assert.Nil(t, byGateway["gw-a"].Listener)
+		assert.False(t, byGateway["gw-a"].ExplicitListenerMatch)
+		// gw-b matched implicitly; the stray "web" sectionName on gw-a must not
+		// promote it to an explicit match.
+		assert.NotNil(t, byGateway["gw-b"].Listener)
+		assert.False(t, byGateway["gw-b"].ExplicitListenerMatch,
+			"an implicit match must not be marked explicit by another gateway's ref")
+	})
+
+	t.Run("explicit sectionName on the owning gateway is an explicit match", func(t *testing.T) {
+		got, err := ParseRouteParentRefs(context.Background(), cli, logr.Discard(), route,
+			[]gatewayv1.ParentReference{{Name: "gw-b", SectionName: &webSection}})
+		require.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.NotNil(t, got[0].Listener)
+		assert.True(t, got[0].ExplicitListenerMatch)
+	})
+
+	t.Run("explicit port on the owning gateway is an explicit match", func(t *testing.T) {
+		got, err := ParseRouteParentRefs(context.Background(), cli, logr.Discard(), route,
+			[]gatewayv1.ParentReference{{Name: "gw-b", Port: &port8080}})
+		require.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.NotNil(t, got[0].Listener)
+		assert.True(t, got[0].ExplicitListenerMatch)
+	})
+
+	t.Run("implicit ref is not an explicit match", func(t *testing.T) {
+		got, err := ParseRouteParentRefs(context.Background(), cli, logr.Discard(), route,
+			[]gatewayv1.ParentReference{{Name: "gw-b"}})
+		require.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.NotNil(t, got[0].Listener)
+		assert.False(t, got[0].ExplicitListenerMatch)
+	})
+}
+
 // TestParseRouteParentRefs_ConflictingTLSModePort verifies a route does not
 // attach to a listener whose port carries a conflicting tls.mode: such a listener
 // is not programmable, so the route must not be Accepted.
