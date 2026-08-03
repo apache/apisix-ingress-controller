@@ -16,6 +16,8 @@
 package plugins
 
 import (
+	"fmt"
+
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations"
 )
@@ -39,7 +41,11 @@ func (c *csrf) Handle(e annotations.Extractor) (any, error) {
 
 	key := e.GetStringAnnotation(annotations.AnnotationsCsrfKey)
 	if key == "" {
-		return nil, nil
+		// csrf requested without a key: the webhook rejects this, but log a
+		// breadcrumb for the cases it cannot cover (webhook off, pre-upgrade
+		// Ingress). Parse skips only this plugin, the rest of the route stands.
+		return nil, fmt.Errorf("annotation %q is enabled but %q is missing or empty",
+			annotations.AnnotationsEnableCsrf, annotations.AnnotationsCsrfKey)
 	}
 
 	return &adctypes.CSRFConfig{

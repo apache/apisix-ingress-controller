@@ -43,10 +43,16 @@ func TestCSRFHandler(t *testing.T) {
 	assert.Nil(t, err, "checking given error")
 	assert.Nil(t, out, "checking given output")
 
-	// Test with enable-csrf true but no key
+	// Test with enable-csrf true but no key: errors so Parse logs a breadcrumb
 	anno[annotations.AnnotationsEnableCsrf] = "true"
 	delete(anno, annotations.AnnotationsCsrfKey)
 	out, err = p.Handle(annotations.NewExtractor(anno))
-	assert.Nil(t, err, "checking given error")
+	assert.Error(t, err, "expecting an error when csrf-key is missing")
 	assert.Nil(t, out, "checking given output when key is missing")
+
+	// Test with enable-csrf true but empty key: same behavior
+	anno[annotations.AnnotationsCsrfKey] = ""
+	out, err = p.Handle(annotations.NewExtractor(anno))
+	assert.Error(t, err, "expecting an error when csrf-key is empty")
+	assert.Nil(t, out, "checking given output when key is empty")
 }
