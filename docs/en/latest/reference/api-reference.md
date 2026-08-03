@@ -254,7 +254,7 @@ _Appears in:_
 | --- | --- |
 | `targetRefs` _[BackendPolicyTargetReferenceWithSectionName](#backendpolicytargetreferencewithsectionname) array_ | TargetRef identifies an API object to apply policy to. Currently, Backends (i.e. Service, ServiceImport, or any implementation-specific backendRef) are the only valid API target references. |
 | `loadbalancer` _[LoadBalancer](#loadbalancer)_ | LoadBalancer represents the load balancer configuration for Kubernetes Service. The default strategy is round robin. |
-| `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. Can be `http`, `https`, `grpc`, or `grpcs`. |
+| `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. For L7 proxy, it can be `http`, `https`, `grpc`, or `grpcs`. For L4 proxy, it can be `tcp`, `tls`, or `udp`. The L4 values apply to stream routes only; using them for an HTTP route makes the upstream unreachable. |
 | `retries` _integer_ | Retries specify the number of times the gateway should retry sending requests when errors such as timeouts or 502 errors occur. |
 | `timeout` _[Timeout](#timeout)_ | Timeout sets the read, send, and connect timeouts to the upstream. |
 | `passHost` _string_ | PassHost configures how the host header should be determined when a request is forwarded to the upstream. Default is `pass`. Can be `pass`, `node` or `rewrite`:<br /> • `pass`: preserve the original Host header<br /> • `node`: use the upstream node’s host<br /> • `rewrite`: set to a custom host via `upstreamHost` |
@@ -1489,7 +1489,7 @@ ApisixUpstreamConfig defines configuration for upstream services.
 | Field | Description |
 | --- | --- |
 | `loadbalancer` _[LoadBalancer](#loadbalancer)_ | LoadBalancer specifies the load balancer configuration for Kubernetes Service. |
-| `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. Can be `http`, `https`, `grpc`, or `grpcs`. |
+| `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. For L7 proxy, it can be `http`, `https`, `grpc`, or `grpcs`. For L4 proxy, it can be `tcp`, `tls`, or `udp`. The L4 values apply to stream routes only; using them for an HTTP route makes the upstream unreachable. |
 | `retries` _integer_ | Retries defines the number of retry attempts APISIX should make when a failure occurs. Failures include timeouts, network errors, or 5xx status codes. |
 | `timeout` _[UpstreamTimeout](#upstreamtimeout)_ | Timeout specifies the connection, send, and read timeouts for upstream requests. |
 | `healthCheck` _[HealthCheck](#healthcheck)_ | HealthCheck defines the active and passive health check configuration for the upstream. |
@@ -1549,7 +1549,7 @@ definitions and custom configuration.
 | `ingressClassName` _string_ | IngressClassName is the name of an IngressClass cluster resource. Controller implementations use this field to determine whether they should process this ApisixUpstream resource. |
 | `externalNodes` _[ApisixUpstreamExternalNode](#apisixupstreamexternalnode) array_ | ExternalNodes defines a static list of backend nodes. These can be external hosts outside the cluster or cluster-internal Services specified by their DNS name. When this field is set, the upstream will route traffic directly to these nodes without DNS resolution or service discovery. |
 | `loadbalancer` _[LoadBalancer](#loadbalancer)_ | LoadBalancer specifies the load balancer configuration for Kubernetes Service. |
-| `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. Can be `http`, `https`, `grpc`, or `grpcs`. |
+| `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. For L7 proxy, it can be `http`, `https`, `grpc`, or `grpcs`. For L4 proxy, it can be `tcp`, `tls`, or `udp`. The L4 values apply to stream routes only; using them for an HTTP route makes the upstream unreachable. |
 | `retries` _integer_ | Retries defines the number of retry attempts APISIX should make when a failure occurs. Failures include timeouts, network errors, or 5xx status codes. |
 | `timeout` _[UpstreamTimeout](#upstreamtimeout)_ | Timeout specifies the connection, send, and read timeouts for upstream requests. |
 | `healthCheck` _[HealthCheck](#healthcheck)_ | HealthCheck defines the active and passive health check configuration for the upstream. |
@@ -1719,7 +1719,7 @@ them if they are set on the port level.
 | Field | Description |
 | --- | --- |
 | `loadbalancer` _[LoadBalancer](#loadbalancer)_ | LoadBalancer specifies the load balancer configuration for Kubernetes Service. |
-| `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. Can be `http`, `https`, `grpc`, or `grpcs`. |
+| `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. For L7 proxy, it can be `http`, `https`, `grpc`, or `grpcs`. For L4 proxy, it can be `tcp`, `tls`, or `udp`. The L4 values apply to stream routes only; using them for an HTTP route makes the upstream unreachable. |
 | `retries` _integer_ | Retries defines the number of retry attempts APISIX should make when a failure occurs. Failures include timeouts, network errors, or 5xx status codes. |
 | `timeout` _[UpstreamTimeout](#upstreamtimeout)_ | Timeout specifies the connection, send, and read timeouts for upstream requests. |
 | `healthCheck` _[HealthCheck](#healthcheck)_ | HealthCheck defines the active and passive health check configuration for the upstream. |
