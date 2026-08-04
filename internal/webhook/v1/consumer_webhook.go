@@ -27,7 +27,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	apisixv1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
@@ -39,9 +38,8 @@ import (
 var consumerLog = logf.Log.WithName("consumer-resource")
 
 func SetupConsumerWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&apisixv1alpha1.Consumer{}).
-		WithValidator(NewConsumerCustomValidator(mgr.GetClient())).
+	return ctrl.NewWebhookManagedBy(mgr, &apisixv1alpha1.Consumer{}).
+		WithCustomValidator(NewConsumerCustomValidator(mgr.GetClient())).
 		Complete()
 }
 
@@ -54,7 +52,7 @@ type ConsumerCustomValidator struct {
 	initErr      error
 }
 
-var _ webhook.CustomValidator = &ConsumerCustomValidator{}
+var _ admission.Validator[runtime.Object] = &ConsumerCustomValidator{}
 
 func NewConsumerCustomValidator(c client.Client) *ConsumerCustomValidator {
 	adcValidator, err := newADCAdmissionValidator(c, consumerLog)
@@ -134,6 +132,23 @@ func (v *ConsumerCustomValidator) collectWarnings(ctx context.Context, consumer 
 		}
 		visited[nn] = struct{}{}
 
+		// Don't probe cross-namespace Secrets that no ReferenceGrant permits: the
+		// found/not-found warning difference would leak Secret existence across
+		// namespaces. Emit a uniform message and skip the lookup. On a lookup
+		// failure, skip the probe too but warn neutrally, without implying a grant
+		// is missing.
+		if namespace != defaultNamespace {
+			permitted, err := controller.CheckConsumerSecretRef(ctx, v.Client, defaultNamespace, nn)
+			if err != nil {
+				warnings = append(warnings, fmt.Sprintf("Could not verify authorization for referenced Secret '%s/%s'", nn.Namespace, nn.Name))
+				continue
+			}
+			if !permitted {
+				warnings = append(warnings, fmt.Sprintf("Referenced Secret '%s/%s' is not accessible from this Consumer without a ReferenceGrant", nn.Namespace, nn.Name))
+				continue
+			}
+		}
+
 		warnings = append(warnings, v.checker.Secret(ctx, reference.SecretRef{
 			Object:         consumer,
 			NamespacedName: nn,
@@ -176,7 +191,9 @@ func (v *ConsumerCustomValidator) validateDuplicateKeyAuthCredentials(ctx contex
 		}
 		for key := range existingKeys {
 			if _, ok := keys[key]; ok {
-				return fmt.Errorf("duplicate key-auth credential key %q already used by Consumer %s/%s", key, existing.Namespace, existing.Name)
+				// Do not include the credential value in the error: it is returned to
+				// API clients and logged, which would leak the secret key material.
+				return fmt.Errorf("duplicate key-auth credential already used by Consumer %s/%s", existing.Namespace, existing.Name)
 			}
 		}
 	}
@@ -212,8 +229,23 @@ func (v *ConsumerCustomValidator) extractCredentialKey(ctx context.Context, cons
 			namespace = *credential.SecretRef.Namespace
 		}
 
+		nn := types.NamespacedName{Namespace: namespace, Name: credential.SecretRef.Name}
+		// Don't read a cross-namespace Secret that no ReferenceGrant permits:
+		// duplicate detection would otherwise reveal its existence and key. Treat
+		// it as absent; the reference is denied later during admission anyway. A
+		// lookup failure is surfaced so admission fails closed rather than admitting.
+		if namespace != consumer.Namespace {
+			permitted, err := controller.CheckConsumerSecretRef(ctx, v.Client, consumer.Namespace, nn)
+			if err != nil {
+				return "", err
+			}
+			if !permitted {
+				return "", nil
+			}
+		}
+
 		var secret corev1.Secret
-		err := v.Client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: credential.SecretRef.Name}, &secret)
+		err := v.Client.Get(ctx, nn, &secret)
 		if err != nil {
 			if k8serrors.IsNotFound(err) {
 				return "", nil

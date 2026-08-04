@@ -101,7 +101,11 @@ func (r *TCPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// L4RoutePolicy is an optional CRD. Only watch it when installed so the
 	// controller still starts if the CRD has not been applied yet (e.g. upgrades).
-	r.supportsL4RoutePolicy = pkgutils.HasAPIResource(mgr, &v1alpha1.L4RoutePolicy{})
+	supportsL4RoutePolicy, err := pkgutils.HasAPIResource(mgr, &v1alpha1.L4RoutePolicy{})
+	if err != nil {
+		return err
+	}
+	r.supportsL4RoutePolicy = supportsL4RoutePolicy
 	if r.supportsL4RoutePolicy {
 		bdr.Watches(&v1alpha1.L4RoutePolicy{},
 			handler.EnqueueRequestsFromMapFunc(r.listTCPRoutesForL4RoutePolicy),
@@ -289,6 +293,14 @@ func (r *TCPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			acceptStatus.status = false
 			acceptStatus.msg = err.Error()
 		}
+		// Populate the matched listeners so the translator can derive the
+		// StreamRoute server_port from the listener the route attaches to.
+		if len(gateway.Listeners) > 0 {
+			tctx.Listeners = appendListeners(tctx.Listeners, gateway.Listeners...)
+		} else if gateway.Listener != nil {
+			tctx.Listeners = appendListeners(tctx.Listeners, *gateway.Listener)
+		}
+		tctx.HasExplicitListenerMatch = tctx.HasExplicitListenerMatch || gateway.ExplicitListenerMatch
 	}
 
 	var backendRefErr error
@@ -434,7 +446,7 @@ func (r *TCPRouteReconciler) processTCPRouteBackendRefs(tctx *provider.Translate
 
 		portExists := false
 		for _, port := range service.Spec.Ports {
-			if port.Port == int32(*backend.Port) {
+			if port.Port == *backend.Port {
 				portExists = true
 				break
 			}

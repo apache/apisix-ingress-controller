@@ -124,7 +124,7 @@ func (t *Translator) TranslateGatewayProxyToConfig(tctx *provider.TranslateConte
 				BackendObjectReference: gatewayv1.BackendObjectReference{
 					Name:      gatewayv1.ObjectName(cp.Service.Name),
 					Namespace: (*gatewayv1.Namespace)(&gatewayProxy.Namespace),
-					Port:      ptr.To(gatewayv1.PortNumber(cp.Service.Port)),
+					Port:      ptr.To(cp.Service.Port),
 				},
 			}, func(endpoint *discoveryv1.Endpoint) bool {
 				if endpoint.Conditions.Terminating != nil && *endpoint.Conditions.Terminating {

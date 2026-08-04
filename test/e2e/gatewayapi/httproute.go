@@ -35,7 +35,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
@@ -1268,7 +1268,7 @@ spec:
 					types.NamespacedName{Namespace: s.Namespace(), Name: name},
 					spec,
 					metav1.Condition{
-						Type: string(v1alpha2.PolicyConditionAccepted),
+						Type: string(gatewayv1.PolicyConditionAccepted),
 					},
 				)
 			}
@@ -1277,9 +1277,9 @@ spec:
 					types.NamespacedName{Namespace: s.Namespace(), Name: s.Namespace()},
 					types.NamespacedName{Namespace: s.Namespace(), Name: name},
 					metav1.Condition{
-						Type:   string(v1alpha2.PolicyConditionAccepted),
+						Type:   string(gatewayv1.PolicyConditionAccepted),
 						Status: metav1.ConditionFalse,
-						Reason: string(v1alpha2.PolicyReasonConflicted),
+						Reason: string(gatewayv1.PolicyReasonConflicted),
 					},
 				)
 			}
@@ -1305,9 +1305,9 @@ spec:
 					types.NamespacedName{Namespace: s.Namespace(), Name: s.Namespace()},
 					types.NamespacedName{Namespace: s.Namespace(), Name: name},
 					metav1.Condition{
-						Type:   string(v1alpha2.PolicyConditionAccepted),
+						Type:   string(gatewayv1.PolicyConditionAccepted),
 						Status: metav1.ConditionTrue,
-						Reason: string(v1alpha2.PolicyReasonAccepted),
+						Reason: string(gatewayv1.PolicyReasonAccepted),
 					},
 				)
 			}
@@ -1330,7 +1330,7 @@ spec:
 				types.NamespacedName{Namespace: s.Namespace(), Name: s.Namespace()},
 				types.NamespacedName{Namespace: s.Namespace(), Name: "http-route-policy-1"},
 				metav1.Condition{
-					Type: string(v1alpha2.PolicyConditionAccepted),
+					Type: string(gatewayv1.PolicyConditionAccepted),
 				},
 			)
 			for _, name := range []string{"http-route-policy-0", "http-route-policy-1"} {
@@ -1338,9 +1338,9 @@ spec:
 					types.NamespacedName{Namespace: s.Namespace(), Name: s.Namespace()},
 					types.NamespacedName{Namespace: s.Namespace(), Name: name},
 					metav1.Condition{
-						Type:   string(v1alpha2.PolicyConditionAccepted),
+						Type:   string(gatewayv1.PolicyConditionAccepted),
 						Status: metav1.ConditionFalse,
-						Reason: string(v1alpha2.PolicyReasonConflicted),
+						Reason: string(gatewayv1.PolicyReasonConflicted),
 					},
 				)
 			}

@@ -208,6 +208,7 @@ func (r *GRPCRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			// Fallback for backward compatibility
 			tctx.Listeners = appendListeners(tctx.Listeners, *gateway.Listener)
 		}
+		tctx.HasExplicitListenerMatch = tctx.HasExplicitListenerMatch || gateway.ExplicitListenerMatch
 	}
 
 	var backendRefErr error
@@ -441,7 +442,7 @@ func (r *GRPCRouteReconciler) processGRPCRouteBackendRefs(tctx *provider.Transla
 
 		portExists := false
 		for _, port := range service.Spec.Ports {
-			if port.Port == int32(*backend.Port) {
+			if port.Port == *backend.Port {
 				portExists = true
 				break
 			}
