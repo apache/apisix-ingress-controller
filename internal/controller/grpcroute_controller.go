@@ -187,6 +187,17 @@ func (r *GRPCRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if len(gateways) == 0 {
+		// See the HTTPRoute reconciler: a route that no longer references a
+		// Gateway managed by this controller must have its previously pushed
+		// configuration removed, or the data plane keeps serving it.
+		gr.TypeMeta = metav1.TypeMeta{
+			Kind:       KindGRPCRoute,
+			APIVersion: gatewayv1.GroupVersion.String(),
+		}
+		if err := r.Provider.Delete(ctx, gr); err != nil {
+			r.Log.Error(err, "failed to delete grpcroute", "grpcroute", gr)
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, nil
 	}
 

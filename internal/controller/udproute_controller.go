@@ -279,6 +279,17 @@ func (r *UDPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 
 	if len(gateways) == 0 {
+		// See the HTTPRoute reconciler: a route that no longer references a
+		// Gateway managed by this controller must have its previously pushed
+		// configuration removed, or the data plane keeps serving it.
+		tr.TypeMeta = metav1.TypeMeta{
+			Kind:       KindUDPRoute,
+			APIVersion: gatewayv1.GroupVersion.String(),
+		}
+		if err := r.Provider.Delete(ctx, tr); err != nil {
+			r.Log.Error(err, "failed to delete udproute", "udproute", tr)
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, nil
 	}
 
