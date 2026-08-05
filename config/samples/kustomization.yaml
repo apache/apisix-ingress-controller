@@ -1,5 +1,20 @@
-## Append samples of your project ##
-configMapGenerator:
-  - name: controller-config
-    files:
-      - config.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+## Sample custom resources of this project.
+## They are not part of the deployment; apply them with
+##   kubectl apply -k config/samples
+resources:
+- apisix.apache.org_v1alpha1_backendtrafficpolicy.yaml
+- apisix.apache.org_v1alpha1_consumer.yaml
+- apisix.apache.org_v1alpha1_gatewayproxy.yaml
+- apisix.apache.org_v1alpha1_httproutepolicy.yaml
+- apisix.apache.org_v1alpha1_l4routepolicy.yaml
+- apisix.apache.org_v1alpha1_pluginconfig.yaml
+- apisix.apache.org_v2_apisixconsumer.yaml
+- apisix.apache.org_v2_apisixglobalrule.yaml
+- apisix.apache.org_v2_apisixpluginconfig.yaml
+- apisix.apache.org_v2_apisixroute.yaml
+- apisix.apache.org_v2_apisixtls.yaml
+- apisix.apache.org_v2_apisixupstream.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples
