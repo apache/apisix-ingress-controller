@@ -24,12 +24,18 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
 
 func TestTranslateTCPRouteWithL4RoutePolicy(t *testing.T) {
@@ -266,4 +272,86 @@ func TestTranslateTLSRouteWithL4RoutePolicy(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTranslateTCPRouteUpstreamScheme(t *testing.T) {
+	const (
+		namespace   = "default"
+		serviceName = "backend"
+		portName    = "tcp"
+		portNumber  = int32(6000)
+	)
+
+	translator := NewTranslator(logr.Discard(), "")
+	tctx := provider.NewDefaultTranslateContext(context.Background())
+
+	serviceKey := k8stypes.NamespacedName{Namespace: namespace, Name: serviceName}
+	tctx.Services[serviceKey] = &corev1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      serviceName,
+			Namespace: namespace,
+		},
+		Spec: corev1.ServiceSpec{
+			Ports: []corev1.ServicePort{{
+				Name: portName,
+				Port: portNumber,
+			}},
+		},
+	}
+	tctx.EndpointSlices[serviceKey] = []discoveryv1.EndpointSlice{{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      serviceName + "-1",
+			Namespace: namespace,
+		},
+		Ports: []discoveryv1.EndpointPort{{
+			Name: ptr.To(portName),
+			Port: ptr.To(portNumber),
+		}},
+		Endpoints: []discoveryv1.Endpoint{{
+			Addresses: []string{"10.0.0.1"},
+			Conditions: discoveryv1.EndpointConditions{
+				Ready: ptr.To(true),
+			},
+		}},
+	}}
+	tctx.BackendTrafficPolicies[serviceKey] = &v1alpha1.BackendTrafficPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "backend-policy",
+			Namespace: namespace,
+		},
+		Spec: v1alpha1.BackendTrafficPolicySpec{
+			TargetRefs: []v1alpha1.BackendPolicyTargetReferenceWithSectionName{{
+				LocalPolicyTargetReference: gatewayv1.LocalPolicyTargetReference{
+					Name: gatewayv1.ObjectName(serviceName),
+					Kind: gatewayv1.Kind(internaltypes.KindService),
+				},
+			}},
+			Scheme: apiv2.SchemeTLS,
+		},
+	}
+
+	route := &gatewayv1alpha2.TCPRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "my-tcp",
+			Namespace: namespace,
+		},
+		Spec: gatewayv1alpha2.TCPRouteSpec{
+			Rules: []gatewayv1alpha2.TCPRouteRule{{
+				BackendRefs: []gatewayv1alpha2.BackendRef{{
+					BackendObjectReference: gatewayv1.BackendObjectReference{
+						Name: gatewayv1.ObjectName(serviceName),
+						Port: ptr.To(portNumber),
+					},
+				}},
+			}},
+		},
+	}
+
+	result, err := translator.TranslateTCPRoute(tctx, route)
+	require.NoError(t, err)
+	require.Len(t, result.Services, 1)
+	require.NotNil(t, result.Services[0].Upstream)
+
+	assert.Equal(t, apiv2.SchemeTLS, result.Services[0].Upstream.Scheme)
+	assert.Equal(t, "10.0.0.1", result.Services[0].Upstream.Nodes[0].Host)
 }

@@ -18,14 +18,22 @@
 package translator
 
 import (
+	"context"
 	"testing"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	discoveryv1 "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/utils/ptr"
 
 	adc "github.com/apache/apisix-ingress-controller/api/adc"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
+	"github.com/apache/apisix-ingress-controller/internal/provider"
 )
 
 func TestBuildRoute_HostsNotSet(t *testing.T) {
@@ -120,4 +128,98 @@ func TestBuildRoute_MetadataLabelsDoNotOverwriteControllerLabels(t *testing.T) {
 	assert.Equal(t, ar.Name, route.Labels["k8s/name"])
 	assert.Equal(t, ar.Namespace, route.Labels["k8s/namespace"])
 	assert.Equal(t, "apisix-ingress-controller", route.Labels["manager-by"])
+}
+
+func TestTranslateApisixRouteStreamUpstreamScheme(t *testing.T) {
+	const (
+		namespace   = "default"
+		serviceName = "backend"
+		portName    = "tcp"
+		portNumber  = int32(6000)
+	)
+
+	tests := []struct {
+		scheme   string
+		protocol string
+	}{
+		{scheme: apiv2.SchemeTLS, protocol: "TCP"},
+		{scheme: apiv2.SchemeTCP, protocol: "TCP"},
+		{scheme: apiv2.SchemeUDP, protocol: "UDP"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.scheme, func(t *testing.T) {
+			translator := NewTranslator(logr.Discard(), "")
+			tctx := provider.NewDefaultTranslateContext(context.Background())
+
+			serviceKey := k8stypes.NamespacedName{Namespace: namespace, Name: serviceName}
+			tctx.Services[serviceKey] = &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      serviceName,
+					Namespace: namespace,
+				},
+				Spec: corev1.ServiceSpec{
+					Ports: []corev1.ServicePort{{
+						Name: portName,
+						Port: portNumber,
+					}},
+				},
+			}
+			tctx.EndpointSlices[serviceKey] = []discoveryv1.EndpointSlice{{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      serviceName + "-1",
+					Namespace: namespace,
+				},
+				Ports: []discoveryv1.EndpointPort{{
+					Name: ptr.To(portName),
+					Port: ptr.To(portNumber),
+				}},
+				Endpoints: []discoveryv1.Endpoint{{
+					Addresses: []string{"10.0.0.1"},
+					Conditions: discoveryv1.EndpointConditions{
+						Ready: ptr.To(true),
+					},
+				}},
+			}}
+			tctx.Upstreams[serviceKey] = &apiv2.ApisixUpstream{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      serviceName,
+					Namespace: namespace,
+				},
+				Spec: apiv2.ApisixUpstreamSpec{
+					ApisixUpstreamConfig: apiv2.ApisixUpstreamConfig{
+						Scheme: tt.scheme,
+					},
+				},
+			}
+
+			ar := &apiv2.ApisixRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-route",
+					Namespace: namespace,
+				},
+				Spec: apiv2.ApisixRouteSpec{
+					Stream: []apiv2.ApisixRouteStream{{
+						Name:     "rule1",
+						Protocol: tt.protocol,
+						Match: apiv2.ApisixRouteStreamMatch{
+							IngressPort: 8000,
+						},
+						Backend: apiv2.ApisixRouteStreamBackend{
+							ServiceName: serviceName,
+							ServicePort: intstr.FromInt32(portNumber),
+						},
+					}},
+				},
+			}
+
+			result, err := translator.TranslateApisixRoute(tctx, ar)
+			require.NoError(t, err)
+			require.Len(t, result.Services, 1)
+			require.NotNil(t, result.Services[0].Upstream)
+
+			assert.Equal(t, tt.scheme, result.Services[0].Upstream.Scheme)
+			assert.Equal(t, "10.0.0.1", result.Services[0].Upstream.Nodes[0].Host)
+		})
+	}
 }

@@ -41,8 +41,6 @@ import (
 )
 
 func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
-	sectionName := gatewayv1.SectionName("http-main")
-	parentPort := gatewayv1.PortNumber(9080)
 	pathMatchType := gatewayv1.PathMatchPathPrefix
 	pathValue := "/"
 
@@ -65,40 +63,27 @@ func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
 	}
 
 	tests := []struct {
-		name       string
-		mode       config.ListenerPortMatchMode
-		parentRefs []gatewayv1.ParentReference
-		listeners  []gatewayv1.Listener
-		expected   adctypes.Vars
+		name string
+		mode config.ListenerPortMatchMode
+		// explicit is the provenance-aware signal the controller stores on tctx
+		// (HasExplicitListenerMatch); the cross-Gateway sectionName/port
+		// resolution that computes it is covered by the controller tests.
+		explicit  bool
+		listeners []gatewayv1.Listener
+		expected  adctypes.Vars
 	}{
 		{
 			name: "auto mode: no injection for single listener without explicit target",
 			mode: config.ListenerPortMatchModeAuto,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw"},
-			},
 			listeners: []gatewayv1.Listener{
 				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
 			},
 			expected: nil,
 		},
 		{
-			name: "auto mode: inject for sectionName target",
-			mode: config.ListenerPortMatchModeAuto,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw", SectionName: &sectionName},
-			},
-			listeners: []gatewayv1.Listener{
-				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
-			},
-			expected: singlePortVars,
-		},
-		{
-			name: "auto mode: inject for port target",
-			mode: config.ListenerPortMatchModeAuto,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw", Port: &parentPort},
-			},
+			name:     "auto mode: inject for explicit sectionName target",
+			mode:     config.ListenerPortMatchModeAuto,
+			explicit: true,
 			listeners: []gatewayv1.Listener{
 				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
 			},
@@ -107,9 +92,6 @@ func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
 		{
 			name: "auto mode: inject for multiple listener ports",
 			mode: config.ListenerPortMatchModeAuto,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw"},
-			},
 			listeners: []gatewayv1.Listener{
 				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9081)},
 				{Name: "http-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
@@ -117,35 +99,9 @@ func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
 			expected: multiPortVars,
 		},
 		{
-			name: "auto mode: inject for multiple listener ports when listener names collide across gateways",
-			mode: config.ListenerPortMatchModeAuto,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw-a"},
-				{Name: "gw-b"},
-			},
-			listeners: []gatewayv1.Listener{
-				{Name: "http", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9081)},
-				{Name: "http", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
-			},
-			expected: multiPortVars,
-		},
-		{
-			name: "explicit mode: inject for sectionName target",
-			mode: config.ListenerPortMatchModeExplicit,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw", SectionName: &sectionName},
-			},
-			listeners: []gatewayv1.Listener{
-				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
-			},
-			expected: singlePortVars,
-		},
-		{
-			name: "explicit mode: inject for port target",
-			mode: config.ListenerPortMatchModeExplicit,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw", Port: &parentPort},
-			},
+			name:     "explicit mode: inject for explicit target",
+			mode:     config.ListenerPortMatchModeExplicit,
+			explicit: true,
 			listeners: []gatewayv1.Listener{
 				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
 			},
@@ -154,9 +110,6 @@ func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
 		{
 			name: "explicit mode: no injection for multiple listener ports without explicit target",
 			mode: config.ListenerPortMatchModeExplicit,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw"},
-			},
 			listeners: []gatewayv1.Listener{
 				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9081)},
 				{Name: "http-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
@@ -164,11 +117,9 @@ func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
 			expected: nil,
 		},
 		{
-			name: "off mode: no injection even with sectionName target",
-			mode: config.ListenerPortMatchModeOff,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw", SectionName: &sectionName},
-			},
+			name:     "off mode: no injection even with explicit target",
+			mode:     config.ListenerPortMatchModeOff,
+			explicit: true,
 			listeners: []gatewayv1.Listener{
 				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
 			},
@@ -177,9 +128,6 @@ func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
 		{
 			name: "off mode: no injection for multiple listener ports",
 			mode: config.ListenerPortMatchModeOff,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw"},
-			},
 			listeners: []gatewayv1.Listener{
 				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9081)},
 				{Name: "http-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
@@ -189,11 +137,9 @@ func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
 		{
 			// An unset mode must not start injecting predicates behind the
 			// operator's back, so it resolves to off rather than to auto.
-			name: "empty mode normalizes to off",
-			mode: "",
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw", Port: &parentPort},
-			},
+			name:     "empty mode normalizes to off",
+			mode:     "",
+			explicit: true,
 			listeners: []gatewayv1.Listener{
 				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
 			},
@@ -205,22 +151,18 @@ func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
 			// var here adds no isolation and, worse, pins the route to the Gateway's
 			// declared port which need not equal APISIX's actual node_listen port,
 			// dropping every request to 404. So no server_port var must be emitted.
-			name: "auto mode: no injection when sectionName target listener has hostname",
-			mode: config.ListenerPortMatchModeAuto,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw", SectionName: &sectionName},
-			},
+			name:     "auto mode: no injection when explicit target listener has hostname",
+			mode:     config.ListenerPortMatchModeAuto,
+			explicit: true,
 			listeners: []gatewayv1.Listener{
 				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(80), Hostname: ptr.To(gatewayv1.Hostname("bar.com"))},
 			},
 			expected: nil,
 		},
 		{
-			name: "auto mode: no injection for same-port listeners differing by hostname",
-			mode: config.ListenerPortMatchModeAuto,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw", SectionName: &sectionName},
-			},
+			name:     "auto mode: no injection for same-port listeners differing by hostname",
+			mode:     config.ListenerPortMatchModeAuto,
+			explicit: true,
 			listeners: []gatewayv1.Listener{
 				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(80), Hostname: ptr.To(gatewayv1.Hostname("bar.com"))},
 				{Name: "http-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(80), Hostname: ptr.To(gatewayv1.Hostname("foo.bar.com"))},
@@ -232,11 +174,9 @@ func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
 			// emitted it must cover every targeted port - including the hostname
 			// listener's - or traffic arriving through the hostname listener is
 			// silently dropped. So the predicate lists both ports, not just 9080.
-			name: "explicit mode: mixed hostname and hostname-less listeners keep every targeted port",
-			mode: config.ListenerPortMatchModeExplicit,
-			parentRefs: []gatewayv1.ParentReference{
-				{Name: "gw", SectionName: &sectionName},
-			},
+			name:     "explicit mode: mixed hostname and hostname-less listeners keep every targeted port",
+			mode:     config.ListenerPortMatchModeExplicit,
+			explicit: true,
 			listeners: []gatewayv1.Listener{
 				{Name: "http-main", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(80), Hostname: ptr.To(gatewayv1.Hostname("bar.com"))},
 				{Name: "http-alt", Protocol: gatewayv1.HTTPProtocolType, Port: gatewayv1.PortNumber(9080)},
@@ -257,7 +197,7 @@ func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tctx := provider.NewDefaultTranslateContext(context.Background())
-			tctx.RouteParentRefs = tt.parentRefs
+			tctx.HasExplicitListenerMatch = tt.explicit
 			tctx.Listeners = tt.listeners
 
 			httpRoute := &gatewayv1.HTTPRoute{
@@ -398,6 +338,102 @@ func TestTranslateHTTPRouteUpstreamScheme(t *testing.T) {
 
 			assert.Equal(t, tt.wantScheme, result.Services[0].Upstream.Scheme)
 			assert.Equal(t, "10.0.0.1", result.Services[0].Upstream.Nodes[0].Host)
+		})
+	}
+}
+
+func TestTranslateHTTPRouteExternalNameAppProtocol(t *testing.T) {
+	tests := []struct {
+		name          string
+		appProtocol   string
+		wantScheme    string
+		wantWebsocket *bool
+	}{
+		{
+			name:          "ExternalName with wss appProtocol",
+			appProtocol:   internaltypes.AppProtocolWSS,
+			wantScheme:    apiv2.SchemeHTTPS,
+			wantWebsocket: ptr.To(true),
+		},
+		{
+			name:          "ExternalName with ws appProtocol",
+			appProtocol:   internaltypes.AppProtocolWS,
+			wantScheme:    apiv2.SchemeHTTP,
+			wantWebsocket: ptr.To(true),
+		},
+		{
+			name:        "ExternalName with http appProtocol",
+			appProtocol: internaltypes.AppProtocolHTTP,
+			wantScheme:  apiv2.SchemeHTTP,
+		},
+		{
+			name:        "ExternalName without appProtocol",
+			appProtocol: "",
+			wantScheme:  "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			translator := NewTranslator(logr.Discard(), "")
+			tctx := provider.NewDefaultTranslateContext(context.Background())
+
+			const (
+				namespace   = "default"
+				serviceName = "external-backend"
+				portNumber  = 5000
+			)
+
+			var appProtocol *string
+			if tt.appProtocol != "" {
+				appProtocol = ptr.To(tt.appProtocol)
+			}
+
+			serviceKey := types.NamespacedName{Namespace: namespace, Name: serviceName}
+			tctx.Services[serviceKey] = &corev1.Service{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      serviceName,
+					Namespace: namespace,
+				},
+				Spec: corev1.ServiceSpec{
+					Type:         corev1.ServiceTypeExternalName,
+					ExternalName: "example.com",
+					Ports: []corev1.ServicePort{{
+						Name:        "web",
+						Port:        portNumber,
+						AppProtocol: appProtocol,
+					}},
+				},
+			}
+
+			route := &gatewayv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "demo",
+					Namespace: namespace,
+				},
+				Spec: gatewayv1.HTTPRouteSpec{
+					Rules: []gatewayv1.HTTPRouteRule{{
+						BackendRefs: []gatewayv1.HTTPBackendRef{{
+							BackendRef: gatewayv1.BackendRef{
+								BackendObjectReference: gatewayv1.BackendObjectReference{
+									Name: gatewayv1.ObjectName(serviceName),
+									Port: ptr.To(gatewayv1.PortNumber(portNumber)),
+								},
+							},
+						}},
+					}},
+				},
+			}
+
+			result, err := translator.TranslateHTTPRoute(tctx, route)
+			require.NoError(t, err)
+			require.Len(t, result.Services, 1)
+			require.NotNil(t, result.Services[0].Upstream)
+			require.Len(t, result.Services[0].Routes, 1)
+
+			assert.Equal(t, tt.wantScheme, result.Services[0].Upstream.Scheme)
+			assert.Equal(t, "example.com", result.Services[0].Upstream.Nodes[0].Host)
+			assert.Equal(t, tt.wantWebsocket, result.Services[0].Routes[0].EnableWebsocket)
 		})
 	}
 }

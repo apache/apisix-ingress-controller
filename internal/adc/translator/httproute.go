@@ -423,6 +423,12 @@ func (t *Translator) translateBackendRef(tctx *provider.TranslateContext, ref ga
 		port := 80
 		if ref.Port != nil {
 			port = int(*ref.Port)
+			for _, p := range service.Spec.Ports {
+				if int(p.Port) == port {
+					protocol = ptr.Deref(p.AppProtocol, "")
+					break
+				}
+			}
 		}
 		return adctypes.UpstreamNodes{
 			{
@@ -742,7 +748,7 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 		// or when multiple listener ports need to be disambiguated. When it is added,
 		// match on every targeted listener port so a route attached to both a
 		// hostname-less and a hostname listener is not dropped on the hostname port.
-		if t.shouldInjectServerPortVars(tctx.RouteParentRefs, listenerPorts) {
+		if t.shouldInjectServerPortVars(tctx.HasExplicitListenerMatch, listenerPorts) {
 			matchPorts := allListenerPorts(tctx.Listeners)
 			for _, route := range routes {
 				addServerPortVars(route, matchPorts)

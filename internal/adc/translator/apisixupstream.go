@@ -315,6 +315,7 @@ func translateUpstreamActiveHealthCheck(config *apiv2.ActiveHealthCheck) (*adc.U
 		config.Type = apiv2.HealthCheckHTTP
 	}
 
+	active.Type = config.Type
 	active.Timeout = int(config.Timeout.Seconds())
 	active.Port = config.Port
 	active.Concurrency = config.Concurrency
@@ -357,6 +358,7 @@ func translateUpstreamPassiveHealthCheck(config *apiv2.PassiveHealthCheck) *adc.
 		config.Type = apiv2.HealthCheckHTTP
 	}
 
+	passive.Type = config.Type
 	if config.Healthy != nil {
 		passive.Healthy.Successes = config.Healthy.Successes
 		passive.Healthy.HTTPStatuses = config.Healthy.HTTPCodes
