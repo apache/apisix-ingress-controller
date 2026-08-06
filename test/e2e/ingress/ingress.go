@@ -787,9 +787,14 @@ spec:
 			}).
 				WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
 
+			// The preceding Not Found is also satisfied while the route is being
+			// rebuilt, so this must retry instead of asserting once.
 			By("request the route with the correct vars should be OK")
-			s.NewAPISIXClient().GET("/get").WithHost("example.com").
-				WithHeader("X-HRP-Name", "http-route-policy-0").Expect().Status(http.StatusOK)
+			Eventually(func() int {
+				return s.NewAPISIXClient().GET("/get").WithHost("example.com").
+					WithHeader("X-HRP-Name", "http-route-policy-0").Expect().Raw().StatusCode
+			}).
+				WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 
 			By("update the HTTPRoutePolicy")
 			err = s.CreateResourceFromStringWithNamespace(httpRoutePolicySpec1, s.Namespace())
@@ -803,8 +808,11 @@ spec:
 				WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
 
 			By("request with the new vars should be OK")
-			s.NewAPISIXClient().GET("/get").WithHost("example.com").
-				WithQuery("hrp_name", "http-route-policy-0").Expect().Status(http.StatusOK)
+			Eventually(func() int {
+				return s.NewAPISIXClient().GET("/get").WithHost("example.com").
+					WithQuery("hrp_name", "http-route-policy-0").Expect().Raw().StatusCode
+			}).
+				WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 
 			By("update the HTTPRoutePolicy's targetRef")
 			err = s.CreateResourceFromStringWithNamespace(httpRoutePolicySpec2, s.Namespace())
@@ -827,8 +835,11 @@ spec:
 				WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
 
 			By("request the route with the correct vars should be OK")
-			s.NewAPISIXClient().GET("/get").WithHost("example.com").
-				WithHeader("X-HRP-Name", "http-route-policy-0").Expect().Status(http.StatusOK)
+			Eventually(func() int {
+				return s.NewAPISIXClient().GET("/get").WithHost("example.com").
+					WithHeader("X-HRP-Name", "http-route-policy-0").Expect().Raw().StatusCode
+			}).
+				WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
 
 			By("apply conflict HTTPRoutePolicy")
 			err = s.CreateResourceFromStringWithNamespace(httpRoutePolicySpec3, s.Namespace())
