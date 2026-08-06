@@ -99,9 +99,11 @@ jobs:
       # server, including the CRD schemas themselves.
       - name: Apply the installer
         run: |
+          set -o pipefail
           kubectl apply --server-side -f dist/install.yaml
-          kubectl get crd -o name | grep apisix.apache.org \
-            | xargs -r kubectl wait --for=condition=Established --timeout=60s
+          crds=$(kubectl get crd -o name | grep 'apisix\.apache\.org$')
+          test -n "$crds"
+          echo "$crds" | xargs kubectl wait --for=condition=Established --timeout=60s
 
       # The samples are validated against the CRDs installed above, so a sample
       # that misses a required field or violates a CEL rule fails here.
