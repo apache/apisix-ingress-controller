@@ -91,6 +91,34 @@ func TestBuildService_HostsSet(t *testing.T) {
 	assert.Equal(t, []string{"example.com", "foo.com"}, service.Hosts)
 }
 
+func TestBuildService_HostsLowercased(t *testing.T) {
+	translator := NewTranslator(logr.Discard(), "")
+
+	ar := &apiv2.ApisixRoute{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-route",
+			Namespace: "default",
+		},
+	}
+
+	rule := apiv2.ApisixRouteHTTP{
+		Name: "rule1",
+		Match: apiv2.ApisixRouteHTTPMatch{
+			Hosts: []string{"MixedCase.example.com", "*.UPPER.example.com"},
+			Paths: []string{"/api/*"},
+		},
+	}
+
+	service := translator.buildService(ar, rule, 0)
+
+	// APISIX matches service hosts against nginx's $host, which is always lowercase,
+	// and does not normalize service-level hosts itself.
+	assert.Equal(t, []string{"mixedcase.example.com", "*.upper.example.com"}, service.Hosts)
+
+	rule.Match.Hosts = nil
+	assert.Nil(t, translator.buildService(ar, rule, 0).Hosts)
+}
+
 func TestBuildRoute_MetadataLabelsDoNotOverwriteControllerLabels(t *testing.T) {
 	translator := NewTranslator(logr.Discard(), "")
 

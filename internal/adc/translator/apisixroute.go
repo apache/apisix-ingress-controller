@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -304,9 +305,24 @@ func (t *Translator) buildService(ar *apiv2.ApisixRoute, rule apiv2.ApisixRouteH
 	service.Name = adc.ComposeServiceNameWithRule(ar.Namespace, ar.Name, fmt.Sprintf("%d", ruleIndex))
 	service.ID = id.GenID(service.Name)
 	service.Labels = label.GenLabel(ar)
-	service.Hosts = rule.Match.Hosts
+	service.Hosts = normalizeHosts(rule.Match.Hosts)
 	service.Upstream = adc.NewDefaultUpstream()
 	return service
+}
+
+// normalizeHosts lowercases the hosts. Hostnames are case-insensitive and APISIX matches them
+// against nginx's $host, which is always lowercase. APISIX normalizes route-level hosts itself
+// but leaves service-level hosts verbatim, so an uppercase character in a host would put the
+// rule in a bucket no request can ever reach.
+func normalizeHosts(hosts []string) []string {
+	if len(hosts) == 0 {
+		return nil
+	}
+	normalized := make([]string, 0, len(hosts))
+	for _, host := range hosts {
+		normalized = append(normalized, strings.ToLower(host))
+	}
+	return normalized
 }
 
 func getPortFromService(svc *corev1.Service, backendSvcPort intstr.IntOrString) (int32, error) {
