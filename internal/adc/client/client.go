@@ -129,12 +129,13 @@ func isConfVersionRejection(err error) bool {
 const confVersionField = "conf_version"
 
 type Task struct {
-	Key           types.NamespacedNameKind
-	Name          string
-	Labels        map[string]string
-	Configs       map[types.NamespacedNameKind]adctypes.Config
-	ResourceTypes []string
-	Resources     *adctypes.Resources
+	Key                 types.NamespacedNameKind
+	Name                string
+	Labels              map[string]string
+	Configs             map[types.NamespacedNameKind]adctypes.Config
+	ResourceTypes       []string
+	ExcludeResourceType []string
+	Resources           *adctypes.Resources
 }
 
 // MarshalLog implements logr.Marshaler so logging a Task never dumps the
@@ -198,10 +199,11 @@ func (c *Client) applySync(ctx context.Context, args Task, delta StoreDelta) err
 
 	if len(delta.Deleted) > 0 {
 		if err := c.sync(ctx, Task{
-			Name:          args.Name,
-			Labels:        args.Labels,
-			ResourceTypes: args.ResourceTypes,
-			Configs:       delta.Deleted,
+			Name:                args.Name,
+			Labels:              args.Labels,
+			ResourceTypes:       args.ResourceTypes,
+			ExcludeResourceType: args.ExcludeResourceType,
+			Configs:             delta.Deleted,
 		}); err != nil {
 			c.log.Error(err, "failed to sync deleted configs", "args", args, "delta", delta)
 		}
@@ -209,11 +211,12 @@ func (c *Client) applySync(ctx context.Context, args Task, delta StoreDelta) err
 
 	if len(delta.Applied) > 0 {
 		return c.sync(ctx, Task{
-			Name:          args.Name,
-			Labels:        args.Labels,
-			ResourceTypes: args.ResourceTypes,
-			Configs:       delta.Applied,
-			Resources:     args.Resources,
+			Name:                args.Name,
+			Labels:              args.Labels,
+			ResourceTypes:       args.ResourceTypes,
+			ExcludeResourceType: args.ExcludeResourceType,
+			Configs:             delta.Applied,
+			Resources:           args.Resources,
 		})
 	}
 	return nil
@@ -259,7 +262,7 @@ func (c *Client) Validate(ctx context.Context, task Task) error {
 	pkgmetrics.RecordFileIODuration("prepare_sync_file", adctypes.StatusSuccess, time.Since(fileIOStart).Seconds())
 	defer cleanup()
 
-	args2 := BuildADCExecuteArgs(syncFilePath, task.Labels, task.ResourceTypes)
+	args2 := BuildADCExecuteArgs(syncFilePath, task.Labels, task.ResourceTypes, task.ExcludeResourceType)
 
 	var errs types.ADCValidationErrors
 	for _, config := range task.Configs {
@@ -282,7 +285,7 @@ func (c *Client) Validate(ctx context.Context, task Task) error {
 	return nil
 }
 
-func (c *Client) Sync(ctx context.Context) (map[string]types.ADCExecutionErrors, error) {
+func (c *Client) Sync(ctx context.Context, excludeResourceType []string) (map[string]types.ADCExecutionErrors, error) {
 	c.syncMu.Lock()
 	defer c.syncMu.Unlock()
 	c.log.Info("syncing all resources")
@@ -316,7 +319,8 @@ func (c *Client) Sync(ctx context.Context) (map[string]types.ADCExecutionErrors,
 			Configs: map[types.NamespacedNameKind]adctypes.Config{
 				{}: config,
 			},
-			Resources: resources,
+			ExcludeResourceType: excludeResourceType,
+			Resources:           resources,
 		}); err != nil {
 			c.log.Error(err, "failed to sync resources", "name", name)
 			failedConfigs = append(failedConfigs, name)
@@ -408,7 +412,7 @@ func (c *Client) sync(ctx context.Context, task Task) error {
 	defer cleanup()
 	c.log.V(1).Info("prepared sync file", "path", syncFilePath)
 
-	args := BuildADCExecuteArgs(syncFilePath, task.Labels, task.ResourceTypes)
+	args := BuildADCExecuteArgs(syncFilePath, task.Labels, task.ResourceTypes, task.ExcludeResourceType)
 
 	for _, config := range task.Configs {
 		// Record sync duration for each config
