@@ -47,7 +47,7 @@ var _ = Describe("Test SSL/TLS Conflict Detection", Label("webhook"), func() {
 	})
 
 	Context("ApisixTls conflict detection", func() {
-		It("should reject ApisixTls with conflicting certificate for same host", func() {
+		It("should warn about ApisixTls with conflicting certificate for same host", func() {
 			host := "conflict.example.com"
 			secretA := "tls-cert-a"
 			secretB := "tls-cert-b"
@@ -90,11 +90,11 @@ spec:
     namespace: %s
 `, s.Namespace(), s.Namespace(), host, secretB, s.Namespace())
 			Eventually(func(g Gomega) {
-				err = s.CreateResourceFromString(tlsBYAML)
-				g.Expect(err).Should(HaveOccurred(), "expecting conflict when creating ApisixTls B")
-				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-				g.Expect(err.Error()).To(ContainSubstring(host))
-				g.Expect(err.Error()).To(ContainSubstring("ApisixTls"))
+				output, err := s.CreateResourceFromStringAndGetOutput(tlsBYAML)
+				g.Expect(err).NotTo(HaveOccurred(), "overlap should be admitted and reported as a warning")
+				g.Expect(output).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(output).To(ContainSubstring(host))
+				g.Expect(output).To(ContainSubstring("ApisixTls"))
 			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 
@@ -146,7 +146,7 @@ spec:
 	})
 
 	Context("Gateway and ApisixTls conflict detection", func() {
-		It("should reject Gateway with conflicting certificate against existing ApisixTls", func() {
+		It("should warn about Gateway with conflicting certificate against existing ApisixTls", func() {
 			host := "gateway-vs-tls.example.com"
 			secretA := "gateway-cert-a"
 			secretB := "gateway-cert-b"
@@ -199,10 +199,10 @@ spec:
       name: apisix-proxy-config
 `, s.Namespace(), s.Namespace(), hostname, secretB)
 			Eventually(func(g Gomega) {
-				err = s.CreateResourceFromString(gatewayYAML)
-				g.Expect(err).Should(HaveOccurred(), "expecting conflict when creating Gateway")
-				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-				g.Expect(err.Error()).To(ContainSubstring(host))
+				output, err := s.CreateResourceFromStringAndGetOutput(gatewayYAML)
+				g.Expect(err).NotTo(HaveOccurred(), "overlap should be admitted and reported as a warning")
+				g.Expect(output).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(output).To(ContainSubstring(host))
 			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 
@@ -262,7 +262,7 @@ spec:
 			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 
-		It("should reject ApisixTls when Gateway without hostname uses different certificate", func() {
+		It("should warn about ApisixTls when Gateway without hostname uses different certificate", func() {
 			host := "gateway-no-host-conflict.example.com"
 			secretA := "gateway-no-host-cert-a"
 			secretB := "gateway-no-host-cert-b"
@@ -313,16 +313,16 @@ spec:
     namespace: %s
 `, s.Namespace(), s.Namespace(), host, secretB, s.Namespace())
 			Eventually(func(g Gomega) {
-				err = s.CreateResourceFromString(tlsYAML)
-				g.Expect(err).Should(HaveOccurred(), "expecting conflict when creating ApisixTls without hostname on existing Gateway")
-				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-				g.Expect(err.Error()).To(ContainSubstring(host))
+				output, err := s.CreateResourceFromStringAndGetOutput(tlsYAML)
+				g.Expect(err).NotTo(HaveOccurred(), "overlap should be admitted and reported as a warning")
+				g.Expect(output).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(output).To(ContainSubstring(host))
 			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 	})
 
 	Context("Gateway self-conflict detection", func() {
-		It("should reject Gateway with multiple listeners using different certificates for same host", func() {
+		It("should warn about Gateway with multiple listeners using different certificates for same host", func() {
 			host := "self-conflict.example.com"
 			secretA := "gateway-self-cert-a"
 			secretB := "gateway-self-cert-b"
@@ -365,16 +365,16 @@ spec:
       name: apisix-proxy-config
 `, s.Namespace(), s.Namespace(), hostname, secretA, hostname, secretB)
 			Eventually(func(g Gomega) {
-				err := s.CreateResourceFromString(gatewayYAML)
-				g.Expect(err).Should(HaveOccurred(), "expecting self-conflict in Gateway")
-				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-				g.Expect(err.Error()).To(ContainSubstring(host))
+				output, err := s.CreateResourceFromStringAndGetOutput(gatewayYAML)
+				g.Expect(err).NotTo(HaveOccurred(), "overlap should be admitted and reported as a warning")
+				g.Expect(output).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(output).To(ContainSubstring(host))
 			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 	})
 
 	Context("Ingress conflict detection", func() {
-		It("should reject Ingress with conflicting certificate in its own TLS config", func() {
+		It("should warn about Ingress with conflicting certificate in its own TLS config", func() {
 			host := "ingress-self-conflict.example.com"
 			secretA := "ingress-self-cert-a"
 			secretB := "ingress-self-cert-b"
@@ -429,14 +429,14 @@ spec:
               number: 80
 `, s.Namespace(), s.Namespace(), host, secretA, host, secretB, host)
 			Eventually(func(g Gomega) {
-				err = s.CreateResourceFromString(ingressYAML)
-				g.Expect(err).Should(HaveOccurred(), "expecting self-conflict in Ingress")
-				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-				g.Expect(err.Error()).To(ContainSubstring(host))
+				output, err := s.CreateResourceFromStringAndGetOutput(ingressYAML)
+				g.Expect(err).NotTo(HaveOccurred(), "overlap should be admitted and reported as a warning")
+				g.Expect(output).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(output).To(ContainSubstring(host))
 			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 
-		It("should reject Ingress with conflicting certificate against existing ApisixTls", func() {
+		It("should warn about Ingress with conflicting certificate against existing ApisixTls", func() {
 			host := "ingress-vs-tls.example.com"
 			secretA := "ingress-cert-a"
 			secretB := "ingress-cert-b"
@@ -506,10 +506,10 @@ spec:
               number: 80
 `, s.Namespace(), s.Namespace(), host, secretB, host)
 			Eventually(func(g Gomega) {
-				err = s.CreateResourceFromString(ingressYAML)
-				g.Expect(err).Should(HaveOccurred(), "expecting conflict when creating Ingress")
-				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-				g.Expect(err.Error()).To(ContainSubstring(host))
+				output, err := s.CreateResourceFromStringAndGetOutput(ingressYAML)
+				g.Expect(err).NotTo(HaveOccurred(), "overlap should be admitted and reported as a warning")
+				g.Expect(output).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(output).To(ContainSubstring(host))
 			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 
@@ -596,7 +596,7 @@ spec:
 			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 
-		It("should reject Ingress when Gateway without hostname uses different certificate", func() {
+		It("should warn about Ingress when Gateway without hostname uses different certificate", func() {
 			host := "gateway-ingress-no-host-conflict.example.com"
 			secretA := "gateway-ingress-no-host-cert-a"
 			secretB := "gateway-ingress-no-host-cert-b"
@@ -671,16 +671,16 @@ spec:
               number: 80
 `, s.Namespace(), s.Namespace(), secretB)
 			Eventually(func(g Gomega) {
-				err = s.CreateResourceFromString(ingressYAML)
-				g.Expect(err).Should(HaveOccurred(), "expecting conflict when creating Ingress without hostname")
-				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-				g.Expect(err.Error()).To(ContainSubstring(host))
+				output, err := s.CreateResourceFromStringAndGetOutput(ingressYAML)
+				g.Expect(err).NotTo(HaveOccurred(), "overlap should be admitted and reported as a warning")
+				g.Expect(output).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(output).To(ContainSubstring(host))
 			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 	})
 
 	Context("Default IngressClass conflict detection", func() {
-		It("should reject Ingress without explicit class when default class uses a different certificate", func() {
+		It("should warn about Ingress without explicit class when default class uses a different certificate", func() {
 			host := "default-ingress-conflict.example.com"
 			secretA := "default-ingress-cert-a"
 			secretB := "default-ingress-cert-b"
@@ -779,14 +779,14 @@ spec:
               number: 80
 `, s.Namespace(), host, secretB, host)
 			Eventually(func(g Gomega) {
-				err = s.CreateResourceFromString(ingressBYAML)
-				g.Expect(err).Should(HaveOccurred(), "expecting conflict when creating second Ingress")
-				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-				g.Expect(err.Error()).To(ContainSubstring(host))
+				output, err := s.CreateResourceFromStringAndGetOutput(ingressBYAML)
+				g.Expect(err).NotTo(HaveOccurred(), "overlap should be admitted and reported as a warning")
+				g.Expect(output).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(output).To(ContainSubstring(host))
 			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 
-		It("should reject ApisixTls without explicit class when default class uses a different certificate", func() {
+		It("should warn about ApisixTls without explicit class when default class uses a different certificate", func() {
 			host := "default-tls-conflict.example.com"
 			secretA := "default-tls-cert-a"
 			secretB := "default-tls-cert-b"
@@ -848,16 +848,16 @@ spec:
     namespace: %s
 `, s.Namespace(), host, secretB, s.Namespace())
 			Eventually(func(g Gomega) {
-				err = s.CreateResourceFromString(tlsBYAML)
-				g.Expect(err).Should(HaveOccurred(), "expecting conflict when creating second ApisixTls")
-				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-				g.Expect(err.Error()).To(ContainSubstring(host))
+				output, err := s.CreateResourceFromStringAndGetOutput(tlsBYAML)
+				g.Expect(err).NotTo(HaveOccurred(), "overlap should be admitted and reported as a warning")
+				g.Expect(output).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(output).To(ContainSubstring(host))
 			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 	})
 
 	Context("Update scenario conflict detection", func() {
-		It("should reject Ingress update that switches to a conflicting certificate", func() {
+		It("should warn about Ingress update that switches to a conflicting certificate", func() {
 			host := "ingress-update-conflict.example.com"
 			secretA := "ingress-update-cert-a"
 			secretB := "ingress-update-cert-b"
@@ -955,14 +955,14 @@ spec:
               number: 80
 `, s.Namespace(), s.Namespace(), host, secretB, host)
 			Eventually(func(g Gomega) {
-				err = s.CreateResourceFromString(ingressUpdatedYAML)
-				g.Expect(err).Should(HaveOccurred(), "expecting conflict when updating Ingress certificate")
-				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-				g.Expect(err.Error()).To(ContainSubstring(host))
+				output, err := s.CreateResourceFromStringAndGetOutput(ingressUpdatedYAML)
+				g.Expect(err).NotTo(HaveOccurred(), "overlap should be admitted and reported as a warning")
+				g.Expect(output).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(output).To(ContainSubstring(host))
 			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 
-		It("should reject Gateway update that switches to a conflicting certificate", func() {
+		It("should warn about Gateway update that switches to a conflicting certificate", func() {
 			host := "gateway-update-conflict.example.com"
 			secretA := "gateway-update-cert-a"
 			secretB := "gateway-update-cert-b"
@@ -1041,10 +1041,10 @@ spec:
       name: apisix-proxy-config
 `, s.Namespace(), s.Namespace(), host, secretB)
 			Eventually(func(g Gomega) {
-				err = s.CreateResourceFromString(gatewayUpdatedYAML)
-				g.Expect(err).Should(HaveOccurred(), "expecting conflict when updating Gateway certificate")
-				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
-				g.Expect(err.Error()).To(ContainSubstring(host))
+				output, err := s.CreateResourceFromStringAndGetOutput(gatewayUpdatedYAML)
+				g.Expect(err).NotTo(HaveOccurred(), "overlap should be admitted and reported as a warning")
+				g.Expect(output).To(ContainSubstring("SSL configuration conflicts detected"))
+				g.Expect(output).To(ContainSubstring(host))
 			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 	})
@@ -1105,9 +1105,9 @@ spec:
     namespace: %s
 `, s.Namespace(), s.Namespace(), host, secretB, s.Namespace())
 			Eventually(func(g Gomega) {
-				err = s.CreateResourceFromString(tlsYAML)
-				g.Expect(err).Should(HaveOccurred(), "expecting conflict when creating ApisixTls with different cert")
-				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+				output, err := s.CreateResourceFromStringAndGetOutput(tlsYAML)
+				g.Expect(err).NotTo(HaveOccurred(), "overlap should be admitted and reported as a warning")
+				g.Expect(output).To(ContainSubstring("SSL configuration conflicts detected"))
 			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 
 			By("creating a backend service")
@@ -1153,9 +1153,9 @@ spec:
               number: 80
 `, s.Namespace(), s.Namespace(), host, secretC, host)
 			Eventually(func(g Gomega) {
-				err = s.CreateResourceFromString(ingressYAML)
-				g.Expect(err).Should(HaveOccurred(), "expecting conflict when creating Ingress with different cert")
-				g.Expect(err.Error()).To(ContainSubstring("SSL configuration conflicts detected"))
+				output, err := s.CreateResourceFromStringAndGetOutput(ingressYAML)
+				g.Expect(err).NotTo(HaveOccurred(), "overlap should be admitted and reported as a warning")
+				g.Expect(output).To(ContainSubstring("SSL configuration conflicts detected"))
 			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 	})

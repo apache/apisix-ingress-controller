@@ -50,6 +50,14 @@ func (t *Translator) TranslateApisixTls(tctx *provider.TranslateContext, tls *ap
 		return nil, err
 	}
 
+	// APISIX serves the cert regardless of SAN, so this is advisory: warn when a
+	// declared host isn't covered by the cert SANs (clients may reject it).
+	if uncovered, sans := uncoveredSNIHosts(cert, tls.Spec.Hosts); len(uncovered) > 0 {
+		t.Log.Info("ApisixTls certificate does not cover all declared SNI hosts",
+			"namespace", tls.Namespace, "name", tls.Name,
+			"uncoveredHosts", uncovered, "certificateSANs", sans)
+	}
+
 	// Convert hosts to strings
 	snis := make([]string, len(tls.Spec.Hosts))
 	for i, host := range tls.Spec.Hosts {
@@ -96,4 +104,29 @@ func (t *Translator) TranslateApisixTls(tctx *provider.TranslateContext, tls *ap
 
 	result.SSL = append(result.SSL, ssl)
 	return result, nil
+}
+
+// uncoveredSNIHosts returns the declared hosts not covered by any DNS SAN in the
+// certificate (wildcard-aware), plus the cert SANs for logging. Returns nothing
+// when the cert declares no DNS SANs or can't be parsed, since coverage can't be
+// judged there.
+func uncoveredSNIHosts(cert []byte, hosts []apiv2.HostType) (uncovered []string, sans []string) {
+	sans, err := sslutils.ExtractHostsFromCertificate(cert)
+	if err != nil || len(sans) == 0 {
+		return nil, nil
+	}
+	for _, h := range hosts {
+		host := string(h)
+		covered := false
+		for _, san := range sans {
+			if sslutils.HostCoveredBy(host, san) {
+				covered = true
+				break
+			}
+		}
+		if !covered {
+			uncovered = append(uncovered, host)
+		}
+	}
+	return uncovered, sans
 }

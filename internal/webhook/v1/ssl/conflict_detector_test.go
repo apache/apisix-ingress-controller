@@ -31,7 +31,9 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
@@ -383,6 +385,208 @@ func TestConflictDetectorDetectsSelfConflict(t *testing.T) {
 	expectedRef := fmt.Sprintf("Gateway/%s/%s", gateway.Namespace, gateway.Name)
 	if conflict.ConflictingResource != expectedRef {
 		t.Fatalf("unexpected conflicting resource: %s, expected %s", conflict.ConflictingResource, expectedRef)
+	}
+}
+
+// newApisixTls builds an ApisixTls bound to the shared testIngressClass.
+func newApisixTls(name, uid string, hosts []string, secret *corev1.Secret) *apiv2.ApisixTls {
+	hostTypes := make([]apiv2.HostType, 0, len(hosts))
+	for _, h := range hosts {
+		hostTypes = append(hostTypes, apiv2.HostType(h))
+	}
+	return &apiv2.ApisixTls{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: testNamespace,
+			UID:       types.UID(uid),
+		},
+		Spec: apiv2.ApisixTlsSpec{
+			IngressClassName: testIngressClass,
+			Hosts:            hostTypes,
+			Secret: apiv2.ApisixSecret{
+				Name:      secret.Name,
+				Namespace: secret.Namespace,
+			},
+		},
+	}
+}
+
+func buildConflictClient(t *testing.T, objs ...client.Object) client.Client {
+	t.Helper()
+	scheme := buildScheme(t)
+	return fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithIndex(&gatewayv1.Gateway{}, indexer.ParametersRef, indexer.GatewayParametersRefIndexFunc).
+		WithIndex(&gatewayv1.Gateway{}, indexer.TLSHostIndexRef, indexer.GatewayTLSHostIndexFunc).
+		WithIndex(&networkingv1.IngressClass{}, indexer.IngressClassParametersRef, indexer.IngressClassParametersRefIndexFunc).
+		WithIndex(&networkingv1.Ingress{}, indexer.IngressClassRef, indexer.IngressClassRefIndexFunc).
+		WithIndex(&networkingv1.Ingress{}, indexer.TLSHostIndexRef, indexer.IngressTLSHostIndexFunc).
+		WithIndex(&apiv2.ApisixTls{}, indexer.IngressClassRef, indexer.ApisixTlsIngressClassIndexFunc).
+		WithIndex(&apiv2.ApisixTls{}, indexer.TLSHostIndexRef, indexer.ApisixTlsHostIndexFunc).
+		WithObjects(objs...).
+		Build()
+}
+
+func sharedIngressClassFixtures() (*v1alpha1.GatewayProxy, *networkingv1.IngressClass) {
+	gatewayProxy := &v1alpha1.GatewayProxy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "demo-gp",
+			Namespace: testNamespace,
+			UID:       "gatewayproxy-uid-wildcard",
+		},
+	}
+	ingressClass := &networkingv1.IngressClass{
+		ObjectMeta: metav1.ObjectMeta{Name: testIngressClass},
+		Spec: networkingv1.IngressClassSpec{
+			Controller: config.ControllerConfig.ControllerName,
+			Parameters: &networkingv1.IngressClassParametersReference{
+				APIGroup:  ptr.To(v1alpha1.GroupVersion.Group),
+				Kind:      internaltypes.KindGatewayProxy,
+				Name:      gatewayProxy.Name,
+				Namespace: ptr.To(testNamespace),
+			},
+		},
+	}
+	return gatewayProxy, ingressClass
+}
+
+// TestConflictDetectorDetectsExactOverlappingWildcard verifies an incoming
+// exact host conflicts with an existing covering wildcard, even though the two
+// are indexed under different keys.
+func TestConflictDetectorDetectsExactOverlappingWildcard(t *testing.T) {
+	existingSecret := newTLSSecret(t, "existing-cert", []string{"*.example.com"})
+	incomingSecret := newTLSSecret(t, "incoming-cert", []string{"app.example.com"})
+	gatewayProxy, ingressClass := sharedIngressClassFixtures()
+
+	existing := newApisixTls("existing", "existing-uid", []string{"*.example.com"}, existingSecret)
+	incoming := newApisixTls("incoming", "incoming-uid", []string{"app.example.com"}, incomingSecret)
+
+	c := buildConflictClient(t, existingSecret, incomingSecret, gatewayProxy, ingressClass, existing)
+	detector := NewConflictDetector(c)
+
+	conflicts := detector.DetectConflicts(context.Background(), incoming)
+	if len(conflicts) != 1 {
+		t.Fatalf("expected 1 conflict, got %d: %+v", len(conflicts), conflicts)
+	}
+	if conflicts[0].Host != "app.example.com" {
+		t.Fatalf("unexpected host: %s", conflicts[0].Host)
+	}
+	expectedRef := fmt.Sprintf("ApisixTls/%s/%s", existing.Namespace, existing.Name)
+	if conflicts[0].ConflictingResource != expectedRef {
+		t.Fatalf("unexpected conflicting resource: %s", conflicts[0].ConflictingResource)
+	}
+}
+
+// TestConflictDetectorDetectsWildcardOverlappingExact verifies the inverse: an
+// incoming wildcard conflicts with an existing exact host it covers.
+func TestConflictDetectorDetectsWildcardOverlappingExact(t *testing.T) {
+	existingSecret := newTLSSecret(t, "existing-cert", []string{"app.example.com"})
+	incomingSecret := newTLSSecret(t, "incoming-cert", []string{"*.example.com"})
+	gatewayProxy, ingressClass := sharedIngressClassFixtures()
+
+	existing := newApisixTls("existing", "existing-uid", []string{"app.example.com"}, existingSecret)
+	incoming := newApisixTls("incoming", "incoming-uid", []string{"*.example.com"}, incomingSecret)
+
+	c := buildConflictClient(t, existingSecret, incomingSecret, gatewayProxy, ingressClass, existing)
+	detector := NewConflictDetector(c)
+
+	conflicts := detector.DetectConflicts(context.Background(), incoming)
+	if len(conflicts) != 1 {
+		t.Fatalf("expected 1 conflict, got %d: %+v", len(conflicts), conflicts)
+	}
+	if conflicts[0].Host != "*.example.com" {
+		t.Fatalf("unexpected host: %s", conflicts[0].Host)
+	}
+}
+
+// TestConflictDetectorAllowsNonOverlappingWildcard guards against false
+// positives: a wildcard and an unrelated exact host must not conflict.
+func TestConflictDetectorAllowsNonOverlappingWildcard(t *testing.T) {
+	existingSecret := newTLSSecret(t, "existing-cert", []string{"a.b.example.com"})
+	incomingSecret := newTLSSecret(t, "incoming-cert", []string{"*.example.com"})
+	gatewayProxy, ingressClass := sharedIngressClassFixtures()
+
+	existing := newApisixTls("existing", "existing-uid", []string{"a.b.example.com"}, existingSecret)
+	incoming := newApisixTls("incoming", "incoming-uid", []string{"*.example.com"}, incomingSecret)
+
+	c := buildConflictClient(t, existingSecret, incomingSecret, gatewayProxy, ingressClass, existing)
+	detector := NewConflictDetector(c)
+
+	conflicts := detector.DetectConflicts(context.Background(), incoming)
+	if len(conflicts) != 0 {
+		t.Fatalf("expected no conflict (multi-label host not covered by wildcard), got %+v", conflicts)
+	}
+}
+
+// newApisixTlsMTLS builds an ApisixTls with an optional mTLS client config.
+func newApisixTlsMTLS(name, uid string, hosts []string, secret *corev1.Secret, client *apiv2.ApisixMutualTlsClientConfig) *apiv2.ApisixTls {
+	tls := newApisixTls(name, uid, hosts, secret)
+	tls.Spec.Client = client
+	return tls
+}
+
+// TestConflictDetectorDetectsDifferingMTLS verifies an incoming resource with
+// the same host and server cert but no mTLS conflicts with an existing resource
+// that enforces mTLS.
+func TestConflictDetectorDetectsDifferingMTLS(t *testing.T) {
+	sharedSecret := newTLSSecret(t, "shared-cert", []string{"api.example.com"})
+	gatewayProxy, ingressClass := sharedIngressClassFixtures()
+
+	mtls := &apiv2.ApisixMutualTlsClientConfig{
+		CASecret: apiv2.ApisixSecret{Name: "client-ca", Namespace: testNamespace},
+		Depth:    1,
+	}
+	existing := newApisixTlsMTLS("existing", "existing-uid", []string{"api.example.com"}, sharedSecret, mtls)
+	incoming := newApisixTlsMTLS("incoming", "incoming-uid", []string{"api.example.com"}, sharedSecret, nil)
+
+	c := buildConflictClient(t, sharedSecret, gatewayProxy, ingressClass, existing)
+	detector := NewConflictDetector(c)
+
+	conflicts := detector.DetectConflicts(context.Background(), incoming)
+	if len(conflicts) != 1 {
+		t.Fatalf("expected 1 conflict (differing mTLS config), got %d: %+v", len(conflicts), conflicts)
+	}
+	if conflicts[0].Host != "api.example.com" {
+		t.Fatalf("unexpected host: %s", conflicts[0].Host)
+	}
+}
+
+// TestConflictDetectorAllowsIdenticalMTLS guards against false positives: same
+// host, same server cert, same mTLS client config must not conflict.
+func TestConflictDetectorAllowsIdenticalMTLS(t *testing.T) {
+	sharedSecret := newTLSSecret(t, "shared-cert", []string{"api.example.com"})
+	gatewayProxy, ingressClass := sharedIngressClassFixtures()
+
+	mtls := func() *apiv2.ApisixMutualTlsClientConfig {
+		return &apiv2.ApisixMutualTlsClientConfig{
+			CASecret: apiv2.ApisixSecret{Name: "client-ca", Namespace: testNamespace},
+			Depth:    1,
+		}
+	}
+	existing := newApisixTlsMTLS("existing", "existing-uid", []string{"api.example.com"}, sharedSecret, mtls())
+	incoming := newApisixTlsMTLS("incoming", "incoming-uid", []string{"api.example.com"}, sharedSecret, mtls())
+
+	c := buildConflictClient(t, sharedSecret, gatewayProxy, ingressClass, existing)
+	detector := NewConflictDetector(c)
+
+	conflicts := detector.DetectConflicts(context.Background(), incoming)
+	if len(conflicts) != 0 {
+		t.Fatalf("expected no conflict (identical mTLS config), got %+v", conflicts)
+	}
+}
+
+// TestClientConfigHashInjectiveOnCommaRegex guards the skip-regex encoding:
+// {"a,b"} and {"a","b"} are different configs and must not hash alike.
+func TestClientConfigHashInjectiveOnCommaRegex(t *testing.T) {
+	ca := apiv2.ApisixSecret{Name: "client-ca", Namespace: testNamespace}
+	single := clientConfigHash(&apiv2.ApisixMutualTlsClientConfig{
+		CASecret: ca, SkipMTLSUriRegex: []string{"a,b"},
+	})
+	split := clientConfigHash(&apiv2.ApisixMutualTlsClientConfig{
+		CASecret: ca, SkipMTLSUriRegex: []string{"a", "b"},
+	})
+	if single == split {
+		t.Fatalf("distinct skip-regex configs collided: %s", single)
 	}
 }
 
