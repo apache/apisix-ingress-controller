@@ -104,7 +104,7 @@ func TestBuildService_HostsLowercased(t *testing.T) {
 	rule := apiv2.ApisixRouteHTTP{
 		Name: "rule1",
 		Match: apiv2.ApisixRouteHTTPMatch{
-			Hosts: []string{"MixedCase.example.com", "*.UPPER.example.com"},
+			Hosts: []string{"MixedCase.example.com", "*.UPPER.example.com", "mixedcase.example.com"},
 			Paths: []string{"/api/*"},
 		},
 	}
@@ -112,7 +112,8 @@ func TestBuildService_HostsLowercased(t *testing.T) {
 	service := translator.buildService(ar, rule, 0)
 
 	// APISIX matches service hosts against nginx's $host, which is always lowercase,
-	// and does not normalize service-level hosts itself.
+	// and does not normalize service-level hosts itself. Entries that collide once
+	// lowercased collapse: the APISIX service schema requires unique hosts.
 	assert.Equal(t, []string{"mixedcase.example.com", "*.upper.example.com"}, service.Hosts)
 
 	rule.Match.Hosts = nil
