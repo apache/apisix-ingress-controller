@@ -37,7 +37,10 @@ func (t *Translator) TranslateApisixGlobalRule(tctx *provider.TranslateContext, 
 			continue
 		}
 
-		pluginConfig := t.buildPluginConfig(plugin, obj.Namespace, tctx.Secrets)
+		pluginConfig, err := t.buildPluginConfig(plugin, obj.Namespace, tctx.Secrets)
+		if err != nil {
+			return nil, err
+		}
 		plugins[plugin.Name] = pluginConfig
 	}
 
