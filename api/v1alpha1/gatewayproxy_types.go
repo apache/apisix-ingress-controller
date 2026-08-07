@@ -133,7 +133,10 @@ type ControlPlaneProvider struct {
 
 	Service *ProviderService `json:"service,omitempty"`
 	// TlsVerify specifies whether to verify the TLS certificate of the control plane.
+	// Defaults to true. Setting it to false disables certificate verification and
+	// exposes the AdminKey to man-in-the-middle attacks over https endpoints.
 	// +optional
+	// +kubebuilder:default=true
 	TlsVerify *bool `json:"tlsVerify,omitempty"`
 
 	// Auth specifies the authentication configuration.

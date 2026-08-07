@@ -147,8 +147,11 @@ spec:
                         - name
                         type: object
                       tlsVerify:
-                        description: TlsVerify specifies whether to verify the TLS
-                          certificate of the control plane.
+                        default: true
+                        description: |-
+                          TlsVerify specifies whether to verify the TLS certificate of the control plane.
+                          Defaults to true. Setting it to false disables certificate verification and
+                          exposes the AdminKey to man-in-the-middle attacks over https endpoints.
                         type: boolean
                     required:
                     - auth
