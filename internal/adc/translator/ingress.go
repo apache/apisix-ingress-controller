@@ -53,6 +53,7 @@ func (t *Translator) translateIngressTLS(namespace, name string, tlsIndex int, i
 		}
 		hosts = append(hosts, certHosts...)
 	}
+	hosts = sslutils.NormalizeHosts(hosts)
 	if len(hosts) == 0 {
 		return nil, fmt.Errorf("no hosts found in ingress TLS")
 	}
@@ -101,6 +102,7 @@ func (t *Translator) TranslateIngress(
 		if rule.Host != "" {
 			hosts = append(hosts, rule.Host)
 		}
+		hosts = sslutils.NormalizeHosts(hosts)
 
 		for j, path := range rule.HTTP.Paths {
 			index := fmt.Sprintf("%d-%d", i, j)

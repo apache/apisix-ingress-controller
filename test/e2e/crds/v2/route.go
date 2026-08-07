@@ -181,6 +181,40 @@ spec:
 			It("Basic: with named service port and granularity service", func() {
 				test(apisixRouteSpecWithNameServiceAndGranularity)
 			})
+			It("Basic: with an uppercase host", func() {
+				const apisixRouteSpecWithUppercaseHost = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: default
+  namespace: %s
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - HTTPBIN.Example.com
+      paths:
+      - /get
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+`
+				By("apply ApisixRoute")
+				var apisixRoute apiv2.ApisixRoute
+				applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+					&apisixRoute, fmt.Sprintf(apisixRouteSpecWithUppercaseHost, s.Namespace(), s.Namespace()))
+
+				// APISIX matches hosts against nginx's $host, which is always lowercase,
+				// so the host has to be stored lowercase to be reachable at all.
+				request := func(host string) int {
+					return s.NewAPISIXClient().GET("/get").WithHost(host).Expect().Raw().StatusCode
+				}
+				By("verify the route is reachable regardless of the Host header case")
+				Eventually(request).WithArguments("HTTPBIN.Example.com").WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+				Expect(request("httpbin.example.com")).Should(Equal(http.StatusOK))
+			})
 		})
 
 		It("Test plugins in ApisixRoute", func() {

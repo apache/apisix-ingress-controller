@@ -30,6 +30,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/id"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	sslutils "github.com/apache/apisix-ingress-controller/internal/ssl"
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
 
@@ -158,6 +159,9 @@ func (t *Translator) TranslateGRPCRoute(tctx *provider.TranslateContext, grpcRou
 			hosts = append(hosts, string(*listener.Hostname))
 		}
 	}
+	// the listener hostnames can repeat what the route already declares, and the APISIX
+	// service schema requires unique hosts
+	hosts = sslutils.NormalizeHosts(hosts)
 
 	rules := grpcRoute.Spec.Rules
 
