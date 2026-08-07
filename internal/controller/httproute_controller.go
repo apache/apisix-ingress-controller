@@ -170,6 +170,21 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if len(gateways) == 0 {
+		// The route does not reference any Gateway managed by this controller.
+		// It may have referenced one before, e.g. when its parentRefs are
+		// repointed at a Gateway belonging to another GatewayClass, so the
+		// configuration a previous reconcile pushed has to be removed. Without
+		// this the data plane keeps serving the route indefinitely.
+		// Provider.Delete derives the resource labels from the object Kind, which
+		// is empty on objects read through the client.
+		hr.TypeMeta = metav1.TypeMeta{
+			Kind:       KindHTTPRoute,
+			APIVersion: gatewayv1.GroupVersion.String(),
+		}
+		if err := r.Provider.Delete(ctx, hr); err != nil {
+			r.Log.Error(err, "failed to delete httproute", "httproute", hr)
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, nil
 	}
 
