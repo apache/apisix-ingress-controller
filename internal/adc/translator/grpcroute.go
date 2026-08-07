@@ -38,7 +38,7 @@ func (t *Translator) fillPluginsFromGRPCRouteFilters(
 	namespace string,
 	filters []gatewayv1.GRPCRouteFilter,
 	tctx *provider.TranslateContext,
-) error {
+) {
 	for _, filter := range filters {
 		switch filter.Type {
 		case gatewayv1.GRPCRouteFilterRequestHeaderModifier:
@@ -48,12 +48,9 @@ func (t *Translator) fillPluginsFromGRPCRouteFilters(
 		case gatewayv1.GRPCRouteFilterResponseHeaderModifier:
 			t.fillPluginFromHTTPResponseHeaderFilter(plugins, filter.ResponseHeaderModifier)
 		case gatewayv1.GRPCRouteFilterExtensionRef:
-			if err := t.fillPluginFromExtensionRef(plugins, namespace, filter.ExtensionRef, tctx); err != nil {
-				return err
-			}
+			t.fillPluginFromExtensionRef(plugins, namespace, filter.ExtensionRef, tctx)
 		}
 	}
-	return nil
 }
 
 func calculateGRPCRoutePriority(match *gatewayv1.GRPCRouteMatch, ruleIndex int, hosts []string) uint64 {
@@ -286,9 +283,7 @@ func (t *Translator) TranslateGRPCRoute(tctx *provider.TranslateContext, grpcRou
 			}
 		}
 
-		if err := t.fillPluginsFromGRPCRouteFilters(service.Plugins, grpcRoute.GetNamespace(), rule.Filters, tctx); err != nil {
-			return nil, err
-		}
+		t.fillPluginsFromGRPCRouteFilters(service.Plugins, grpcRoute.GetNamespace(), rule.Filters, tctx)
 
 		matches := rule.Matches
 		if len(matches) == 0 {
