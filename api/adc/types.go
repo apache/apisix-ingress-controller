@@ -807,6 +807,11 @@ type Config struct {
 	TlsVerify   bool
 	BackendType string
 
+	// CaBundle is a PEM-encoded CA certificate (or bundle) used to verify the
+	// control plane, in place of the system trust store. Only meaningful when
+	// TlsVerify is true.
+	CaBundle string
+
 	// BypassCache makes the ADC server drop the in-memory baseline it holds for this
 	// cacheKey and re-derive it from the data plane before computing the diff. It is a
 	// per-request flag set on the sync path, not part of the translated configuration.
@@ -820,10 +825,12 @@ func (c Config) MarshalJSON() ([]byte, error) {
 		Name        string   `json:"name"`
 		ServerAddrs []string `json:"serverAddrs"`
 		TlsVerify   bool     `json:"tlsVerify"`
+		HasCaBundle bool     `json:"hasCaBundle"`
 	}{
 		Name:        c.Name,
 		ServerAddrs: c.ServerAddrs,
 		TlsVerify:   c.TlsVerify,
+		HasCaBundle: c.CaBundle != "",
 	})
 }
 
