@@ -44,11 +44,36 @@ preface = """\
 This release upgrades the project to Gateway API 1.6.0, adds L4 traffic policy
 and downstream mTLS support, and ships a batch of security and correctness fixes.
 
-**Breaking change**: the minimum supported Kubernetes version is now 1.31.0
-(previously 1.26.0), as required by the Gateway API 1.6.0 CRDs. Install the
-Gateway API CRDs with server-side apply
-(`kubectl apply --server-side --force-conflicts`), because the v1.6.0 CRDs
-exceed the annotation size limit of client-side apply.
+It also raises the minimum supported Kubernetes version and tightens three
+previously permissive behaviors. Read the Breaking Changes section below before
+upgrading.
+
+---
+
+## Breaking Changes
+
+* **Kubernetes 1.31.0 is now the minimum supported version**, up from 1.26.0 [#2804](https://github.com/apache/apisix-ingress-controller/pull/2804).
+  The bundled Gateway API 1.6.0 CRDs rely on CEL validation features available from
+  1.31, and the controller's own CRDs additionally use IngressClass namespaced
+  parameters and EndpointSlice terminating conditions. Install the Gateway API CRDs
+  with `kubectl apply --server-side --force-conflicts`: the v1.6.0 CRDs exceed the
+  annotation size limit of client-side apply.
+* **A cross-namespace Consumer `secretRef` now requires a ReferenceGrant** [#2805](https://github.com/apache/apisix-ingress-controller/pull/2805).
+  A Consumer that reads a Secret from another namespace stops reconciling, and its
+  credential is no longer programmed, until a ReferenceGrant in the Secret's
+  namespace permits `Consumer` from the Consumer's namespace. Create those grants
+  before upgrading.
+* **`apisix.apache.org/enable-csrf` without `apisix.apache.org/csrf-key` is now rejected** [#2813](https://github.com/apache/apisix-ingress-controller/pull/2813).
+  The admission webhook fails such an Ingress instead of silently dropping the
+  `csrf` plugin, so `kubectl apply` now returns an error; where the webhook is not
+  in the path, translation skips the plugin and logs the reason. Set `csrf-key` on
+  the affected Ingresses.
+* **TCPRoute/UDPRoute that target a listener explicitly now match on `server_port`** [#2818](https://github.com/apache/apisix-ingress-controller/pull/2818).
+  When a parentRef pins a `sectionName` or `port`, or the Gateway exposes more than
+  one stream listener port, the generated StreamRoute carries `server_port`. The
+  Gateway listener port must therefore equal the APISIX stream listen port, or the
+  connection no longer matches the route. Routes without explicit listener targeting
+  on a single stream listener behave as before.
 
 ---
 
