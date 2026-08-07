@@ -17,7 +17,7 @@
 
 # Image URL to use all building/pushing image targets
 
-VERSION ?= 2.1.0
+VERSION ?= 2.2.0
 
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 
