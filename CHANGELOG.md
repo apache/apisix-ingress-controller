@@ -19,6 +19,7 @@
 
 # Table of Contents
 
+- [2.2.0](#220)
 - [2.1.0](#210)
 - [2.0.1](#201)
 - [2.0.0](#200)
@@ -46,6 +47,256 @@
 - [0.3.0](#030)
 - [0.2.0](#020)
 - [0.1.0](#010)
+
+# 2.2.0
+
+apisix-ingress-controller 2.2.0
+
+Welcome to the 2.2.0 release of apisix-ingress-controller!
+
+## Highlights
+
+This release upgrades the project to Gateway API 1.6.0, adds L4 traffic policy
+and downstream mTLS support, and ships a batch of security and correctness fixes.
+
+It also raises the minimum supported Kubernetes version and tightens three
+previously permissive behaviors. Read the Breaking Changes section below before
+upgrading.
+
+---
+
+## Breaking Changes
+
+* **Kubernetes 1.31.0 is now the minimum supported version**, up from 1.26.0 [#2804](https://github.com/apache/apisix-ingress-controller/pull/2804).
+  The bundled Gateway API 1.6.0 CRDs rely on CEL validation features available from
+  1.31, and the controller's own CRDs additionally use IngressClass namespaced
+  parameters and EndpointSlice terminating conditions. Install the Gateway API CRDs
+  with `kubectl apply --server-side --force-conflicts`: the v1.6.0 CRDs exceed the
+  annotation size limit of client-side apply.
+* **A cross-namespace Consumer `secretRef` now requires a ReferenceGrant** [#2805](https://github.com/apache/apisix-ingress-controller/pull/2805).
+  A Consumer that reads a Secret from another namespace stops reconciling, and its
+  credential is no longer programmed, until a ReferenceGrant in the Secret's
+  namespace permits `Consumer` from the Consumer's namespace. Create those grants
+  before upgrading.
+* **`apisix.apache.org/enable-csrf` without `apisix.apache.org/csrf-key` is now rejected** [#2813](https://github.com/apache/apisix-ingress-controller/pull/2813).
+  The admission webhook fails such an Ingress instead of silently dropping the
+  `csrf` plugin, so `kubectl apply` now returns an error; where the webhook is not
+  in the path, translation skips the plugin and logs the reason. Set `csrf-key` on
+  the affected Ingresses.
+* **TCPRoute/UDPRoute that target a listener explicitly now match on `server_port`** [#2818](https://github.com/apache/apisix-ingress-controller/pull/2818).
+  When a parentRef pins a `sectionName` or `port`, or the Gateway exposes more than
+  one stream listener port, the generated StreamRoute carries `server_port`. The
+  Gateway listener port must therefore equal the APISIX stream listen port, or the
+  connection no longer matches the route. Routes without explicit listener targeting
+  on a single stream listener behave as before.
+
+---
+
+## Features
+
+* feat: support Gateway API 1.6.0 [#2804](https://github.com/apache/apisix-ingress-controller/pull/2804)
+* feat: add L4RoutePolicy for attaching stream plugins to L4 routes [#2791](https://github.com/apache/apisix-ingress-controller/pull/2791)
+* feat: support downstream mTLS via Gateway API frontendValidation [#2792](https://github.com/apache/apisix-ingress-controller/pull/2792)
+* feat: allow L4 upstream schemes (tcp/tls/udp) for stream backends [#2830](https://github.com/apache/apisix-ingress-controller/pull/2830)
+
+---
+
+## Security Fixes
+
+* fix: redact credentials and AdminKey from controller logs [#2808](https://github.com/apache/apisix-ingress-controller/pull/2808)
+* fix: enforce ReferenceGrant on cross-namespace Consumer SecretRef [#2805](https://github.com/apache/apisix-ingress-controller/pull/2805)
+* fix: suppress cross-namespace Secret existence oracle in Consumer webhook [#2806](https://github.com/apache/apisix-ingress-controller/pull/2806)
+
+---
+
+## Bug Fixes
+
+* fix: normalize hosts and SNIs so uppercase hostnames stay routable [#2837](https://github.com/apache/apisix-ingress-controller/pull/2837)
+* fix: honor TCPRoute/UDPRoute sectionName and listener port for StreamRoute matching [#2818](https://github.com/apache/apisix-ingress-controller/pull/2818)
+* fix: honor BackendTrafficPolicy targetRefs.sectionName for Service ports [#2796](https://github.com/apache/apisix-ingress-controller/pull/2796)
+* fix: preserve ApisixUpstream health check type [#2828](https://github.com/apache/apisix-ingress-controller/pull/2828)
+* fix(httproute): read appProtocol for ExternalName services [#2798](https://github.com/apache/apisix-ingress-controller/pull/2798)
+* fix: fail loud when enable-csrf is set but csrf-key annotation is missing [#2813](https://github.com/apache/apisix-ingress-controller/pull/2813)
+* fix: accept whitespace-separated hmac-auth signed_headers and document the format [#2824](https://github.com/apache/apisix-ingress-controller/pull/2824)
+* fix: parse hmac-auth signed_headers from Secret as a header list [#2809](https://github.com/apache/apisix-ingress-controller/pull/2809)
+* fix: never treat an unreachable API server as a missing API resource [#2817](https://github.com/apache/apisix-ingress-controller/pull/2817)
+* fix: rebuild the ADC baseline on leader acquisition [#2785](https://github.com/apache/apisix-ingress-controller/pull/2785)
+* fix: cap condition message to Kubernetes 32768-byte limit [#2816](https://github.com/apache/apisix-ingress-controller/pull/2816)
+* fix: trim whitespace in comma-separated annotation values [#2815](https://github.com/apache/apisix-ingress-controller/pull/2815)
+* fix: allow webhook NetworkPolicy traffic on pod port 9443 [#2812](https://github.com/apache/apisix-ingress-controller/pull/2812)
+* fix: Ingress with ImplementationSpecific path panics when annotations are empty [#2780](https://github.com/apache/apisix-ingress-controller/pull/2780)
+
+---
+
+## Chores
+
+* chore: add AGENTS.md and SECURITY.md pointing at the project security threat model [#2775](https://github.com/apache/apisix-ingress-controller/pull/2775)
+* ci: fix workflow failures by upgrading actions to comply with Apache allowlist [#2772](https://github.com/apache/apisix-ingress-controller/pull/2772)
+* test(e2e): prewarm environment pool to hide per-spec deploy latency [#2790](https://github.com/apache/apisix-ingress-controller/pull/2790)
+* test(e2e): remove fixed-sleep flakiness across e2e specs [#2788](https://github.com/apache/apisix-ingress-controller/pull/2788)
+* test: fix the broken TCPRoute e2e listener port and de-flake two stream/ingress specs [#2836](https://github.com/apache/apisix-ingress-controller/pull/2836)
+
+---
+
+## Documentation
+
+* docs: update docs for 2.1.0 ingress controller release [#2776](https://github.com/apache/apisix-ingress-controller/pull/2776)
+* docs: update listener port info per 2.1.0 updates [#2786](https://github.com/apache/apisix-ingress-controller/pull/2786)
+* docs: fix incorrect unit test command in developer guide [#2797](https://github.com/apache/apisix-ingress-controller/pull/2797)
+* docs: improve Kubernetes Gateway API page SEO [#2823](https://github.com/apache/apisix-ingress-controller/pull/2823)
+
+Please try out the release binaries and report any issues at
+https://github.com/apache/apisix-ingress-controller/issues.
+
+### Contributors
+
+* AlinsRan
+* Arunesh Dwivedi
+* Episkey
+* Jarek Potiuk
+* Rushen Wang
+* Shreemaan Abhishek
+* Traky Deng
+* Yilia Lin
+* xiaocanglan1
+
+### Changes
+<details><summary>30 commits</summary>
+<p>
+
+  * [`93458e99`](https://github.com/apache/apisix-ingress-controller/commit/93458e991f0c31cdf9594f4df5fcf90d823bfdeb) fix: normalize hosts and SNIs so uppercase hostnames stay routable (#2837)
+  * [`39325e8f`](https://github.com/apache/apisix-ingress-controller/commit/39325e8f4598c1d45d821fea445e9dff2828c216) test: fix the broken TCPRoute e2e listener port and de-flake two stream/ingress specs (#2836)
+  * [`be4aaef5`](https://github.com/apache/apisix-ingress-controller/commit/be4aaef56d3cf49d621b57cf1aba5afb1d283926) fix: honor TCPRoute/UDPRoute sectionName and listener port for StreamRoute matching (#2818)
+  * [`dc8db3d7`](https://github.com/apache/apisix-ingress-controller/commit/dc8db3d714d098fde6cd5eec986287b3c9fd1fad) fix: fail loud when enable-csrf is set but csrf-key annotation is missing (#2813)
+  * [`a22afa2e`](https://github.com/apache/apisix-ingress-controller/commit/a22afa2edd5504e9970f26d5898a825a09108a57) feat: allow L4 upstream schemes (tcp/tls/udp) for stream backends (#2830)
+  * [`dad45c50`](https://github.com/apache/apisix-ingress-controller/commit/dad45c50c15152fdc71e875155cad1f039060cdb) fix: preserve ApisixUpstream health check type (#2828)
+  * [`058cb0d2`](https://github.com/apache/apisix-ingress-controller/commit/058cb0d291ec23dcf6fbd1a79f7fa3fc7ac3021e) fix(httproute): read appProtocol for ExternalName services (#2798)
+  * [`549f7f29`](https://github.com/apache/apisix-ingress-controller/commit/549f7f2918ec15edf66ee665ccba8864e94ecbce) docs: fix incorrect unit test command in developer guide (#2797)
+  * [`be19f90a`](https://github.com/apache/apisix-ingress-controller/commit/be19f90a90c82073f29afbd52bfcb9e86c728a78) fix: suppress cross-namespace Secret existence oracle in Consumer webhook (#2806)
+  * [`a1c2ec17`](https://github.com/apache/apisix-ingress-controller/commit/a1c2ec172b75a10d5754b05c9b4700cd5360ca87) fix: never treat an unreachable API server as a missing API resource (#2817)
+  * [`2a8d507e`](https://github.com/apache/apisix-ingress-controller/commit/2a8d507e436fa365420aafca8847597c612ec3ec) feat: support Gateway API 1.6.0 (#2804)
+  * [`0207b159`](https://github.com/apache/apisix-ingress-controller/commit/0207b159383f83ac0b386680b604efe7ec7c1e96) fix: accept whitespace-separated hmac-auth signed_headers and document the format (#2824)
+  * [`ac4e6195`](https://github.com/apache/apisix-ingress-controller/commit/ac4e61951d36200634a7d49ee3d04685476a63d6) fix: allow webhook NetworkPolicy traffic on pod port 9443 (#2812)
+  * [`51ddfef5`](https://github.com/apache/apisix-ingress-controller/commit/51ddfef530d0471d13b6d3ac55b898d9b3e0ccbd) fix: parse hmac-auth signed_headers from Secret as a header list (#2809)
+  * [`843879ca`](https://github.com/apache/apisix-ingress-controller/commit/843879ca735f5ac4144518aae82c47d4bd0128ce) fix: enforce ReferenceGrant on cross-namespace Consumer SecretRef (#2805)
+  * [`1582e3de`](https://github.com/apache/apisix-ingress-controller/commit/1582e3de091b7738ed121673501330315a8da1a6) fix: redact credentials and AdminKey from controller logs (#2808)
+  * [`ce10a384`](https://github.com/apache/apisix-ingress-controller/commit/ce10a384d5bcff328d78ebc16010015378292104) docs: improve Kubernetes Gateway API page SEO (#2823)
+  * [`08f8508c`](https://github.com/apache/apisix-ingress-controller/commit/08f8508c0638e315874bfaa6c77be16691bd0d84) fix: cap condition message to Kubernetes 32768-byte limit (#2816)
+  * [`38d2ceff`](https://github.com/apache/apisix-ingress-controller/commit/38d2ceffb41a546ea8f3937bb61b14f7698c0d70) fix: trim whitespace in comma-separated annotation values (#2815)
+  * [`6fc49d34`](https://github.com/apache/apisix-ingress-controller/commit/6fc49d340cf399cdb3e2b300647b68c7da2bfaa4) fix: rebuild the ADC baseline on leader acquisition (#2785)
+  * [`611487cd`](https://github.com/apache/apisix-ingress-controller/commit/611487cd2db0996acc59f80c41817f50e2ea8364) test(e2e): prewarm environment pool to hide per-spec deploy latency (#2790)
+  * [`d029b967`](https://github.com/apache/apisix-ingress-controller/commit/d029b96779ec0cbd7f51a633cf02a624ed76999a) fix: honor BackendTrafficPolicy targetRefs.sectionName for Service ports (#2796)
+  * [`db30aa70`](https://github.com/apache/apisix-ingress-controller/commit/db30aa709f5b3a29b1a1aeb2fec1364158c3a134) feat: support downstream mTLS via Gateway API frontendValidation (#2792)
+  * [`0fe60da5`](https://github.com/apache/apisix-ingress-controller/commit/0fe60da5c06659c70eb85c4607da577f8f822975) test(e2e): remove fixed-sleep flakiness across e2e specs (#2788)
+  * [`11635a1e`](https://github.com/apache/apisix-ingress-controller/commit/11635a1e1fc76366984713177a92980d605e53f8) feat: add L4RoutePolicy for attaching stream plugins to L4 routes (#2791)
+  * [`44565558`](https://github.com/apache/apisix-ingress-controller/commit/44565558a2f53da02bf5b75d013ae6abbd50d79f) fix: Ingress with ImplementationSpecific path panics when annotations are empty (#2780)
+  * [`aaa89c22`](https://github.com/apache/apisix-ingress-controller/commit/aaa89c22e828c02bedf94c7cc096252376c6b644) docs: update listener port info per 2.1.0 updates (#2786)
+  * [`eff19eb2`](https://github.com/apache/apisix-ingress-controller/commit/eff19eb280c323250550b0633c11a3583ec6e9e6) docs: update docs for 2.1.0 ingress controller release (#2776)
+  * [`028c1a95`](https://github.com/apache/apisix-ingress-controller/commit/028c1a95c09805341bc549d94933528c42d9865b) Add AGENTS.md + SECURITY.md pointing at project security threat model (#2775)
+  * [`e6f33193`](https://github.com/apache/apisix-ingress-controller/commit/e6f33193ed77755868d36edb51bdffb939bebea7) ci: fix workflow failures by upgrading actions to comply with Apache allowlist (#2772)
+
+</p>
+</details>
+
+### Dependency Changes
+
+* **cel.dev/expr**                                                     v0.19.1 -> v0.25.1
+* **github.com/Masterminds/semver/v3**                                 v3.2.1 -> v3.4.0
+* **github.com/antlr4-go/antlr/v4**                                    v4.13.0 -> v4.13.1
+* **github.com/emicklei/go-restful/v3**                                v3.12.0 -> v3.13.0
+* **github.com/fsnotify/fsnotify**                                     v1.7.0 -> v1.9.0
+* **github.com/fxamacker/cbor/v2**                                     v2.7.0 -> v2.9.1
+* **github.com/go-openapi/jsonpointer**                                v0.21.0 -> v0.23.1
+* **github.com/go-openapi/jsonreference**                              v0.21.0 -> v0.21.5
+* **github.com/go-openapi/swag**                                       v0.23.0 -> v0.26.0
+* **github.com/google/cel-go**                                         v0.22.0 -> v0.29.0
+* **github.com/google/gnostic-models**                                 v0.6.8 -> v0.7.1
+* **github.com/google/pprof**                                          v0.0.0-20241029153458-d1b30febd7db -> v0.0.0-20260115054156-294ebfa9ad83
+* **github.com/gorilla/websocket**                                     v1.5.3 -> v1.5.4-0.20250319132907-e064f32e3674
+* **github.com/grpc-ecosystem/grpc-gateway/v2**                        v2.20.0 -> v2.27.7
+* **github.com/klauspost/compress**                                    v1.17.4 -> v1.18.0
+* **github.com/miekg/dns**                                             v1.1.65 -> v1.1.72
+* **github.com/moby/spdystream**                                       v0.5.0 -> v0.5.1
+* **github.com/modern-go/reflect2**                                    v1.0.2 -> v1.0.3-0.20250322232337-35a7c28c31ee
+* **github.com/onsi/ginkgo/v2**                                        v2.22.0 -> v2.28.1
+* **github.com/onsi/gomega**                                           v1.36.1 -> v1.40.0
+* **github.com/prometheus/client_golang**                              v1.19.1 -> v1.23.2
+* **github.com/prometheus/client_model**                               v0.6.1 -> v0.6.2
+* **github.com/prometheus/common**                                     v0.55.0 -> v0.67.5
+* **github.com/prometheus/procfs**                                     v0.15.1 -> v0.20.1
+* **github.com/spf13/cobra**                                           v1.9.1 -> v1.10.2
+* **github.com/spf13/pflag**                                           v1.0.6 -> v1.0.10
+* **go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp**    v0.54.0 -> v0.65.0
+* **go.opentelemetry.io/otel**                                         v1.40.0 -> v1.43.0
+* **go.opentelemetry.io/otel/exporters/otlp/otlptrace**                v1.28.0 -> v1.40.0
+* **go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc**  v1.27.0 -> v1.40.0
+* **go.opentelemetry.io/otel/metric**                                  v1.40.0 -> v1.43.0
+* **go.opentelemetry.io/otel/sdk**                                     v1.40.0 -> v1.43.0
+* **go.opentelemetry.io/otel/trace**                                   v1.40.0 -> v1.43.0
+* **go.opentelemetry.io/proto/otlp**                                   v1.3.1 -> v1.9.0
+* **go.uber.org/zap**                                                  v1.27.0 -> v1.28.0
+* **golang.org/x/crypto**                                              v0.45.0 -> v0.54.0
+* **golang.org/x/exp**                                                 v0.0.0-20240719175910-8a7402abbf56 -> v0.0.0-20251219203646-944ab1f22d93
+* **golang.org/x/mod**                                                 v0.29.0 -> v0.37.0
+* **golang.org/x/net**                                                 v0.47.0 -> v0.56.0
+* **golang.org/x/oauth2**                                              v0.27.0 -> v0.36.0
+* **golang.org/x/sync**                                                v0.18.0 -> v0.22.0
+* **golang.org/x/sys**                                                 v0.40.0 -> v0.47.0
+* **golang.org/x/term**                                                v0.37.0 -> v0.45.0
+* **golang.org/x/text**                                                v0.31.0 -> v0.40.0
+* **golang.org/x/time**                                                v0.8.0 -> v0.15.0
+* **golang.org/x/tools**                                               v0.38.0 -> v0.47.0
+* **google.golang.org/genproto/googleapis/api**                        v0.0.0-20250106144421-5f5ef82da422 -> v0.0.0-20260414002931-afd174a4e478
+* **google.golang.org/genproto/googleapis/rpc**                        v0.0.0-20250115164207-1a7da9e5054f -> v0.0.0-20260427160629-7cedc36a6bc4
+* **google.golang.org/grpc**                                           v1.71.1 -> v1.82.1
+* **google.golang.org/protobuf**                                       v1.36.6 -> v1.36.12-0.20260120151049-f2248ac996af
+* **gopkg.in/evanphx/json-patch.v4**                                   v4.12.0 -> v4.13.0
+* **k8s.io/api**                                                       v0.32.3 -> v0.36.1
+* **k8s.io/apiextensions-apiserver**                                   v0.32.3 -> v0.36.1
+* **k8s.io/apimachinery**                                              v0.32.3 -> v0.36.1
+* **k8s.io/apiserver**                                                 v0.32.3 -> v0.36.1
+* **k8s.io/client-go**                                                 v0.32.3 -> v0.36.1
+* **k8s.io/component-base**                                            v0.32.3 -> v0.36.1
+* **k8s.io/klog/v2**                                                   v2.130.1 -> v2.140.0
+* **k8s.io/kube-openapi**                                              v0.0.0-20241105132330-32ad38e42d3f -> v0.0.0-20260501160325-927ab1f70cd6
+* **k8s.io/kubectl**                                                   v0.30.3 -> v0.36.1
+* **k8s.io/utils**                                                     v0.0.0-20241104100929-3ea5e8cea738 -> v0.0.0-20260319190234-28399d86e0b5
+* **sigs.k8s.io/apiserver-network-proxy/konnectivity-client**          v0.31.0 -> v0.34.0
+* **sigs.k8s.io/controller-runtime**                                   v0.20.4 -> v0.24.1
+* **sigs.k8s.io/gateway-api**                                          v1.3.0 -> v1.6.0
+* **sigs.k8s.io/json**                                                 v0.0.0-20241010143419-9aa6b5e7a4b3 -> v0.0.0-20250730193827-2d320260d730
+* **sigs.k8s.io/yaml**                                                 v1.4.0 -> v1.6.0
+* **github.com/cenkalti/backoff/v5**                                   v5.0.3 **_new_**
+* **github.com/go-openapi/swag/cmdutils**                              v0.26.0 **_new_**
+* **github.com/go-openapi/swag/conv**                                  v0.26.0 **_new_**
+* **github.com/go-openapi/swag/fileutils**                             v0.26.0 **_new_**
+* **github.com/go-openapi/swag/jsonname**                              v0.26.0 **_new_**
+* **github.com/go-openapi/swag/jsonutils**                             v0.26.0 **_new_**
+* **github.com/go-openapi/swag/loading**                               v0.26.0 **_new_**
+* **github.com/go-openapi/swag/mangling**                              v0.26.0 **_new_**
+* **github.com/go-openapi/swag/netutils**                              v0.26.0 **_new_**
+* **github.com/go-openapi/swag/stringutils**                           v0.26.0 **_new_**
+* **github.com/go-openapi/swag/typeutils**                             v0.26.0 **_new_**
+* **github.com/go-openapi/swag/yamlutils**                             v0.26.0 **_new_**
+* **go.yaml.in/yaml/v2**                                               v2.4.4 **_new_**
+* **go.yaml.in/yaml/v3**                                               v3.0.4 **_new_**
+* **k8s.io/streaming**                                                 v0.36.1 **_new_**
+* **sigs.k8s.io/gateway-api/conformance**                              v1.6.0 **_new_**
+* **sigs.k8s.io/randfill**                                             v1.0.0 **_new_**
+* **sigs.k8s.io/structured-merge-diff/v6**                             v6.4.0 **_new_**
+* **github.com/asaskevich/govalidator**                                v0.0.0-20230301143203-a9d515a09cc2 **_removed_**
+* **github.com/cenkalti/backoff/v4**                                   v4.3.0 **_removed_**
+* **github.com/gogo/protobuf**                                         v1.3.2 **_removed_**
+* **github.com/golang/protobuf**                                       v1.5.4 **_removed_**
+* **github.com/google/btree**                                          v1.1.3 **_removed_**
+* **github.com/google/gofuzz**                                         v1.2.0 **_removed_**
+* **github.com/josharian/intern**                                      v1.0.0 **_removed_**
+* **github.com/mailru/easyjson**                                       v0.7.7 **_removed_**
+* **github.com/mxk/go-flowrate**                                       v0.0.0-20140419014527-cca7078d478f **_removed_**
+* **github.com/stoewer/go-strcase**                                    v1.3.0 **_removed_**
+* **sigs.k8s.io/structured-merge-diff/v4**                             v4.7.0 **_removed_**
+
+Previous release can be found at [2.1.0](https://github.com/apache/apisix-ingress-controller/releases/tag/2.1.0)
 
 # 2.1.0
 
