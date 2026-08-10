@@ -35,7 +35,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
@@ -112,7 +111,7 @@ func (r *TCPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	if GetEnableReferenceGrant() {
-		bdr.Watches(&v1beta1.ReferenceGrant{},
+		bdr.Watches(&gatewayv1.ReferenceGrant{},
 			handler.EnqueueRequestsFromMapFunc(r.listTCPRoutesForReferenceGrant),
 			builder.WithPredicates(referenceGrantPredicates(KindTCPRoute)),
 		)
@@ -418,10 +417,10 @@ func (r *TCPRouteReconciler) processTCPRouteBackendRefs(tctx *provider.Translate
 		if trNN.Namespace != targetNN.Namespace {
 			if permitted := checkReferenceGrant(tctx,
 				r.Client,
-				v1beta1.ReferenceGrantFrom{
+				gatewayv1.ReferenceGrantFrom{
 					Group:     gatewayv1.GroupName,
 					Kind:      KindTCPRoute,
-					Namespace: v1beta1.Namespace(trNN.Namespace),
+					Namespace: gatewayv1.Namespace(trNN.Namespace),
 				},
 				gatewayv1.ObjectReference{
 					Group:     corev1.GroupName,
@@ -431,7 +430,7 @@ func (r *TCPRouteReconciler) processTCPRouteBackendRefs(tctx *provider.Translate
 				},
 			); !permitted {
 				terr = types.ReasonError{
-					Reason:  string(v1beta1.RouteReasonRefNotPermitted),
+					Reason:  string(gatewayv1.RouteReasonRefNotPermitted),
 					Message: fmt.Sprintf("%s is in a different namespace than the TCPRoute %s and no ReferenceGrant allowing reference is configured", targetNN, trNN),
 				}
 				continue
@@ -474,7 +473,7 @@ func (r *TCPRouteReconciler) processTCPRouteBackendRefs(tctx *provider.Translate
 }
 
 func (r *TCPRouteReconciler) listTCPRoutesForReferenceGrant(ctx context.Context, obj client.Object) (requests []reconcile.Request) {
-	grant, ok := obj.(*v1beta1.ReferenceGrant)
+	grant, ok := obj.(*gatewayv1.ReferenceGrant)
 	if !ok {
 		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to ReferenceGrant")
 		return nil
@@ -487,10 +486,10 @@ func (r *TCPRouteReconciler) listTCPRoutesForReferenceGrant(ctx context.Context,
 	}
 
 	for _, tcpRoute := range tcpRouteList.Items {
-		tr := v1beta1.ReferenceGrantFrom{
+		tr := gatewayv1.ReferenceGrantFrom{
 			Group:     gatewayv1.GroupName,
 			Kind:      KindTCPRoute,
-			Namespace: v1beta1.Namespace(tcpRoute.GetNamespace()),
+			Namespace: gatewayv1.Namespace(tcpRoute.GetNamespace()),
 		}
 		for _, from := range grant.Spec.From {
 			if from == tr {

@@ -31,7 +31,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	apisixv1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller"
@@ -51,16 +50,16 @@ func enableReferenceGrant(t *testing.T) {
 }
 
 // consumerToSecretGrant permits Consumers in fromNS to reference Secrets in grantNS.
-func consumerToSecretGrant(grantNS, fromNS string) *v1beta1.ReferenceGrant {
-	return &v1beta1.ReferenceGrant{
+func consumerToSecretGrant(grantNS, fromNS string) *gatewayv1.ReferenceGrant {
+	return &gatewayv1.ReferenceGrant{
 		ObjectMeta: metav1.ObjectMeta{Name: "allow-consumer", Namespace: grantNS},
-		Spec: v1beta1.ReferenceGrantSpec{
-			From: []v1beta1.ReferenceGrantFrom{{
-				Group:     v1beta1.Group(apisixv1alpha1.GroupVersion.Group),
+		Spec: gatewayv1.ReferenceGrantSpec{
+			From: []gatewayv1.ReferenceGrantFrom{{
+				Group:     gatewayv1.Group(apisixv1alpha1.GroupVersion.Group),
 				Kind:      "Consumer",
-				Namespace: v1beta1.Namespace(fromNS),
+				Namespace: gatewayv1.Namespace(fromNS),
 			}},
-			To: []v1beta1.ReferenceGrantTo{{Group: "", Kind: "Secret"}},
+			To: []gatewayv1.ReferenceGrantTo{{Group: "", Kind: "Secret"}},
 		},
 	}
 }
@@ -72,7 +71,7 @@ func buildConsumerValidator(t *testing.T, objects ...runtime.Object) *ConsumerCu
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
 	require.NoError(t, apisixv1alpha1.AddToScheme(scheme))
 	require.NoError(t, gatewayv1.Install(scheme))
-	require.NoError(t, v1beta1.Install(scheme))
+	require.NoError(t, gatewayv1.Install(scheme))
 
 	managed := []runtime.Object{
 		&gatewayv1.GatewayClass{
@@ -106,7 +105,7 @@ func buildConsumerValidatorWithInterceptor(t *testing.T, funcs interceptor.Funcs
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
 	require.NoError(t, apisixv1alpha1.AddToScheme(scheme))
 	require.NoError(t, gatewayv1.Install(scheme))
-	require.NoError(t, v1beta1.Install(scheme))
+	require.NoError(t, gatewayv1.Install(scheme))
 
 	managed := []runtime.Object{
 		&gatewayv1.GatewayClass{
@@ -278,7 +277,7 @@ func TestConsumerValidator_CrossNamespaceSecretGrantLookupError(t *testing.T) {
 	validator := buildConsumerValidatorWithInterceptor(t,
 		interceptor.Funcs{
 			List: func(ctx context.Context, c client.WithWatch, list client.ObjectList, opts ...client.ListOption) error {
-				if _, ok := list.(*v1beta1.ReferenceGrantList); ok {
+				if _, ok := list.(*gatewayv1.ReferenceGrantList); ok {
 					return apierrors.NewInternalError(fmt.Errorf("api server unavailable"))
 				}
 				return c.List(ctx, list, opts...)

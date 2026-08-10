@@ -43,7 +43,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
@@ -1051,10 +1050,10 @@ func getListenerStatus(
 				}
 				if permitted := checkReferenceGrant(ctx,
 					mrgc,
-					v1beta1.ReferenceGrantFrom{
+					gatewayv1.ReferenceGrantFrom{
 						Group:     gatewayv1.GroupName,
 						Kind:      KindGateway,
-						Namespace: v1beta1.Namespace(gateway.Namespace),
+						Namespace: gatewayv1.Namespace(gateway.Namespace),
 					},
 					gatewayv1.ObjectReference{
 						Group:     corev1.GroupName,
@@ -1172,10 +1171,10 @@ func validateListenerFrontendValidation(
 		}
 		if permitted := checkReferenceGrant(ctx,
 			mrgc,
-			v1beta1.ReferenceGrantFrom{
+			gatewayv1.ReferenceGrantFrom{
 				Group:     gatewayv1.GroupName,
 				Kind:      KindGateway,
-				Namespace: v1beta1.Namespace(gateway.Namespace),
+				Namespace: gatewayv1.Namespace(gateway.Namespace),
 			},
 			gatewayv1.ObjectReference{
 				Group:     corev1.GroupName,
@@ -1459,7 +1458,7 @@ func isTLSSecretValid(secret *corev1.Secret) (string, bool) {
 
 func referenceGrantPredicates(kind gatewayv1.Kind) predicate.Funcs {
 	var filter = func(obj client.Object) bool {
-		grant, ok := obj.(*v1beta1.ReferenceGrant)
+		grant, ok := obj.(*gatewayv1.ReferenceGrant)
 		if !ok {
 			return false
 		}
@@ -1477,7 +1476,7 @@ func referenceGrantPredicates(kind gatewayv1.Kind) predicate.Funcs {
 	return predicates
 }
 
-func checkReferenceGrant(ctx context.Context, cli client.Client, obj v1beta1.ReferenceGrantFrom, ref gatewayv1.ObjectReference) bool {
+func checkReferenceGrant(ctx context.Context, cli client.Client, obj gatewayv1.ReferenceGrantFrom, ref gatewayv1.ObjectReference) bool {
 	if ref.Namespace == nil || *ref.Namespace == obj.Namespace {
 		return true
 	}
@@ -1486,7 +1485,7 @@ func checkReferenceGrant(ctx context.Context, cli client.Client, obj v1beta1.Ref
 		return false
 	}
 
-	var grantList v1beta1.ReferenceGrantList
+	var grantList gatewayv1.ReferenceGrantList
 	if err := cli.List(ctx, &grantList, client.InNamespace(*ref.Namespace)); err != nil {
 		return false
 	}
@@ -1520,15 +1519,15 @@ func CheckConsumerSecretRef(ctx context.Context, cli client.Client, fromNamespac
 		return false, nil
 	}
 
-	var grantList v1beta1.ReferenceGrantList
+	var grantList gatewayv1.ReferenceGrantList
 	if err := cli.List(ctx, &grantList, client.InNamespace(secretNN.Namespace)); err != nil {
 		return false, err
 	}
 
-	from := v1beta1.ReferenceGrantFrom{
-		Group:     v1beta1.Group(v1alpha1.GroupVersion.Group),
+	from := gatewayv1.ReferenceGrantFrom{
+		Group:     gatewayv1.Group(v1alpha1.GroupVersion.Group),
 		Kind:      types.KindConsumer,
-		Namespace: v1beta1.Namespace(fromNamespace),
+		Namespace: gatewayv1.Namespace(fromNamespace),
 	}
 	for _, grant := range grantList.Items {
 		for _, f := range grant.Spec.From {

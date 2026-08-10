@@ -36,7 +36,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
@@ -99,7 +98,7 @@ func (r *GatewayReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		)
 
 	if GetEnableReferenceGrant() {
-		bdr.Watches(&v1beta1.ReferenceGrant{},
+		bdr.Watches(&gatewayv1.ReferenceGrant{},
 			handler.EnqueueRequestsFromMapFunc(r.listReferenceGrantsForGateway),
 			builder.WithPredicates(referenceGrantPredicates(KindGateway)),
 		)
@@ -443,12 +442,12 @@ func (r *GatewayReconciler) listGatewaysForConfigMap(ctx context.Context, obj cl
 }
 
 func (r *GatewayReconciler) listReferenceGrantsForGateway(ctx context.Context, obj client.Object) (requests []reconcile.Request) {
-	grant, ok := obj.(*v1beta1.ReferenceGrant)
+	grant, ok := obj.(*gatewayv1.ReferenceGrant)
 	if !ok {
 		r.Log.Error(
 			errors.New("unexpected object type"),
 			"ReferenceGrant watch predicate received unexpected object type",
-			"expected", FullTypeName(new(v1beta1.ReferenceGrant)), "found", FullTypeName(obj),
+			"expected", FullTypeName(new(gatewayv1.ReferenceGrant)), "found", FullTypeName(obj),
 		)
 		return nil
 	}
@@ -460,10 +459,10 @@ func (r *GatewayReconciler) listReferenceGrantsForGateway(ctx context.Context, o
 	}
 
 	for _, gateway := range gatewayList.Items {
-		gw := v1beta1.ReferenceGrantFrom{
+		gw := gatewayv1.ReferenceGrantFrom{
 			Group:     gatewayv1.GroupName,
 			Kind:      KindGateway,
-			Namespace: v1beta1.Namespace(gateway.GetNamespace()),
+			Namespace: gatewayv1.Namespace(gateway.GetNamespace()),
 		}
 		for _, from := range grant.Spec.From {
 			if from == gw {
@@ -503,10 +502,10 @@ func (r *GatewayReconciler) processListenerConfig(tctx *provider.TranslateContex
 				// or the data plane would program a certificate the target namespace never
 				// permitted. The listener status already reports RefNotPermitted for this.
 				if !checkReferenceGrant(context.Background(), r.Client,
-					v1beta1.ReferenceGrantFrom{
+					gatewayv1.ReferenceGrantFrom{
 						Group:     gatewayv1.GroupName,
 						Kind:      KindGateway,
-						Namespace: v1beta1.Namespace(gateway.Namespace),
+						Namespace: gatewayv1.Namespace(gateway.Namespace),
 					},
 					gatewayv1.ObjectReference{
 						Group:     corev1.GroupName,
@@ -550,10 +549,10 @@ func (r *GatewayReconciler) processListenerConfig(tctx *provider.TranslateContex
 				// data plane would enable downstream mTLS with a CA the target namespace
 				// never permitted. The listener status already reports RefNotPermitted.
 				if !checkReferenceGrant(context.Background(), r.Client,
-					v1beta1.ReferenceGrantFrom{
+					gatewayv1.ReferenceGrantFrom{
 						Group:     gatewayv1.GroupName,
 						Kind:      KindGateway,
-						Namespace: v1beta1.Namespace(gateway.Namespace),
+						Namespace: gatewayv1.Namespace(gateway.Namespace),
 					},
 					gatewayv1.ObjectReference{
 						Group:     corev1.GroupName,

@@ -35,7 +35,6 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
@@ -71,7 +70,7 @@ func init() {
 	if err := apiv2.AddToScheme(scheme); err != nil {
 		panic(err)
 	}
-	if err := v1beta1.Install(scheme); err != nil {
+	if err := gatewayv1.Install(scheme); err != nil {
 		panic(err)
 	}
 	// +kubebuilder:scaffold:scheme
@@ -251,13 +250,13 @@ func Run(ctx context.Context, logger logr.Logger) error {
 		setupLog.Info("Gateway API is disabled, skipping the ReferenceGrants check")
 	} else {
 		setupLog.Info("check ReferenceGrants is enabled")
-		if hasReferenceGrant, err = utils.HasAPIResource(mgr, &v1beta1.ReferenceGrant{}); err != nil {
+		if hasReferenceGrant, err = utils.HasAPIResource(mgr, &gatewayv1.ReferenceGrant{}); err != nil {
 			setupLog.Error(err, "unable to detect whether ReferenceGrants is installed")
 			return err
 		}
 		if !hasReferenceGrant {
 			setupLog.Info("CRD ReferenceGrants is not installed, cross-namespace references will be rejected",
-				"gvk", utils.FormatGVK(&v1beta1.ReferenceGrant{}))
+				"gvk", utils.FormatGVK(&gatewayv1.ReferenceGrant{}))
 		}
 	}
 	controller.SetEnableReferenceGrant(hasReferenceGrant)
