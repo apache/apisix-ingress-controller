@@ -27,7 +27,7 @@ The APISIX Ingress Controller uses a configuration file `config.yaml` to define 
 
 Configurations are defined in a Kubernetes ConfigMap and mounted into the controller pod as a file at runtime. To apply changes, you can update the ConfigMap and restart the controller Deployment to reload the configurations.
 
-Below are all available configuration options, including their default values and usage:
+The example below shows binary defaults. Helm charts can render different values into the ConfigMap, so inspect the chart values and the generated ConfigMap when troubleshooting an installation.
 
 ```yaml
 log_level: "info"                               # The log level of the APISIX Ingress Controller.
@@ -36,8 +36,8 @@ log_level: "info"                               # The log level of the APISIX In
 controller_name: apisix.apache.org/apisix-ingress-controller  # The controller name of the APISIX Ingress Controller,
                                                               # which is used to identify the controller in the GatewayClass.
                                                               # The default value is "apisix.apache.org/apisix-ingress-controller".
-leader_election_id: "apisix-ingress-controller-leader"        # The leader election ID for the APISIX Ingress Controller.
-                                                              # The default value is "apisix-ingress-controller-leader".
+leader_election_id: "apisix-ingress-gateway-leader"           # The leader election ID for the APISIX Ingress Controller.
+                                                              # The default value is "apisix-ingress-gateway-leader".
 leader_election:
   lease_duration: 30s                   # lease_duration is the duration that non-leader candidates will wait
                                         # after observing a leadership renewal until attempting to acquire leadership of a
@@ -76,8 +76,8 @@ provider:
                                         # Value can be "apisix" or "apisix-standalone".
 
   sync_period: 1h                       # The period between two consecutive syncs.
-                                        # The default value is 1 hour, which means the controller will not sync.
-                                        # If you want to enable the sync, set it to a positive value.
+                                        # The default value is 1 hour.
+                                        # The value must be greater than 0 for APISIX providers.
   init_sync_delay: 20m                  # The initial delay before the first sync, only used when the controller is started.
                                         # The default value is 20 minutes.
 ```

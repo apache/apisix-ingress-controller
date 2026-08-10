@@ -38,8 +38,8 @@ controller_name: apisix.apache.org/apisix-ingress-controller  # The controller n
                                                           # which is used to identify the controller in the GatewayClass.
                                                           # The default value is "apisix.apache.org/apisix-ingress-controller".
 
-leader_election_id: "apisix-ingress-controller-leader" # The leader election ID for the APISIX Ingress Controller.
-                                                        # The default value is "apisix-ingress-controller-leader".
+leader_election_id: "apisix-ingress-gateway-leader" # The leader election ID for the APISIX Ingress Controller.
+                                                     # The default value is "apisix-ingress-gateway-leader".
 ```
 
 ### Controller Name
