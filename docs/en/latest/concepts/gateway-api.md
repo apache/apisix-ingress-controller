@@ -52,10 +52,12 @@ This page summarizes the resources, API versions, and fields that APISIX Ingress
 | HTTPRoute        | Supported           | Partially supported    | Not supported                         | v1          |
 | GRPCRoute        | Supported           | Supported              | Not supported                         | v1          |
 | ReferenceGrant   | Supported           | Not supported          | Not supported                         | v1beta1     |
-| TLSRoute         | Supported           | Supported              | Not supported                         | v1alpha2    |
-| TCPRoute         | Supported           | Supported              | Not supported                         | v1alpha2    |
-| UDPRoute         | Supported           | Supported              | Not supported                         | v1alpha2    |
+| TLSRoute         | Supported           | Supported              | Not supported                         | v1          |
+| TCPRoute         | Supported           | Supported              | Not supported                         | v1          |
+| UDPRoute         | Supported           | Supported              | Not supported                         | v1          |
 | BackendTLSPolicy | Not supported       | Not supported          | Not supported                         | v1alpha3    |
+
+TLSRoute, TCPRoute, and UDPRoute are read as `v1`, which Gateway API promoted them to in 1.6. Gateway API 1.6 or later is therefore required for L4 routing: the `v1alpha2` versions of these resources are deprecated everywhere and are not even served by the standard channel CRDs. Existing manifests that still declare `gateway.networking.k8s.io/v1alpha2` keep working as long as the installed CRDs serve that version, because the API server converts them, but they should be updated to `v1`.
 
 ## Examples
 

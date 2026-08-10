@@ -35,7 +35,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
@@ -68,7 +67,7 @@ type TLSRouteReconciler struct { //nolint:revive
 func (r *TLSRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	bdr := ctrl.NewControllerManagedBy(mgr).
-		For(&gatewayv1alpha2.TLSRoute{}).
+		For(&gatewayv1.TLSRoute{}).
 		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Watches(&discoveryv1.EndpointSlice{},
 			handler.EnqueueRequestsFromMapFunc(r.listTLSRoutesByServiceRef),
@@ -129,7 +128,7 @@ func (r *TLSRouteReconciler) listTLSRoutesForBackendTrafficPolicy(ctx context.Co
 		return nil
 	}
 
-	tlsrouteList := []gatewayv1alpha2.TLSRoute{}
+	tlsrouteList := []gatewayv1.TLSRoute{}
 	for _, targetRef := range policy.Spec.TargetRefs {
 		service := &corev1.Service{}
 		if err := r.Get(ctx, client.ObjectKey{
@@ -141,7 +140,7 @@ func (r *TLSRouteReconciler) listTLSRoutesForBackendTrafficPolicy(ctx context.Co
 			}
 			continue
 		}
-		trList := &gatewayv1alpha2.TLSRouteList{}
+		trList := &gatewayv1.TLSRouteList{}
 		if err := r.List(ctx, trList, client.MatchingFields{
 			indexer.ServiceIndexRef: indexer.GenIndexKey(policy.Namespace, string(targetRef.Name)),
 		}); err != nil {
@@ -175,7 +174,7 @@ func (r *TLSRouteReconciler) listTLSRoutesForGateway(ctx context.Context, obj cl
 	if !ok {
 		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to Gateway")
 	}
-	trList := &gatewayv1alpha2.TLSRouteList{}
+	trList := &gatewayv1.TLSRouteList{}
 	if err := r.List(ctx, trList, client.MatchingFields{
 		indexer.ParentRefs: indexer.GenIndexKey(gateway.Namespace, gateway.Name),
 	}); err != nil {
@@ -219,7 +218,7 @@ func (r *TLSRouteReconciler) listTLSRoutesForGatewayProxy(ctx context.Context, o
 
 	// for each gateway, find all TLSRoute resources that reference it
 	for _, gateway := range gatewayList.Items {
-		tlsRouteList := &gatewayv1alpha2.TLSRouteList{}
+		tlsRouteList := &gatewayv1.TLSRouteList{}
 		if err := r.List(ctx, tlsRouteList, client.MatchingFields{
 			indexer.ParentRefs: indexer.GenIndexKey(gateway.Namespace, gateway.Name),
 		}); err != nil {
@@ -241,8 +240,8 @@ func (r *TLSRouteReconciler) listTLSRoutesForGatewayProxy(ctx context.Context, o
 }
 
 func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	defer r.Readier.Done(&gatewayv1alpha2.TLSRoute{}, req.NamespacedName)
-	tr := new(gatewayv1alpha2.TLSRoute)
+	defer r.Readier.Done(&gatewayv1.TLSRoute{}, req.NamespacedName)
+	tr := new(gatewayv1.TLSRoute)
 	if err := r.Get(ctx, req.NamespacedName, tr); err != nil {
 		if client.IgnoreNotFound(err) == nil {
 			tr.Namespace = req.Namespace
@@ -250,7 +249,7 @@ func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 			tr.TypeMeta = metav1.TypeMeta{
 				Kind:       types.KindTLSRoute,
-				APIVersion: gatewayv1alpha2.GroupVersion.String(),
+				APIVersion: gatewayv1.GroupVersion.String(),
 			}
 
 			if err := r.Provider.Delete(ctx, tr); err != nil {
@@ -331,9 +330,9 @@ func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	r.Updater.Update(status.Update{
 		NamespacedName: utils.NamespacedName(tr),
-		Resource:       &gatewayv1alpha2.TLSRoute{},
+		Resource:       &gatewayv1.TLSRoute{},
 		Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
-			t, ok := obj.(*gatewayv1alpha2.TLSRoute)
+			t, ok := obj.(*gatewayv1.TLSRoute)
 			if !ok {
 				err := fmt.Errorf("unsupported object type %T", obj)
 				panic(err)
@@ -353,7 +352,7 @@ func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	return ctrl.Result{}, nil
 }
 
-func (r *TLSRouteReconciler) processTLSRoute(tctx *provider.TranslateContext, tlsRoute *gatewayv1alpha2.TLSRoute) error {
+func (r *TLSRouteReconciler) processTLSRoute(tctx *provider.TranslateContext, tlsRoute *gatewayv1.TLSRoute) error {
 	var terror error
 	for _, rule := range tlsRoute.Spec.Rules {
 		for _, backend := range rule.BackendRefs {
@@ -473,7 +472,7 @@ func (r *TLSRouteReconciler) listTLSRoutesForReferenceGrant(ctx context.Context,
 		return nil
 	}
 
-	var tlsRouteList gatewayv1alpha2.TLSRouteList
+	var tlsRouteList gatewayv1.TLSRouteList
 	if err := r.List(ctx, &tlsRouteList); err != nil {
 		r.Log.Error(err, "failed to list tlsroutes for reference ReferenceGrant", "ReferenceGrant", k8stypes.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()})
 		return nil
@@ -508,7 +507,7 @@ func (r *TLSRouteReconciler) listTLSRoutesByServiceRef(ctx context.Context, obj 
 	namespace := endpointSlice.GetNamespace()
 	serviceName := endpointSlice.Labels[discoveryv1.LabelServiceName]
 
-	trList := &gatewayv1alpha2.TLSRouteList{}
+	trList := &gatewayv1.TLSRouteList{}
 	if err := r.List(ctx, trList, client.MatchingFields{
 		indexer.ServiceIndexRef: indexer.GenIndexKey(namespace, serviceName),
 	}); err != nil {

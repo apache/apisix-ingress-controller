@@ -62,7 +62,7 @@ spec:
 
 	Context("TCPRoute Base", func() {
 		var tcpRoute = `
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1
 kind: TCPRoute
 metadata:
   name: tcp-app-1
@@ -121,7 +121,7 @@ spec:
 
 	Context("TCPRoute With BackendTrafficPolicy", func() {
 		var tcpRoute = `
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1
 kind: TCPRoute
 metadata:
   name: tcp-tls-upstream
@@ -185,7 +185,7 @@ spec:
 
 	Context("TCPRoute With L4RoutePolicy", func() {
 		var tcpRoute = `
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1
 kind: TCPRoute
 metadata:
   name: tcp-l4policy

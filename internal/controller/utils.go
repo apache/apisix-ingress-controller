@@ -43,7 +43,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
@@ -651,11 +650,11 @@ func routeHostnamesIntersectsWithListenerHostname(route client.Object, listener 
 	switch r := route.(type) {
 	case *gatewayv1.HTTPRoute:
 		return listenerHostnameIntersectWithRouteHostnames(listener, r.Spec.Hostnames)
-	case *gatewayv1alpha2.TCPRoute, *gatewayv1alpha2.UDPRoute:
+	case *gatewayv1.TCPRoute, *gatewayv1.UDPRoute:
 		return true // TCPRoute and UDPRoute don't have Hostnames to match
 	case *gatewayv1.GRPCRoute:
 		return listenerHostnameIntersectWithRouteHostnames(listener, r.Spec.Hostnames)
-	case *gatewayv1alpha2.TLSRoute:
+	case *gatewayv1.TLSRoute:
 		return listenerHostnameIntersectWithRouteHostnames(listener, r.Spec.Hostnames)
 	default:
 		return false
@@ -821,15 +820,15 @@ func routeMatchesListenerType(route client.Object, listener gatewayv1.Listener) 
 				return false, nil
 			}
 		}
-	case *gatewayv1alpha2.TCPRoute:
+	case *gatewayv1.TCPRoute:
 		if listener.Protocol != gatewayv1.TCPProtocolType {
 			return false, nil
 		}
-	case *gatewayv1alpha2.UDPRoute:
+	case *gatewayv1.UDPRoute:
 		if listener.Protocol != gatewayv1.UDPProtocolType {
 			return false, nil
 		}
-	case *gatewayv1alpha2.TLSRoute:
+	case *gatewayv1.TLSRoute:
 		if listener.Protocol != gatewayv1.TLSProtocolType {
 			return false, nil
 		}
@@ -863,11 +862,11 @@ func getAttachedRoutesForListener(ctx context.Context, mgrc client.Client, gatew
 			case types.KindGRPCRoute:
 				routeList = append(routeList, &gatewayv1.GRPCRouteList{})
 			case types.KindTCPRoute:
-				routeList = append(routeList, &gatewayv1alpha2.TCPRouteList{})
+				routeList = append(routeList, &gatewayv1.TCPRouteList{})
 			case types.KindUDPRoute:
-				routeList = append(routeList, &gatewayv1alpha2.UDPRouteList{})
+				routeList = append(routeList, &gatewayv1.UDPRouteList{})
 			case types.KindTLSRoute:
-				routeList = append(routeList, &gatewayv1alpha2.TLSRouteList{})
+				routeList = append(routeList, &gatewayv1.TLSRouteList{})
 			}
 		}
 	} else {
@@ -875,11 +874,11 @@ func getAttachedRoutesForListener(ctx context.Context, mgrc client.Client, gatew
 		case gatewayv1.HTTPProtocolType, gatewayv1.HTTPSProtocolType:
 			routeList = append(routeList, &gatewayv1.HTTPRouteList{}, &gatewayv1.GRPCRouteList{})
 		case gatewayv1.TCPProtocolType:
-			routeList = append(routeList, &gatewayv1alpha2.TCPRouteList{})
+			routeList = append(routeList, &gatewayv1.TCPRouteList{})
 		case gatewayv1.UDPProtocolType:
-			routeList = append(routeList, &gatewayv1alpha2.UDPRouteList{})
+			routeList = append(routeList, &gatewayv1.UDPRouteList{})
 		case gatewayv1.TLSProtocolType:
-			routeList = append(routeList, &gatewayv1alpha2.TLSRouteList{})
+			routeList = append(routeList, &gatewayv1.TLSRouteList{})
 		}
 	}
 

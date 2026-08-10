@@ -54,7 +54,7 @@ spec:
 `
 
 		var udpRoute = `
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1
 kind: UDPRoute
 metadata:
   name: udp-app-1

@@ -36,7 +36,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
@@ -105,33 +104,33 @@ func (r *GatewayReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			builder.WithPredicates(referenceGrantPredicates(KindGateway)),
 		)
 	}
-	hasTCPRoute, err := pkgutils.HasAPIResource(mgr, &gatewayv1alpha2.TCPRoute{})
+	hasTCPRoute, err := pkgutils.HasAPIResource(mgr, &gatewayv1.TCPRoute{})
 	if err != nil {
 		return err
 	}
 	if hasTCPRoute {
 		bdr.Watches(
-			&gatewayv1alpha2.TCPRoute{},
+			&gatewayv1.TCPRoute{},
 			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForStatusParentRefs),
 		)
 	}
-	hasTLSRoute, err := pkgutils.HasAPIResource(mgr, &gatewayv1alpha2.TLSRoute{})
+	hasTLSRoute, err := pkgutils.HasAPIResource(mgr, &gatewayv1.TLSRoute{})
 	if err != nil {
 		return err
 	}
 	if hasTLSRoute {
 		bdr.Watches(
-			&gatewayv1alpha2.TLSRoute{},
+			&gatewayv1.TLSRoute{},
 			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForStatusParentRefs),
 		)
 	}
-	hasUDPRoute, err := pkgutils.HasAPIResource(mgr, &gatewayv1alpha2.UDPRoute{})
+	hasUDPRoute, err := pkgutils.HasAPIResource(mgr, &gatewayv1.UDPRoute{})
 	if err != nil {
 		return err
 	}
 	if hasUDPRoute {
 		bdr.Watches(
-			&gatewayv1alpha2.UDPRoute{},
+			&gatewayv1.UDPRoute{},
 			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForStatusParentRefs),
 		)
 	}
