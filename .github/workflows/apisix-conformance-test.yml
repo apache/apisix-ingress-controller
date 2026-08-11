@@ -22,9 +22,11 @@ on:
     branches:
       - master
     # Tag runs produce the report submitted to the Gateway API conformance
-    # reports repository, so they must run on the tagged commit itself.
+    # reports repository, so they must run on the tagged commit itself. The 2.x
+    # tags carry no leading v, the 1.x ones did.
     tags:
-      - "v*"
+      - "[0-9]*"
+      - "v[0-9]*"
   pull_request:
     branches:
       - master

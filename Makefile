@@ -75,7 +75,9 @@ CONFORMANCE_CHANNEL ?= experimental
 # A mode other than default must map to a specific setup of the implementation
 # and be documented in the report's Reproduce section.
 CONFORMANCE_MODE ?= default
-CONFORMANCE_TEST_REPORT_OUTPUT ?= $(DIR)/$(CONFORMANCE_CHANNEL)-v$(VERSION)-$(CONFORMANCE_MODE)-report.yaml
+# VERSION carries no leading v, matching how the 2.x tags are named, so the
+# declared version and the file name both point at a tag that exists.
+CONFORMANCE_TEST_REPORT_OUTPUT ?= $(DIR)/$(CONFORMANCE_CHANNEL)-$(VERSION)-$(CONFORMANCE_MODE)-report.yaml
 
 TEST_EXCLUDES ?= /e2e /conformance /benchmark
 TEST_PACKAGES = $(shell go list ./... $(foreach p,$(TEST_EXCLUDES),| grep -v $(p)))
@@ -181,7 +183,7 @@ conformance-test:
 		--organization="$(CONFORMANCE_ORGANIZATION)" \
 		--project="$(CONFORMANCE_PROJECT)" \
 		--url="$(CONFORMANCE_URL)" \
-		--version="v$(VERSION)" \
+		--version="$(VERSION)" \
 		--contact="$(CONFORMANCE_CONTACT)" \
 		--mode="$(CONFORMANCE_MODE)" \
 		--report-output=$(CONFORMANCE_TEST_REPORT_OUTPUT)
