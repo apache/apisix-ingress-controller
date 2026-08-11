@@ -41,11 +41,11 @@ preface = """\
 
 ## Highlights
 
-* **Gateway API 1.6.0** support [#2804](https://github.com/apache/apisix-ingress-controller/pull/2804). TCPRoute, UDPRoute, TLSRoute and ReferenceGrant are now read through `gateway.networking.k8s.io/v1` [#2839](https://github.com/apache/apisix-ingress-controller/pull/2839).
-* **Downstream mTLS** on Gateway listeners, configured at `spec.tls.frontend` [#2792](https://github.com/apache/apisix-ingress-controller/pull/2792).
+* **Gateway API 1.6.0** support [#2804](https://github.com/apache/apisix-ingress-controller/pull/2804). `TCPRoute`, `UDPRoute`, `TLSRoute` and `ReferenceGrant` are now read through `gateway.networking.k8s.io/v1` [#2839](https://github.com/apache/apisix-ingress-controller/pull/2839).
+* **Downstream mTLS** on `Gateway` listeners, configured at `spec.tls.frontend` [#2792](https://github.com/apache/apisix-ingress-controller/pull/2792).
 * **`L4RoutePolicy`**, a new CRD that attaches stream plugins to L4 routes [#2791](https://github.com/apache/apisix-ingress-controller/pull/2791).
 * **L4 upstream schemes** `tcp`, `tls` and `udp` for stream backends [#2830](https://github.com/apache/apisix-ingress-controller/pull/2830).
-* **Security fixes**: credentials are kept out of the logs, cross-namespace Consumer `secretRef` is gated by ReferenceGrant, and the Consumer webhook no longer reveals whether a Secret exists in another namespace.
+* **Security fixes**: credentials are kept out of the logs, a cross-namespace `Consumer` `secretRef` is gated by a `ReferenceGrant`, and the `Consumer` webhook no longer reveals whether a `Secret` exists in another namespace.
 
 ---
 
@@ -62,15 +62,38 @@ annotation size limit of client-side apply:
 kubectl apply --server-side --force-conflicts -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.0/experimental-install.yaml
 ```
 
+**`listener_port_match_mode` now covers L4 routes too**
+[#2818](https://github.com/apache/apisix-ingress-controller/pull/2818). `TCPRoute` and
+`UDPRoute` join `HTTPRoute` and `GRPCRoute` under the `server_port` route-var injection
+this option gates. The default `off` keeps the previous behavior: one portless
+`StreamRoute` per rule, matching every connection on the stream listener. The other two
+modes now apply to L4 as well:
+
+| mode | when `server_port` is injected |
+| ---- | ------------------------------ |
+| `off` (default) | never |
+| `explicit` | a parentRef pins `sectionName` or `port` |
+| `auto` | that, or the `Gateway` has more than one listener port |
+
+Once injected, the `Gateway` listener port must equal the port APISIX actually accepts
+the connection on, or nothing matches:
+
+```yaml
+listeners:
+  - name: tcp
+    protocol: TCP
+    port: 9100        # must equal an APISIX stream_proxy.tcp port
+```
+
 ---
 
 ## Breaking Changes
 
-### A cross-namespace Consumer `secretRef` now requires a ReferenceGrant
+### A cross-namespace `Consumer` `secretRef` now requires a `ReferenceGrant`
 
 [#2805](https://github.com/apache/apisix-ingress-controller/pull/2805). Without a grant
-the Consumer stops reconciling and its credential is no longer programmed. Create the
-grant in the Secret's namespace before upgrading:
+the `Consumer` stops reconciling and its credential is no longer programmed. Create the
+grant in the `Secret`'s namespace before upgrading:
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1beta1
@@ -93,44 +116,26 @@ spec:
 [#2839](https://github.com/apache/apisix-ingress-controller/pull/2839).
 `/validate-gateway-networking-k8s-io-v1alpha2-tcproute` becomes `...-v1-tcproute`, and
 the same for `udproute`. The shipped manifests are updated; a hand-maintained
-ValidatingWebhookConfiguration is not. This also fixes L4 routing on the Gateway API
-standard channel, which no longer serves `v1alpha2` and where the L4 reconcilers were
-therefore skipped entirely.
+`ValidatingWebhookConfiguration` is not. This also fixes L4 routing on the Gateway API
+standard channel, which no longer serves `v1alpha2` and where the `TCPRoute`, `UDPRoute`
+and `TLSRoute` reconcilers were therefore skipped entirely.
 
 ### `apisix.apache.org/enable-csrf` without `csrf-key` is rejected
 
 [#2813](https://github.com/apache/apisix-ingress-controller/pull/2813). The webhook now
-fails the Ingress instead of silently dropping the `csrf` plugin, so `kubectl apply`
+fails the `Ingress` instead of silently dropping the `csrf` plugin, so `kubectl apply`
 returns an error on manifests that used to be accepted. Set `apisix.apache.org/csrf-key`.
-
-### TCPRoute and UDPRoute that pin a listener now match on `server_port`
-
-[#2818](https://github.com/apache/apisix-ingress-controller/pull/2818). When a parentRef
-sets `sectionName` or `port`, or the Gateway exposes more than one stream listener port,
-the generated StreamRoute carries `server_port`. The Gateway listener port must then
-equal the port APISIX actually listens on for streams, otherwise the connection no longer
-matches the route:
-
-```yaml
-listeners:
-  - name: tcp
-    protocol: TCP
-    port: 9100        # must equal an APISIX stream_proxy.tcp port
-```
-
-Routes that do not pin a listener, on a Gateway with a single stream listener, keep the
-previous behavior.
 
 ---
 
 ## Features
 
-### Downstream mTLS on Gateway listeners
+### Downstream mTLS on `Gateway` listeners
 
 [#2792](https://github.com/apache/apisix-ingress-controller/pull/2792). Clients must
 present a certificate signed by one of the referenced CAs. The CA is read from the
-`ca.crt` key of a ConfigMap (Gateway API Core support) or a Secret (extension). Gateway
-API 1.6 declares this at the Gateway level, not on the listener:
+`ca.crt` key of a `ConfigMap` (Gateway API Core support) or a `Secret` (extension).
+Gateway API 1.6 declares this at the `Gateway` level, not on the listener:
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -160,12 +165,12 @@ spec:
 ```
 
 `spec.tls.frontend.perPort` overrides the default for a single listener port. A CA in
-another namespace must be authorized by a ReferenceGrant.
+another namespace must be authorized by a `ReferenceGrant`.
 
 ### `L4RoutePolicy`
 
 [#2791](https://github.com/apache/apisix-ingress-controller/pull/2791). Attaches stream
-plugins to a TCPRoute, UDPRoute or TLSRoute:
+plugins to a `TCPRoute`, `UDPRoute` or `TLSRoute`:
 
 ```yaml
 apiVersion: apisix.apache.org/v1alpha1
@@ -189,8 +194,8 @@ spec:
 ### L4 upstream schemes
 
 [#2830](https://github.com/apache/apisix-ingress-controller/pull/2830). The `scheme`
-field of BackendTrafficPolicy and ApisixUpstream accepts `tcp`, `tls` and `udp` next to
-the existing L7 values. They apply to stream routes only; setting one on an HTTP route
+field of `BackendTrafficPolicy` and `ApisixUpstream` accepts `tcp`, `tls` and `udp` next
+to the existing L7 values. They apply to stream routes only; setting one on an HTTP route
 makes the upstream unreachable.
 
 ```yaml
