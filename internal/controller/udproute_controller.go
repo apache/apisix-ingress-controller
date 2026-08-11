@@ -35,8 +35,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
@@ -68,7 +66,7 @@ type UDPRouteReconciler struct { //nolint:revive
 func (r *UDPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	bdr := ctrl.NewControllerManagedBy(mgr).
-		For(&gatewayv1alpha2.UDPRoute{}).
+		For(&gatewayv1.UDPRoute{}).
 		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Watches(&discoveryv1.EndpointSlice{},
 			handler.EnqueueRequestsFromMapFunc(r.listUDPRoutesByServiceRef),
@@ -113,7 +111,7 @@ func (r *UDPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	if GetEnableReferenceGrant() {
-		bdr.Watches(&v1beta1.ReferenceGrant{},
+		bdr.Watches(&gatewayv1.ReferenceGrant{},
 			handler.EnqueueRequestsFromMapFunc(r.listUDPRoutesForReferenceGrant),
 			builder.WithPredicates(referenceGrantPredicates(KindUDPRoute)),
 		)
@@ -129,7 +127,7 @@ func (r *UDPRouteReconciler) listUDPRoutesForBackendTrafficPolicy(ctx context.Co
 		return nil
 	}
 
-	udprouteList := []gatewayv1alpha2.UDPRoute{}
+	udprouteList := []gatewayv1.UDPRoute{}
 	for _, targetRef := range policy.Spec.TargetRefs {
 		service := &corev1.Service{}
 		if err := r.Get(ctx, client.ObjectKey{
@@ -141,7 +139,7 @@ func (r *UDPRouteReconciler) listUDPRoutesForBackendTrafficPolicy(ctx context.Co
 			}
 			continue
 		}
-		udprList := &gatewayv1alpha2.UDPRouteList{}
+		udprList := &gatewayv1.UDPRouteList{}
 		if err := r.List(ctx, udprList, client.MatchingFields{
 			indexer.ServiceIndexRef: indexer.GenIndexKey(policy.Namespace, string(targetRef.Name)),
 		}); err != nil {
@@ -175,7 +173,7 @@ func (r *UDPRouteReconciler) listUDPRoutesForGateway(ctx context.Context, obj cl
 	if !ok {
 		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to Gateway")
 	}
-	udprList := &gatewayv1alpha2.UDPRouteList{}
+	udprList := &gatewayv1.UDPRouteList{}
 	if err := r.List(ctx, udprList, client.MatchingFields{
 		indexer.ParentRefs: indexer.GenIndexKey(gateway.Namespace, gateway.Name),
 	}); err != nil {
@@ -219,7 +217,7 @@ func (r *UDPRouteReconciler) listUDPRoutesForGatewayProxy(ctx context.Context, o
 
 	// for each gateway, find all UDPRoute resources that reference it
 	for _, gateway := range gatewayList.Items {
-		udpRouteList := &gatewayv1alpha2.UDPRouteList{}
+		udpRouteList := &gatewayv1.UDPRouteList{}
 		if err := r.List(ctx, udpRouteList, client.MatchingFields{
 			indexer.ParentRefs: indexer.GenIndexKey(gateway.Namespace, gateway.Name),
 		}); err != nil {
@@ -241,8 +239,8 @@ func (r *UDPRouteReconciler) listUDPRoutesForGatewayProxy(ctx context.Context, o
 }
 
 func (r *UDPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	defer r.Readier.Done(&gatewayv1alpha2.UDPRoute{}, req.NamespacedName)
-	tr := new(gatewayv1alpha2.UDPRoute)
+	defer r.Readier.Done(&gatewayv1.UDPRoute{}, req.NamespacedName)
+	tr := new(gatewayv1.UDPRoute)
 	if err := r.Get(ctx, req.NamespacedName, tr); err != nil {
 		if client.IgnoreNotFound(err) == nil {
 			tr.Namespace = req.Namespace
@@ -250,7 +248,7 @@ func (r *UDPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 			tr.TypeMeta = metav1.TypeMeta{
 				Kind:       KindUDPRoute,
-				APIVersion: gatewayv1alpha2.GroupVersion.String(),
+				APIVersion: gatewayv1.GroupVersion.String(),
 			}
 
 			if err := r.Provider.Delete(ctx, tr); err != nil {
@@ -339,9 +337,9 @@ func (r *UDPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	r.Updater.Update(status.Update{
 		NamespacedName: utils.NamespacedName(tr),
-		Resource:       &gatewayv1alpha2.UDPRoute{},
+		Resource:       &gatewayv1.UDPRoute{},
 		Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
-			t, ok := obj.(*gatewayv1alpha2.UDPRoute)
+			t, ok := obj.(*gatewayv1.UDPRoute)
 			if !ok {
 				err := fmt.Errorf("unsupported object type %T", obj)
 				panic(err)
@@ -361,7 +359,7 @@ func (r *UDPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	return ctrl.Result{}, nil
 }
 
-func (r *UDPRouteReconciler) processUDPRoute(tctx *provider.TranslateContext, udpRoute *gatewayv1alpha2.UDPRoute) error {
+func (r *UDPRouteReconciler) processUDPRoute(tctx *provider.TranslateContext, udpRoute *gatewayv1.UDPRoute) error {
 	var terror error
 	for _, rule := range udpRoute.Spec.Rules {
 		for _, backend := range rule.BackendRefs {
@@ -419,10 +417,10 @@ func (r *UDPRouteReconciler) processUDPRouteBackendRefs(tctx *provider.Translate
 		if trNN.Namespace != targetNN.Namespace {
 			if permitted := checkReferenceGrant(tctx,
 				r.Client,
-				v1beta1.ReferenceGrantFrom{
+				gatewayv1.ReferenceGrantFrom{
 					Group:     gatewayv1.GroupName,
 					Kind:      KindUDPRoute,
-					Namespace: v1beta1.Namespace(trNN.Namespace),
+					Namespace: gatewayv1.Namespace(trNN.Namespace),
 				},
 				gatewayv1.ObjectReference{
 					Group:     corev1.GroupName,
@@ -432,7 +430,7 @@ func (r *UDPRouteReconciler) processUDPRouteBackendRefs(tctx *provider.Translate
 				},
 			); !permitted {
 				terr = types.ReasonError{
-					Reason:  string(v1beta1.RouteReasonRefNotPermitted),
+					Reason:  string(gatewayv1.RouteReasonRefNotPermitted),
 					Message: fmt.Sprintf("%s is in a different namespace than the UDPRoute %s and no ReferenceGrant allowing reference is configured", targetNN, trNN),
 				}
 				continue
@@ -475,23 +473,23 @@ func (r *UDPRouteReconciler) processUDPRouteBackendRefs(tctx *provider.Translate
 }
 
 func (r *UDPRouteReconciler) listUDPRoutesForReferenceGrant(ctx context.Context, obj client.Object) (requests []reconcile.Request) {
-	grant, ok := obj.(*v1beta1.ReferenceGrant)
+	grant, ok := obj.(*gatewayv1.ReferenceGrant)
 	if !ok {
 		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to ReferenceGrant")
 		return nil
 	}
 
-	var udpRouteList gatewayv1alpha2.UDPRouteList
+	var udpRouteList gatewayv1.UDPRouteList
 	if err := r.List(ctx, &udpRouteList); err != nil {
 		r.Log.Error(err, "failed to list udproutes for reference ReferenceGrant", "ReferenceGrant", k8stypes.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()})
 		return nil
 	}
 
 	for _, udpRoute := range udpRouteList.Items {
-		tr := v1beta1.ReferenceGrantFrom{
+		tr := gatewayv1.ReferenceGrantFrom{
 			Group:     gatewayv1.GroupName,
 			Kind:      KindUDPRoute,
-			Namespace: v1beta1.Namespace(udpRoute.GetNamespace()),
+			Namespace: gatewayv1.Namespace(udpRoute.GetNamespace()),
 		}
 		for _, from := range grant.Spec.From {
 			if from == tr {
@@ -516,7 +514,7 @@ func (r *UDPRouteReconciler) listUDPRoutesByServiceRef(ctx context.Context, obj 
 	namespace := endpointSlice.GetNamespace()
 	serviceName := endpointSlice.Labels[discoveryv1.LabelServiceName]
 
-	trList := &gatewayv1alpha2.UDPRouteList{}
+	trList := &gatewayv1.UDPRouteList{}
 	if err := r.List(ctx, trList, client.MatchingFields{
 		indexer.ServiceIndexRef: indexer.GenIndexKey(namespace, serviceName),
 	}); err != nil {

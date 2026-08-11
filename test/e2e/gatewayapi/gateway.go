@@ -488,7 +488,7 @@ spec:
       port: 8080
 `
 		var tcpRouteSpec = `
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1
 kind: TCPRoute
 metadata:
   name: %s
@@ -502,7 +502,7 @@ spec:
       port: 80
 `
 		var udpRoute = `
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1
 kind: UDPRoute
 metadata:
   name: %s

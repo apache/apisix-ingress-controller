@@ -28,7 +28,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 )
@@ -84,7 +83,7 @@ func TestGetListenerStatus_Conflicted(t *testing.T) {
 				WithObjects(newParentRefGatewayClass(), gw).
 				// Counting attached routes goes through the parentRefs index; no
 				// route exists here, only the index has to be known.
-				WithIndex(&gatewayv1alpha2.TLSRoute{}, indexer.ParentRefs,
+				WithIndex(&gatewayv1.TLSRoute{}, indexer.ParentRefs,
 					func(client.Object) []string { return nil }).
 				Build()
 

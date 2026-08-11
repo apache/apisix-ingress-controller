@@ -21,7 +21,6 @@ import (
 	"github.com/samber/lo"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 )
 
 type HTTPRouteAdapter struct {
@@ -53,7 +52,7 @@ func (r GRPCRouteAdapter) GetObject() client.Object {
 }
 
 type TCPRouteAdapter struct {
-	*gatewayv1alpha2.TCPRoute
+	*gatewayv1.TCPRoute
 }
 
 func (r TCPRouteAdapter) GetParentStatuses() []gatewayv1.RouteParentStatus {
@@ -68,7 +67,7 @@ func (r TCPRouteAdapter) GetObject() client.Object {
 }
 
 type UDPRouteAdapter struct {
-	*gatewayv1alpha2.UDPRoute
+	*gatewayv1.UDPRoute
 }
 
 func (r UDPRouteAdapter) GetParentStatuses() []gatewayv1.RouteParentStatus {
@@ -82,7 +81,7 @@ func (r UDPRouteAdapter) GetObject() client.Object {
 }
 
 type TLSRouteAdapter struct {
-	*gatewayv1alpha2.TLSRoute
+	*gatewayv1.TLSRoute
 }
 
 func (r TLSRouteAdapter) GetParentStatuses() []gatewayv1.RouteParentStatus {
@@ -108,11 +107,11 @@ func NewRouteAdapter(obj client.Object) RouteAdapter {
 		return &HTTPRouteAdapter{HTTPRoute: r}
 	case *gatewayv1.GRPCRoute:
 		return &GRPCRouteAdapter{GRPCRoute: r}
-	case *gatewayv1alpha2.TLSRoute:
+	case *gatewayv1.TLSRoute:
 		return &TLSRouteAdapter{TLSRoute: r}
-	case *gatewayv1alpha2.TCPRoute:
+	case *gatewayv1.TCPRoute:
 		return &TCPRouteAdapter{TCPRoute: r}
-	case *gatewayv1alpha2.UDPRoute:
+	case *gatewayv1.UDPRoute:
 		return &UDPRouteAdapter{UDPRoute: r}
 	default:
 		return nil
@@ -129,16 +128,16 @@ func NewRouteListAdapter(objList client.ObjectList) []RouteAdapter {
 		return lo.Map(r.Items, func(item gatewayv1.GRPCRoute, _ int) RouteAdapter {
 			return &GRPCRouteAdapter{GRPCRoute: &item}
 		})
-	case *gatewayv1alpha2.TLSRouteList:
-		return lo.Map(r.Items, func(item gatewayv1alpha2.TLSRoute, _ int) RouteAdapter {
+	case *gatewayv1.TLSRouteList:
+		return lo.Map(r.Items, func(item gatewayv1.TLSRoute, _ int) RouteAdapter {
 			return &TLSRouteAdapter{TLSRoute: &item}
 		})
-	case *gatewayv1alpha2.TCPRouteList:
-		return lo.Map(r.Items, func(item gatewayv1alpha2.TCPRoute, _ int) RouteAdapter {
+	case *gatewayv1.TCPRouteList:
+		return lo.Map(r.Items, func(item gatewayv1.TCPRoute, _ int) RouteAdapter {
 			return &TCPRouteAdapter{TCPRoute: &item}
 		})
-	case *gatewayv1alpha2.UDPRouteList:
-		return lo.Map(r.Items, func(item gatewayv1alpha2.UDPRoute, _ int) RouteAdapter {
+	case *gatewayv1.UDPRouteList:
+		return lo.Map(r.Items, func(item gatewayv1.UDPRoute, _ int) RouteAdapter {
 			return &UDPRouteAdapter{UDPRoute: &item}
 		})
 	default:

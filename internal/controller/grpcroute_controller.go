@@ -37,7 +37,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
@@ -112,7 +111,7 @@ func (r *GRPCRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		)
 
 	if GetEnableReferenceGrant() {
-		bdr.Watches(&v1beta1.ReferenceGrant{},
+		bdr.Watches(&gatewayv1.ReferenceGrant{},
 			handler.EnqueueRequestsFromMapFunc(r.listGRPCRoutesForReferenceGrant),
 			builder.WithPredicates(referenceGrantPredicates(KindGRPCRoute)),
 		)
@@ -415,10 +414,10 @@ func (r *GRPCRouteReconciler) processGRPCRouteBackendRefs(tctx *provider.Transla
 		if grNN.Namespace != targetNN.Namespace {
 			if permitted := checkReferenceGrant(tctx,
 				r.Client,
-				v1beta1.ReferenceGrantFrom{
+				gatewayv1.ReferenceGrantFrom{
 					Group:     gatewayv1.GroupName,
 					Kind:      KindGRPCRoute,
-					Namespace: v1beta1.Namespace(grNN.Namespace),
+					Namespace: gatewayv1.Namespace(grNN.Namespace),
 				},
 				gatewayv1.ObjectReference{
 					Group:     corev1.GroupName,
@@ -428,7 +427,7 @@ func (r *GRPCRouteReconciler) processGRPCRouteBackendRefs(tctx *provider.Transla
 				},
 			); !permitted {
 				terr = types.ReasonError{
-					Reason:  string(v1beta1.RouteReasonRefNotPermitted),
+					Reason:  string(gatewayv1.RouteReasonRefNotPermitted),
 					Message: fmt.Sprintf("%s is in a different namespace than the GRPCRoute %s and no ReferenceGrant allowing reference is configured", targetNN, grNN),
 				}
 				continue
@@ -556,7 +555,7 @@ func (r *GRPCRouteReconciler) listGRPCRoutesForGatewayProxy(ctx context.Context,
 }
 
 func (r *GRPCRouteReconciler) listGRPCRoutesForReferenceGrant(ctx context.Context, obj client.Object) (requests []reconcile.Request) {
-	grant, ok := obj.(*v1beta1.ReferenceGrant)
+	grant, ok := obj.(*gatewayv1.ReferenceGrant)
 	if !ok {
 		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to ReferenceGrant")
 		return nil
@@ -569,10 +568,10 @@ func (r *GRPCRouteReconciler) listGRPCRoutesForReferenceGrant(ctx context.Contex
 	}
 
 	for _, grpcRoute := range grpcRouteList.Items {
-		gr := v1beta1.ReferenceGrantFrom{
+		gr := gatewayv1.ReferenceGrantFrom{
 			Group:     gatewayv1.GroupName,
 			Kind:      KindGRPCRoute,
-			Namespace: v1beta1.Namespace(grpcRoute.GetNamespace()),
+			Namespace: gatewayv1.Namespace(grpcRoute.GetNamespace()),
 		}
 		for _, from := range grant.Spec.From {
 			if from == gr {

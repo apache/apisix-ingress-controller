@@ -24,7 +24,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
@@ -156,9 +155,9 @@ func (d *apisixProvider) updateStatus(nnk types.NamespacedNameKind, condition me
 		}
 		d.updater.Update(status.Update{
 			NamespacedName: nnk.NamespacedName(),
-			Resource:       &gatewayv1alpha2.UDPRoute{},
+			Resource:       &gatewayv1.UDPRoute{},
 			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
-				cp := obj.(*gatewayv1alpha2.UDPRoute).DeepCopy()
+				cp := obj.(*gatewayv1.UDPRoute).DeepCopy()
 				condition.ObservedGeneration = cp.GetGeneration()
 				gatewayNs := cp.GetNamespace()
 				for i, ref := range cp.Status.Parents {
@@ -192,9 +191,9 @@ func (d *apisixProvider) updateStatus(nnk types.NamespacedNameKind, condition me
 		}
 		d.updater.Update(status.Update{
 			NamespacedName: nnk.NamespacedName(),
-			Resource:       &gatewayv1alpha2.TCPRoute{},
+			Resource:       &gatewayv1.TCPRoute{},
 			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
-				cp := obj.(*gatewayv1alpha2.TCPRoute).DeepCopy()
+				cp := obj.(*gatewayv1.TCPRoute).DeepCopy()
 				condition.ObservedGeneration = cp.GetGeneration()
 				gatewayNs := cp.GetNamespace()
 				for i, ref := range cp.Status.Parents {
