@@ -1,12 +1,15 @@
-apiVersion: apisix.apache.org/v2
-kind: ApisixUpstream
+apiVersion: apisix.apache.org/v1alpha1
+kind: BackendTrafficPolicy
 metadata:
   labels:
     app.kubernetes.io/name: apisix-ingress-controller
     app.kubernetes.io/managed-by: kustomize
-  name: apisixupstream-sample
+  name: backendtrafficpolicy-sample
 spec:
-  ingressClassName: apisix
+  targetRefs:
+    - group: ""
+      kind: Service
+      name: httpbin
   scheme: http
   retries: 2
   loadbalancer:

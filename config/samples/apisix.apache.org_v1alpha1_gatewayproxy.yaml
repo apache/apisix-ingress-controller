@@ -2,12 +2,21 @@ apiVersion: apisix.apache.org/v1alpha1
 kind: GatewayProxy
 metadata:
   labels:
-    app.kubernetes.io/name: gatewayproxy
-    app.kubernetes.io/instance: gatewayproxy-sample
-    app.kubernetes.io/part-of: apisix-ingress-controller
+    app.kubernetes.io/name: apisix-ingress-controller
     app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: apisix-ingress-controller
   name: gatewayproxy-sample
 spec:
+  provider:
+    type: ControlPlane
+    controlPlane:
+      endpoints:
+        - http://apisix-admin.default.svc.cluster.local:9180
+      auth:
+        type: AdminKey
+        adminKey:
+          valueFrom:
+            secretKeyRef:
+              name: apisix-admin-key
+              key: admin-key
   pluginMetadata:
-    "error-page": {"enable":false}
+    "http-logger": {"log_format":{"host":"$host","client_ip":"$remote_addr"}}

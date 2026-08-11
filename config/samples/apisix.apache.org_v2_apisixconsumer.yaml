@@ -6,4 +6,8 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: apisixconsumer-sample
 spec:
-  # TODO(user): Add fields here
+  ingressClassName: apisix
+  authParameter:
+    keyAuth:
+      value:
+        key: sample-key
