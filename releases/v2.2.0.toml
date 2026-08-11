@@ -41,56 +41,176 @@ preface = """\
 
 ## Highlights
 
-This release upgrades the project to Gateway API 1.6.0, adds L4 traffic policy
-and downstream mTLS support, and ships a batch of security and correctness fixes.
+* **Gateway API 1.6.0** support [#2804](https://github.com/apache/apisix-ingress-controller/pull/2804). TCPRoute, UDPRoute, TLSRoute and ReferenceGrant are now read through `gateway.networking.k8s.io/v1` [#2839](https://github.com/apache/apisix-ingress-controller/pull/2839).
+* **Downstream mTLS** on Gateway listeners, configured at `spec.tls.frontend` [#2792](https://github.com/apache/apisix-ingress-controller/pull/2792).
+* **`L4RoutePolicy`**, a new CRD that attaches stream plugins to L4 routes [#2791](https://github.com/apache/apisix-ingress-controller/pull/2791).
+* **L4 upstream schemes** `tcp`, `tls` and `udp` for stream backends [#2830](https://github.com/apache/apisix-ingress-controller/pull/2830).
+* **Security fixes**: credentials are kept out of the logs, cross-namespace Consumer `secretRef` is gated by ReferenceGrant, and the Consumer webhook no longer reveals whether a Secret exists in another namespace.
 
-It also raises the minimum supported Kubernetes version, moves the L4 routes to
-their `v1` API version, and tightens three previously permissive behaviors. Read
-the Breaking Changes section below before upgrading.
+---
+
+## Upgrade Notes
+
+**Kubernetes 1.31 or newer is recommended.** On an older cluster the controller logs a
+warning and keeps running; nothing refuses to start. What needs 1.31 in practice are the
+Gateway API 1.6.0 CRDs, whose CEL validation rules use features added in that release.
+
+**Install the Gateway API CRDs with server-side apply.** The v1.6.0 CRDs exceed the
+annotation size limit of client-side apply:
+
+```shell
+kubectl apply --server-side --force-conflicts -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.0/experimental-install.yaml
+```
 
 ---
 
 ## Breaking Changes
 
-* **Kubernetes 1.31.0 is now the minimum supported version**, up from 1.26.0 [#2804](https://github.com/apache/apisix-ingress-controller/pull/2804).
-  The bundled Gateway API 1.6.0 CRDs rely on CEL validation features available from
-  1.31, and the controller's own CRDs additionally use IngressClass namespaced
-  parameters and EndpointSlice terminating conditions. Install the Gateway API CRDs
-  with `kubectl apply --server-side --force-conflicts`: the v1.6.0 CRDs exceed the
-  annotation size limit of client-side apply.
-* **TCPRoute, UDPRoute and TLSRoute are now read through `gateway.networking.k8s.io/v1`** [#2839](https://github.com/apache/apisix-ingress-controller/pull/2839).
-  Gateway API 1.6 promoted the L4 routes to `v1` and stopped serving `v1alpha2` in the
-  standard channel, where the controller previously found no L4 route resource and
-  silently skipped those reconcilers. The validating webhook paths move accordingly,
-  from `/validate-gateway-networking-k8s-io-v1alpha2-*` to `-v1-*`: a hand-maintained
-  ValidatingWebhookConfiguration must be updated to match, the shipped manifests
-  already are. ReferenceGrant is read through `v1` as well; `v1beta1` remains the
-  storage version, so stored objects are unaffected.
-* **A cross-namespace Consumer `secretRef` now requires a ReferenceGrant** [#2805](https://github.com/apache/apisix-ingress-controller/pull/2805).
-  A Consumer that reads a Secret from another namespace stops reconciling, and its
-  credential is no longer programmed, until a ReferenceGrant in the Secret's
-  namespace permits `Consumer` from the Consumer's namespace. Create those grants
-  before upgrading.
-* **`apisix.apache.org/enable-csrf` without `apisix.apache.org/csrf-key` is now rejected** [#2813](https://github.com/apache/apisix-ingress-controller/pull/2813).
-  The admission webhook fails such an Ingress instead of silently dropping the
-  `csrf` plugin, so `kubectl apply` now returns an error; where the webhook is not
-  in the path, translation skips the plugin and logs the reason. Set `csrf-key` on
-  the affected Ingresses.
-* **TCPRoute/UDPRoute that target a listener explicitly now match on `server_port`** [#2818](https://github.com/apache/apisix-ingress-controller/pull/2818).
-  When a parentRef pins a `sectionName` or `port`, or the Gateway exposes more than
-  one stream listener port, the generated StreamRoute carries `server_port`. The
-  Gateway listener port must therefore equal the APISIX stream listen port, or the
-  connection no longer matches the route. Routes without explicit listener targeting
-  on a single stream listener behave as before.
+### A cross-namespace Consumer `secretRef` now requires a ReferenceGrant
+
+[#2805](https://github.com/apache/apisix-ingress-controller/pull/2805). Without a grant
+the Consumer stops reconciling and its credential is no longer programmed. Create the
+grant in the Secret's namespace before upgrading:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: consumer-to-secret
+  namespace: secret-ns          # where the Secret lives
+spec:
+  from:
+    - group: apisix.apache.org
+      kind: Consumer
+      namespace: consumer-ns    # where the Consumer lives
+  to:
+    - group: ""
+      kind: Secret
+```
+
+### The L4 route webhook paths moved from `v1alpha2` to `v1`
+
+[#2839](https://github.com/apache/apisix-ingress-controller/pull/2839).
+`/validate-gateway-networking-k8s-io-v1alpha2-tcproute` becomes `...-v1-tcproute`, and
+the same for `udproute`. The shipped manifests are updated; a hand-maintained
+ValidatingWebhookConfiguration is not. This also fixes L4 routing on the Gateway API
+standard channel, which no longer serves `v1alpha2` and where the L4 reconcilers were
+therefore skipped entirely.
+
+### `apisix.apache.org/enable-csrf` without `csrf-key` is rejected
+
+[#2813](https://github.com/apache/apisix-ingress-controller/pull/2813). The webhook now
+fails the Ingress instead of silently dropping the `csrf` plugin, so `kubectl apply`
+returns an error on manifests that used to be accepted. Set `apisix.apache.org/csrf-key`.
+
+### TCPRoute and UDPRoute that pin a listener now match on `server_port`
+
+[#2818](https://github.com/apache/apisix-ingress-controller/pull/2818). When a parentRef
+sets `sectionName` or `port`, or the Gateway exposes more than one stream listener port,
+the generated StreamRoute carries `server_port`. The Gateway listener port must then
+equal the port APISIX actually listens on for streams, otherwise the connection no longer
+matches the route:
+
+```yaml
+listeners:
+  - name: tcp
+    protocol: TCP
+    port: 9100        # must equal an APISIX stream_proxy.tcp port
+```
+
+Routes that do not pin a listener, on a Gateway with a single stream listener, keep the
+previous behavior.
 
 ---
 
 ## Features
 
-* feat: support Gateway API 1.6.0 [#2804](https://github.com/apache/apisix-ingress-controller/pull/2804)
-* feat: add L4RoutePolicy for attaching stream plugins to L4 routes [#2791](https://github.com/apache/apisix-ingress-controller/pull/2791)
-* feat: support downstream mTLS via Gateway API frontendValidation [#2792](https://github.com/apache/apisix-ingress-controller/pull/2792)
-* feat: allow L4 upstream schemes (tcp/tls/udp) for stream backends [#2830](https://github.com/apache/apisix-ingress-controller/pull/2830)
+### Downstream mTLS on Gateway listeners
+
+[#2792](https://github.com/apache/apisix-ingress-controller/pull/2792). Clients must
+present a certificate signed by one of the referenced CAs. The CA is read from the
+`ca.crt` key of a ConfigMap (Gateway API Core support) or a Secret (extension). Gateway
+API 1.6 declares this at the Gateway level, not on the listener:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: apisix
+spec:
+  gatewayClassName: apisix
+  tls:
+    frontend:
+      default:
+        validation:
+          caCertificateRefs:
+            - kind: ConfigMap   # or Secret
+              group: ""
+              name: client-ca
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: example.com
+      tls:
+        certificateRefs:
+          - kind: Secret
+            group: ""
+            name: server-cert
+```
+
+`spec.tls.frontend.perPort` overrides the default for a single listener port. A CA in
+another namespace must be authorized by a ReferenceGrant.
+
+### `L4RoutePolicy`
+
+[#2791](https://github.com/apache/apisix-ingress-controller/pull/2791). Attaches stream
+plugins to a TCPRoute, UDPRoute or TLSRoute:
+
+```yaml
+apiVersion: apisix.apache.org/v1alpha1
+kind: L4RoutePolicy
+metadata:
+  name: limit-tcp
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: TCPRoute
+      name: tcp-app
+  plugins:
+    - name: limit-conn
+      config:
+        conn: 100
+        burst: 50
+        default_conn_delay: 0.1
+        key: remote_addr
+```
+
+### L4 upstream schemes
+
+[#2830](https://github.com/apache/apisix-ingress-controller/pull/2830). The `scheme`
+field of BackendTrafficPolicy and ApisixUpstream accepts `tcp`, `tls` and `udp` next to
+the existing L7 values. They apply to stream routes only; setting one on an HTTP route
+makes the upstream unreachable.
+
+```yaml
+apiVersion: apisix.apache.org/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: tls-backend
+spec:
+  targetRefs:
+    - group: ""
+      kind: Service
+      name: secure-tcp
+  scheme: tls
+```
+
+### Gateway API 1.6.0
+
+[#2804](https://github.com/apache/apisix-ingress-controller/pull/2804). The conformance
+run moves to v1.6.0 and adds the `TLSRouteModeTerminate` extended feature. See the
+Upgrade Notes above for what this asks of the cluster.
 
 ---
 
