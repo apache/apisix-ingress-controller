@@ -51,9 +51,12 @@ preface = """\
 
 ## Upgrade Notes
 
-**Kubernetes 1.31 or newer is recommended.** On an older cluster the controller logs a
-warning and keeps running; nothing refuses to start. What needs 1.31 in practice are the
-Gateway API 1.6.0 CRDs, whose CEL validation rules use features added in that release.
+**Kubernetes 1.31+ is the supported version for this release**, up from 1.26.0, as declared
+by `MIN_K8S_VERSION`, `README.md` and the installation guide.
+
+This is a support boundary rather than a hard gate: on an older cluster the controller
+logs a warning and keeps running. Below 1.31 you are outside what the project tests and
+supports.
 
 **Install the Gateway API CRDs with server-side apply.** The v1.6.0 CRDs exceed the
 annotation size limit of client-side apply:
@@ -65,15 +68,13 @@ kubectl apply --server-side --force-conflicts -f https://github.com/kubernetes-s
 **`listener_port_match_mode` now covers L4 routes too**
 [#2818](https://github.com/apache/apisix-ingress-controller/pull/2818). `TCPRoute` and
 `UDPRoute` join `HTTPRoute` and `GRPCRoute` under the `server_port` route-var injection
-this option gates. The default `off` keeps the previous behavior: one portless
-`StreamRoute` per rule, matching every connection on the stream listener. The other two
-modes now apply to L4 as well:
+this option gates:
 
 | mode | when `server_port` is injected |
 | ---- | ------------------------------ |
-| `off` (default) | never |
+| `off` | never; one portless `StreamRoute` per rule matches every connection on the stream listener |
 | `explicit` | a parentRef pins `sectionName` or `port` |
-| `auto` | that, or the `Gateway` has more than one listener port |
+| `auto` | that, or the route attaches to more than one listener port |
 
 Once injected, the `Gateway` listener port must equal the port APISIX actually accepts
 the connection on, or nothing matches:
@@ -109,6 +110,7 @@ spec:
   to:
     - group: ""
       kind: Secret
+      name: consumer-credentials   # omit to grant every Secret in this namespace
 ```
 
 ### The L4 route webhook paths moved from `v1alpha2` to `v1`
