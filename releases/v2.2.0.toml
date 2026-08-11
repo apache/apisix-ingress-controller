@@ -44,9 +44,9 @@ preface = """\
 This release upgrades the project to Gateway API 1.6.0, adds L4 traffic policy
 and downstream mTLS support, and ships a batch of security and correctness fixes.
 
-It also raises the minimum supported Kubernetes version and tightens three
-previously permissive behaviors. Read the Breaking Changes section below before
-upgrading.
+It also raises the minimum supported Kubernetes version, moves the L4 routes to
+their `v1` API version, and tightens three previously permissive behaviors. Read
+the Breaking Changes section below before upgrading.
 
 ---
 
@@ -58,6 +58,14 @@ upgrading.
   parameters and EndpointSlice terminating conditions. Install the Gateway API CRDs
   with `kubectl apply --server-side --force-conflicts`: the v1.6.0 CRDs exceed the
   annotation size limit of client-side apply.
+* **TCPRoute, UDPRoute and TLSRoute are now read through `gateway.networking.k8s.io/v1`** [#2839](https://github.com/apache/apisix-ingress-controller/pull/2839).
+  Gateway API 1.6 promoted the L4 routes to `v1` and stopped serving `v1alpha2` in the
+  standard channel, where the controller previously found no L4 route resource and
+  silently skipped those reconcilers. The validating webhook paths move accordingly,
+  from `/validate-gateway-networking-k8s-io-v1alpha2-*` to `-v1-*`: a hand-maintained
+  ValidatingWebhookConfiguration must be updated to match, the shipped manifests
+  already are. ReferenceGrant is read through `v1` as well; `v1beta1` remains the
+  storage version, so stored objects are unaffected.
 * **A cross-namespace Consumer `secretRef` now requires a ReferenceGrant** [#2805](https://github.com/apache/apisix-ingress-controller/pull/2805).
   A Consumer that reads a Secret from another namespace stops reconciling, and its
   credential is no longer programmed, until a ReferenceGrant in the Secret's
@@ -96,6 +104,8 @@ upgrading.
 
 ## Bug Fixes
 
+* fix: read L4 routes and ReferenceGrant as v1 instead of the older versions [#2839](https://github.com/apache/apisix-ingress-controller/pull/2839)
+* fix: make the kustomize manifests deployable and consistent [#2835](https://github.com/apache/apisix-ingress-controller/pull/2835)
 * fix: normalize hosts and SNIs so uppercase hostnames stay routable [#2837](https://github.com/apache/apisix-ingress-controller/pull/2837)
 * fix: honor TCPRoute/UDPRoute sectionName and listener port for StreamRoute matching [#2818](https://github.com/apache/apisix-ingress-controller/pull/2818)
 * fix: honor BackendTrafficPolicy targetRefs.sectionName for Service ports [#2796](https://github.com/apache/apisix-ingress-controller/pull/2796)
