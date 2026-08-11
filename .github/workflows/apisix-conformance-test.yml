@@ -90,8 +90,7 @@ jobs:
 
       - name: Install And Run Cloud Provider KIND
         run: |
-          go install sigs.k8s.io/cloud-provider-kind@v0.6.0
-          nohup cloud-provider-kind > /tmp/kind-loadbalancer.log 2>&1 &
+          make conformance-lb
   
       - name: Install Gateway API And CRDs
         run: |
@@ -116,10 +115,8 @@ jobs:
             echo "::error::VERSION is ${version} but the tag is ${GITHUB_REF_NAME}"
             exit 1
           fi
-          {
-            echo "IMAGE_TAG=${GITHUB_REF_NAME}"
-            echo "CONFORMANCE_ADC_IMAGE=ghcr.io/api7/adc:$(make -s print-ADC_VERSION)"
-          } >> $GITHUB_ENV
+          # git describe cannot see the tag in a shallow checkout, so name it here.
+          echo "CONFORMANCE_IMAGE_TAG=${GITHUB_REF_NAME}" >> $GITHUB_ENV
 
       - name: Resolve Conformance Report Path
         shell: bash

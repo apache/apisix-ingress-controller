@@ -75,13 +75,25 @@ CONFORMANCE_CHANNEL ?= experimental
 # A mode other than default must map to a specific setup of the implementation
 # and be documented in the report's Reproduce section.
 CONFORMANCE_MODE ?= default
-# Images the conformance run deploys. They default to the dev tags the kind-load
-# targets put in the cluster, so a development run keeps working unchanged. A
-# release run overrides IMAGE_TAG (and the ADC image) so that the report
-# describes the published images rather than a local build.
-CONFORMANCE_INGRESS_IMAGE ?= $(IMG)
+# Images the conformance run deploys, selected by what is checked out: on a
+# release tag the published images for that release are pulled, anywhere else
+# the dev tags the kind-load targets put in the cluster are used. That way
+# `git checkout 2.2.0 && make conformance-test` reproduces a published report
+# without any extra flag, and a development run keeps working unchanged. Each
+# value can still be overridden individually.
+CONFORMANCE_IMAGE_TAG ?= $(shell git describe --tags --exact-match 2>/dev/null || echo dev)
+CONFORMANCE_INGRESS_IMAGE ?= apache/apisix-ingress-controller:$(CONFORMANCE_IMAGE_TAG)
+ifeq ($(CONFORMANCE_IMAGE_TAG),dev)
 CONFORMANCE_ADC_IMAGE ?= ghcr.io/api7/adc:dev
 CONFORMANCE_APISIX_IMAGE ?= apache/apisix:dev
+else
+CONFORMANCE_ADC_IMAGE ?= ghcr.io/api7/adc:$(ADC_VERSION)
+CONFORMANCE_APISIX_IMAGE ?= apache/apisix:$(CONFORMANCE_APISIX_VERSION)
+endif
+# The data plane a release report is produced against. apisix:dev is a floating
+# tag, so a report claiming to be reproducible has to name a released one.
+CONFORMANCE_APISIX_VERSION ?= 3.13.0-debian
+CLOUD_PROVIDER_KIND_VERSION ?= v0.6.0
 # VERSION carries no leading v, matching how the 2.x tags are named, so the
 # declared version and the file name both point at a tag that exists.
 CONFORMANCE_TEST_REPORT_OUTPUT ?= $(DIR)/$(CONFORMANCE_CHANNEL)-$(VERSION)-$(CONFORMANCE_MODE)-report.yaml
@@ -201,6 +213,12 @@ conformance-test:
 		--contact="$(CONFORMANCE_CONTACT)" \
 		--mode="$(CONFORMANCE_MODE)" \
 		--report-output=$(CONFORMANCE_TEST_REPORT_OUTPUT)
+
+.PHONY: conformance-lb
+conformance-lb: ## Run cloud-provider-kind so LoadBalancer Services get an address.
+	@go install sigs.k8s.io/cloud-provider-kind@$(CLOUD_PROVIDER_KIND_VERSION)
+	@echo "starting cloud-provider-kind, logs in /tmp/cloud-provider-kind.log"
+	@nohup $(shell go env GOPATH)/bin/cloud-provider-kind > /tmp/cloud-provider-kind.log 2>&1 &
 
 .PHONY: benchmark-test
 benchmark-test:
