@@ -22,7 +22,6 @@ import (
 	"sort"
 
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
@@ -105,7 +104,7 @@ func (t *Translator) buildL4StreamRoutes(tctx *provider.TranslateContext, namesp
 	return streamRoutes
 }
 
-func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute *gatewayv1alpha2.TCPRoute) (*TranslateResult, error) {
+func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute *gatewayv1.TCPRoute) (*TranslateResult, error) {
 	result := &TranslateResult{}
 	rules := tcpRoute.Spec.Rules
 	labels := label.GenLabel(tcpRoute)

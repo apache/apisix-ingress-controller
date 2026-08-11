@@ -254,7 +254,7 @@ func newDiscoveryClient(t *testing.T, handler http.HandlerFunc) discovery.Discov
 // discovery client rather than a fake: only a definitive answer may resolve to
 // "absent", everything else must be an error.
 func TestHasAPIResource(t *testing.T) {
-	gvk := schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1alpha2", Kind: "TCPRoute"}
+	gvk := schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "TCPRoute"}
 
 	tests := []struct {
 		name      string
@@ -266,7 +266,7 @@ func TestHasAPIResource(t *testing.T) {
 			name: "kind served",
 			handler: func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"kind":"APIResourceList","groupVersion":"gateway.networking.k8s.io/v1alpha2",` +
+				_, _ = w.Write([]byte(`{"kind":"APIResourceList","groupVersion":"gateway.networking.k8s.io/v1",` +
 					`"resources":[{"name":"tcproutes","kind":"TCPRoute"}]}`))
 			},
 			wantFound: true,
@@ -275,7 +275,7 @@ func TestHasAPIResource(t *testing.T) {
 			name: "group/version served but kind missing",
 			handler: func(w http.ResponseWriter, _ *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = w.Write([]byte(`{"kind":"APIResourceList","groupVersion":"gateway.networking.k8s.io/v1alpha2",` +
+				_, _ = w.Write([]byte(`{"kind":"APIResourceList","groupVersion":"gateway.networking.k8s.io/v1",` +
 					`"resources":[{"name":"udproutes","kind":"UDPRoute"}]}`))
 			},
 		},

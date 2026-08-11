@@ -26,7 +26,6 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
@@ -99,11 +98,11 @@ func TestTranslateTCPRouteServerPort(t *testing.T) {
 			tctx.Listeners = tt.listeners
 			tctx.HasExplicitListenerMatch = tt.explicit
 
-			route := &gatewayv1alpha2.TCPRoute{
+			route := &gatewayv1.TCPRoute{
 				ObjectMeta: metav1.ObjectMeta{Name: "my-tcp", Namespace: "default"},
-				Spec: gatewayv1alpha2.TCPRouteSpec{
-					Rules: []gatewayv1alpha2.TCPRouteRule{
-						{BackendRefs: []gatewayv1alpha2.BackendRef{}},
+				Spec: gatewayv1.TCPRouteSpec{
+					Rules: []gatewayv1.TCPRouteRule{
+						{BackendRefs: []gatewayv1.BackendRef{}},
 					},
 				},
 			}
@@ -177,11 +176,11 @@ func TestTranslateUDPRouteServerPort(t *testing.T) {
 			tctx.Listeners = tt.listeners
 			tctx.HasExplicitListenerMatch = tt.explicit
 
-			route := &gatewayv1alpha2.UDPRoute{
+			route := &gatewayv1.UDPRoute{
 				ObjectMeta: metav1.ObjectMeta{Name: "my-udp", Namespace: "default"},
-				Spec: gatewayv1alpha2.UDPRouteSpec{
-					Rules: []gatewayv1alpha2.UDPRouteRule{
-						{BackendRefs: []gatewayv1alpha2.BackendRef{}},
+				Spec: gatewayv1.UDPRouteSpec{
+					Rules: []gatewayv1.UDPRouteRule{
+						{BackendRefs: []gatewayv1.BackendRef{}},
 					},
 				},
 			}

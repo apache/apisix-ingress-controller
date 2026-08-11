@@ -33,7 +33,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 )
@@ -79,16 +78,16 @@ func gatewayWithRefs(refNamespace string) *gatewayv1.Gateway {
 
 // referenceGrant permits a Gateway in "default" to reference Secrets and
 // ConfigMaps in grantNamespace.
-func referenceGrant(grantNamespace string) *v1beta1.ReferenceGrant {
-	return &v1beta1.ReferenceGrant{
+func referenceGrant(grantNamespace string) *gatewayv1.ReferenceGrant {
+	return &gatewayv1.ReferenceGrant{
 		ObjectMeta: metav1.ObjectMeta{Namespace: grantNamespace, Name: "grant"},
-		Spec: v1beta1.ReferenceGrantSpec{
-			From: []v1beta1.ReferenceGrantFrom{{
+		Spec: gatewayv1.ReferenceGrantSpec{
+			From: []gatewayv1.ReferenceGrantFrom{{
 				Group:     gatewayv1.GroupName,
 				Kind:      KindGateway,
 				Namespace: "default",
 			}},
-			To: []v1beta1.ReferenceGrantTo{
+			To: []gatewayv1.ReferenceGrantTo{
 				{Group: "", Kind: KindSecret},
 				{Group: "", Kind: KindConfigMap},
 			},
@@ -104,7 +103,7 @@ func TestProcessListenerConfig_CrossNamespaceReferenceGrant(t *testing.T) {
 	scheme := runtime.NewScheme()
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
 	require.NoError(t, gatewayv1.Install(scheme))
-	require.NoError(t, v1beta1.Install(scheme))
+	require.NoError(t, gatewayv1.Install(scheme))
 
 	certSecret := func(ns string) *corev1.Secret {
 		return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: ns, Name: "cert"}}

@@ -182,7 +182,7 @@ func expectUpdateDenied(err error) {
 func verifySimpleRouteMissingBackendWarnings(s *scaffold.Scaffold, tc simpleRouteWebhookTestCase) {
 	gatewayName := s.Namespace()
 	routeYAML := fmt.Sprintf(`
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1
 kind: %s
 metadata:
   name: %s

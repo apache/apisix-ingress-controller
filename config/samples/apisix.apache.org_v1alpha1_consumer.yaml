@@ -1,8 +1,13 @@
 apiVersion: apisix.apache.org/v1alpha1
 kind: Consumer
 metadata:
+  labels:
+    app.kubernetes.io/name: apisix-ingress-controller
+    app.kubernetes.io/managed-by: kustomize
   name: consumer-sample
 spec:
+  gatewayRef:
+    name: apisix
   credentials:
     - type: basic-auth
       name: basic-auth-sample

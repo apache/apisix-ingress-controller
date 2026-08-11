@@ -20,7 +20,6 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
@@ -61,14 +60,14 @@ func isGRPCRouteManaged(ctx context.Context, c client.Client, route *gatewayv1.G
 	return routeReferencesManagedGateway(ctx, c, route.Spec.ParentRefs, route.Namespace)
 }
 
-func isTCPRouteManaged(ctx context.Context, c client.Client, route *gatewayv1alpha2.TCPRoute) (bool, error) {
+func isTCPRouteManaged(ctx context.Context, c client.Client, route *gatewayv1.TCPRoute) (bool, error) {
 	if route == nil {
 		return false, nil
 	}
 	return routeReferencesManagedGateway(ctx, c, route.Spec.ParentRefs, route.Namespace)
 }
 
-func isUDPRouteManaged(ctx context.Context, c client.Client, route *gatewayv1alpha2.UDPRoute) (bool, error) {
+func isUDPRouteManaged(ctx context.Context, c client.Client, route *gatewayv1.UDPRoute) (bool, error) {
 	if route == nil {
 		return false, nil
 	}

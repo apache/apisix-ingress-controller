@@ -43,7 +43,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	client "sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
@@ -419,7 +418,6 @@ func (s *Scaffold) GetKubeClient() client.Client {
 		_ = apiv2.AddToScheme(scheme)
 		_ = corev1.AddToScheme(scheme)
 		_ = gatewayv1.Install(scheme)
-		_ = v1alpha2.Install(scheme)
 		cfg, err := clientcmd.BuildConfigFromFlags("", s.opts.Kubeconfig)
 		Expect(err).NotTo(HaveOccurred(), "building kubeconfig")
 		s.client, err = client.New(cfg, client.Options{Scheme: scheme})
