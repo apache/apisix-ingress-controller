@@ -21,9 +21,14 @@ on:
   push:
     branches:
       - master
+    # Tag runs produce the report submitted to the Gateway API conformance
+    # reports repository, so they must run on the tagged commit itself.
+    tags:
+      - "v*"
   pull_request:
     branches:
       - master
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -35,13 +40,18 @@ permissions:
 jobs:
   conformance-test:
     env:
-      CONFORMANCE_TEST_REPORT_OUTPUT: /tmp/apisix-ingress-controller-conformance-report.yaml
+      # The report name encodes the mode, so each provider writes its own file
+      # and the two can be submitted side by side. apisix is the controller's
+      # default provider, the standalone run declares a named mode.
+      CONFORMANCE_MODE: ${{ matrix.conformance_mode }}
     timeout-minutes: 60
     strategy:
       matrix:
-        provider_type:
-        - apisix-standalone
-        - apisix
+        include:
+        - provider_type: apisix-standalone
+          conformance_mode: apisix-standalone
+        - provider_type: apisix
+          conformance_mode: default
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -86,6 +96,11 @@ jobs:
           make kind-load-adc-image
           make kind-load-ingress-image
 
+      - name: Resolve Conformance Report Path
+        shell: bash
+        run: |
+          echo "CONFORMANCE_TEST_REPORT_OUTPUT=$(make -s conformance-report-path)" >> $GITHUB_ENV
+
       - name: Run Conformance Test
         shell: bash
         continue-on-error: true
@@ -93,11 +108,28 @@ jobs:
           PROVIDER_TYPE: ${{ matrix.provider_type }}
         run: |
           make conformance-test
-      
+
       - name: Show Conformance Report
         shell: bash
         run: |
           cat ${CONFORMANCE_TEST_REPORT_OUTPUT}
+
+      # The run above is continue-on-error because the suite still has known
+      # gaps, so a failing profile would otherwise go unnoticed. A report that
+      # is meant for submission must have every profile at success or partial.
+      - name: Check Conformance Report Has No Failing Profile
+        shell: bash
+        env:
+          STRICT: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
+        run: |
+          if grep -qE '^[[:space:]]+result: failure' "${CONFORMANCE_TEST_REPORT_OUTPUT}"; then
+            echo "::error::conformance report contains a failing profile"
+            grep -nE '^[[:space:]]+result:' "${CONFORMANCE_TEST_REPORT_OUTPUT}"
+            if [ "${STRICT}" = "true" ]; then
+              exit 1
+            fi
+            echo "::warning::not a release run, not failing the job"
+          fi
 
       - name: Get Logs from apisix-ingress-controller
         shell: bash
@@ -107,5 +139,7 @@ jobs:
       - name: Upload Gateway API Conformance Report
         uses: actions/upload-artifact@v4
         with:
-          name: apisix-ingress-controller-conformance-report-${{ matrix.provider_type }}.yaml
+          # The artifact keeps the upstream report file name, so a release run
+          # can be submitted straight from the download without renaming it.
+          name: conformance-report-${{ matrix.provider_type }}
           path: ${{ env.CONFORMANCE_TEST_REPORT_OUTPUT }}

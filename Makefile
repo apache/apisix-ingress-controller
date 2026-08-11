@@ -55,9 +55,24 @@ GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM
 GATEAY_API_VERSION ?= v1.6.0
 ## https://github.com/kubernetes-sigs/gateway-api/blob/v1.6.0/pkg/features/httproute.go
 SUPPORTED_EXTENDED_FEATURES = "HTTPRouteDestinationPortMatching,HTTPRouteMethodMatching,HTTPRoutePortRedirect,HTTPRouteRequestMirror,HTTPRouteSchemeRedirect,GatewayAddressEmpty,HTTPRouteResponseHeaderModification,GatewayPort8080,HTTPRouteHostRewrite,HTTPRouteQueryParamMatching,HTTPRoutePathRewrite,HTTPRouteBackendProtocolWebSocket,TLSRouteModeTerminate"
-CONFORMANCE_TEST_REPORT_OUTPUT ?= $(DIR)/apisix-ingress-controller-conformance-report.yaml
 ## https://github.com/kubernetes-sigs/gateway-api/blob/v1.6.0/conformance/utils/suite/profiles.go
 CONFORMANCE_PROFILES ?= GATEWAY-HTTP,GATEWAY-GRPC,GATEWAY-TLS
+# Report metadata. The suite fills the report's implementation block from these
+# flags, so the declared version tracks VERSION instead of a hand-edited constant.
+# Submitting a report upstream requires the file to be named
+# <channel>-<version>-<mode>-report.yaml and to be uploaded unmodified, see
+# https://github.com/kubernetes-sigs/gateway-api/blob/main/conformance/reports/README.md
+CONFORMANCE_ORGANIZATION ?= APISIX
+CONFORMANCE_PROJECT ?= apisix-ingress-controller
+CONFORMANCE_URL ?= https://github.com/apache/apisix-ingress-controller
+CONFORMANCE_CONTACT ?= https://github.com/apache/apisix-ingress-controller/issues
+# The channel the Gateway API CRDs were installed from; install-gateway-api uses
+# the experimental one.
+CONFORMANCE_CHANNEL ?= experimental
+# A mode other than default must map to a specific setup of the implementation
+# and be documented in the report's Reproduce section.
+CONFORMANCE_MODE ?= default
+CONFORMANCE_TEST_REPORT_OUTPUT ?= $(DIR)/$(CONFORMANCE_CHANNEL)-v$(VERSION)-$(CONFORMANCE_MODE)-report.yaml
 
 TEST_EXCLUDES ?= /e2e /conformance /benchmark
 TEST_PACKAGES = $(shell go list ./... $(foreach p,$(TEST_EXCLUDES),| grep -v $(p)))
@@ -151,11 +166,21 @@ ginkgo-e2e-test: adc
 install-ginkgo:
 	@go install github.com/onsi/ginkgo/v2/ginkgo@v$(GINKGO_VERSION)
 
+.PHONY: conformance-report-path
+conformance-report-path: ## Print the path conformance-test writes the report to.
+	@echo $(CONFORMANCE_TEST_REPORT_OUTPUT)
+
 .PHONY: conformance-test
 conformance-test:
 	go test -v ./test/conformance -tags conformance,experimental -timeout 60m \
 		--supported-features=$(SUPPORTED_EXTENDED_FEATURES) \
 		--conformance-profiles=$(CONFORMANCE_PROFILES) \
+		--organization="$(CONFORMANCE_ORGANIZATION)" \
+		--project="$(CONFORMANCE_PROJECT)" \
+		--url="$(CONFORMANCE_URL)" \
+		--version="v$(VERSION)" \
+		--contact="$(CONFORMANCE_CONTACT)" \
+		--mode="$(CONFORMANCE_MODE)" \
 		--report-output=$(CONFORMANCE_TEST_REPORT_OUTPUT)
 
 .PHONY: benchmark-test
