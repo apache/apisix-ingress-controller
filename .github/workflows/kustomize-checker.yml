@@ -107,12 +107,16 @@ jobs:
         run: |
           make kind-up
 
-      # A server-side apply validates every rendered object against the API
-      # server, including the CRD schemas themselves.
-      - name: Apply the installer
+      # `make deploy` is the install path README.md and the developer guide tell
+      # people to run, so exercise that rather than a hand-rolled apply. The
+      # apply validates every rendered object against the API server, the CRD
+      # schemas included. It is a client-side apply, which also keeps the CRDs
+      # honest about the 262144-byte last-applied annotation limit that a
+      # server-side apply would hide.
+      - name: Deploy to the cluster
         run: |
           set -o pipefail
-          kubectl apply --server-side -f dist/install.yaml
+          make deploy
           crds=$(kubectl get crd -o name | grep 'apisix\.apache\.org$')
           test -n "$crds"
           echo "$crds" | xargs kubectl wait --for=condition=Established --timeout=60s
@@ -122,6 +126,15 @@ jobs:
       - name: Validate the samples against the installed CRDs
         run: |
           kubectl apply --server-side --dry-run=server -f dist/samples.yaml
+
+      # The teardown README.md documents. Deleting the cluster underneath it
+      # would not tell us whether `make undeploy` still resolves.
+      # ignore-not-found=true is the flag the target itself documents: the
+      # Namespace is deleted first and takes everything inside it along, so the
+      # namespaced objects later in the stream are already gone by their turn.
+      - name: Undeploy from the cluster
+        run: |
+          make undeploy ignore-not-found=true
 
       - name: Tear down Kind Cluster
         if: always()
