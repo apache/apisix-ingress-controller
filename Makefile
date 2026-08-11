@@ -75,6 +75,13 @@ CONFORMANCE_CHANNEL ?= experimental
 # A mode other than default must map to a specific setup of the implementation
 # and be documented in the report's Reproduce section.
 CONFORMANCE_MODE ?= default
+# Images the conformance run deploys. They default to the dev tags the kind-load
+# targets put in the cluster, so a development run keeps working unchanged. A
+# release run overrides IMAGE_TAG (and the ADC image) so that the report
+# describes the published images rather than a local build.
+CONFORMANCE_INGRESS_IMAGE ?= $(IMG)
+CONFORMANCE_ADC_IMAGE ?= ghcr.io/api7/adc:dev
+CONFORMANCE_APISIX_IMAGE ?= apache/apisix:dev
 # VERSION carries no leading v, matching how the 2.x tags are named, so the
 # declared version and the file name both point at a tag that exists.
 CONFORMANCE_TEST_REPORT_OUTPUT ?= $(DIR)/$(CONFORMANCE_CHANNEL)-$(VERSION)-$(CONFORMANCE_MODE)-report.yaml
@@ -175,7 +182,14 @@ install-ginkgo:
 conformance-report-path: ## Print the path conformance-test writes the report to.
 	@echo $(CONFORMANCE_TEST_REPORT_OUTPUT)
 
+.PHONY: print-%
+print-%: ## Print the value of a make variable, e.g. make print-ADC_VERSION.
+	@echo $($*)
+
 .PHONY: conformance-test
+conformance-test: export INGRESS_IMAGE=$(CONFORMANCE_INGRESS_IMAGE)
+conformance-test: export ADC_IMAGE=$(CONFORMANCE_ADC_IMAGE)
+conformance-test: export APISIX_IMAGE=$(CONFORMANCE_APISIX_IMAGE)
 conformance-test:
 	go test -v ./test/conformance -tags conformance,experimental -timeout 60m \
 		--supported-features=$(SUPPORTED_EXTENDED_FEATURES) \

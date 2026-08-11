@@ -70,7 +70,11 @@ jobs:
         run: |
           go install sigs.k8s.io/kind@v0.27.0
 
+      # A tag run must exercise the published image for that release, otherwise
+      # the report would describe a local build while claiming the release
+      # version. Branch and PR runs keep testing what was just built.
       - name: Build images
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         env:
           TAG: dev
           ARCH: amd64
@@ -94,9 +98,28 @@ jobs:
           make install
 
       - name: Loading Docker Image to Kind Cluster
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         run: |
           make kind-load-adc-image
           make kind-load-ingress-image
+
+      # On a tag the images are pulled from their registries instead, named
+      # after the tag being released.
+      - name: Resolve Conformance Images
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        shell: bash
+        run: |
+          # The report declares VERSION, so a tag that does not match it would
+          # produce a report describing a release that was never built.
+          version="$(make -s print-VERSION)"
+          if [ "${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::VERSION is ${version} but the tag is ${GITHUB_REF_NAME}"
+            exit 1
+          fi
+          {
+            echo "IMAGE_TAG=${GITHUB_REF_NAME}"
+            echo "CONFORMANCE_ADC_IMAGE=ghcr.io/api7/adc:$(make -s print-ADC_VERSION)"
+          } >> $GITHUB_ENV
 
       - name: Resolve Conformance Report Path
         shell: bash

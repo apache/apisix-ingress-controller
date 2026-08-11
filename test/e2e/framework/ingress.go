@@ -19,6 +19,7 @@ package framework
 
 import (
 	"bytes"
+	"cmp"
 	_ "embed"
 	"text/template"
 	"time"
@@ -56,10 +57,16 @@ type IngressDeployOpts struct {
 	DisableGatewayAPI  bool
 	// Empty falls back to "auto" in the manifest; the shipped default is "off".
 	ListenerPortMatchMode string
+	// Empty falls back to the dev images, see IngressImage and ADCImage.
+	ControllerImage string
+	ADCImage        string
 }
 
 func (f *Framework) DeployIngress(opts IngressDeployOpts) {
 	buf := bytes.NewBuffer(nil)
+
+	opts.ControllerImage = cmp.Or(opts.ControllerImage, IngressImage)
+	opts.ADCImage = cmp.Or(opts.ADCImage, ADCImage)
 
 	err := IngressSpecTpl.Execute(buf, opts)
 	f.GomegaT.Expect(err).ToNot(HaveOccurred(), "rendering ingress spec")
