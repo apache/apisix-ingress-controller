@@ -62,7 +62,10 @@ CONFORMANCE_PROFILES ?= GATEWAY-HTTP,GATEWAY-GRPC,GATEWAY-TLS
 # Submitting a report upstream requires the file to be named
 # <channel>-<version>-<mode>-report.yaml and to be uploaded unmodified, see
 # https://github.com/kubernetes-sigs/gateway-api/blob/main/conformance/reports/README.md
-CONFORMANCE_ORGANIZATION ?= APISIX
+# Lowercase, matching how the other implementations name themselves upstream;
+# the report directory there is <organization>-<project>, so this one lands in
+# conformance/reports/v1.6/apache-apisix-ingress-controller.
+CONFORMANCE_ORGANIZATION ?= apache
 CONFORMANCE_PROJECT ?= apisix-ingress-controller
 CONFORMANCE_URL ?= https://github.com/apache/apisix-ingress-controller
 CONFORMANCE_CONTACT ?= https://github.com/apache/apisix-ingress-controller/issues
