@@ -8,6 +8,9 @@ metadata:
   name: controller-manager-metrics-service
   namespace: system
 spec:
+  # The metrics endpoint is served over plain HTTP without authentication. Set
+  # `secure_metrics` in config/manager/config.yaml to put it behind the authn/authz
+  # filter backed by the metrics_auth_role in config/rbac.
   ports:
   - name: metrics
     port: 8080

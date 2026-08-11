@@ -24,8 +24,10 @@ resources:
 # [PROMETHEUS] To scrape the metrics with the Prometheus Operator, uncomment
 # the following line. It requires the ServiceMonitor CRD.
 #- ../prometheus
-# [NETWORK-POLICY] To restrict webhook traffic to namespaces labeled
-# `webhook: enabled`, uncomment the following line.
+# [NETWORK-POLICY] To restrict traffic to the controller, uncomment the
+# following line. It only admits webhook calls from namespaces labeled
+# `webhook: enabled` and metrics scrapes from namespaces labeled
+# `metrics: enabled`; everything else reaching the pod is denied.
 #- ../network-policy
 
 # [WEBHOOK] Mount the serving certificate into the manager and let cert-manager

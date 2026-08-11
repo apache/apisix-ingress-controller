@@ -50,6 +50,9 @@ jobs:
               - 'config/**'
               - 'api/**'
               - 'Makefile'
+              # The image entrypoint decides which config file the controller
+              # reads, so it is part of what makes the manifests correct.
+              - 'Dockerfile'
               - '.github/workflows/kustomize-checker.yml'
 
   kustomize-checker:
@@ -75,19 +78,28 @@ jobs:
           make build-installer
           test -s dist/install.yaml
 
-      # The CRDs and the webhook configuration are generated from the Go types.
-      # config/rbac/role.yaml is excluded: it carries a pre-existing rule
-      # ordering difference against the pinned controller-gen.
+      # The CRDs, the webhook configuration and the manager ClusterRole are all
+      # generated from the Go types by the `make build-installer` step above.
+      # `git add -N` is what makes a brand new CRD file visible here: it is
+      # untracked, and `git diff` alone does not report untracked files.
       - name: Check generated manifests are up to date
         run: |
-          if ! git diff --exit-code -- config/crd/bases config/webhook/manifests.yaml; then
-            echo "::error::config/crd/bases or config/webhook/manifests.yaml is out of date, run 'make manifests' and commit the result"
+          git add -A -N config
+          if ! git diff --exit-code -- config/crd/bases config/webhook/manifests.yaml config/rbac/role.yaml; then
+            echo "::error::generated manifests are out of date, run 'make manifests' and commit the result"
             exit 1
           fi
 
+      # Every kustomization is built, not just the ones config/default pulls in,
+      # so that a broken sub-directory is caught even while it is opt-in.
       - name: Build every kustomization
         run: |
-          ./bin/kustomize build config/crd > /dev/null
+          set -o pipefail
+          for dir in $(find config -name kustomization.yaml -printf '%h\n' | sort); do
+            echo "::group::kustomize build $dir"
+            ./bin/kustomize build "$dir" > /dev/null
+            echo "::endgroup::"
+          done
           ./bin/kustomize build config/samples > dist/samples.yaml
           test -s dist/samples.yaml
 

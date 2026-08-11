@@ -7,6 +7,9 @@ metadata:
   name: webhook-service
   namespace: system
 spec:
+  # targetPort resolves against the `webhook` container port that
+  # config/default/manager_webhook_patch.yaml adds. Pulling this directory in
+  # without that patch renders fine but leaves the Service without endpoints.
   ports:
     - name: webhook
       port: 443

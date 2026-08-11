@@ -7,13 +7,6 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - events
-  verbs:
-  - create
-  - patch
-- apiGroups:
-  - ""
-  resources:
   - configmaps
   - namespaces
   - pods
@@ -23,6 +16,13 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
 - apiGroups:
   - apisix.apache.org
   resources:

@@ -19,4 +19,4 @@ spec:
               name: apisix-admin-key
               key: admin-key
   pluginMetadata:
-    "error-page": {"enable":false}
+    "http-logger": {"log_format":{"host":"$host","client_ip":"$remote_addr"}}
