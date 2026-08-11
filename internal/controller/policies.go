@@ -33,7 +33,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
@@ -200,7 +199,7 @@ func SetAncestors(status *v1alpha1.PolicyStatus, parentRefs []gatewayv1.ParentRe
 		ancestorStatus := gatewayv1.PolicyAncestorStatus{
 			AncestorRef:    parent,
 			Conditions:     []metav1.Condition{condition},
-			ControllerName: gatewayv1alpha2.GatewayController(config.ControllerConfig.ControllerName),
+			ControllerName: gatewayv1.GatewayController(config.ControllerConfig.ControllerName),
 		}
 		if SetAncestorStatus(status, ancestorStatus) {
 			updated = true
@@ -243,7 +242,7 @@ func l4RoutePolicyMatchesRoute(policy v1alpha1.L4RoutePolicy, routeKind, routeNa
 		return false
 	}
 	for _, ref := range policy.Spec.TargetRefs {
-		if string(ref.Group) != gatewayv1alpha2.GroupName {
+		if string(ref.Group) != gatewayv1.GroupName {
 			continue
 		}
 		if string(ref.Kind) != routeKind {
@@ -270,7 +269,7 @@ func ProcessL4RoutePolicy(
 	routeNamespace, routeName, routeKind string,
 ) {
 	var list v1alpha1.L4RoutePolicyList
-	key := indexer.GenIndexKeyWithGK(gatewayv1alpha2.GroupName, routeKind, routeNamespace, routeName)
+	key := indexer.GenIndexKeyWithGK(gatewayv1.GroupName, routeKind, routeNamespace, routeName)
 	if err := c.List(tctx, &list, client.MatchingFields{indexer.PolicyTargetRefs: key}); err != nil {
 		log.Error(err, "failed to list L4RoutePolicy", "namespace", routeNamespace, "name", routeName, "kind", routeKind)
 		return
@@ -349,7 +348,7 @@ func ProcessL4RoutePolicy(
 // no longer referenced by any of them are removed.
 func updateL4RoutePolicyStatusOnDeleting(ctx context.Context, c client.Client, updater status.Updater, log logr.Logger, nn types.NamespacedName, routeKind string) {
 	var list v1alpha1.L4RoutePolicyList
-	key := indexer.GenIndexKeyWithGK(gatewayv1alpha2.GroupName, routeKind, nn.Namespace, nn.Name)
+	key := indexer.GenIndexKeyWithGK(gatewayv1.GroupName, routeKind, nn.Namespace, nn.Name)
 	if err := c.List(ctx, &list, client.MatchingFields{indexer.PolicyTargetRefs: key}); err != nil {
 		log.Error(err, "failed to list L4RoutePolicy on route deletion", "namespace", nn.Namespace, "name", nn.Name)
 		return
@@ -358,7 +357,7 @@ func updateL4RoutePolicyStatusOnDeleting(ctx context.Context, c client.Client, u
 		policy := list.Items[i]
 		var parentRefs []gatewayv1.ParentReference
 		for _, ref := range policy.Spec.TargetRefs {
-			if string(ref.Group) != gatewayv1alpha2.GroupName {
+			if string(ref.Group) != gatewayv1.GroupName {
 				continue
 			}
 			// The deleted route returns NotFound here and is naturally skipped.
@@ -377,19 +376,19 @@ func updateL4RoutePolicyStatusOnDeleting(ctx context.Context, c client.Client, u
 func l4RouteParentRefs(ctx context.Context, c client.Client, kind string, nn types.NamespacedName) ([]gatewayv1.ParentReference, bool) {
 	switch kind {
 	case internaltypes.KindTCPRoute:
-		var route gatewayv1alpha2.TCPRoute
+		var route gatewayv1.TCPRoute
 		if err := c.Get(ctx, nn, &route); err != nil {
 			return nil, false
 		}
 		return route.Spec.ParentRefs, true
 	case internaltypes.KindUDPRoute:
-		var route gatewayv1alpha2.UDPRoute
+		var route gatewayv1.UDPRoute
 		if err := c.Get(ctx, nn, &route); err != nil {
 			return nil, false
 		}
 		return route.Spec.ParentRefs, true
 	case internaltypes.KindTLSRoute:
-		var route gatewayv1alpha2.TLSRoute
+		var route gatewayv1.TLSRoute
 		if err := c.Get(ctx, nn, &route); err != nil {
 			return nil, false
 		}

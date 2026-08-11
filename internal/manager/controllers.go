@@ -29,7 +29,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
@@ -178,7 +177,7 @@ func setupGatewayAPIControllers(ctx context.Context, mgr manager.Manager, pro pr
 			Updater:  updater,
 			Readier:  readier,
 		},
-		&gatewayv1alpha2.TCPRoute{}: &controller.TCPRouteReconciler{
+		&gatewayv1.TCPRoute{}: &controller.TCPRouteReconciler{
 			Client:   mgr.GetClient(),
 			Scheme:   mgr.GetScheme(),
 			Log:      ctrl.LoggerFrom(ctx).WithName("controllers").WithName(types.KindTCPRoute),
@@ -186,7 +185,7 @@ func setupGatewayAPIControllers(ctx context.Context, mgr manager.Manager, pro pr
 			Updater:  updater,
 			Readier:  readier,
 		},
-		&gatewayv1alpha2.UDPRoute{}: &controller.UDPRouteReconciler{
+		&gatewayv1.UDPRoute{}: &controller.UDPRouteReconciler{
 			Client:   mgr.GetClient(),
 			Scheme:   mgr.GetScheme(),
 			Log:      ctrl.LoggerFrom(ctx).WithName("controllers").WithName(types.KindUDPRoute),
@@ -194,7 +193,7 @@ func setupGatewayAPIControllers(ctx context.Context, mgr manager.Manager, pro pr
 			Updater:  updater,
 			Readier:  readier,
 		},
-		&gatewayv1alpha2.TLSRoute{}: &controller.TLSRouteReconciler{
+		&gatewayv1.TLSRoute{}: &controller.TLSRouteReconciler{
 			Client:   mgr.GetClient(),
 			Scheme:   mgr.GetScheme(),
 			Log:      ctrl.LoggerFrom(ctx).WithName("controllers").WithName(types.KindTLSRoute),
@@ -327,9 +326,9 @@ func registerGatewayAPIForReadiness(
 	resources := []client.Object{
 		&gatewayv1.HTTPRoute{},
 		&gatewayv1.GRPCRoute{},
-		&gatewayv1alpha2.TCPRoute{},
-		&gatewayv1alpha2.UDPRoute{},
-		&gatewayv1alpha2.TLSRoute{},
+		&gatewayv1.TCPRoute{},
+		&gatewayv1.UDPRoute{},
+		&gatewayv1.TLSRoute{},
 	}
 	installed := make([]schema.GroupVersionKind, 0, len(resources))
 	for _, resource := range resources {

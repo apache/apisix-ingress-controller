@@ -59,7 +59,7 @@ spec:
       name: apisix-proxy-config
 `
 			tlsRoute = `
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1
 kind: TLSRoute
 metadata:
   name: tls-route

@@ -43,8 +43,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
@@ -651,11 +649,11 @@ func routeHostnamesIntersectsWithListenerHostname(route client.Object, listener 
 	switch r := route.(type) {
 	case *gatewayv1.HTTPRoute:
 		return listenerHostnameIntersectWithRouteHostnames(listener, r.Spec.Hostnames)
-	case *gatewayv1alpha2.TCPRoute, *gatewayv1alpha2.UDPRoute:
+	case *gatewayv1.TCPRoute, *gatewayv1.UDPRoute:
 		return true // TCPRoute and UDPRoute don't have Hostnames to match
 	case *gatewayv1.GRPCRoute:
 		return listenerHostnameIntersectWithRouteHostnames(listener, r.Spec.Hostnames)
-	case *gatewayv1alpha2.TLSRoute:
+	case *gatewayv1.TLSRoute:
 		return listenerHostnameIntersectWithRouteHostnames(listener, r.Spec.Hostnames)
 	default:
 		return false
@@ -821,15 +819,15 @@ func routeMatchesListenerType(route client.Object, listener gatewayv1.Listener) 
 				return false, nil
 			}
 		}
-	case *gatewayv1alpha2.TCPRoute:
+	case *gatewayv1.TCPRoute:
 		if listener.Protocol != gatewayv1.TCPProtocolType {
 			return false, nil
 		}
-	case *gatewayv1alpha2.UDPRoute:
+	case *gatewayv1.UDPRoute:
 		if listener.Protocol != gatewayv1.UDPProtocolType {
 			return false, nil
 		}
-	case *gatewayv1alpha2.TLSRoute:
+	case *gatewayv1.TLSRoute:
 		if listener.Protocol != gatewayv1.TLSProtocolType {
 			return false, nil
 		}
@@ -863,11 +861,11 @@ func getAttachedRoutesForListener(ctx context.Context, mgrc client.Client, gatew
 			case types.KindGRPCRoute:
 				routeList = append(routeList, &gatewayv1.GRPCRouteList{})
 			case types.KindTCPRoute:
-				routeList = append(routeList, &gatewayv1alpha2.TCPRouteList{})
+				routeList = append(routeList, &gatewayv1.TCPRouteList{})
 			case types.KindUDPRoute:
-				routeList = append(routeList, &gatewayv1alpha2.UDPRouteList{})
+				routeList = append(routeList, &gatewayv1.UDPRouteList{})
 			case types.KindTLSRoute:
-				routeList = append(routeList, &gatewayv1alpha2.TLSRouteList{})
+				routeList = append(routeList, &gatewayv1.TLSRouteList{})
 			}
 		}
 	} else {
@@ -875,11 +873,11 @@ func getAttachedRoutesForListener(ctx context.Context, mgrc client.Client, gatew
 		case gatewayv1.HTTPProtocolType, gatewayv1.HTTPSProtocolType:
 			routeList = append(routeList, &gatewayv1.HTTPRouteList{}, &gatewayv1.GRPCRouteList{})
 		case gatewayv1.TCPProtocolType:
-			routeList = append(routeList, &gatewayv1alpha2.TCPRouteList{})
+			routeList = append(routeList, &gatewayv1.TCPRouteList{})
 		case gatewayv1.UDPProtocolType:
-			routeList = append(routeList, &gatewayv1alpha2.UDPRouteList{})
+			routeList = append(routeList, &gatewayv1.UDPRouteList{})
 		case gatewayv1.TLSProtocolType:
-			routeList = append(routeList, &gatewayv1alpha2.TLSRouteList{})
+			routeList = append(routeList, &gatewayv1.TLSRouteList{})
 		}
 	}
 
@@ -1052,10 +1050,10 @@ func getListenerStatus(
 				}
 				if permitted := checkReferenceGrant(ctx,
 					mrgc,
-					v1beta1.ReferenceGrantFrom{
+					gatewayv1.ReferenceGrantFrom{
 						Group:     gatewayv1.GroupName,
 						Kind:      KindGateway,
-						Namespace: v1beta1.Namespace(gateway.Namespace),
+						Namespace: gatewayv1.Namespace(gateway.Namespace),
 					},
 					gatewayv1.ObjectReference{
 						Group:     corev1.GroupName,
@@ -1173,10 +1171,10 @@ func validateListenerFrontendValidation(
 		}
 		if permitted := checkReferenceGrant(ctx,
 			mrgc,
-			v1beta1.ReferenceGrantFrom{
+			gatewayv1.ReferenceGrantFrom{
 				Group:     gatewayv1.GroupName,
 				Kind:      KindGateway,
-				Namespace: v1beta1.Namespace(gateway.Namespace),
+				Namespace: gatewayv1.Namespace(gateway.Namespace),
 			},
 			gatewayv1.ObjectReference{
 				Group:     corev1.GroupName,
@@ -1460,7 +1458,7 @@ func isTLSSecretValid(secret *corev1.Secret) (string, bool) {
 
 func referenceGrantPredicates(kind gatewayv1.Kind) predicate.Funcs {
 	var filter = func(obj client.Object) bool {
-		grant, ok := obj.(*v1beta1.ReferenceGrant)
+		grant, ok := obj.(*gatewayv1.ReferenceGrant)
 		if !ok {
 			return false
 		}
@@ -1478,7 +1476,7 @@ func referenceGrantPredicates(kind gatewayv1.Kind) predicate.Funcs {
 	return predicates
 }
 
-func checkReferenceGrant(ctx context.Context, cli client.Client, obj v1beta1.ReferenceGrantFrom, ref gatewayv1.ObjectReference) bool {
+func checkReferenceGrant(ctx context.Context, cli client.Client, obj gatewayv1.ReferenceGrantFrom, ref gatewayv1.ObjectReference) bool {
 	if ref.Namespace == nil || *ref.Namespace == obj.Namespace {
 		return true
 	}
@@ -1487,7 +1485,7 @@ func checkReferenceGrant(ctx context.Context, cli client.Client, obj v1beta1.Ref
 		return false
 	}
 
-	var grantList v1beta1.ReferenceGrantList
+	var grantList gatewayv1.ReferenceGrantList
 	if err := cli.List(ctx, &grantList, client.InNamespace(*ref.Namespace)); err != nil {
 		return false
 	}
@@ -1521,15 +1519,15 @@ func CheckConsumerSecretRef(ctx context.Context, cli client.Client, fromNamespac
 		return false, nil
 	}
 
-	var grantList v1beta1.ReferenceGrantList
+	var grantList gatewayv1.ReferenceGrantList
 	if err := cli.List(ctx, &grantList, client.InNamespace(secretNN.Namespace)); err != nil {
 		return false, err
 	}
 
-	from := v1beta1.ReferenceGrantFrom{
-		Group:     v1beta1.Group(v1alpha1.GroupVersion.Group),
+	from := gatewayv1.ReferenceGrantFrom{
+		Group:     gatewayv1.Group(v1alpha1.GroupVersion.Group),
 		Kind:      types.KindConsumer,
-		Namespace: v1beta1.Namespace(fromNamespace),
+		Namespace: gatewayv1.Namespace(fromNamespace),
 	}
 	for _, grant := range grantList.Items {
 		for _, f := range grant.Spec.From {

@@ -29,7 +29,6 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 )
@@ -38,7 +37,7 @@ func parentRefTestScheme(t *testing.T) *runtime.Scheme {
 	t.Helper()
 	scheme := runtime.NewScheme()
 	require.NoError(t, gatewayv1.Install(scheme))
-	require.NoError(t, gatewayv1alpha2.Install(scheme))
+	require.NoError(t, gatewayv1.Install(scheme))
 	return scheme
 }
 
@@ -217,7 +216,7 @@ func TestParseRouteParentRefs_ConflictingTLSModePort(t *testing.T) {
 			},
 		},
 	}
-	route := &gatewayv1alpha2.TLSRoute{
+	route := &gatewayv1.TLSRoute{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "tr"},
 	}
 	cli := fake.NewClientBuilder().WithScheme(scheme).
