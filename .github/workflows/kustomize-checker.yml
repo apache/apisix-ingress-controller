@@ -129,9 +129,11 @@ jobs:
 
       # The teardown README.md documents. Deleting the cluster underneath it
       # would not tell us whether `make undeploy` still resolves.
-      # ignore-not-found=true is the flag the target itself documents: the
-      # Namespace is deleted first and takes everything inside it along, so the
-      # namespaced objects later in the stream are already gone by their turn.
+      # ignore-not-found=true is the flag the target itself documents. The
+      # Namespace is the first object in the stream, so whether the namespaced
+      # objects after it still exist by the time their own delete is issued
+      # depends on how fast it finishes terminating; the flag keeps the step
+      # from turning that race into a failure.
       - name: Undeploy from the cluster
         run: |
           make undeploy ignore-not-found=true
