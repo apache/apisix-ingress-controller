@@ -58,37 +58,36 @@ GATEWAY_API_VERSION ?= v1.6.0
 SUPPORTED_EXTENDED_FEATURES = "HTTPRouteDestinationPortMatching,HTTPRouteMethodMatching,HTTPRoutePortRedirect,HTTPRouteRequestMirror,HTTPRouteSchemeRedirect,GatewayAddressEmpty,HTTPRouteResponseHeaderModification,GatewayPort8080,HTTPRouteHostRewrite,HTTPRouteQueryParamMatching,HTTPRoutePathRewrite,HTTPRouteBackendProtocolWebSocket,TLSRouteModeTerminate"
 ## https://github.com/kubernetes-sigs/gateway-api/blob/v1.6.0/conformance/utils/suite/profiles.go
 CONFORMANCE_PROFILES ?= GATEWAY-HTTP,GATEWAY-GRPC,GATEWAY-TLS
-# Report metadata. The suite fills the report's implementation block from these
-# flags, so the declared version tracks VERSION instead of a hand-edited constant.
-# Submitting a report upstream requires the file to be named
-# <channel>-<version>-<mode>-report.yaml and to be uploaded unmodified, see
+# Report metadata, filled into the report's implementation block by the suite.
 # https://github.com/kubernetes-sigs/gateway-api/blob/main/conformance/reports/README.md
-# Lowercase, matching how the other implementations name themselves upstream,
-# where the report directory is usually <organization>-<project>.
 CONFORMANCE_ORGANIZATION ?= apache
 CONFORMANCE_PROJECT ?= apisix-ingress-controller
 CONFORMANCE_URL ?= https://github.com/apache/apisix-ingress-controller
 CONFORMANCE_CONTACT ?= https://github.com/apache/apisix-ingress-controller/issues
-# The channel the Gateway API CRDs were installed from; install-gateway-api uses
-# the experimental one.
+# The channel install-gateway-api installs from.
 CONFORMANCE_CHANNEL ?= experimental
-# A mode other than default must map to a specific setup of the implementation
-# and be documented in the report's Reproduce section.
+# A non-default mode must map to a specific setup and be documented in the
+# report's Reproduce section.
 CONFORMANCE_MODE ?= default
-# Images the conformance run deploys, and the version the report declares.
-# They follow the checked-out state: on a release tag the published images for
-# that release are pulled and the report names that tag, anywhere else the dev
-# images are used and the report names the commit, which upstream accepts as a
-# version and keeps every report honest about what it tested.
-CONFORMANCE_IMAGE_TAG ?= $(shell git describe --tags --exact-match 2>/dev/null || echo dev)
-CONFORMANCE_RELEASE = $(filter-out dev,$(CONFORMANCE_IMAGE_TAG))
-CONFORMANCE_VERSION ?= $(if $(CONFORMANCE_RELEASE),$(CONFORMANCE_IMAGE_TAG),$(shell git rev-parse --short HEAD 2>/dev/null || echo unknown))
-CONFORMANCE_INGRESS_IMAGE ?= apache/apisix-ingress-controller:$(CONFORMANCE_IMAGE_TAG)
-CONFORMANCE_ADC_IMAGE ?= ghcr.io/api7/adc:$(if $(CONFORMANCE_RELEASE),$(ADC_VERSION),dev)
-CONFORMANCE_APISIX_IMAGE ?= apache/apisix:$(if $(CONFORMANCE_RELEASE),$(CONFORMANCE_APISIX_VERSION),dev)
 # The data plane a release report is produced against. apisix:dev is a floating
-# tag, so a report claiming to be reproducible has to name a released one.
-CONFORMANCE_APISIX_VERSION ?= 3.13.0-debian
+# tag, so a report meant to be reproducible has to name a released one.
+CONFORMANCE_DATAPLANE_VERSION ?= 3.17.0-debian
+# What the run deploys and what the report declares, following the checked-out
+# state: a release tag pulls the published images for that release, anything
+# else uses the dev images. Upstream rejects a floating name as the version, so
+# a dev run declares the commit instead.
+CONFORMANCE_IMAGE_TAG ?= $(shell git describe --tags --exact-match 2>/dev/null || echo dev)
+ifeq ($(CONFORMANCE_IMAGE_TAG),dev)
+CONFORMANCE_VERSION ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
+CONFORMANCE_INGRESS_IMAGE ?= apache/apisix-ingress-controller:dev
+CONFORMANCE_ADC_IMAGE ?= ghcr.io/api7/adc:dev
+CONFORMANCE_DATAPLANE_IMAGE ?= apache/apisix:dev
+else
+CONFORMANCE_VERSION ?= $(CONFORMANCE_IMAGE_TAG)
+CONFORMANCE_INGRESS_IMAGE ?= apache/apisix-ingress-controller:$(CONFORMANCE_IMAGE_TAG)
+CONFORMANCE_ADC_IMAGE ?= ghcr.io/api7/adc:$(ADC_VERSION)
+CONFORMANCE_DATAPLANE_IMAGE ?= apache/apisix:$(CONFORMANCE_DATAPLANE_VERSION)
+endif
 CONFORMANCE_TEST_REPORT_OUTPUT ?= $(DIR)/$(CONFORMANCE_CHANNEL)-$(CONFORMANCE_VERSION)-$(CONFORMANCE_MODE)-report.yaml
 
 TEST_EXCLUDES ?= /e2e /conformance /benchmark
@@ -194,7 +193,7 @@ print-%: ## Print the value of a make variable, e.g. make print-ADC_VERSION.
 .PHONY: conformance-test
 conformance-test: export INGRESS_IMAGE=$(CONFORMANCE_INGRESS_IMAGE)
 conformance-test: export ADC_IMAGE=$(CONFORMANCE_ADC_IMAGE)
-conformance-test: export APISIX_IMAGE=$(CONFORMANCE_APISIX_IMAGE)
+conformance-test: export DATAPLANE_IMAGE=$(CONFORMANCE_DATAPLANE_IMAGE)
 conformance-test:
 	go test -v ./test/conformance -tags conformance,experimental -timeout 60m \
 		--supported-features=$(SUPPORTED_EXTENDED_FEATURES) \
@@ -211,7 +210,7 @@ conformance-test:
 conformance-images: ## Print the images the conformance run deploys.
 	@echo $(CONFORMANCE_INGRESS_IMAGE)
 	@echo $(CONFORMANCE_ADC_IMAGE)
-	@echo $(CONFORMANCE_APISIX_IMAGE)
+	@echo $(CONFORMANCE_DATAPLANE_IMAGE)
 
 .PHONY: benchmark-test
 benchmark-test:

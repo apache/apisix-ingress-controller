@@ -30,15 +30,9 @@ var (
 	ProviderType      = cmp.Or(os.Getenv("PROVIDER_TYPE"), "apisix")
 	DisableGatewayAPI = os.Getenv("DISABLE_GATEWAY_API") == "true"
 
-	// Images the tests deploy. They default to the dev tags the kind-load
-	// targets put in the cluster; a release run overrides them so the
-	// conformance report describes published images rather than a local build.
-	// The manifests read them through methods on the deploy options rather than
-	// fields, so every render path gets them, not only the ones that remember
-	// to fill a struct in.
-	IngressImage = cmp.Or(os.Getenv("INGRESS_IMAGE"), "apache/apisix-ingress-controller:dev")
-	ADCImage     = cmp.Or(os.Getenv("ADC_IMAGE"), "ghcr.io/api7/adc:dev")
-	APISIXImage  = cmp.Or(os.Getenv("APISIX_IMAGE"), "apache/apisix:dev")
+	IngressImage   = cmp.Or(os.Getenv("INGRESS_IMAGE"), "apache/apisix-ingress-controller:dev")
+	ADCImage       = cmp.Or(os.Getenv("ADC_IMAGE"), "ghcr.io/api7/adc:dev")
+	DataplaneImage = cmp.Or(os.Getenv("DATAPLANE_IMAGE"), "apache/apisix:dev")
 )
 
 const (

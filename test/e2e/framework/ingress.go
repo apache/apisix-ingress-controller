@@ -58,8 +58,8 @@ type IngressDeployOpts struct {
 	ListenerPortMatchMode string
 }
 
-// ControllerImage and ADCImage are what the manifest renders, so the images
-// cannot be missed by a caller that executes the template directly.
+// Methods rather than fields, so a caller that executes the template directly
+// cannot end up rendering an empty image.
 func (IngressDeployOpts) ControllerImage() string { return IngressImage }
 func (IngressDeployOpts) ADCImage() string        { return ADCImage }
 

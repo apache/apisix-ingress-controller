@@ -48,9 +48,8 @@ type APISIXDeployOptions struct {
 	Replicas       *int
 }
 
-// Image is what the manifest renders, so the image cannot be missed by a
-// caller that executes the template directly.
-func (APISIXDeployOptions) Image() string { return framework.APISIXImage }
+// See IngressDeployOpts.ControllerImage.
+func (APISIXDeployOptions) Image() string { return framework.DataplaneImage }
 
 type APISIXDeployer struct {
 	*Scaffold
