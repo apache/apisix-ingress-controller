@@ -27,6 +27,7 @@ IMG ?= apache/apisix-ingress-controller:$(IMAGE_TAG)
 ENVTEST_K8S_VERSION = 1.30.0
 KIND_NAME ?= apisix-ingress-cluster
 CLOUD_PROVIDER_KIND_VERSION ?= v0.6.0
+CLOUD_PROVIDER_KIND_PID ?= /tmp/cloud-provider-kind.pid
 
 ADC_VERSION ?= 0.27.1
 
@@ -230,12 +231,13 @@ kind-up:
 
 .PHONY: kind-lb
 kind-lb: ## Run cloud-provider-kind so LoadBalancer Services in kind get an address.
-	@if pgrep -f cloud-provider-kind >/dev/null; then \
+	@if [ -f $(CLOUD_PROVIDER_KIND_PID) ] && kill -0 "$$(cat $(CLOUD_PROVIDER_KIND_PID))" 2>/dev/null; then \
 		echo "cloud-provider-kind already running"; \
 	else \
 		go install sigs.k8s.io/cloud-provider-kind@$(CLOUD_PROVIDER_KIND_VERSION); \
 		echo "starting cloud-provider-kind, logs in /tmp/cloud-provider-kind.log"; \
 		nohup $(GOBIN)/cloud-provider-kind > /tmp/cloud-provider-kind.log 2>&1 & \
+		echo $$! > $(CLOUD_PROVIDER_KIND_PID); \
 	fi
 
 .PHONY: kind-down
