@@ -31,7 +31,7 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Released tag to test, for example 2.2.0. Leave empty to build and test the checked-out commit."
+        description: "Released tag to test, for example 2.2.0. Run it from that same tag, since the skip list and the manifests come from the checked-out ref. Leave empty to build and test the checked-out commit."
         required: false
         default: ""
 
@@ -111,6 +111,13 @@ jobs:
         if: ${{ inputs.image_tag }}
         shell: bash
         run: |
+          # The report names image_tag, but the skip list, the supported feature
+          # list and the manifests all come from the ref this runs on, so a
+          # mismatch produces a report nobody can reproduce.
+          if [ "${{ github.ref_name }}" != "${{ inputs.image_tag }}" ]; then
+            echo "::error::run this from tag ${{ inputs.image_tag }}, not ${{ github.ref_name }}"
+            exit 1
+          fi
           echo "CONFORMANCE_IMAGE_TAG=${{ inputs.image_tag }}" >> $GITHUB_ENV
 
       - name: Run Conformance Test

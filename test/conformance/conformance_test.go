@@ -72,10 +72,8 @@ func TestGatewayAPIConformance(t *testing.T) {
 	opts.SkipTests = append(opts.SkipTests, skippedTestsForSSL...)
 	opts.SkipTests = append(opts.SkipTests, skippedTestsForTLSPassthrough...)
 	opts.SkipTests = append(opts.SkipTests, skippedTestsForKnownGaps...)
-	// opts.Implementation is left to the --organization/--project/--url/--version
-	// /--contact flags that DefaultOptions already applied. Assigning it here would
-	// override them and pin the report to a stale version; the Makefile passes the
-	// values, so the report tracks VERSION.
+	// Implementation is left to the flags DefaultOptions already applied.
+	// Assigning it here would override them and pin the report to a stale version.
 
 	conformance.RunConformanceWithOptions(t, opts)
 }

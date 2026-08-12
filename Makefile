@@ -77,6 +77,7 @@ CONFORMANCE_DATAPLANE_VERSION ?= 3.17.0-debian
 # else uses the dev images. Upstream rejects a floating name as the version, so
 # a dev run declares the commit instead.
 CONFORMANCE_IMAGE_TAG ?= $(shell git describe --tags --exact-match 2>/dev/null || echo dev)
+override CONFORMANCE_IMAGE_TAG := $(or $(strip $(CONFORMANCE_IMAGE_TAG)),dev)
 ifeq ($(CONFORMANCE_IMAGE_TAG),dev)
 CONFORMANCE_VERSION ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 CONFORMANCE_INGRESS_IMAGE ?= apache/apisix-ingress-controller:dev
@@ -186,10 +187,6 @@ install-ginkgo:
 conformance-report-path: ## Print the path conformance-test writes the report to.
 	@echo $(CONFORMANCE_TEST_REPORT_OUTPUT)
 
-.PHONY: print-%
-print-%: ## Print the value of a make variable, e.g. make print-ADC_VERSION.
-	@echo $($*)
-
 .PHONY: conformance-test
 conformance-test: export INGRESS_IMAGE=$(CONFORMANCE_INGRESS_IMAGE)
 conformance-test: export ADC_IMAGE=$(CONFORMANCE_ADC_IMAGE)
@@ -233,10 +230,13 @@ kind-up:
 
 .PHONY: kind-lb
 kind-lb: ## Run cloud-provider-kind so LoadBalancer Services in kind get an address.
-	@pgrep -x cloud-provider-kind >/dev/null && echo "cloud-provider-kind already running" && exit 0 || true
-	@go install sigs.k8s.io/cloud-provider-kind@$(CLOUD_PROVIDER_KIND_VERSION)
-	@echo "starting cloud-provider-kind, logs in /tmp/cloud-provider-kind.log"
-	@nohup $(GOBIN)/cloud-provider-kind > /tmp/cloud-provider-kind.log 2>&1 &
+	@if pgrep -f cloud-provider-kind >/dev/null; then \
+		echo "cloud-provider-kind already running"; \
+	else \
+		go install sigs.k8s.io/cloud-provider-kind@$(CLOUD_PROVIDER_KIND_VERSION); \
+		echo "starting cloud-provider-kind, logs in /tmp/cloud-provider-kind.log"; \
+		nohup $(GOBIN)/cloud-provider-kind > /tmp/cloud-provider-kind.log 2>&1 & \
+	fi
 
 .PHONY: kind-down
 kind-down:

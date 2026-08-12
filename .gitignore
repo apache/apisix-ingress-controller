@@ -47,4 +47,4 @@ go.work
 dist
 .tmp
 apisix-ingress-controller
-*-report.yaml
+/*-report.yaml

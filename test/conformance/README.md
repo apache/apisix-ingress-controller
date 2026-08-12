@@ -41,21 +41,18 @@ that capability.
 
 ## Reproduce
 
-1. Clone the repository and check out the version to test
+1. Clone the repository and check out the release to reproduce
 
    ```shell
    git clone https://github.com/apache/apisix-ingress-controller.git && cd apisix-ingress-controller
-   git checkout 2.1.0
+   git checkout <release>
    ```
 
-   Checking out the release tag is what selects the published images for it,
-   and makes the report name that release. `make conformance-images` prints
-   the three images the run will deploy; do not run `make build-image` here,
-   it would replace a published image locally with a build of your own.
-
-   On any other commit the run uses the `dev` images, which have to be built
-   and loaded first with `make build-image && make kind-load-images`, and the
-   report names the commit rather than a release.
+   Checking out the release tag is what selects the published images for it and
+   makes the report name that release, so the steps below are available from the
+   first release that carries them. `make conformance-images` prints the three
+   images the run will deploy; do not run `make build-image` here, it would
+   replace a published image locally with a build of your own.
 
 2. Create the cluster
 
@@ -70,13 +67,21 @@ that capability.
    ```
 
    This runs [cloud-provider-kind](https://kind.sigs.k8s.io/docs/user/loadbalancer)
-   in the background, logging to `/tmp/cloud-provider-kind.log`. Skip this step
-   on a cluster that already has LoadBalancer support.
+   in the background, logging to `/tmp/cloud-provider-kind.log`. It needs access
+   to the Docker socket. Skip this step on a cluster that already has
+   LoadBalancer support.
 
 4. Install the Gateway API and the controller's CRDs
 
    ```shell
    make install
+   ```
+
+   On a commit that is not a release, the run uses the `dev` images and the
+   report names the commit. Build and load them into the cluster first:
+
+   ```shell
+   make build-image && make kind-load-images
    ```
 
 5. Run the suite
