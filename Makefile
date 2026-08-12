@@ -26,6 +26,8 @@ IMG ?= apache/apisix-ingress-controller:$(IMAGE_TAG)
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.30.0
 KIND_NAME ?= apisix-ingress-cluster
+CLOUD_PROVIDER_KIND_VERSION ?= v0.6.0
+CLOUD_PROVIDER_KIND_PID ?= /tmp/cloud-provider-kind.pid
 
 ADC_VERSION ?= 0.27.1
 
@@ -52,12 +54,43 @@ MIN_K8S_VERSION ?= 1.31.0
 GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM)=$(OSNAME)/$(OSARCH) -X=$(MINK8SVERSYM)=$(MIN_K8S_VERSION)"
 
 # gateway-api
-GATEAY_API_VERSION ?= v1.6.0
+GATEWAY_API_VERSION ?= v1.6.0
 ## https://github.com/kubernetes-sigs/gateway-api/blob/v1.6.0/pkg/features/httproute.go
 SUPPORTED_EXTENDED_FEATURES = "HTTPRouteDestinationPortMatching,HTTPRouteMethodMatching,HTTPRoutePortRedirect,HTTPRouteRequestMirror,HTTPRouteSchemeRedirect,GatewayAddressEmpty,HTTPRouteResponseHeaderModification,GatewayPort8080,HTTPRouteHostRewrite,HTTPRouteQueryParamMatching,HTTPRoutePathRewrite,HTTPRouteBackendProtocolWebSocket,TLSRouteModeTerminate"
-CONFORMANCE_TEST_REPORT_OUTPUT ?= $(DIR)/apisix-ingress-controller-conformance-report.yaml
 ## https://github.com/kubernetes-sigs/gateway-api/blob/v1.6.0/conformance/utils/suite/profiles.go
 CONFORMANCE_PROFILES ?= GATEWAY-HTTP,GATEWAY-GRPC,GATEWAY-TLS
+# Report metadata, filled into the report's implementation block by the suite.
+# https://github.com/kubernetes-sigs/gateway-api/blob/main/conformance/reports/README.md
+CONFORMANCE_ORGANIZATION ?= apache
+CONFORMANCE_PROJECT ?= apisix-ingress-controller
+CONFORMANCE_URL ?= https://github.com/apache/apisix-ingress-controller
+CONFORMANCE_CONTACT ?= https://github.com/apache/apisix-ingress-controller/issues
+# The channel install-gateway-api installs from.
+CONFORMANCE_CHANNEL ?= experimental
+# A non-default mode must map to a specific setup and be documented in the
+# report's Reproduce section.
+CONFORMANCE_MODE ?= default
+# The data plane a release report is produced against. apisix:dev is a floating
+# tag, so a report meant to be reproducible has to name a released one.
+CONFORMANCE_DATAPLANE_VERSION ?= 3.17.0-debian
+# What the run deploys and what the report declares, following the checked-out
+# state: a release tag pulls the published images for that release, anything
+# else uses the dev images. Upstream rejects a floating name as the version, so
+# a dev run declares the commit instead.
+CONFORMANCE_IMAGE_TAG ?= $(shell git describe --tags --exact-match 2>/dev/null || echo dev)
+override CONFORMANCE_IMAGE_TAG := $(or $(strip $(CONFORMANCE_IMAGE_TAG)),dev)
+ifeq ($(CONFORMANCE_IMAGE_TAG),dev)
+CONFORMANCE_VERSION ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
+CONFORMANCE_INGRESS_IMAGE ?= apache/apisix-ingress-controller:dev
+CONFORMANCE_ADC_IMAGE ?= ghcr.io/api7/adc:dev
+CONFORMANCE_DATAPLANE_IMAGE ?= apache/apisix:dev
+else
+CONFORMANCE_VERSION ?= $(CONFORMANCE_IMAGE_TAG)
+CONFORMANCE_INGRESS_IMAGE ?= apache/apisix-ingress-controller:$(CONFORMANCE_IMAGE_TAG)
+CONFORMANCE_ADC_IMAGE ?= ghcr.io/api7/adc:$(ADC_VERSION)
+CONFORMANCE_DATAPLANE_IMAGE ?= apache/apisix:$(CONFORMANCE_DATAPLANE_VERSION)
+endif
+CONFORMANCE_TEST_REPORT_OUTPUT ?= $(DIR)/$(CONFORMANCE_CHANNEL)-$(CONFORMANCE_VERSION)-$(CONFORMANCE_MODE)-report.yaml
 
 TEST_EXCLUDES ?= /e2e /conformance /benchmark
 TEST_PACKAGES = $(shell go list ./... $(foreach p,$(TEST_EXCLUDES),| grep -v $(p)))
@@ -151,12 +184,31 @@ ginkgo-e2e-test: adc
 install-ginkgo:
 	@go install github.com/onsi/ginkgo/v2/ginkgo@v$(GINKGO_VERSION)
 
+.PHONY: conformance-report-path
+conformance-report-path: ## Print the path conformance-test writes the report to.
+	@echo $(CONFORMANCE_TEST_REPORT_OUTPUT)
+
 .PHONY: conformance-test
+conformance-test: export INGRESS_IMAGE=$(CONFORMANCE_INGRESS_IMAGE)
+conformance-test: export ADC_IMAGE=$(CONFORMANCE_ADC_IMAGE)
+conformance-test: export DATAPLANE_IMAGE=$(CONFORMANCE_DATAPLANE_IMAGE)
 conformance-test:
 	go test -v ./test/conformance -tags conformance,experimental -timeout 60m \
 		--supported-features=$(SUPPORTED_EXTENDED_FEATURES) \
 		--conformance-profiles=$(CONFORMANCE_PROFILES) \
+		--organization="$(CONFORMANCE_ORGANIZATION)" \
+		--project="$(CONFORMANCE_PROJECT)" \
+		--url="$(CONFORMANCE_URL)" \
+		--version="$(CONFORMANCE_VERSION)" \
+		--contact="$(CONFORMANCE_CONTACT)" \
+		--mode="$(CONFORMANCE_MODE)" \
 		--report-output=$(CONFORMANCE_TEST_REPORT_OUTPUT)
+
+.PHONY: conformance-images
+conformance-images: ## Print the images the conformance run deploys.
+	@echo $(CONFORMANCE_INGRESS_IMAGE)
+	@echo $(CONFORMANCE_ADC_IMAGE)
+	@echo $(CONFORMANCE_DATAPLANE_IMAGE)
 
 .PHONY: benchmark-test
 benchmark-test:
@@ -176,6 +228,17 @@ kind-up:
 		&& kind create cluster --name $(KIND_NAME) \
 		|| echo "kind cluster already exists"
 	kubectl wait --for=condition=Ready nodes --all
+
+.PHONY: kind-lb
+kind-lb: ## Run cloud-provider-kind so LoadBalancer Services in kind get an address.
+	@if [ -f $(CLOUD_PROVIDER_KIND_PID) ] && kill -0 "$$(cat $(CLOUD_PROVIDER_KIND_PID))" 2>/dev/null; then \
+		echo "cloud-provider-kind already running"; \
+	else \
+		go install sigs.k8s.io/cloud-provider-kind@$(CLOUD_PROVIDER_KIND_VERSION); \
+		echo "starting cloud-provider-kind, logs in /tmp/cloud-provider-kind.log"; \
+		nohup $(GOBIN)/cloud-provider-kind > /tmp/cloud-provider-kind.log 2>&1 & \
+		echo $$! > $(CLOUD_PROVIDER_KIND_PID); \
+	fi
 
 .PHONY: kind-down
 kind-down:
@@ -296,11 +359,11 @@ endif
 install-gateway-api: ## Install Gateway API CRDs into the K8s cluster specified in ~/.kube/config.
 	# Server-side apply: the v1.6 CRDs exceed the 262144-byte annotation limit of
 	# client-side apply (last-applied-configuration).
-	kubectl apply --server-side --force-conflicts -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEAY_API_VERSION)/experimental-install.yaml
+	kubectl apply --server-side --force-conflicts -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/experimental-install.yaml
 
 .PHONY: uninstall-gateway-api
 uninstall-gateway-api: ## Uninstall Gateway API CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	kubectl delete -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEAY_API_VERSION)/experimental-install.yaml
+	kubectl delete -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/experimental-install.yaml
 
 .PHONY: install
 install: manifests kustomize install-gateway-api install-crds ## Install CRDs and Gateway API into the K8s cluster specified in ~/.kube/config.
@@ -410,7 +473,7 @@ endef
 
 helm-build-crds:
 	@echo "build gateway-api standard crds"
-	$(KUSTOMIZE) build github.com/kubernetes-sigs/gateway-api/config/crd\?ref=${GATEAY_API_VERSION} > charts/crds/gwapi-crds.yaml
+	$(KUSTOMIZE) build github.com/kubernetes-sigs/gateway-api/config/crd\?ref=${GATEWAY_API_VERSION} > charts/crds/gwapi-crds.yaml
 	@echo "build apisix ic crds"
 	$(KUSTOMIZE) build config/crd > charts/crds/apisixic-crds.yaml
 
