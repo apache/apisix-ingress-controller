@@ -19,7 +19,6 @@ package framework
 
 import (
 	"bytes"
-	"cmp"
 	_ "embed"
 	"text/template"
 	"time"
@@ -57,16 +56,15 @@ type IngressDeployOpts struct {
 	DisableGatewayAPI  bool
 	// Empty falls back to "auto" in the manifest; the shipped default is "off".
 	ListenerPortMatchMode string
-	// Empty falls back to the dev images, see IngressImage and ADCImage.
-	ControllerImage string
-	ADCImage        string
 }
+
+// ControllerImage and ADCImage are what the manifest renders, so the images
+// cannot be missed by a caller that executes the template directly.
+func (IngressDeployOpts) ControllerImage() string { return IngressImage }
+func (IngressDeployOpts) ADCImage() string        { return ADCImage }
 
 func (f *Framework) DeployIngress(opts IngressDeployOpts) {
 	buf := bytes.NewBuffer(nil)
-
-	opts.ControllerImage = cmp.Or(opts.ControllerImage, IngressImage)
-	opts.ADCImage = cmp.Or(opts.ADCImage, ADCImage)
 
 	err := IngressSpecTpl.Execute(buf, opts)
 	f.GomegaT.Expect(err).ToNot(HaveOccurred(), "rendering ingress spec")

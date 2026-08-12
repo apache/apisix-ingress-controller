@@ -19,7 +19,7 @@
 
 # Gateway API conformance
 
-This directory holds the [Gateway API conformance](https://gateway-api.sigs.k8s.io/concepts/conformance/)
+This directory holds the [Gateway API conformance](https://gateway-api.sigs.k8s.io/docs/concepts/conformance/)
 suite configuration. Running it produces a report that can be submitted to the
 [Gateway API conformance reports](https://github.com/kubernetes-sigs/gateway-api/tree/main/conformance/reports)
 repository, which requires the run to be reproducible by a third party.
@@ -45,14 +45,17 @@ that capability.
 
    ```shell
    git clone https://github.com/apache/apisix-ingress-controller.git && cd apisix-ingress-controller
-   git checkout 2.2.0
+   git checkout 2.1.0
    ```
 
-   The checked-out state selects the images: on a release tag the published
-   images for that release are pulled, on any other commit the locally built
-   `dev` images are used. `make conformance-images` prints the three that the
-   run will deploy. Do not run `make build-image` on a tag, it would replace
-   the published image locally with a build of your own.
+   Checking out the release tag is what selects the published images for it,
+   and makes the report name that release. `make conformance-images` prints
+   the three images the run will deploy; do not run `make build-image` here,
+   it would replace a published image locally with a build of your own.
+
+   On any other commit the run uses the `dev` images, which have to be built
+   and loaded first with `make build-image && make kind-load-images`, and the
+   report names the commit rather than a release.
 
 2. Create the cluster
 
@@ -94,6 +97,8 @@ that capability.
    ```shell
    cat "$(make -s conformance-report-path)"
    ```
+
+   Pass the same `CONFORMANCE_MODE` to get the path of a standalone run.
 
    The file is named `<channel>-<version>-<mode>-report.yaml`, which is the name
    the upstream repository expects, so it can be submitted as produced. Reports

@@ -21,10 +21,7 @@ VERSION ?= 2.1.0
 
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 
-# On a release tag the images for that release are the ones to build, push and
-# test against; anywhere else the dev tag is. Workflows override this per
-# context, the way push-docker.yaml does.
-IMAGE_TAG ?= $(shell git describe --tags --exact-match 2>/dev/null || echo dev)
+IMAGE_TAG ?= dev
 IMG ?= apache/apisix-ingress-controller:$(IMAGE_TAG)
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.30.0
@@ -66,9 +63,8 @@ CONFORMANCE_PROFILES ?= GATEWAY-HTTP,GATEWAY-GRPC,GATEWAY-TLS
 # Submitting a report upstream requires the file to be named
 # <channel>-<version>-<mode>-report.yaml and to be uploaded unmodified, see
 # https://github.com/kubernetes-sigs/gateway-api/blob/main/conformance/reports/README.md
-# Lowercase, matching how the other implementations name themselves upstream;
-# the report directory there is <organization>-<project>, so this one lands in
-# conformance/reports/v1.6/apache-apisix-ingress-controller.
+# Lowercase, matching how the other implementations name themselves upstream,
+# where the report directory is usually <organization>-<project>.
 CONFORMANCE_ORGANIZATION ?= apache
 CONFORMANCE_PROJECT ?= apisix-ingress-controller
 CONFORMANCE_URL ?= https://github.com/apache/apisix-ingress-controller
@@ -79,26 +75,21 @@ CONFORMANCE_CHANNEL ?= experimental
 # A mode other than default must map to a specific setup of the implementation
 # and be documented in the report's Reproduce section.
 CONFORMANCE_MODE ?= default
-# Images the conformance run deploys. They follow IMAGE_TAG: on a release tag
-# the published images for that release are pulled, anywhere else the dev tags
-# the kind-load targets put in the cluster are used. So `git checkout 2.2.0 &&
-# make conformance-test` reproduces a published report without any extra flag,
-# and a development run keeps working unchanged. Each value can still be
-# overridden individually.
-CONFORMANCE_INGRESS_IMAGE ?= $(IMG)
-ifeq ($(IMAGE_TAG),dev)
-CONFORMANCE_ADC_IMAGE ?= ghcr.io/api7/adc:dev
-CONFORMANCE_APISIX_IMAGE ?= apache/apisix:dev
-else
-CONFORMANCE_ADC_IMAGE ?= ghcr.io/api7/adc:$(ADC_VERSION)
-CONFORMANCE_APISIX_IMAGE ?= apache/apisix:$(CONFORMANCE_APISIX_VERSION)
-endif
+# Images the conformance run deploys, and the version the report declares.
+# They follow the checked-out state: on a release tag the published images for
+# that release are pulled and the report names that tag, anywhere else the dev
+# images are used and the report names the commit, which upstream accepts as a
+# version and keeps every report honest about what it tested.
+CONFORMANCE_IMAGE_TAG ?= $(shell git describe --tags --exact-match 2>/dev/null || echo dev)
+CONFORMANCE_RELEASE = $(filter-out dev,$(CONFORMANCE_IMAGE_TAG))
+CONFORMANCE_VERSION ?= $(if $(CONFORMANCE_RELEASE),$(CONFORMANCE_IMAGE_TAG),$(shell git rev-parse --short HEAD 2>/dev/null || echo unknown))
+CONFORMANCE_INGRESS_IMAGE ?= apache/apisix-ingress-controller:$(CONFORMANCE_IMAGE_TAG)
+CONFORMANCE_ADC_IMAGE ?= ghcr.io/api7/adc:$(if $(CONFORMANCE_RELEASE),$(ADC_VERSION),dev)
+CONFORMANCE_APISIX_IMAGE ?= apache/apisix:$(if $(CONFORMANCE_RELEASE),$(CONFORMANCE_APISIX_VERSION),dev)
 # The data plane a release report is produced against. apisix:dev is a floating
 # tag, so a report claiming to be reproducible has to name a released one.
 CONFORMANCE_APISIX_VERSION ?= 3.13.0-debian
-# VERSION carries no leading v, matching how the 2.x tags are named, so the
-# declared version and the file name both point at a tag that exists.
-CONFORMANCE_TEST_REPORT_OUTPUT ?= $(DIR)/$(CONFORMANCE_CHANNEL)-$(VERSION)-$(CONFORMANCE_MODE)-report.yaml
+CONFORMANCE_TEST_REPORT_OUTPUT ?= $(DIR)/$(CONFORMANCE_CHANNEL)-$(CONFORMANCE_VERSION)-$(CONFORMANCE_MODE)-report.yaml
 
 TEST_EXCLUDES ?= /e2e /conformance /benchmark
 TEST_PACKAGES = $(shell go list ./... $(foreach p,$(TEST_EXCLUDES),| grep -v $(p)))
@@ -211,7 +202,7 @@ conformance-test:
 		--organization="$(CONFORMANCE_ORGANIZATION)" \
 		--project="$(CONFORMANCE_PROJECT)" \
 		--url="$(CONFORMANCE_URL)" \
-		--version="$(VERSION)" \
+		--version="$(CONFORMANCE_VERSION)" \
 		--contact="$(CONFORMANCE_CONTACT)" \
 		--mode="$(CONFORMANCE_MODE)" \
 		--report-output=$(CONFORMANCE_TEST_REPORT_OUTPUT)
@@ -243,9 +234,10 @@ kind-up:
 
 .PHONY: kind-lb
 kind-lb: ## Run cloud-provider-kind so LoadBalancer Services in kind get an address.
+	@pgrep -x cloud-provider-kind >/dev/null && echo "cloud-provider-kind already running" && exit 0 || true
 	@go install sigs.k8s.io/cloud-provider-kind@$(CLOUD_PROVIDER_KIND_VERSION)
 	@echo "starting cloud-provider-kind, logs in /tmp/cloud-provider-kind.log"
-	@nohup $(shell go env GOPATH)/bin/cloud-provider-kind > /tmp/cloud-provider-kind.log 2>&1 &
+	@nohup $(GOBIN)/cloud-provider-kind > /tmp/cloud-provider-kind.log 2>&1 &
 
 .PHONY: kind-down
 kind-down:

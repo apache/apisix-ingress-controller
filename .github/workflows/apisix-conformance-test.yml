@@ -21,16 +21,19 @@ on:
   push:
     branches:
       - master
-    # Tag runs produce the report submitted to the Gateway API conformance
-    # reports repository, so they must run on the tagged commit itself. The 2.x
-    # tags carry no leading v, the 1.x ones did.
-    tags:
-      - "[0-9]*"
-      - "v[0-9]*"
   pull_request:
     branches:
       - master
+  # The report submitted to the Gateway API conformance reports repository is
+  # produced here, with image_tag naming the release to test. It cannot key off
+  # the tag push itself: push-docker.yaml publishes the images on that same
+  # event, so they do not exist yet when this would start pulling them.
   workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Released tag to test, for example 2.2.0. Leave empty to build and test the checked-out commit."
+        required: false
+        default: ""
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -70,11 +73,11 @@ jobs:
         run: |
           go install sigs.k8s.io/kind@v0.27.0
 
-      # A tag run must exercise the published image for that release, otherwise
-      # the report would describe a local build while claiming the release
-      # version. Branch and PR runs keep testing what was just built.
+      # A release run must exercise the published images for that release,
+      # otherwise the report would describe a local build while claiming the
+      # release version. Every other run tests what was just built.
       - name: Build images
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ !inputs.image_tag }}
         env:
           TAG: dev
           ARCH: amd64
@@ -97,26 +100,18 @@ jobs:
           make install
 
       - name: Loading Docker Image to Kind Cluster
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        if: ${{ !inputs.image_tag }}
         run: |
           make kind-load-adc-image
           make kind-load-ingress-image
 
-      # On a tag the images are pulled from their registries instead, named
-      # after the tag being released.
-      - name: Resolve Conformance Images
-        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+      # A release run pulls the published images instead, and the report names
+      # the release rather than the commit.
+      - name: Resolve Released Images
+        if: ${{ inputs.image_tag }}
         shell: bash
         run: |
-          # The report declares VERSION, so a tag that does not match it would
-          # produce a report describing a release that was never built.
-          version="$(make -s print-VERSION)"
-          if [ "${version}" != "${GITHUB_REF_NAME}" ]; then
-            echo "::error::VERSION is ${version} but the tag is ${GITHUB_REF_NAME}"
-            exit 1
-          fi
-          # git describe cannot see the tag in a shallow checkout, so name it here.
-          echo "IMAGE_TAG=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+          echo "CONFORMANCE_IMAGE_TAG=${{ inputs.image_tag }}" >> $GITHUB_ENV
 
       - name: Run Conformance Test
         shell: bash
@@ -137,8 +132,9 @@ jobs:
       - name: Check Conformance Report Has No Failing Profile
         shell: bash
         env:
-          STRICT: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
+          STRICT: ${{ inputs.image_tag != '' }}
         run: |
+          shopt -s failglob
           if grep -qE '^[[:space:]]+result: failure' ./*-report.yaml; then
             echo "::error::conformance report contains a failing profile"
             grep -nE '^[[:space:]]+result:' ./*-report.yaml
@@ -149,11 +145,13 @@ jobs:
           fi
 
       - name: Get Logs from apisix-ingress-controller
+        if: always()
         shell: bash
         run: |
           kubectl logs -n apisix-conformance-test -l app=apisix-ingress-controller
 
       - name: Upload Gateway API Conformance Report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           # The artifact keeps the upstream report file name, so a release run

@@ -38,8 +38,6 @@ import (
 type APISIXDeployOptions struct {
 	Namespace string
 	AdminKey  string
-	// Empty falls back to the dev image, see framework.APISIXImage.
-	Image string
 
 	ServiceName      string
 	ServiceType      string
@@ -49,6 +47,10 @@ type APISIXDeployOptions struct {
 	ConfigProvider string
 	Replicas       *int
 }
+
+// Image is what the manifest renders, so the image cannot be missed by a
+// caller that executes the template directly.
+func (APISIXDeployOptions) Image() string { return framework.APISIXImage }
 
 type APISIXDeployer struct {
 	*Scaffold
@@ -238,10 +240,6 @@ func (s *APISIXDeployer) newAPISIXTunnels(serviceName string) error {
 func (s *APISIXDeployer) deployDataplane(opts *APISIXDeployOptions) *corev1.Service {
 	if opts.ServiceName == "" {
 		opts.ServiceName = framework.ProviderType
-	}
-
-	if opts.Image == "" {
-		opts.Image = framework.APISIXImage
 	}
 
 	if opts.ServiceHTTPPort == 0 {
