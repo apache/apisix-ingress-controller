@@ -118,11 +118,6 @@ jobs:
           # git describe cannot see the tag in a shallow checkout, so name it here.
           echo "IMAGE_TAG=${GITHUB_REF_NAME}" >> $GITHUB_ENV
 
-      - name: Resolve Conformance Report Path
-        shell: bash
-        run: |
-          echo "CONFORMANCE_TEST_REPORT_OUTPUT=$(make -s conformance-report-path)" >> $GITHUB_ENV
-
       - name: Run Conformance Test
         shell: bash
         continue-on-error: true
@@ -134,7 +129,7 @@ jobs:
       - name: Show Conformance Report
         shell: bash
         run: |
-          cat ${CONFORMANCE_TEST_REPORT_OUTPUT}
+          cat ./*-report.yaml
 
       # The run above is continue-on-error because the suite still has known
       # gaps, so a failing profile would otherwise go unnoticed. A report that
@@ -144,9 +139,9 @@ jobs:
         env:
           STRICT: ${{ startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch' }}
         run: |
-          if grep -qE '^[[:space:]]+result: failure' "${CONFORMANCE_TEST_REPORT_OUTPUT}"; then
+          if grep -qE '^[[:space:]]+result: failure' ./*-report.yaml; then
             echo "::error::conformance report contains a failing profile"
-            grep -nE '^[[:space:]]+result:' "${CONFORMANCE_TEST_REPORT_OUTPUT}"
+            grep -nE '^[[:space:]]+result:' ./*-report.yaml
             if [ "${STRICT}" = "true" ]; then
               exit 1
             fi
@@ -164,4 +159,4 @@ jobs:
           # The artifact keeps the upstream report file name, so a release run
           # can be submitted straight from the download without renaming it.
           name: conformance-report-${{ matrix.provider_type }}
-          path: ${{ env.CONFORMANCE_TEST_REPORT_OUTPUT }}
+          path: ./*-report.yaml
