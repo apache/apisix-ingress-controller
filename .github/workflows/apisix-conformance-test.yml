@@ -112,11 +112,14 @@ jobs:
         shell: bash
         run: |
           # The report names image_tag, but the skip list, the supported feature
-          # list and the manifests all come from the ref this runs on, so a
-          # mismatch produces a report nobody can reproduce.
+          # list and the manifests come from the ref this runs on, so only a run
+          # from that same tag is submittable. It stays a warning rather than an
+          # error because running from another ref is how this path gets
+          # rehearsed against an already published release, and the workflow a
+          # tag run executes is the one inside that tag, which cannot be fixed
+          # afterwards without a new tag.
           if [ "${{ github.ref_name }}" != "${{ inputs.image_tag }}" ]; then
-            echo "::error::run this from tag ${{ inputs.image_tag }}, not ${{ github.ref_name }}"
-            exit 1
+            echo "::warning::running from ${{ github.ref_name }} while reporting ${{ inputs.image_tag }}, this report is a rehearsal and must not be submitted"
           fi
           echo "CONFORMANCE_IMAGE_TAG=${{ inputs.image_tag }}" >> $GITHUB_ENV
 
