@@ -45,7 +45,7 @@ preface = """\
 * **Downstream mTLS** on `Gateway` listeners, configured at `spec.tls.frontend` [#2792](https://github.com/apache/apisix-ingress-controller/pull/2792).
 * **`L4RoutePolicy`**, a new CRD that attaches stream plugins to L4 routes [#2791](https://github.com/apache/apisix-ingress-controller/pull/2791).
 * **L4 upstream schemes** `tcp`, `tls` and `udp` for stream backends [#2830](https://github.com/apache/apisix-ingress-controller/pull/2830).
-* **Security fixes**: credentials are kept out of the logs, a cross-namespace `Consumer` `secretRef` is gated by a `ReferenceGrant`, and the `Consumer` webhook no longer reveals whether a `Secret` exists in another namespace.
+* **Security fixes**: a malformed plugin config no longer publishes a plugin that enforces nothing [#2814](https://github.com/apache/apisix-ingress-controller/pull/2814), credentials are kept out of the logs, a cross-namespace `Consumer` `secretRef` is gated by a `ReferenceGrant`, and the `Consumer` webhook no longer reveals whether a `Secret` exists in another namespace.
 
 ---
 
@@ -121,6 +121,28 @@ the same for `udproute`. The shipped manifests are updated; a hand-maintained
 `ValidatingWebhookConfiguration` is not. This also fixes L4 routing on the Gateway API
 standard channel, which no longer serves `v1alpha2` and where the `TCPRoute`, `UDPRoute`
 and `TLSRoute` reconcilers were therefore skipped entirely.
+
+### A malformed plugin `config` is rejected instead of applied empty
+
+[#2814](https://github.com/apache/apisix-ingress-controller/pull/2814). A `config`
+that does not unmarshal into an object used to be logged, discarded and the plugin
+published with an empty config, so an `ip-restriction` with a malformed `whitelist`
+became `ip-restriction: {}` and enforced nothing while the resource reconciled
+green. Such a resource now fails to sync and says so. This covers `ApisixRoute`
+plugins and stream-route plugins, referenced `ApisixPluginConfig`,
+`ApisixGlobalRule`, the Ingress plugin-config annotation and `ApisixConsumer`, so
+a config that has been quietly ignored until now surfaces on upgrade.
+
+### `Gateway` reports different `Accepted` reasons
+
+[#2843](https://github.com/apache/apisix-ingress-controller/pull/2843). The
+`Accepted` condition always carried `Reason: Accepted`, including when its status
+was `False`, which is not a valid combination. It now reports what actually
+happened: `InvalidParameters` for a `parametersRef` that resolves to no
+`GatewayProxy`, `Pending` for a `Gateway` that names none, and `ListenersNotValid`
+when a listener is not accepted. A listener whose protocol this implementation
+does not serve is also rejected with `UnsupportedProtocol` rather than accepted
+and left serving nothing. Anything asserting on those reasons needs updating.
 
 ### `apisix.apache.org/enable-csrf` without `csrf-key` is rejected
 
@@ -231,6 +253,8 @@ Upgrade Notes above for what this asks of the cluster.
 
 ## Bug Fixes
 
+* fix: set the Gateway status reasons Gateway API 1.6 requires and make the conformance report honest [#2843](https://github.com/apache/apisix-ingress-controller/pull/2843)
+* fix: reject invalid plugin config instead of applying an empty one [#2814](https://github.com/apache/apisix-ingress-controller/pull/2814)
 * fix: read L4 routes and ReferenceGrant as v1 instead of the older versions [#2839](https://github.com/apache/apisix-ingress-controller/pull/2839)
 * fix: make the kustomize manifests deployable and consistent [#2835](https://github.com/apache/apisix-ingress-controller/pull/2835)
 * fix: normalize hosts and SNIs so uppercase hostnames stay routable [#2837](https://github.com/apache/apisix-ingress-controller/pull/2837)
@@ -252,10 +276,12 @@ Upgrade Notes above for what this asks of the cluster.
 
 ## Chores
 
+* chore(deps): upgrade dependencies flagged by security advisories [#2844](https://github.com/apache/apisix-ingress-controller/pull/2844)
 * chore: add AGENTS.md and SECURITY.md pointing at the project security threat model [#2775](https://github.com/apache/apisix-ingress-controller/pull/2775)
 * ci: fix workflow failures by upgrading actions to comply with Apache allowlist [#2772](https://github.com/apache/apisix-ingress-controller/pull/2772)
 * test(e2e): prewarm environment pool to hide per-spec deploy latency [#2790](https://github.com/apache/apisix-ingress-controller/pull/2790)
 * test(e2e): remove fixed-sleep flakiness across e2e specs [#2788](https://github.com/apache/apisix-ingress-controller/pull/2788)
+* test: stop the status e2e tests demanding their old node ports back [#2845](https://github.com/apache/apisix-ingress-controller/pull/2845)
 * test: fix the broken TCPRoute e2e listener port and de-flake two stream/ingress specs [#2836](https://github.com/apache/apisix-ingress-controller/pull/2836)
 
 ---

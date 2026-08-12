@@ -60,7 +60,7 @@ Welcome to the 2.2.0 release of apisix-ingress-controller!
 * **Downstream mTLS** on `Gateway` listeners, configured at `spec.tls.frontend` [#2792](https://github.com/apache/apisix-ingress-controller/pull/2792).
 * **`L4RoutePolicy`**, a new CRD that attaches stream plugins to L4 routes [#2791](https://github.com/apache/apisix-ingress-controller/pull/2791).
 * **L4 upstream schemes** `tcp`, `tls` and `udp` for stream backends [#2830](https://github.com/apache/apisix-ingress-controller/pull/2830).
-* **Security fixes**: credentials are kept out of the logs, a cross-namespace `Consumer` `secretRef` is gated by a `ReferenceGrant`, and the `Consumer` webhook no longer reveals whether a `Secret` exists in another namespace.
+* **Security fixes**: a malformed plugin config no longer publishes a plugin that enforces nothing [#2814](https://github.com/apache/apisix-ingress-controller/pull/2814), credentials are kept out of the logs, a cross-namespace `Consumer` `secretRef` is gated by a `ReferenceGrant`, and the `Consumer` webhook no longer reveals whether a `Secret` exists in another namespace.
 
 ---
 
@@ -136,6 +136,28 @@ the same for `udproute`. The shipped manifests are updated; a hand-maintained
 `ValidatingWebhookConfiguration` is not. This also fixes L4 routing on the Gateway API
 standard channel, which no longer serves `v1alpha2` and where the `TCPRoute`, `UDPRoute`
 and `TLSRoute` reconcilers were therefore skipped entirely.
+
+### A malformed plugin `config` is rejected instead of applied empty
+
+[#2814](https://github.com/apache/apisix-ingress-controller/pull/2814). A `config`
+that does not unmarshal into an object used to be logged, discarded and the plugin
+published with an empty config, so an `ip-restriction` with a malformed `whitelist`
+became `ip-restriction: {}` and enforced nothing while the resource reconciled
+green. Such a resource now fails to sync and says so. This covers `ApisixRoute`
+plugins and stream-route plugins, referenced `ApisixPluginConfig`,
+`ApisixGlobalRule`, the Ingress plugin-config annotation and `ApisixConsumer`, so
+a config that has been quietly ignored until now surfaces on upgrade.
+
+### `Gateway` reports different `Accepted` reasons
+
+[#2843](https://github.com/apache/apisix-ingress-controller/pull/2843). The
+`Accepted` condition always carried `Reason: Accepted`, including when its status
+was `False`, which is not a valid combination. It now reports what actually
+happened: `InvalidParameters` for a `parametersRef` that resolves to no
+`GatewayProxy`, `Pending` for a `Gateway` that names none, and `ListenersNotValid`
+when a listener is not accepted. A listener whose protocol this implementation
+does not serve is also rejected with `UnsupportedProtocol` rather than accepted
+and left serving nothing. Anything asserting on those reasons needs updating.
 
 ### `apisix.apache.org/enable-csrf` without `csrf-key` is rejected
 
@@ -246,6 +268,8 @@ Upgrade Notes above for what this asks of the cluster.
 
 ## Bug Fixes
 
+* fix: set the Gateway status reasons Gateway API 1.6 requires and make the conformance report honest [#2843](https://github.com/apache/apisix-ingress-controller/pull/2843)
+* fix: reject invalid plugin config instead of applying an empty one [#2814](https://github.com/apache/apisix-ingress-controller/pull/2814)
 * fix: read L4 routes and ReferenceGrant as v1 instead of the older versions [#2839](https://github.com/apache/apisix-ingress-controller/pull/2839)
 * fix: make the kustomize manifests deployable and consistent [#2835](https://github.com/apache/apisix-ingress-controller/pull/2835)
 * fix: normalize hosts and SNIs so uppercase hostnames stay routable [#2837](https://github.com/apache/apisix-ingress-controller/pull/2837)
@@ -267,10 +291,12 @@ Upgrade Notes above for what this asks of the cluster.
 
 ## Chores
 
+* chore(deps): upgrade dependencies flagged by security advisories [#2844](https://github.com/apache/apisix-ingress-controller/pull/2844)
 * chore: add AGENTS.md and SECURITY.md pointing at the project security threat model [#2775](https://github.com/apache/apisix-ingress-controller/pull/2775)
 * ci: fix workflow failures by upgrading actions to comply with Apache allowlist [#2772](https://github.com/apache/apisix-ingress-controller/pull/2772)
 * test(e2e): prewarm environment pool to hide per-spec deploy latency [#2790](https://github.com/apache/apisix-ingress-controller/pull/2790)
 * test(e2e): remove fixed-sleep flakiness across e2e specs [#2788](https://github.com/apache/apisix-ingress-controller/pull/2788)
+* test: stop the status e2e tests demanding their old node ports back [#2845](https://github.com/apache/apisix-ingress-controller/pull/2845)
 * test: fix the broken TCPRoute e2e listener port and de-flake two stream/ingress specs [#2836](https://github.com/apache/apisix-ingress-controller/pull/2836)
 
 ---
@@ -291,6 +317,7 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * Arunesh Dwivedi
 * Episkey
 * Jarek Potiuk
+* Nic
 * Rushen Wang
 * Shreemaan Abhishek
 * Traky Deng
@@ -298,9 +325,13 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * xiaocanglan1
 
 ### Changes
-<details><summary>32 commits</summary>
+<details><summary>36 commits</summary>
 <p>
 
+  * [`4d0015c0`](https://github.com/apache/apisix-ingress-controller/commit/4d0015c00cdd6f2d0ec315f44f5acc6dffe283e5) fix: set the Gateway status reasons Gateway API 1.6 requires and make the conformance report honest (#2843)
+  * [`70e216be`](https://github.com/apache/apisix-ingress-controller/commit/70e216be8fd9f8d3f809d968575c934b6ac307ae) fix: reject invalid plugin config instead of applying an empty one (#2814)
+  * [`6bbf00dd`](https://github.com/apache/apisix-ingress-controller/commit/6bbf00dd2d89b0f114707b8eb4c9235ffbbde8b9) chore(deps): upgrade dependencies flagged by security advisories (#2844)
+  * [`e1ea081c`](https://github.com/apache/apisix-ingress-controller/commit/e1ea081c46b2785b29452fadce958777c34d7502) fix: stop the status e2e tests demanding their old node ports back (#2845)
   * [`061b4931`](https://github.com/apache/apisix-ingress-controller/commit/061b4931dfb63cc1039d6f64a05cffcaa88aa6fc) fix: make the kustomize manifests deployable and consistent (#2835)
   * [`85d3551a`](https://github.com/apache/apisix-ingress-controller/commit/85d3551ab6295270168cef2f40f4a4cdfee50cab) fix: read L4 routes and ReferenceGrant as v1 instead of the older versions (#2839)
   * [`93458e99`](https://github.com/apache/apisix-ingress-controller/commit/93458e991f0c31cdf9594f4df5fcf90d823bfdeb) fix: normalize hosts and SNIs so uppercase hostnames stay routable (#2837)
@@ -340,8 +371,22 @@ https://github.com/apache/apisix-ingress-controller/issues.
 ### Dependency Changes
 
 * **cel.dev/expr**                                                     v0.19.1 -> v0.25.1
+* **filippo.io/edwards25519**                                          v1.1.0 -> v1.1.1
 * **github.com/Masterminds/semver/v3**                                 v3.2.1 -> v3.4.0
 * **github.com/antlr4-go/antlr/v4**                                    v4.13.0 -> v4.13.1
+* **github.com/aws/aws-sdk-go-v2**                                     v1.32.5 -> v1.41.5
+* **github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream**            v1.6.7 -> v1.7.8
+* **github.com/aws/aws-sdk-go-v2/internal/configsources**              v1.3.24 -> v1.4.21
+* **github.com/aws/aws-sdk-go-v2/internal/endpoints/v2**               v2.6.24 -> v2.7.21
+* **github.com/aws/aws-sdk-go-v2/internal/v4a**                        v1.3.24 -> v1.4.22
+* **github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs**              v1.44.0 -> v1.65.0
+* **github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding**    v1.12.1 -> v1.13.7
+* **github.com/aws/aws-sdk-go-v2/service/internal/checksum**           v1.4.5 -> v1.9.13
+* **github.com/aws/aws-sdk-go-v2/service/internal/presigned-url**      v1.12.5 -> v1.13.21
+* **github.com/aws/aws-sdk-go-v2/service/internal/s3shared**           v1.18.5 -> v1.19.21
+* **github.com/aws/aws-sdk-go-v2/service/lambda**                      v1.69.0 -> v1.88.5
+* **github.com/aws/aws-sdk-go-v2/service/s3**                          v1.69.0 -> v1.97.3
+* **github.com/aws/smithy-go**                                         v1.22.1 -> v1.24.2
 * **github.com/emicklei/go-restful/v3**                                v3.12.0 -> v3.13.0
 * **github.com/fsnotify/fsnotify**                                     v1.7.0 -> v1.9.0
 * **github.com/fxamacker/cbor/v2**                                     v2.7.0 -> v2.9.1
@@ -352,8 +397,9 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * **github.com/google/gnostic-models**                                 v0.6.8 -> v0.7.1
 * **github.com/google/pprof**                                          v0.0.0-20241029153458-d1b30febd7db -> v0.0.0-20260115054156-294ebfa9ad83
 * **github.com/gorilla/websocket**                                     v1.5.3 -> v1.5.4-0.20250319132907-e064f32e3674
-* **github.com/grpc-ecosystem/grpc-gateway/v2**                        v2.20.0 -> v2.27.7
-* **github.com/klauspost/compress**                                    v1.17.4 -> v1.18.0
+* **github.com/grpc-ecosystem/grpc-gateway/v2**                        v2.20.0 -> v2.29.0
+* **github.com/jackc/pgx/v5**                                          v5.7.1 -> v5.9.2
+* **github.com/klauspost/compress**                                    v1.17.4 -> v1.18.7
 * **github.com/miekg/dns**                                             v1.1.65 -> v1.1.72
 * **github.com/moby/spdystream**                                       v0.5.0 -> v0.5.1
 * **github.com/modern-go/reflect2**                                    v1.0.2 -> v1.0.3-0.20250322232337-35a7c28c31ee
@@ -366,13 +412,13 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * **github.com/spf13/cobra**                                           v1.9.1 -> v1.10.2
 * **github.com/spf13/pflag**                                           v1.0.6 -> v1.0.10
 * **go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp**    v0.54.0 -> v0.65.0
-* **go.opentelemetry.io/otel**                                         v1.40.0 -> v1.43.0
-* **go.opentelemetry.io/otel/exporters/otlp/otlptrace**                v1.28.0 -> v1.40.0
-* **go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc**  v1.27.0 -> v1.40.0
-* **go.opentelemetry.io/otel/metric**                                  v1.40.0 -> v1.43.0
-* **go.opentelemetry.io/otel/sdk**                                     v1.40.0 -> v1.43.0
-* **go.opentelemetry.io/otel/trace**                                   v1.40.0 -> v1.43.0
-* **go.opentelemetry.io/proto/otlp**                                   v1.3.1 -> v1.9.0
+* **go.opentelemetry.io/otel**                                         v1.40.0 -> v1.44.0
+* **go.opentelemetry.io/otel/exporters/otlp/otlptrace**                v1.28.0 -> v1.44.0
+* **go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc**  v1.27.0 -> v1.44.0
+* **go.opentelemetry.io/otel/metric**                                  v1.40.0 -> v1.44.0
+* **go.opentelemetry.io/otel/sdk**                                     v1.40.0 -> v1.44.0
+* **go.opentelemetry.io/otel/trace**                                   v1.40.0 -> v1.44.0
+* **go.opentelemetry.io/proto/otlp**                                   v1.3.1 -> v1.10.0
 * **go.uber.org/zap**                                                  v1.27.0 -> v1.28.0
 * **golang.org/x/crypto**                                              v0.45.0 -> v0.54.0
 * **golang.org/x/exp**                                                 v0.0.0-20240719175910-8a7402abbf56 -> v0.0.0-20251219203646-944ab1f22d93
@@ -385,8 +431,8 @@ https://github.com/apache/apisix-ingress-controller/issues.
 * **golang.org/x/text**                                                v0.31.0 -> v0.40.0
 * **golang.org/x/time**                                                v0.8.0 -> v0.15.0
 * **golang.org/x/tools**                                               v0.38.0 -> v0.47.0
-* **google.golang.org/genproto/googleapis/api**                        v0.0.0-20250106144421-5f5ef82da422 -> v0.0.0-20260414002931-afd174a4e478
-* **google.golang.org/genproto/googleapis/rpc**                        v0.0.0-20250115164207-1a7da9e5054f -> v0.0.0-20260427160629-7cedc36a6bc4
+* **google.golang.org/genproto/googleapis/api**                        v0.0.0-20250106144421-5f5ef82da422 -> v0.0.0-20260526163538-3dc84a4a5aaa
+* **google.golang.org/genproto/googleapis/rpc**                        v0.0.0-20250115164207-1a7da9e5054f -> v0.0.0-20260526163538-3dc84a4a5aaa
 * **google.golang.org/grpc**                                           v1.71.1 -> v1.82.1
 * **google.golang.org/protobuf**                                       v1.36.6 -> v1.36.12-0.20260120151049-f2248ac996af
 * **gopkg.in/evanphx/json-patch.v4**                                   v4.12.0 -> v4.13.0
