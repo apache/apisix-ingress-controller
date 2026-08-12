@@ -52,7 +52,7 @@ MIN_K8S_VERSION ?= 1.31.0
 GO_LDFLAGS ?= "-X=$(VERSYM)=$(VERSION) -X=$(GITSHASYM)=$(GITSHA) -X=$(BUILDOSSYM)=$(OSNAME)/$(OSARCH) -X=$(MINK8SVERSYM)=$(MIN_K8S_VERSION)"
 
 # gateway-api
-GATEAY_API_VERSION ?= v1.6.0
+GATEWAY_API_VERSION ?= v1.6.0
 ## https://github.com/kubernetes-sigs/gateway-api/blob/v1.6.0/pkg/features/httproute.go
 SUPPORTED_EXTENDED_FEATURES = "HTTPRouteDestinationPortMatching,HTTPRouteMethodMatching,HTTPRoutePortRedirect,HTTPRouteRequestMirror,HTTPRouteSchemeRedirect,GatewayAddressEmpty,HTTPRouteResponseHeaderModification,GatewayPort8080,HTTPRouteHostRewrite,HTTPRouteQueryParamMatching,HTTPRoutePathRewrite,HTTPRouteBackendProtocolWebSocket,TLSRouteModeTerminate"
 ## https://github.com/kubernetes-sigs/gateway-api/blob/v1.6.0/conformance/utils/suite/profiles.go
@@ -214,6 +214,12 @@ conformance-test:
 		--mode="$(CONFORMANCE_MODE)" \
 		--report-output=$(CONFORMANCE_TEST_REPORT_OUTPUT)
 
+.PHONY: conformance-images
+conformance-images: ## Print the images the conformance run deploys.
+	@echo $(CONFORMANCE_INGRESS_IMAGE)
+	@echo $(CONFORMANCE_ADC_IMAGE)
+	@echo $(CONFORMANCE_APISIX_IMAGE)
+
 .PHONY: conformance-lb
 conformance-lb: ## Run cloud-provider-kind so LoadBalancer Services get an address.
 	@go install sigs.k8s.io/cloud-provider-kind@$(CLOUD_PROVIDER_KIND_VERSION)
@@ -358,11 +364,11 @@ endif
 install-gateway-api: ## Install Gateway API CRDs into the K8s cluster specified in ~/.kube/config.
 	# Server-side apply: the v1.6 CRDs exceed the 262144-byte annotation limit of
 	# client-side apply (last-applied-configuration).
-	kubectl apply --server-side --force-conflicts -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEAY_API_VERSION)/experimental-install.yaml
+	kubectl apply --server-side --force-conflicts -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/experimental-install.yaml
 
 .PHONY: uninstall-gateway-api
 uninstall-gateway-api: ## Uninstall Gateway API CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	kubectl delete -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEAY_API_VERSION)/experimental-install.yaml
+	kubectl delete -f https://github.com/kubernetes-sigs/gateway-api/releases/download/$(GATEWAY_API_VERSION)/experimental-install.yaml
 
 .PHONY: install
 install: manifests kustomize install-gateway-api install-crds ## Install CRDs and Gateway API into the K8s cluster specified in ~/.kube/config.
@@ -472,7 +478,7 @@ endef
 
 helm-build-crds:
 	@echo "build gateway-api standard crds"
-	$(KUSTOMIZE) build github.com/kubernetes-sigs/gateway-api/config/crd\?ref=${GATEAY_API_VERSION} > charts/crds/gwapi-crds.yaml
+	$(KUSTOMIZE) build github.com/kubernetes-sigs/gateway-api/config/crd\?ref=${GATEWAY_API_VERSION} > charts/crds/gwapi-crds.yaml
 	@echo "build apisix ic crds"
 	$(KUSTOMIZE) build config/crd > charts/crds/apisixic-crds.yaml
 

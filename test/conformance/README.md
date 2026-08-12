@@ -50,11 +50,8 @@ that capability.
 
    The checked-out state selects the images: on a release tag the published
    images for that release are pulled, on any other commit the locally built
-   `dev` images are used. Verify with:
-
-   ```shell
-   make print-CONFORMANCE_INGRESS_IMAGE print-CONFORMANCE_ADC_IMAGE print-CONFORMANCE_APISIX_IMAGE
-   ```
+   `dev` images are used. `make conformance-images` prints the three that the
+   run will deploy.
 
 2. Create the cluster
 
@@ -78,16 +75,7 @@ that capability.
    make install
    ```
 
-5. Only when testing an unreleased commit, build the images and load them into
-   the cluster. On a release tag skip this step; the published images are
-   pulled instead.
-
-   ```shell
-   make build-image
-   make kind-load-adc-image kind-load-ingress-image
-   ```
-
-6. Run the suite
+5. Run the suite
 
    ```shell
    make conformance-test
@@ -100,49 +88,12 @@ that capability.
    PROVIDER_TYPE=apisix-standalone make conformance-test CONFORMANCE_MODE=apisix-standalone
    ```
 
-7. Read the report
+6. Read the report
 
    ```shell
    cat "$(make -s conformance-report-path)"
    ```
 
-## What the run declares
-
-The suite fills the report's `implementation` block and the report file name
-from make variables, so nothing has to be edited by hand:
-
-| variable | default | meaning |
-| --- | --- | --- |
-| `CONFORMANCE_ORGANIZATION` | `apache` | report `implementation.organization` |
-| `CONFORMANCE_PROJECT` | `apisix-ingress-controller` | report `implementation.project` |
-| `CONFORMANCE_URL` | repository page | report `implementation.url` |
-| `CONFORMANCE_CONTACT` | issue tracker | report `implementation.contact` |
-| `VERSION` | current release | report `implementation.version` |
-| `CONFORMANCE_CHANNEL` | `experimental` | the channel `install-gateway-api` installs |
-| `CONFORMANCE_MODE` | `default` | deployment mode, `apisix-standalone` for the standalone data plane |
-| `CONFORMANCE_PROFILES` | `GATEWAY-HTTP,GATEWAY-GRPC,GATEWAY-TLS` | profiles to run |
-| `SUPPORTED_EXTENDED_FEATURES` | see `Makefile` | extended features claimed |
-
-The report is written to `<channel>-<version>-<mode>-report.yaml`, which is the
-name the upstream repository expects, so the file can be submitted as produced.
-Reports must be uploaded unmodified.
-
-## Submitting a report
-
-1. Push the release tag, then let the tag run of the `APISIX Conformance Test`
-   workflow produce the reports, or run the steps above on the tag.
-2. Download the `conformance-report-<provider>` artifacts.
-3. Open a pull request against
-   [kubernetes-sigs/gateway-api](https://github.com/kubernetes-sigs/gateway-api)
-   adding the reports and a `README.md` under
-   `conformance/reports/<gateway-api-version>/apache-apisix-ingress-controller/`.
-   The README must carry a table of contents and a Reproduce section; upstream
-   CI checks that it exists and that every link in it resolves.
-
-## Skipped tests
-
-`conformance_test.go` skips three groups of tests, each with the reason in a
-comment next to it: certificate SAN handling, TLS passthrough, which APISIX
-does not implement because it terminates TLS and matches stream routes by SNI,
-and a set of known gaps tracked for follow-up. Skipped tests make the affected
-profile `partial` rather than `success` in the report.
+   The file is named `<channel>-<version>-<mode>-report.yaml`, which is the name
+   the upstream repository expects, so it can be submitted as produced. Reports
+   must be uploaded unmodified.
