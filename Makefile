@@ -21,7 +21,10 @@ VERSION ?= 2.1.0
 
 RELEASE_SRC = apache-apisix-ingress-controller-${VERSION}-src
 
-IMAGE_TAG ?= dev
+# On a release tag the images for that release are the ones to build, push and
+# test against; anywhere else the dev tag is. Workflows override this per
+# context, the way push-docker.yaml does.
+IMAGE_TAG ?= $(shell git describe --tags --exact-match 2>/dev/null || echo dev)
 IMG ?= apache/apisix-ingress-controller:$(IMAGE_TAG)
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.30.0
@@ -75,15 +78,14 @@ CONFORMANCE_CHANNEL ?= experimental
 # A mode other than default must map to a specific setup of the implementation
 # and be documented in the report's Reproduce section.
 CONFORMANCE_MODE ?= default
-# Images the conformance run deploys, selected by what is checked out: on a
-# release tag the published images for that release are pulled, anywhere else
-# the dev tags the kind-load targets put in the cluster are used. That way
-# `git checkout 2.2.0 && make conformance-test` reproduces a published report
-# without any extra flag, and a development run keeps working unchanged. Each
-# value can still be overridden individually.
-CONFORMANCE_IMAGE_TAG ?= $(shell git describe --tags --exact-match 2>/dev/null || echo dev)
-CONFORMANCE_INGRESS_IMAGE ?= apache/apisix-ingress-controller:$(CONFORMANCE_IMAGE_TAG)
-ifeq ($(CONFORMANCE_IMAGE_TAG),dev)
+# Images the conformance run deploys. They follow IMAGE_TAG: on a release tag
+# the published images for that release are pulled, anywhere else the dev tags
+# the kind-load targets put in the cluster are used. So `git checkout 2.2.0 &&
+# make conformance-test` reproduces a published report without any extra flag,
+# and a development run keeps working unchanged. Each value can still be
+# overridden individually.
+CONFORMANCE_INGRESS_IMAGE ?= $(IMG)
+ifeq ($(IMAGE_TAG),dev)
 CONFORMANCE_ADC_IMAGE ?= ghcr.io/api7/adc:dev
 CONFORMANCE_APISIX_IMAGE ?= apache/apisix:dev
 else

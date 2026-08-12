@@ -51,7 +51,8 @@ that capability.
    The checked-out state selects the images: on a release tag the published
    images for that release are pulled, on any other commit the locally built
    `dev` images are used. `make conformance-images` prints the three that the
-   run will deploy.
+   run will deploy. Do not run `make build-image` on a tag, it would replace
+   the published image locally with a build of your own.
 
 2. Create the cluster
 
