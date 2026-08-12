@@ -124,6 +124,7 @@ jobs:
           echo "CONFORMANCE_IMAGE_TAG=${{ inputs.image_tag }}" >> $GITHUB_ENV
 
       - name: Run Conformance Test
+        id: conformance
         shell: bash
         continue-on-error: true
         env:
@@ -132,22 +133,34 @@ jobs:
           make conformance-test
 
       - name: Show Conformance Report
+        if: always()
         shell: bash
         run: |
-          cat ./*-report.yaml
+          cat ./*-report.yaml || echo "no report was produced"
 
-      # The run above is continue-on-error because the suite still has known
-      # gaps, so a failing profile would otherwise go unnoticed. A report that
-      # is meant for submission must have every profile at success or partial.
-      - name: Check Conformance Report Has No Failing Profile
+      # The suite runs most tests with t.Parallel, and those report their result
+      # after the report has been written, so a parallel failure leaves the
+      # report at Failed: 0 while the suite exits non-zero. The step outcome is
+      # the only place such a failure shows, which is why the run above is
+      # continue-on-error and the verdict is reached here instead.
+      - name: Check Conformance Result
+        if: always()
         shell: bash
         env:
           STRICT: ${{ inputs.image_tag != '' }}
+          RUN_OUTCOME: ${{ steps.conformance.outcome }}
         run: |
-          shopt -s failglob
-          if grep -qE '^[[:space:]]+result: failure' ./*-report.yaml; then
-            echo "::error::conformance report contains a failing profile"
-            grep -nE '^[[:space:]]+result:' ./*-report.yaml
+          problem=""
+          if [ "${RUN_OUTCOME}" != "success" ]; then
+            problem="the suite exited non-zero, see the failures above"
+          elif ! ls ./*-report.yaml >/dev/null 2>&1; then
+            problem="no report was produced"
+          elif grep -qE '^[[:space:]]+result: failure' ./*-report.yaml; then
+            problem="the report contains a failing profile"
+          fi
+          if [ -n "${problem}" ]; then
+            echo "::error::${problem}"
+            grep -nE '^[[:space:]]+result:' ./*-report.yaml 2>/dev/null || true
             if [ "${STRICT}" = "true" ]; then
               exit 1
             fi

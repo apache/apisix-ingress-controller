@@ -108,3 +108,9 @@ that capability.
    The file is named `<channel>-<version>-<mode>-report.yaml`, which is the name
    the upstream repository expects, so it can be submitted as produced. Reports
    must be uploaded unmodified.
+
+   A run that fails before writing the report leaves the previous one in place,
+   so delete `*-report.yaml` before rerunning. Note also that most of the suite
+   runs in parallel and those tests report after the report is written, so a
+   report can read `Failed: 0` while `make conformance-test` exited non-zero;
+   the exit status is what to trust.
