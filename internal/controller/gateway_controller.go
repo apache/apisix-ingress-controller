@@ -194,10 +194,14 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			msg:    "gateway proxy not found",
 		}
 	} else {
-		for _, addr := range gatewayProxy.Spec.StatusAddress {
-			if addr == "" {
-				continue
-			}
+		statusAddresses, err := r.resolveStatusAddresses(ctx, &gatewayProxy)
+		if err != nil {
+			// fail the reconcile so a missing or invalid publish Service retries
+			// with backoff, mirroring the Ingress status path
+			r.Log.Error(err, "failed to resolve gateway status addresses", "gateway", req.NamespacedName)
+			return ctrl.Result{}, err
+		}
+		for _, addr := range statusAddresses {
 			addrType := gatewayv1.IPAddressType
 			if net.ParseIP(addr) == nil {
 				addrType = gatewayv1.HostnameAddressType
@@ -257,6 +261,38 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// resolveStatusAddresses returns the addresses to publish in
+// Gateway.status.addresses: the statically configured statusAddress if set,
+// otherwise the external addresses of the Service named by publishService.
+// This mirrors the Ingress status path, so the same GatewayProxy yields the
+// same addresses for both APIs.
+func (r *GatewayReconciler) resolveStatusAddresses(
+	ctx context.Context,
+	gatewayProxy *v1alpha1.GatewayProxy,
+) ([]string, error) {
+	if len(gatewayProxy.Spec.StatusAddress) > 0 {
+		return utils.Filter(gatewayProxy.Spec.StatusAddress, func(addr string) bool {
+			return addr != ""
+		}), nil
+	}
+
+	if gatewayProxy.Spec.PublishService == "" {
+		return nil, nil
+	}
+
+	// a bare name is resolved against the GatewayProxy's namespace
+	svc, err := resolvePublishService(ctx, r.Client, gatewayProxy.Spec.PublishService, gatewayProxy.GetNamespace())
+	if err != nil {
+		return nil, err
+	}
+	if svc.Spec.Type != corev1.ServiceTypeLoadBalancer {
+		r.Log.Info("publish service is not a LoadBalancer; no address to publish",
+			"service", gatewayProxy.Spec.PublishService, "type", svc.Spec.Type)
+		return nil, nil
+	}
+	return serviceLoadBalancerAddresses(svc), nil
 }
 
 func (r *GatewayReconciler) matchesGatewayClass(obj client.Object) bool {
