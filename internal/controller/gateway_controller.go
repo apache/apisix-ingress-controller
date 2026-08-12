@@ -192,11 +192,16 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	gatewayProxy, ok := tctx.GatewayProxies[rk]
 	if !ok {
-		// The reference the Gateway names cannot be resolved to a GatewayProxy,
-		// which is what InvalidParameters describes.
+		// InvalidParameters is only the right answer when the Gateway actually
+		// names a parametersRef that cannot be resolved. A Gateway that names
+		// none is simply not configured yet.
+		reason := gatewayv1.GatewayReasonPending
+		if gateway.Spec.Infrastructure != nil && gateway.Spec.Infrastructure.ParametersRef != nil {
+			reason = gatewayv1.GatewayReasonInvalidParameters
+		}
 		acceptStatus = conditionStatus{
 			status: false,
-			reason: gatewayv1.GatewayReasonInvalidParameters,
+			reason: reason,
 			msg:    "gateway proxy not found",
 		}
 	} else {
@@ -234,9 +239,11 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
-	// A listener the Gateway cannot serve makes the Gateway itself report
-	// ListenersNotValid, whether or not its other listeners are fine.
-	if status, invalid := gatewayAcceptanceFromListeners(listenerStatuses); invalid && acceptStatus.status {
+	// A listener the Gateway cannot serve is the most specific thing to report,
+	// so it wins over whatever else was found: the Gateway says
+	// ListenersNotValid, and the status separates a Gateway that still serves
+	// some listeners from one that serves none.
+	if status, invalid := gatewayAcceptanceFromListeners(listenerStatuses); invalid {
 		acceptStatus = conditionStatus{
 			status: status,
 			reason: gatewayv1.GatewayReasonListenersNotValid,
