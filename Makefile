@@ -29,6 +29,7 @@ IMG ?= apache/apisix-ingress-controller:$(IMAGE_TAG)
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.30.0
 KIND_NAME ?= apisix-ingress-cluster
+CLOUD_PROVIDER_KIND_VERSION ?= v0.6.0
 
 ADC_VERSION ?= 0.27.1
 
@@ -95,7 +96,6 @@ endif
 # The data plane a release report is produced against. apisix:dev is a floating
 # tag, so a report claiming to be reproducible has to name a released one.
 CONFORMANCE_APISIX_VERSION ?= 3.13.0-debian
-CLOUD_PROVIDER_KIND_VERSION ?= v0.6.0
 # VERSION carries no leading v, matching how the 2.x tags are named, so the
 # declared version and the file name both point at a tag that exists.
 CONFORMANCE_TEST_REPORT_OUTPUT ?= $(DIR)/$(CONFORMANCE_CHANNEL)-$(VERSION)-$(CONFORMANCE_MODE)-report.yaml
@@ -222,12 +222,6 @@ conformance-images: ## Print the images the conformance run deploys.
 	@echo $(CONFORMANCE_ADC_IMAGE)
 	@echo $(CONFORMANCE_APISIX_IMAGE)
 
-.PHONY: conformance-lb
-conformance-lb: ## Run cloud-provider-kind so LoadBalancer Services get an address.
-	@go install sigs.k8s.io/cloud-provider-kind@$(CLOUD_PROVIDER_KIND_VERSION)
-	@echo "starting cloud-provider-kind, logs in /tmp/cloud-provider-kind.log"
-	@nohup $(shell go env GOPATH)/bin/cloud-provider-kind > /tmp/cloud-provider-kind.log 2>&1 &
-
 .PHONY: benchmark-test
 benchmark-test:
 	go test -v ./test/benchmark -test.timeout=$(TEST_TIMEOUT) -v -ginkgo.v
@@ -246,6 +240,12 @@ kind-up:
 		&& kind create cluster --name $(KIND_NAME) \
 		|| echo "kind cluster already exists"
 	kubectl wait --for=condition=Ready nodes --all
+
+.PHONY: kind-lb
+kind-lb: ## Run cloud-provider-kind so LoadBalancer Services in kind get an address.
+	@go install sigs.k8s.io/cloud-provider-kind@$(CLOUD_PROVIDER_KIND_VERSION)
+	@echo "starting cloud-provider-kind, logs in /tmp/cloud-provider-kind.log"
+	@nohup $(shell go env GOPATH)/bin/cloud-provider-kind > /tmp/cloud-provider-kind.log 2>&1 &
 
 .PHONY: kind-down
 kind-down:

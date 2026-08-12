@@ -63,7 +63,7 @@ that capability.
 3. Run a local LoadBalancer provider
 
    ```shell
-   make conformance-lb
+   make kind-lb
    ```
 
    This runs [cloud-provider-kind](https://kind.sigs.k8s.io/docs/user/loadbalancer)

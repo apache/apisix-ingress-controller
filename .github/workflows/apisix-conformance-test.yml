@@ -90,7 +90,7 @@ jobs:
 
       - name: Install And Run Cloud Provider KIND
         run: |
-          make conformance-lb
+          make kind-lb
   
       - name: Install Gateway API And CRDs
         run: |
