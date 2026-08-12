@@ -1226,22 +1226,6 @@ func validateListenerFrontendValidation(
 	}
 }
 
-// SplitMetaNamespaceKey returns the namespace and name that
-// MetaNamespaceKeyFunc encoded into key.
-func SplitMetaNamespaceKey(key string) (namespace, name string, err error) {
-	parts := strings.Split(key, "/")
-	switch len(parts) {
-	case 1:
-		// name only, no namespace
-		return "", parts[0], nil
-	case 2:
-		// namespace and name
-		return parts[0], parts[1], nil
-	}
-
-	return "", "", fmt.Errorf("unexpected key format: %q", key)
-}
-
 func ProcessGatewayProxy(r client.Client, log logr.Logger, tctx *provider.TranslateContext, gateway *gatewayv1.Gateway, rk types.NamespacedNameKind) error {
 	if gateway == nil {
 		return nil

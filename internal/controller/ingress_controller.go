@@ -708,7 +708,7 @@ func (r *IngressReconciler) updateStatus(ctx context.Context, tctx *provider.Tra
 		publishService := gatewayProxy.Spec.PublishService
 		if publishService != "" {
 			// parse the namespace/name format
-			namespace, name, err := SplitMetaNamespaceKey(publishService)
+			namespace, name, err := utils.SplitMetaNamespaceKey(publishService)
 			if err != nil {
 				return fmt.Errorf("invalid ingress-publish-service format: %s, expected format: namespace/name", publishService)
 			}
