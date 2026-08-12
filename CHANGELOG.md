@@ -148,17 +148,6 @@ plugins and stream-route plugins, referenced `ApisixPluginConfig`,
 `ApisixGlobalRule`, the Ingress plugin-config annotation and `ApisixConsumer`, so
 a config that has been quietly ignored until now surfaces on upgrade.
 
-### `Gateway` reports different `Accepted` reasons
-
-[#2843](https://github.com/apache/apisix-ingress-controller/pull/2843). The
-`Accepted` condition always carried `Reason: Accepted`, including when its status
-was `False`, which is not a valid combination. It now reports what actually
-happened: `InvalidParameters` for a `parametersRef` that resolves to no
-`GatewayProxy`, `Pending` for a `Gateway` that names none, and `ListenersNotValid`
-when a listener is not accepted. A listener whose protocol this implementation
-does not serve is also rejected with `UnsupportedProtocol` rather than accepted
-and left serving nothing. Anything asserting on those reasons needs updating.
-
 ### `apisix.apache.org/enable-csrf` without `csrf-key` is rejected
 
 [#2813](https://github.com/apache/apisix-ingress-controller/pull/2813). The webhook now
