@@ -1928,3 +1928,42 @@ func deduplicateGatewayStatusAddresses(addrs []gatewayv1.GatewayStatusAddress) [
 		return a.Value == b.Value
 	})
 }
+
+// resolvePublishService looks up the Service named by publishService, given as
+// "namespace/name" or as a bare name resolved against defaultNamespace. Callers
+// map the Service's addresses into whichever status shape their API uses.
+func resolvePublishService(
+	ctx context.Context,
+	c client.Client,
+	publishService, defaultNamespace string,
+) (*corev1.Service, error) {
+	namespace, name, err := utils.SplitMetaNamespaceKey(publishService)
+	if err != nil {
+		return nil, fmt.Errorf("invalid publish service format: %s, expected format: namespace/name", publishService)
+	}
+	// if the namespace is not specified, use the caller's namespace
+	if namespace == "" {
+		namespace = defaultNamespace
+	}
+
+	svc := &corev1.Service{}
+	if err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, svc); err != nil {
+		return nil, fmt.Errorf("failed to get publish service %s: %w", publishService, err)
+	}
+	return svc, nil
+}
+
+// serviceLoadBalancerAddresses flattens the Service's LoadBalancer ingress
+// entries into address strings, keeping per-entry order: IP before hostname.
+func serviceLoadBalancerAddresses(svc *corev1.Service) []string {
+	var addrs []string
+	for _, ing := range svc.Status.LoadBalancer.Ingress {
+		if ing.IP != "" {
+			addrs = append(addrs, ing.IP)
+		}
+		if ing.Hostname != "" {
+			addrs = append(addrs, ing.Hostname)
+		}
+	}
+	return addrs
+}
