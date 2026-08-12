@@ -165,10 +165,12 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	r.Log.Info("gateway has been accepted", "gateway", gateway.GetName())
 	type conditionStatus struct {
 		status bool
+		reason gatewayv1.GatewayConditionReason
 		msg    string
 	}
 	acceptStatus := conditionStatus{
 		status: true,
+		reason: gatewayv1.GatewayReasonAccepted,
 		msg:    acceptedMessage("gateway"),
 	}
 
@@ -179,6 +181,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if err := r.processInfrastructure(tctx, gateway); err != nil {
 		acceptStatus = conditionStatus{
 			status: false,
+			reason: gatewayv1.GatewayReasonInvalidParameters,
 			msg:    err.Error(),
 		}
 	}
@@ -189,8 +192,11 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	gatewayProxy, ok := tctx.GatewayProxies[rk]
 	if !ok {
+		// The reference the Gateway names cannot be resolved to a GatewayProxy,
+		// which is what InvalidParameters describes.
 		acceptStatus = conditionStatus{
 			status: false,
+			reason: gatewayv1.GatewayReasonInvalidParameters,
 			msg:    "gateway proxy not found",
 		}
 	} else {
@@ -223,11 +229,22 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if err := r.Provider.Update(ctx, tctx, gateway); err != nil {
 		acceptStatus = conditionStatus{
 			status: false,
+			reason: gatewayv1.GatewayReasonAccepted,
 			msg:    err.Error(),
 		}
 	}
 
-	accepted := SetGatewayConditionAccepted(gateway, acceptStatus.status, acceptStatus.msg)
+	// A listener the Gateway cannot serve makes the Gateway itself report
+	// ListenersNotValid, whether or not its other listeners are fine.
+	if status, invalid := gatewayAcceptanceFromListeners(listenerStatuses); invalid && acceptStatus.status {
+		acceptStatus = conditionStatus{
+			status: status,
+			reason: gatewayv1.GatewayReasonListenersNotValid,
+			msg:    "one or more listeners are not accepted",
+		}
+	}
+
+	accepted := SetGatewayConditionAccepted(gateway, acceptStatus.status, acceptStatus.reason, acceptStatus.msg)
 	programmed := SetGatewayConditionProgrammed(gateway, conditionProgrammedStatus, conditionProgrammedMsg)
 	addressesChanged := !reflect.DeepEqual(gateway.Status.Addresses, addrs)
 	if accepted || programmed || addressesChanged || len(listenerStatuses) > 0 {
