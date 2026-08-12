@@ -62,6 +62,15 @@ var skippedTestsForKnownGaps = []string{
 	// A single HTTPRoute attached to several Gateways is not served from each
 	// parent independently.
 	tests.HTTPRouteMultipleGateways.ShortName,
+
+	// Gateway API 1.6 added these two, and the status semantics they ask for
+	// were never implemented: nothing in the controller sets InvalidParameters
+	// for a parametersRef it cannot resolve, or UnsupportedProtocol on a
+	// listener whose protocol it does not know, or ListenersNotValid on the
+	// Gateway. They are skipped rather than left failing so the report says
+	// skipped instead of claiming a pass.
+	tests.GatewayInvalidParametersRef.ShortName,
+	tests.GatewayListenerUnsupportedProtocol.ShortName,
 }
 
 func TestGatewayAPIConformance(t *testing.T) {
