@@ -231,11 +231,11 @@ func SetGatewayListenerConditionResolvedRefs(gw *gatewayv1.Gateway, listenerName
 	return
 }
 
-func SetGatewayConditionProgrammed(gw *gatewayv1.Gateway, status bool, message string) (ok bool) {
+func SetGatewayConditionProgrammed(gw *gatewayv1.Gateway, status bool, reason, message string) (ok bool) {
 	condition := metav1.Condition{
 		Type:               string(gatewayv1.GatewayConditionProgrammed),
 		Status:             ConditionStatus(status),
-		Reason:             string(gatewayv1.GatewayReasonProgrammed),
+		Reason:             reason,
 		ObservedGeneration: gw.GetGeneration(),
 		Message:            message,
 		LastTransitionTime: metav1.Now(),
@@ -1930,8 +1930,9 @@ func deduplicateGatewayStatusAddresses(addrs []gatewayv1.GatewayStatusAddress) [
 }
 
 // resolvePublishService looks up the Service named by publishService, given as
-// "namespace/name" or as a bare name resolved against defaultNamespace. Callers
-// map the Service's addresses into whichever status shape their API uses.
+// "namespace/name" or as a bare name resolved against defaultNamespace.
+// A value that cannot work (bad format, no such Service) comes back as a
+// ReasonError with GatewayReasonAddressNotAssigned.
 func resolvePublishService(
 	ctx context.Context,
 	c client.Client,
@@ -1939,7 +1940,10 @@ func resolvePublishService(
 ) (*corev1.Service, error) {
 	namespace, name, err := utils.SplitMetaNamespaceKey(publishService)
 	if err != nil {
-		return nil, fmt.Errorf("invalid publish service format: %s, expected format: namespace/name", publishService)
+		return nil, types.ReasonError{
+			Reason:  string(gatewayv1.GatewayReasonAddressNotAssigned),
+			Message: fmt.Sprintf("invalid publish service format: %s, expected format: namespace/name", publishService),
+		}
 	}
 	// if the namespace is not specified, use the caller's namespace
 	if namespace == "" {
@@ -1948,6 +1952,12 @@ func resolvePublishService(
 
 	svc := &corev1.Service{}
 	if err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, svc); err != nil {
+		if k8serrors.IsNotFound(err) {
+			return nil, types.ReasonError{
+				Reason:  string(gatewayv1.GatewayReasonAddressNotAssigned),
+				Message: fmt.Sprintf("publish service %s/%s not found", namespace, name),
+			}
+		}
 		return nil, fmt.Errorf("failed to get publish service %s: %w", publishService, err)
 	}
 	return svc, nil

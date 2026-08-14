@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"time"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -45,6 +46,10 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 	pkgutils "github.com/apache/apisix-ingress-controller/pkg/utils"
 )
+
+// publishServiceRetryInterval polls an unresolvable publishService, since
+// Service events are not watched.
+const publishServiceRetryInterval = time.Minute
 
 // GatewayReconciler reconciles a Gateway object.
 type GatewayReconciler struct { //nolint:revive
@@ -161,6 +166,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	conditionProgrammedStatus, conditionProgrammedMsg := true, "Programmed"
+	conditionProgrammedReason := string(gatewayv1.GatewayReasonProgrammed)
 
 	r.Log.Info("gateway has been accepted", "gateway", gateway.GetName())
 	type conditionStatus struct {
@@ -184,8 +190,10 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	var (
-		addrs          []gatewayv1.GatewayStatusAddress
-		addrResolveErr error
+		addrs             []gatewayv1.GatewayStatusAddress
+		addrResolveFailed bool
+		addrResolveErr    error
+		addrRetryAfter    time.Duration
 	)
 
 	rk := utils.NamespacedNameKind(gateway)
@@ -199,8 +207,20 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	} else {
 		statusAddresses, err := r.resolveStatusAddresses(ctx, &gatewayProxy)
 		if err != nil {
-			r.Log.Error(err, "failed to resolve gateway status addresses", "gateway", req.NamespacedName)
-			addrResolveErr = err
+			addrResolveFailed = true
+			if internaltypes.IsSomeReasonError(err, gatewayv1.GatewayReasonAddressNotAssigned) {
+				// a config problem, not a controller failure: report it on the
+				// Programmed condition instead of the reconcile error metric
+				r.Log.Info("cannot resolve gateway status addresses",
+					"gateway", req.NamespacedName, "reason", err.Error())
+				conditionProgrammedStatus = false
+				conditionProgrammedMsg = err.Error()
+				conditionProgrammedReason = string(gatewayv1.GatewayReasonAddressNotAssigned)
+				addrRetryAfter = publishServiceRetryInterval
+			} else {
+				r.Log.Error(err, "failed to resolve gateway status addresses", "gateway", req.NamespacedName)
+				addrResolveErr = err
+			}
 		}
 		for _, addr := range statusAddresses {
 			addrType := gatewayv1.IPAddressType
@@ -233,8 +253,8 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	accepted := SetGatewayConditionAccepted(gateway, acceptStatus.status, acceptStatus.msg)
-	programmed := SetGatewayConditionProgrammed(gateway, conditionProgrammedStatus, conditionProgrammedMsg)
-	addressesChanged := addrResolveErr == nil && !reflect.DeepEqual(gateway.Status.Addresses, addrs)
+	programmed := SetGatewayConditionProgrammed(gateway, conditionProgrammedStatus, conditionProgrammedReason, conditionProgrammedMsg)
+	addressesChanged := !addrResolveFailed && !reflect.DeepEqual(gateway.Status.Addresses, addrs)
 	if accepted || programmed || addressesChanged || len(listenerStatuses) > 0 {
 		if addressesChanged {
 			gateway.Status.Addresses = addrs
@@ -258,10 +278,10 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			}),
 		})
 
-		return ctrl.Result{}, addrResolveErr
+		return ctrl.Result{RequeueAfter: addrRetryAfter}, addrResolveErr
 	}
 
-	return ctrl.Result{}, addrResolveErr
+	return ctrl.Result{RequeueAfter: addrRetryAfter}, addrResolveErr
 }
 
 // resolveStatusAddresses returns the addresses to publish in
