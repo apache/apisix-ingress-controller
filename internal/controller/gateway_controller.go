@@ -267,8 +267,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 // resolveStatusAddresses returns the addresses to publish in
 // Gateway.status.addresses: the statically configured statusAddress if set,
 // otherwise the external addresses of the Service named by publishService.
-// This mirrors the Ingress status path, so the same GatewayProxy yields the
-// same addresses for both APIs.
+// A bare Service name resolves against the GatewayProxy's namespace.
 func (r *GatewayReconciler) resolveStatusAddresses(
 	ctx context.Context,
 	gatewayProxy *v1alpha1.GatewayProxy,

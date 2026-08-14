@@ -707,8 +707,9 @@ func (r *IngressReconciler) updateStatus(ctx context.Context, tctx *provider.Tra
 		// 2. if the IngressStatusAddress is not configured, try to use the PublishService
 		publishService := gatewayProxy.Spec.PublishService
 		if publishService != "" {
-			// if the namespace is not specified, use the ingress namespace
-			svc, err := resolvePublishService(ctx, r.Client, publishService, ingress.Namespace)
+			// a bare name resolves against the GatewayProxy's namespace, where
+			// the publish Service lives, matching the Gateway API path
+			svc, err := resolvePublishService(ctx, r.Client, publishService, gatewayProxy.GetNamespace())
 			if err != nil {
 				return err
 			}
