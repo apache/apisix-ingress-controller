@@ -1923,11 +1923,16 @@ func matchesIngressClassOrLog(c client.Client, log logr.Logger, obj client.Objec
 	case k8serrors.IsNotFound(err):
 		log.Info("ignoring the object: the referenced IngressClass does not exist",
 			"kind", kind, "object", key, "ingressClassName", ExtractIngressClass(obj))
-	default:
-		// the IngressClass belongs to another controller (or the lookup hit a
-		// transient error); this object is not ours to report on loudly
+	case errors.Is(err, errForeignIngressClass):
+		// the object belongs to another controller and is not ours to report
+		// on loudly
 		log.V(1).Info("ignoring the object: its IngressClass is not managed by this controller",
-			"kind", kind, "object", key, "ingressClassName", ExtractIngressClass(obj), "reason", err.Error())
+			"kind", kind, "object", key, "ingressClassName", ExtractIngressClass(obj))
+	default:
+		// an unexpected lookup failure is not an ownership verdict; the event
+		// is still dropped to keep the pre-existing admission semantics
+		log.Error(err, "failed to determine the IngressClass for the object; ignoring the event",
+			"kind", kind, "object", key, "ingressClassName", ExtractIngressClass(obj))
 	}
 	return false
 }

@@ -18,6 +18,8 @@
 package controller
 
 import (
+	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -30,6 +32,7 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
@@ -169,4 +172,32 @@ func TestMatchesIngressClassPredicate_UpdateLogsOnce(t *testing.T) {
 
 	require.False(t, admitted)
 	require.Len(t, *lines, 1, "an update event must log the skip exactly once")
+}
+
+// An unexpected lookup failure (not NotFound, not a foreign class) is not an
+// ownership verdict; it must be reported at Error level, not mislabeled.
+func TestMatchesIngressClassPredicate_UnexpectedLookupErrorIsLoud(t *testing.T) {
+	scheme := runtime.NewScheme()
+	require.NoError(t, clientgoscheme.AddToScheme(scheme))
+	require.NoError(t, apiv2.AddToScheme(scheme))
+	c := fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithIndex(&networkingv1.IngressClass{}, indexer.IngressClass, indexer.IngressClassIndexFunc).
+		WithInterceptorFuncs(interceptor.Funcs{
+			Get: func(ctx context.Context, cl client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+				return errors.New("apiserver timeout")
+			},
+		}).
+		Build()
+	log, lines := capturingLogger()
+	p := MatchesIngressClassPredicate(c, log)
+
+	admitted := p.Create(event.CreateEvent{Object: apisixRouteWithClass("apisix")})
+
+	require.False(t, admitted, "admission semantics must not change on lookup errors")
+	require.Len(t, *lines, 1, "the lookup failure must be logged")
+	require.Contains(t, joinedLines(lines), "apiserver timeout")
+	require.Contains(t, joinedLines(lines), "demo-ns/demo-route")
+	require.NotContains(t, joinedLines(lines), "not managed by this controller",
+		"a lookup failure is not an ownership verdict and must not be mislabeled")
 }
