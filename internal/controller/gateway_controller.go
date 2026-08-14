@@ -183,7 +183,10 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
-	var addrs []gatewayv1.GatewayStatusAddress
+	var (
+		addrs          []gatewayv1.GatewayStatusAddress
+		addrResolveErr error
+	)
 
 	rk := utils.NamespacedNameKind(gateway)
 
@@ -196,10 +199,8 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	} else {
 		statusAddresses, err := r.resolveStatusAddresses(ctx, &gatewayProxy)
 		if err != nil {
-			// fail the reconcile so a missing or invalid publish Service retries
-			// with backoff, mirroring the Ingress status path
 			r.Log.Error(err, "failed to resolve gateway status addresses", "gateway", req.NamespacedName)
-			return ctrl.Result{}, err
+			addrResolveErr = err
 		}
 		for _, addr := range statusAddresses {
 			addrType := gatewayv1.IPAddressType
@@ -233,7 +234,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	accepted := SetGatewayConditionAccepted(gateway, acceptStatus.status, acceptStatus.msg)
 	programmed := SetGatewayConditionProgrammed(gateway, conditionProgrammedStatus, conditionProgrammedMsg)
-	addressesChanged := !reflect.DeepEqual(gateway.Status.Addresses, addrs)
+	addressesChanged := addrResolveErr == nil && !reflect.DeepEqual(gateway.Status.Addresses, addrs)
 	if accepted || programmed || addressesChanged || len(listenerStatuses) > 0 {
 		if addressesChanged {
 			gateway.Status.Addresses = addrs
@@ -257,10 +258,10 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			}),
 		})
 
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, addrResolveErr
 	}
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{}, addrResolveErr
 }
 
 // resolveStatusAddresses returns the addresses to publish in
