@@ -166,15 +166,17 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	conditionProgrammedStatus, conditionProgrammedMsg := true, "Programmed"
-	conditionProgrammedReason := string(gatewayv1.GatewayReasonProgrammed)
+	conditionProgrammedReason := gatewayv1.GatewayReasonProgrammed
 
 	r.Log.Info("gateway has been accepted", "gateway", gateway.GetName())
 	type conditionStatus struct {
 		status bool
+		reason gatewayv1.GatewayConditionReason
 		msg    string
 	}
 	acceptStatus := conditionStatus{
 		status: true,
+		reason: gatewayv1.GatewayReasonAccepted,
 		msg:    acceptedMessage("gateway"),
 	}
 
@@ -185,6 +187,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if err := r.processInfrastructure(tctx, gateway); err != nil {
 		acceptStatus = conditionStatus{
 			status: false,
+			reason: gatewayv1.GatewayReasonInvalidParameters,
 			msg:    err.Error(),
 		}
 	}
@@ -200,8 +203,16 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	gatewayProxy, ok := tctx.GatewayProxies[rk]
 	if !ok {
+		// InvalidParameters is only the right answer when the Gateway actually
+		// names a parametersRef that cannot be resolved. A Gateway that names
+		// none is simply not configured yet.
+		reason := gatewayv1.GatewayReasonPending
+		if gateway.Spec.Infrastructure != nil && gateway.Spec.Infrastructure.ParametersRef != nil {
+			reason = gatewayv1.GatewayReasonInvalidParameters
+		}
 		acceptStatus = conditionStatus{
 			status: false,
+			reason: reason,
 			msg:    "gateway proxy not found",
 		}
 	} else {
@@ -215,7 +226,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 					"gateway", req.NamespacedName, "reason", err.Error())
 				conditionProgrammedStatus = false
 				conditionProgrammedMsg = err.Error()
-				conditionProgrammedReason = string(gatewayv1.GatewayReasonAddressNotAssigned)
+				conditionProgrammedReason = gatewayv1.GatewayReasonAddressNotAssigned
 				addrRetryAfter = publishServiceRetryInterval
 			} else {
 				r.Log.Error(err, "failed to resolve gateway status addresses", "gateway", req.NamespacedName)
@@ -248,11 +259,24 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if err := r.Provider.Update(ctx, tctx, gateway); err != nil {
 		acceptStatus = conditionStatus{
 			status: false,
+			reason: gatewayv1.GatewayReasonAccepted,
 			msg:    err.Error(),
 		}
 	}
 
-	accepted := SetGatewayConditionAccepted(gateway, acceptStatus.status, acceptStatus.msg)
+	// A listener the Gateway cannot serve is the most specific thing to report,
+	// so it wins over whatever else was found: the Gateway says
+	// ListenersNotValid, and the status separates a Gateway that still serves
+	// some listeners from one that serves none.
+	if status, invalid := gatewayAcceptanceFromListeners(listenerStatuses); invalid {
+		acceptStatus = conditionStatus{
+			status: status,
+			reason: gatewayv1.GatewayReasonListenersNotValid,
+			msg:    "one or more listeners are not accepted",
+		}
+	}
+
+	accepted := SetGatewayConditionAccepted(gateway, acceptStatus.status, acceptStatus.reason, acceptStatus.msg)
 	programmed := SetGatewayConditionProgrammed(gateway, conditionProgrammedStatus, conditionProgrammedReason, conditionProgrammedMsg)
 	addressesChanged := !addrResolveFailed && !reflect.DeepEqual(gateway.Status.Addresses, addrs)
 	if accepted || programmed || addressesChanged || len(listenerStatuses) > 0 {

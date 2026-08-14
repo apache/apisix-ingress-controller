@@ -158,11 +158,11 @@ func IsConditionPresentAndEqual(conditions []metav1.Condition, condition metav1.
 	return false
 }
 
-func SetGatewayConditionAccepted(gw *gatewayv1.Gateway, status bool, message string) (ok bool) {
+func SetGatewayConditionAccepted(gw *gatewayv1.Gateway, status bool, reason gatewayv1.GatewayConditionReason, message string) (ok bool) {
 	condition := metav1.Condition{
 		Type:               string(gatewayv1.GatewayConditionAccepted),
 		Status:             ConditionStatus(status),
-		Reason:             string(gatewayv1.GatewayReasonAccepted),
+		Reason:             string(reason),
 		ObservedGeneration: gw.GetGeneration(),
 		Message:            message,
 		LastTransitionTime: metav1.Now(),
@@ -231,11 +231,11 @@ func SetGatewayListenerConditionResolvedRefs(gw *gatewayv1.Gateway, listenerName
 	return
 }
 
-func SetGatewayConditionProgrammed(gw *gatewayv1.Gateway, status bool, reason, message string) (ok bool) {
+func SetGatewayConditionProgrammed(gw *gatewayv1.Gateway, status bool, reason gatewayv1.GatewayConditionReason, message string) (ok bool) {
 	condition := metav1.Condition{
 		Type:               string(gatewayv1.GatewayConditionProgrammed),
 		Status:             ConditionStatus(status),
-		Reason:             reason,
+		Reason:             string(reason),
 		ObservedGeneration: gw.GetGeneration(),
 		Message:            message,
 		LastTransitionTime: metav1.Now(),
@@ -587,6 +587,38 @@ func routeKindsForProtocol(protocol gatewayv1.ProtocolType) []gatewayv1.RouteGro
 		return kinds(types.KindGRPCRoute, types.KindHTTPRoute)
 	}
 	return []gatewayv1.RouteGroupKind{}
+}
+
+// isSupportedProtocol reports whether a listener protocol is one this
+// implementation serves. routeKindsForProtocol returning nothing is the same
+// question asked the other way round.
+func isSupportedProtocol(protocol gatewayv1.ProtocolType) bool {
+	return len(routeKindsForProtocol(protocol)) > 0
+}
+
+// gatewayAcceptanceFromListeners derives the Gateway's Accepted condition from
+// its listeners. Gateway API asks for ListenersNotValid as soon as one listener
+// is not accepted, with the status separating "some listeners work" from "none
+// do". invalid is false when every listener is accepted, leaving the caller's
+// own verdict alone.
+func gatewayAcceptanceFromListeners(listeners []gatewayv1.ListenerStatus) (status bool, invalid bool) {
+	var accepted, rejected int
+	for _, listener := range listeners {
+		for _, condition := range listener.Conditions {
+			if condition.Type != string(gatewayv1.ListenerConditionAccepted) {
+				continue
+			}
+			if condition.Status == metav1.ConditionTrue {
+				accepted++
+			} else {
+				rejected++
+			}
+		}
+	}
+	if rejected == 0 {
+		return true, false
+	}
+	return accepted > 0, true
 }
 
 func SetApisixCRDConditionAccepted(status *apiv2.ApisixStatus, generation int64, err error) {
@@ -975,6 +1007,29 @@ func getListenerStatus(
 
 			supportedKinds = []gatewayv1.RouteGroupKind{}
 		)
+
+		// A protocol this implementation does not serve is rejected outright:
+		// accepting it would advertise a listener that can never carry traffic.
+		if !isSupportedProtocol(listener.Protocol) {
+			conditionAccepted.Status = metav1.ConditionFalse
+			conditionAccepted.Reason = string(gatewayv1.ListenerReasonUnsupportedProtocol)
+			conditionAccepted.Message = fmt.Sprintf("protocol %q is not supported", listener.Protocol)
+			conditionProgrammed.Status = metav1.ConditionFalse
+			conditionProgrammed.Reason = string(gatewayv1.ListenerReasonInvalid)
+
+			statusArray = append(statusArray, reuseUnchangedListenerStatus(gateway, i, gatewayv1.ListenerStatus{
+				Name: listener.Name,
+				Conditions: []metav1.Condition{
+					conditionProgrammed,
+					conditionAccepted,
+					conditionConflicted,
+					conditionResolvedRefs,
+				},
+				SupportedKinds: supportedKinds,
+				AttachedRoutes: attachedRoutes,
+			}))
+			continue
+		}
 
 		// A port serving more than one TLS mode cannot be programmed, so the
 		// listener is rejected rather than accepted with undefined behaviour.
