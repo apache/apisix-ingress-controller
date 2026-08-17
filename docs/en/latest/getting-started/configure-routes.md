@@ -1,5 +1,5 @@
 ---
-title: Configure Routes with APISIX Ingress Controller
+title: Configure Routes
 keywords:
   - APISIX Ingress Controller
   - ApisixRoute

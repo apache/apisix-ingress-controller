@@ -1,5 +1,5 @@
 ---
-title: APISIX Ingress Controller Overview
+title: Overview
 keywords:
   - APISIX ingress
   - Apache APISIX

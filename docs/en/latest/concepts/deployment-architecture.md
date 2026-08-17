@@ -1,5 +1,5 @@
 ---
-title: APISIX Ingress Controller Deployment Architecture
+title: Deployment Architecture
 keywords:
   - APISIX Ingress
   - Apache APISIX
@@ -44,4 +44,4 @@ APISIX Ingress Controller uses the API-driven variant to publish the complete co
 
 ![Standalone Architecture](../../../assets/images/ingress-standalone-architecture.png)
 
-Configure the connection between APISIX Ingress Controller and APISIX in the [configuration file](../reference/configuration-file.md).
+Configure the control plane mode, endpoint or Service, TLS verification, and authentication with `GatewayProxy`. See [Configure CP Endpoint and Admin Key](../reference/example.md#configure-cp-endpoint-and-admin-key) for an example and the [ControlPlaneProvider API reference](../reference/api-reference.md#controlplaneprovider) for all available fields.
