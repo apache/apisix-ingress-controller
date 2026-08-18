@@ -251,6 +251,56 @@ spec:
       name: additional-proxy-config
 `
 
+		// GatewayClass owned by a different controller, plus a Gateway using it.
+		// Moving a route onto this Gateway takes it out of the scope of the
+		// controller under test without deleting the route itself.
+		var foreignGatewayClassYaml = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: %s
+spec:
+  controllerName: "apisix.apache.org/not-exist"
+`
+
+		var foreignGateway = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: foreign-gateway
+spec:
+  gatewayClassName: %s
+  listeners:
+    - name: http-foreign
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All
+`
+
+		// HTTPRoute with a single parent, whose name is filled in by the test.
+		var singleParentHTTPRoute = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: moving-route
+spec:
+  parentRefs:
+  - name: %s
+    namespace: %s
+  hostnames:
+  - httpbin-additional.example
+  rules:
+  - matches:
+    - path:
+        type: Exact
+        value: /get
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
+
 		// HTTPRoute that references both gateways
 		var multiGatewayHTTPRoute = `
 apiVersion: gateway.networking.k8s.io/v1
@@ -370,6 +420,52 @@ spec:
 				Path:   "/get",
 				Host:   "httpbin-additional.example",
 				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+			})
+		})
+
+		It("HTTPRoute should stop being served after moving to another controller's Gateway", func() {
+			By("Create HTTPRoute on the additional gateway")
+			s.ResourceApplied("HTTPRoute", "moving-route",
+				fmt.Sprintf(singleParentHTTPRoute, "additional-gateway", additionalSvc.Namespace), 1)
+
+			client, err := s.NewAPISIXClientForGateway(additionalGatewayGroupID)
+			Expect(err).NotTo(HaveOccurred(), "creating client for additional gateway")
+
+			By("HTTPRoute should be accessible through the additional gateway")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Client:   client,
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin-additional.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+
+			By("Create a Gateway owned by another controller")
+			foreignGatewayClassName := fmt.Sprintf("foreign-gatewayclass-%d", time.Now().Nanosecond())
+			err = s.CreateResourceFromStringWithNamespace(
+				fmt.Sprintf(foreignGatewayClassYaml, foreignGatewayClassName), "")
+			Expect(err).NotTo(HaveOccurred(), "creating foreign GatewayClass")
+
+			err = s.CreateResourceFromStringWithNamespace(
+				fmt.Sprintf(foreignGateway, foreignGatewayClassName), additionalSvc.Namespace)
+			Expect(err).NotTo(HaveOccurred(), "creating foreign Gateway")
+
+			By("Move the HTTPRoute's parentRefs to that Gateway")
+			err = s.CreateResourceFromString(
+				fmt.Sprintf(singleParentHTTPRoute, "foreign-gateway", additionalSvc.Namespace))
+			Expect(err).NotTo(HaveOccurred(), "moving HTTPRoute parentRefs")
+
+			By("HTTPRoute should no longer be accessible through the additional gateway")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Client:   client,
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin-additional.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 		})
 	})
