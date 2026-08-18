@@ -79,6 +79,9 @@ const defaultIngressClassAnnotation = "ingressclass.kubernetes.io/is-default-cla
 
 var (
 	ErrNoMatchingListenerHostname = errors.New("no matching hostnames in listener")
+
+	errNoDefaultIngressClass = errors.New("no default ingress class found")
+	errForeignIngressClass   = errors.New("ingress class is not controlled by us")
 )
 
 var (
@@ -1792,7 +1795,7 @@ func FindMatchingIngressClassByName(ctx context.Context, c client.Client, log lo
 				return &ic, nil
 			}
 		}
-		return nil, errors.New("no default ingress class found")
+		return nil, errNoDefaultIngressClass
 	}
 
 	// Check if the specified ingress class is controlled by us
@@ -1805,7 +1808,7 @@ func FindMatchingIngressClassByName(ctx context.Context, c client.Client, log lo
 		return &ingressClass, nil
 	}
 
-	return nil, errors.New("ingress class is not controlled by us")
+	return nil, errForeignIngressClass
 }
 
 // distinctRequests distinct the requests
@@ -1941,10 +1944,12 @@ func GetGatewayProxyByGateway(ctx context.Context, r client.Client, gateway *gat
 
 func MatchesIngressClassPredicate(c client.Client, log logr.Logger) predicate.Funcs {
 	predicateFuncs := predicate.NewPredicateFuncs(func(obj client.Object) bool {
-		return MatchesIngressClass(c, log, obj)
+		return matchesIngressClassOrLog(c, log, obj)
 	})
 	predicateFuncs.UpdateFunc = func(e event.UpdateEvent) bool {
-		return MatchesIngressClass(c, log, e.ObjectOld) || MatchesIngressClass(c, log, e.ObjectNew)
+		// the old object is checked silently so a fully filtered update is
+		// explained by a single log line for the new object
+		return MatchesIngressClass(c, log, e.ObjectOld) || matchesIngressClassOrLog(c, log, e.ObjectNew)
 	}
 	return predicateFuncs
 }
@@ -1952,6 +1957,39 @@ func MatchesIngressClassPredicate(c client.Client, log logr.Logger) predicate.Fu
 func MatchesIngressClass(c client.Client, log logr.Logger, obj client.Object) bool {
 	_, err := FindMatchingIngressClass(context.Background(), c, log, obj)
 	return err == nil
+}
+
+// matchesIngressClassOrLog reports whether obj is selected by an IngressClass
+// of this controller, and explains a negative answer in the log. It is meant
+// for watch predicates only: the list-mapping helpers iterate unrelated
+// objects on every event and must keep using the silent MatchesIngressClass.
+func matchesIngressClassOrLog(c client.Client, log logr.Logger, obj client.Object) bool {
+	_, err := FindMatchingIngressClass(context.Background(), c, log, obj)
+	if err == nil {
+		return true
+	}
+
+	kind := types.KindOf(obj)
+	key := client.ObjectKeyFromObject(obj).String()
+	switch {
+	case errors.Is(err, errNoDefaultIngressClass):
+		log.Info("ignoring the object: it has no spec.ingressClassName and no IngressClass of this controller is marked as default; it will not be reconciled until one of the two is set",
+			"kind", kind, "object", key)
+	case k8serrors.IsNotFound(err):
+		log.Info("ignoring the object: the referenced IngressClass does not exist",
+			"kind", kind, "object", key, "ingressClassName", ExtractIngressClass(obj))
+	case errors.Is(err, errForeignIngressClass):
+		// the object belongs to another controller and is not ours to report
+		// on loudly
+		log.V(1).Info("ignoring the object: its IngressClass is not managed by this controller",
+			"kind", kind, "object", key, "ingressClassName", ExtractIngressClass(obj))
+	default:
+		// an unexpected lookup failure is not an ownership verdict; the event
+		// is still dropped to keep the pre-existing admission semantics
+		log.Error(err, "failed to determine the IngressClass for the object; ignoring the event",
+			"kind", kind, "object", key, "ingressClassName", ExtractIngressClass(obj))
+	}
+	return false
 }
 
 func ExtractIngressClass(obj client.Object) string {
