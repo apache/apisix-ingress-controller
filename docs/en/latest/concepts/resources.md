@@ -74,7 +74,11 @@ Enable additional features not included in the standard Kubernetes Gateway API, 
 
 APISIX Ingress Controller CRDs extend Kubernetes functionality to provide declarative configuration management for the Apache APISIX gateway, supporting advanced routing, traffic management, and security policies.
 
-* ApisixRoute: Defines routing rules for HTTP/TCP/UDP, supporting path matching, hostnames, method filtering, and backend service configurations. Can reference ApisixUpstream and ApisixPluginConfig resources.
+#### ApisixRoute
+
+`ApisixRoute` defines HTTP, TCP, and UDP routing rules with request matching and backend Service configuration. Use it when a route needs APISIX-specific capabilities that are not represented by the standard Kubernetes Ingress API. An `ApisixRoute` can also reference `ApisixUpstream` and `ApisixPluginConfig` resources to separate upstream and plugin configuration from the route.
+
+Follow [Configure Routes](../getting-started/configure-routes.md) for a working `ApisixRoute` example. See the [ApisixRoute API reference](../reference/api-reference.md#apisixroute) for its complete schema.
 
 * ApisixUpstream: Extends Kubernetes Services with advanced configurations such as load balancing, health checks, retries, timeouts, and service subset selection.
 

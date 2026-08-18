@@ -1,10 +1,11 @@
 ---
 title: Configure Routes
 keywords:
-  - APISIX ingress
-  - Apache APISIX
-  - Kubernetes ingress
-description: Learn how to create routes in APISIX using APISIX Ingress controller to forward client to upstream services.
+  - APISIX Ingress Controller
+  - ApisixRoute
+  - Kubernetes Gateway API
+  - Kubernetes Ingress
+description: Configure routes to Kubernetes Services with Gateway API, Kubernetes Ingress, or the ApisixRoute CRD using APISIX Ingress Controller.
 ---
 
 <!--
@@ -29,9 +30,9 @@ description: Learn how to create routes in APISIX using APISIX Ingress controlle
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-Apache APISIX provides flexible gateway management capabilities based on routes, in which routing paths and target upstreams are defined.
+APISIX Ingress Controller translates Kubernetes routing resources into Apache APISIX configuration. You can use Gateway API, Kubernetes Ingress, or the APISIX-native `ApisixRoute` custom resource to define request matching and target services.
 
-This tutorial guides you through creating a Route using the APISIX Ingress Controller and verifying its behavior. You’ll configure a Route to a sample Upstream pointing to an httpbin service, then send a request to observe how APISIX proxies the traffic.
+This tutorial creates the same HTTP route with each API and verifies how APISIX proxies traffic to an httpbin Service. See [APISIX Ingress Controller Resources](../concepts/resources.md) for a comparison of the supported resource types and the [ApisixRoute API reference](../reference/api-reference.md#apisixroute) for field-level details.
 
 ## Prerequisites
 
@@ -49,7 +50,11 @@ kubectl apply -f https://raw.githubusercontent.com/apache/apisix-ingress-control
 
 In this section, you will create a Route that forwards client requests to the httpbin example application, an HTTP request and response service.
 
-You can use either Gateway API, Ingress, or APISIX CRD resources to configure the route.
+Choose the resource that matches how your Kubernetes platform manages traffic:
+
+- Gateway API `HTTPRoute` provides a portable Kubernetes routing API.
+- Kubernetes `Ingress` supports the standard Ingress API.
+- `ApisixRoute` exposes APISIX-specific routing capabilities through a custom resource.
 
 :::important
 
@@ -176,6 +181,8 @@ spec:
 </TabItem>
 
 <TabItem value="apisix-crd">
+
+Use `ApisixRoute` when you need APISIX-native route configuration. For all available fields, see the [ApisixRoute API reference](../reference/api-reference.md#apisixroute).
 
 ```yaml title="httpbin-route.yaml"
 apiVersion: apisix.apache.org/v2
