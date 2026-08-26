@@ -43,7 +43,7 @@ var _ = Describe("Test GatewayProxy control plane TLS", Label("apisix.apache.org
 
 	// The admin API only listens on plain HTTP, so an openresty in front of it
 	// stands in for a control plane published over TLS. Its certificate is
-	// signed by a CA generated per test, which is exactly the case caBundle
+	// signed by a CA generated per test, which is exactly the case caCert
 	// exists for: nothing in the system trust store can verify it.
 	const adminTLSProxySpec = `
 apiVersion: v1
@@ -200,10 +200,10 @@ spec:
 `
 
 	// indent a PEM block so it survives being inlined into the YAML above
-	indent := func(pem string) string {
+	indent := func(pem string, width int) string {
 		lines := strings.Split(strings.TrimRight(pem, "\n"), "\n")
 		for i, line := range lines {
-			lines[i] = "        " + line
+			lines[i] = strings.Repeat(" ", width) + line
 		}
 		return strings.Join(lines, "\n")
 	}
@@ -233,11 +233,11 @@ spec:
 	})
 
 	// routes the gateway through a GatewayProxy that reaches the control plane
-	// over TLS, with caBundle set to caBundleField
-	attachRoute := func(hostname, caBundleField string) {
+	// over TLS, with caCert set to caCertField
+	attachRoute := func(hostname, caCertField string) {
 		By("create GatewayProxy")
 		endpoint := fmt.Sprintf("https://admin-tls.%s:9543", s.Namespace())
-		err := s.CreateResourceFromString(fmt.Sprintf(gatewayProxySpec, endpoint, caBundleField, s.AdminKey()))
+		err := s.CreateResourceFromString(fmt.Sprintf(gatewayProxySpec, endpoint, caCertField, s.AdminKey()))
 		Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 
 		By("create GatewayClass")
@@ -255,8 +255,8 @@ spec:
 		Expect(err).NotTo(HaveOccurred(), "creating HTTPRoute")
 	}
 
-	It("syncs to a private-CA control plane when caBundle is trusted", func() {
-		attachRoute("httpbin-tls-cp.org", "      caBundle: |\n"+indent(caCert))
+	It("syncs to a private-CA control plane when caCert is trusted", func() {
+		attachRoute("httpbin-tls-cp.org", "      caCert:\n        value: |\n"+indent(caCert, 10))
 
 		By("the route is programmed, so the sync got through TLS verification")
 		s.RequestAssert(&scaffold.RequestAssert{
@@ -267,7 +267,7 @@ spec:
 		})
 	})
 
-	It("fails to sync when caBundle is missing", func() {
+	It("fails to sync when caCert is missing", func() {
 		attachRoute("httpbin-tls-cp-untrusted.org", "")
 
 		By("the control plane certificate cannot be verified")
@@ -283,14 +283,14 @@ spec:
 		})
 	})
 
-	It("rejects a caBundle that is not a certificate", func() {
-		By("create GatewayProxy with an unparseable caBundle")
+	It("rejects a caCert that is not a certificate", func() {
+		By("create GatewayProxy with an unparseable caCert")
 		endpoint := fmt.Sprintf("https://admin-tls.%s:9543", s.Namespace())
 		output, err := s.CreateResourceFromStringAndGetOutput(
-			fmt.Sprintf(gatewayProxySpec, endpoint, "      caBundle: not-a-certificate", s.AdminKey()),
+			fmt.Sprintf(gatewayProxySpec, endpoint, "      caCert:\n        value: not-a-certificate", s.AdminKey()),
 		)
 		Expect(err).To(HaveOccurred(), "the API server should reject it")
-		Expect(output + err.Error()).To(ContainSubstring("caBundle must be a PEM-encoded certificate"))
+		Expect(output + err.Error()).To(ContainSubstring("value must be a PEM-encoded certificate"))
 	})
 })
 

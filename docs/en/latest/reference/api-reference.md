@@ -300,6 +300,23 @@ ControlPlaneAuth defines the authentication configuration for control plane.
 _Appears in:_
 - [ControlPlaneProvider](#controlplaneprovider)
 
+#### ControlPlaneCaCert
+
+
+ControlPlaneCaCert defines the CA certificate used to verify the control plane.<br /><br />
+Only an inline value is supported today. A valueFrom source can be added
+later without breaking existing resources.
+
+
+
+| Field | Description |
+| --- | --- |
+| `value` _string_ | Value sets the PEM-encoded CA certificate (or bundle) explicitly. |
+
+
+_Appears in:_
+- [ControlPlaneProvider](#controlplaneprovider)
+
 #### ControlPlaneProvider
 
 
@@ -313,7 +330,7 @@ ControlPlaneProvider defines configuration for control plane provider.
 | `endpoints` _string array_ | Endpoints specifies the list of control plane endpoints. |
 | `service` _[ProviderService](#providerservice)_ |  |
 | `tlsVerify` _boolean_ | TlsVerify specifies whether to verify the TLS certificate of the control plane. |
-| `caBundle` _string_ | CaBundle is a PEM-encoded CA certificate (or bundle) used to verify the control plane's TLS certificate, in place of the system trust store. Set it when the control plane uses a self-signed or private CA certificate. It has no effect when tlsVerify is false. |
+| `caCert` _[ControlPlaneCaCert](#controlplanecacert)_ | CaCert specifies the CA certificate used to verify the control plane's TLS certificate, in place of the system trust store. Set it when the control plane uses a self-signed or private CA certificate. It has no effect when tlsVerify is false. |
 | `auth` _[ControlPlaneAuth](#controlplaneauth)_ | Auth specifies the authentication configuration. |
 
 

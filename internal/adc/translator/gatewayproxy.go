@@ -58,15 +58,15 @@ func (t *Translator) TranslateGatewayProxyToConfig(tctx *provider.TranslateConte
 		cfg.TlsVerify = *cp.TlsVerify
 	}
 
-	if cp.CaBundle != "" {
+	if cp.CaCert != nil && cp.CaCert.Value != "" {
 		// reject unusable CA material here rather than at connect time
-		if err := validateCaBundle(cp.CaBundle); err != nil {
+		if err := validateCaCert(cp.CaCert.Value); err != nil {
 			return nil, err
 		}
 		if !cfg.TlsVerify {
-			t.Log.Info("caBundle is ignored because tlsVerify is disabled", "gatewayproxy", utils.NamespacedNameKind(gatewayProxy))
+			t.Log.Info("caCert is ignored because tlsVerify is disabled", "gatewayproxy", utils.NamespacedNameKind(gatewayProxy))
 		}
-		cfg.CaBundle = cp.CaBundle
+		cfg.CaCert = cp.CaCert.Value
 	}
 
 	if cp.Auth.Type == v1alpha1.AuthTypeAdminKey && cp.Auth.AdminKey != nil {
@@ -156,27 +156,27 @@ func (t *Translator) TranslateGatewayProxyToConfig(tctx *provider.TranslateConte
 	return &cfg, nil
 }
 
-// validateCaBundle parses every certificate in the bundle. x509.CertPool skips
+// validateCaCert parses every certificate in the bundle. x509.CertPool skips
 // blocks it cannot decode, so a bundle whose second certificate is broken would
 // otherwise reach the ADC server and fail there instead.
-func validateCaBundle(caBundle string) error {
+func validateCaCert(caCert string) error {
 	var count int
-	for rest := []byte(caBundle); len(rest) > 0; {
+	for rest := []byte(caCert); len(rest) > 0; {
 		var block *pem.Block
 		block, rest = pem.Decode(rest)
 		if block == nil {
 			break
 		}
 		if block.Type != "CERTIFICATE" {
-			return fmt.Errorf("invalid caBundle: expected a CERTIFICATE block, got %s", block.Type)
+			return fmt.Errorf("invalid caCert: expected a CERTIFICATE block, got %s", block.Type)
 		}
 		if _, err := x509.ParseCertificate(block.Bytes); err != nil {
-			return fmt.Errorf("invalid caBundle: %w", err)
+			return fmt.Errorf("invalid caCert: %w", err)
 		}
 		count++
 	}
 	if count == 0 {
-		return errors.New("invalid caBundle: no PEM-encoded certificate found")
+		return errors.New("invalid caCert: no PEM-encoded certificate found")
 	}
 	return nil
 }

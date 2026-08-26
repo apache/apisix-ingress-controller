@@ -93,7 +93,7 @@ func TestHTTPADCExecutorBuildHTTPRequestCaCert(t *testing.T) {
 	assert.NotContains(t, raw, "caCert")
 
 	const caCert = "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----"
-	opts, raw = build(adctypes.Config{Name: "GatewayProxy/ns/name", TlsVerify: true, CaBundle: caCert})
+	opts, raw = build(adctypes.Config{Name: "GatewayProxy/ns/name", TlsVerify: true, CaCert: caCert})
 	assert.Equal(t, caCert, opts.CaCert)
 	assert.Contains(t, raw, "caCert")
 	// verification stays on, otherwise the bundle would be pointless

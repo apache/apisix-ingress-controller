@@ -367,7 +367,7 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr strin
 				LabelSelector:       labels,
 				IncludeResourceType: types,
 				TlsSkipVerify:       ptr.To(!tlsVerify),
-				CaCert:              config.CaBundle,
+				CaCert:              config.CaCert,
 				CacheKey:            config.Name,
 				BypassCache:         bypassCache,
 			},
@@ -391,7 +391,7 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr strin
 		"labelSelector", labels,
 		"includeResourceType", types,
 		"tlsSkipVerify", !tlsVerify,
-		"hasCaCert", config.CaBundle != "",
+		"hasCaCert", config.CaCert != "",
 	)
 
 	// Create HTTP request

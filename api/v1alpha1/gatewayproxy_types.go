@@ -120,7 +120,6 @@ type ControlPlaneAuth struct {
 // ControlPlaneProvider defines configuration for control plane provider.
 // +kubebuilder:validation:XValidation:rule="has(self.endpoints) != has(self.service)"
 // +kubebuilder:validation:XValidation:rule="oldSelf == null || (!has(self.mode) && !has(oldSelf.mode)) || self.mode == oldSelf.mode",message="mode is immutable"
-// +kubebuilder:validation:XValidation:rule="!has(self.caBundle) || self.caBundle.contains('-----BEGIN CERTIFICATE-----')",message="caBundle must be a PEM-encoded certificate"
 type ControlPlaneProvider struct {
 	// Mode specifies the mode of control plane provider.
 	// Can be `apisix` or `apisix-standalone`.
@@ -137,16 +136,27 @@ type ControlPlaneProvider struct {
 	// +optional
 	TlsVerify *bool `json:"tlsVerify,omitempty"`
 
-	// CaBundle is a PEM-encoded CA certificate (or bundle) used to verify the
-	// control plane's TLS certificate, in place of the system trust store.
+	// CaCert specifies the CA certificate used to verify the control plane's TLS
+	// certificate, in place of the system trust store.
 	// Set it when the control plane uses a self-signed or private CA certificate.
 	// It has no effect when tlsVerify is false.
 	// +optional
-	CaBundle string `json:"caBundle,omitempty"`
+	CaCert *ControlPlaneCaCert `json:"caCert,omitempty"`
 
 	// Auth specifies the authentication configuration.
 	// +kubebuilder:validation:Required
 	Auth ControlPlaneAuth `json:"auth"`
+}
+
+// ControlPlaneCaCert defines the CA certificate used to verify the control plane.
+//
+// Only an inline value is supported today. A valueFrom source can be added
+// later without breaking existing resources.
+type ControlPlaneCaCert struct {
+	// Value sets the PEM-encoded CA certificate (or bundle) explicitly.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:XValidation:rule="self.contains('-----BEGIN CERTIFICATE-----')",message="value must be a PEM-encoded certificate"
+	Value string `json:"value"`
 }
 
 type ProviderService struct {
