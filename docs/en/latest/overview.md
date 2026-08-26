@@ -30,7 +30,7 @@ APISIX Ingress Controller is a [Kubernetes ingress controller](https://kubernete
 
 APISIX Ingress Controller can be configured using the native Kubernetes Ingress or Gateway API, as well as with APISIX’s own declarative and easy-to-use custom resources. The controller translates these resources into APISIX configuration.
 
-See the [Getting Started tutorials](./getting-started/get-apisix-ingress-controller.md) to set up and start using the APISIX Ingress Controller.
+See the [Getting Started tutorials](./getting-started/get-apisix-ingress-controller.md) to install APISIX Ingress Controller. Then review the [supported resources](./concepts/resources.md), [configure a route](./getting-started/configure-routes.md), or learn how the controller [delivers configuration to APISIX](./concepts/deployment-architecture.md).
 
 ## Features
 
@@ -40,7 +40,7 @@ To summarize, APISIX ingress controller has the following features:
 - Supports native Kubernetes Ingress v1 and Gateway API.
 - Supports service discovery through Kubernetes Service.
 - Supports load balancing based on pods (Upstream nodes).
-- Rich [Plugins](https://apisix.apache.org/docs/apisix/next/plugins/batch-requests/) with [custom Plugin](https://apisix.apache.org/docs/apisix/next/plugin-develop/) support.
+- Rich [Plugins](https://apisix.apache.org/docs/apisix/plugins/batch-requests/) with [custom Plugin](https://apisix.apache.org/docs/apisix/plugin-develop/) support.
 
 ## Get involved
 

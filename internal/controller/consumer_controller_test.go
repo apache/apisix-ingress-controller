@@ -30,7 +30,6 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
@@ -48,7 +47,7 @@ func buildConsumerReconciler(t *testing.T, objs ...runtime.Object) *ConsumerReco
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
 	require.NoError(t, v1alpha1.AddToScheme(scheme))
 	require.NoError(t, gatewayv1.Install(scheme))
-	require.NoError(t, v1beta1.Install(scheme))
+	require.NoError(t, gatewayv1.Install(scheme))
 
 	cli := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(objs...).Build()
 	return &ConsumerReconciler{Client: cli, Log: logr.Discard()}
@@ -75,16 +74,16 @@ func victimSecret() *corev1.Secret {
 	}
 }
 
-func secretGrant() *v1beta1.ReferenceGrant {
-	return &v1beta1.ReferenceGrant{
+func secretGrant() *gatewayv1.ReferenceGrant {
+	return &gatewayv1.ReferenceGrant{
 		ObjectMeta: metav1.ObjectMeta{Name: "allow-consumer", Namespace: secretNS},
-		Spec: v1beta1.ReferenceGrantSpec{
-			From: []v1beta1.ReferenceGrantFrom{{
-				Group:     v1beta1.Group(v1alpha1.GroupVersion.Group),
+		Spec: gatewayv1.ReferenceGrantSpec{
+			From: []gatewayv1.ReferenceGrantFrom{{
+				Group:     gatewayv1.Group(v1alpha1.GroupVersion.Group),
 				Kind:      "Consumer",
 				Namespace: consumerNS,
 			}},
-			To: []v1beta1.ReferenceGrantTo{{
+			To: []gatewayv1.ReferenceGrantTo{{
 				Group: "",
 				Kind:  "Secret",
 			}},

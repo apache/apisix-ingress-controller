@@ -154,6 +154,12 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "getting service yaml")
 			err = yaml.Unmarshal([]byte(serviceYaml), &k8sservice)
 			Expect(err).NotTo(HaveOccurred(), "unmarshalling service")
+			// Switching to ExternalName released the allocated node ports, and a service
+			// in a parallel test namespace may have taken them since. Ask for fresh ones
+			// instead of the old numbers, which would fail with "already allocated".
+			for i := range oldSpec.Ports {
+				oldSpec.Ports[i].NodePort = 0
+			}
 			k8sservice.Spec = oldSpec
 			newServiceYaml, err = yaml.Marshal(k8sservice)
 			Expect(err).NotTo(HaveOccurred(), "marshalling service")

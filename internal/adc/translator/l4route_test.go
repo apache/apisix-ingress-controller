@@ -30,7 +30,6 @@ import (
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
@@ -84,14 +83,14 @@ func TestTranslateTCPRouteWithL4RoutePolicy(t *testing.T) {
 				tctx.L4RoutePolicies[key] = tt.policy
 			}
 
-			route := &gatewayv1alpha2.TCPRoute{
+			route := &gatewayv1.TCPRoute{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "my-tcp",
 					Namespace: "default",
 				},
-				Spec: gatewayv1alpha2.TCPRouteSpec{
-					Rules: []gatewayv1alpha2.TCPRouteRule{
-						{BackendRefs: []gatewayv1alpha2.BackendRef{}},
+				Spec: gatewayv1.TCPRouteSpec{
+					Rules: []gatewayv1.TCPRouteRule{
+						{BackendRefs: []gatewayv1.BackendRef{}},
 					},
 				},
 			}
@@ -151,14 +150,14 @@ func TestTranslateUDPRouteWithL4RoutePolicy(t *testing.T) {
 				tctx.L4RoutePolicies[key] = tt.policy
 			}
 
-			route := &gatewayv1alpha2.UDPRoute{
+			route := &gatewayv1.UDPRoute{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "my-udp",
 					Namespace: "default",
 				},
-				Spec: gatewayv1alpha2.UDPRouteSpec{
-					Rules: []gatewayv1alpha2.UDPRouteRule{
-						{BackendRefs: []gatewayv1alpha2.BackendRef{}},
+				Spec: gatewayv1.UDPRouteSpec{
+					Rules: []gatewayv1.UDPRouteRule{
+						{BackendRefs: []gatewayv1.BackendRef{}},
 					},
 				},
 			}
@@ -230,20 +229,20 @@ func TestTranslateTLSRouteWithL4RoutePolicy(t *testing.T) {
 				tctx.L4RoutePolicies[key] = tt.policy
 			}
 
-			hostnames := make([]gatewayv1alpha2.Hostname, 0, len(tt.hostnames))
+			hostnames := make([]gatewayv1.Hostname, 0, len(tt.hostnames))
 			for _, h := range tt.hostnames {
-				hostnames = append(hostnames, gatewayv1alpha2.Hostname(h))
+				hostnames = append(hostnames, gatewayv1.Hostname(h))
 			}
 
-			route := &gatewayv1alpha2.TLSRoute{
+			route := &gatewayv1.TLSRoute{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "my-tls",
 					Namespace: "default",
 				},
-				Spec: gatewayv1alpha2.TLSRouteSpec{
+				Spec: gatewayv1.TLSRouteSpec{
 					Hostnames: hostnames,
-					Rules: []gatewayv1alpha2.TLSRouteRule{
-						{BackendRefs: []gatewayv1alpha2.BackendRef{}},
+					Rules: []gatewayv1.TLSRouteRule{
+						{BackendRefs: []gatewayv1.BackendRef{}},
 					},
 				},
 			}
@@ -330,14 +329,14 @@ func TestTranslateTCPRouteUpstreamScheme(t *testing.T) {
 		},
 	}
 
-	route := &gatewayv1alpha2.TCPRoute{
+	route := &gatewayv1.TCPRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "my-tcp",
 			Namespace: namespace,
 		},
-		Spec: gatewayv1alpha2.TCPRouteSpec{
-			Rules: []gatewayv1alpha2.TCPRouteRule{{
-				BackendRefs: []gatewayv1alpha2.BackendRef{{
+		Spec: gatewayv1.TCPRouteSpec{
+			Rules: []gatewayv1.TCPRouteRule{{
+				BackendRefs: []gatewayv1.BackendRef{{
 					BackendObjectReference: gatewayv1.BackendObjectReference{
 						Name: gatewayv1.ObjectName(serviceName),
 						Port: ptr.To(portNumber),

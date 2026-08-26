@@ -48,6 +48,9 @@ type APISIXDeployOptions struct {
 	Replicas       *int
 }
 
+// See IngressDeployOpts.ControllerImage.
+func (APISIXDeployOptions) Image() string { return framework.DataplaneImage }
+
 type APISIXDeployer struct {
 	*Scaffold
 	adminTunnel *k8s.Tunnel

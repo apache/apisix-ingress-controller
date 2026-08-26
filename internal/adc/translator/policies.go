@@ -24,7 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
@@ -240,7 +239,7 @@ func (t *Translator) AttachL4RoutePolicyPlugins(
 			continue
 		}
 		for _, ref := range policy.Spec.TargetRefs {
-			if string(ref.Group) != gatewayv1alpha2.GroupName {
+			if string(ref.Group) != gatewayv1.GroupName {
 				continue
 			}
 			if string(ref.Kind) != routeKind {

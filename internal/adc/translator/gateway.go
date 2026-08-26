@@ -146,6 +146,7 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 					}
 					sslObj.Snis = append(sslObj.Snis, hosts...)
 				}
+				sslObj.Snis = sslutils.NormalizeHosts(sslObj.Snis)
 				sslObj.Client = client
 				sslObj.ID = id.GenID(fmt.Sprintf("%s_%s_%d", adctypes.ComposeSSLName(internaltypes.KindGateway, obj.Namespace, obj.Name), listener.Name, refIndex))
 				t.Log.V(1).Info("generated ssl id", "ssl id", sslObj.ID, "secret", secretNN.String())

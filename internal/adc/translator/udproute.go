@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
@@ -31,7 +30,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/types"
 )
 
-func (t *Translator) TranslateUDPRoute(tctx *provider.TranslateContext, udpRoute *gatewayv1alpha2.UDPRoute) (*TranslateResult, error) {
+func (t *Translator) TranslateUDPRoute(tctx *provider.TranslateContext, udpRoute *gatewayv1.UDPRoute) (*TranslateResult, error) {
 	result := &TranslateResult{}
 	rules := udpRoute.Spec.Rules
 	labels := label.GenLabel(udpRoute)

@@ -1,0 +1,19 @@
+apiVersion: apisix.apache.org/v1alpha1
+kind: L4RoutePolicy
+metadata:
+  labels:
+    app.kubernetes.io/name: apisix-ingress-controller
+    app.kubernetes.io/managed-by: kustomize
+  name: l4routepolicy-sample
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: TCPRoute
+      name: tcp-app
+  plugins:
+    - name: limit-conn
+      config:
+        conn: 100
+        burst: 50
+        default_conn_delay: 0.1
+        key: remote_addr

@@ -5,6 +5,7 @@ keywords:
   - Apache APISIX
   - Kubernetes Ingress
   - Gateway API
+description: Understand how APISIX Ingress Controller translates Kubernetes resources and configures Apache APISIX in Admin API or Standalone mode.
 ---
 <!--
 #
@@ -25,18 +26,22 @@ keywords:
 #
 -->
 
-The APISIX Ingress Controller is used to manage the APISIX Gateway as either a standalone application or a Kubernetes-based application. It dynamically configures and manages the APISIX Gateway using Gateway API resources.
+APISIX Ingress Controller watches Kubernetes Ingress, Gateway API, and APISIX custom resources, translates their desired state into Apache APISIX configuration, and keeps the gateway configuration synchronized. APISIX remains the data plane that receives and proxies traffic.
+
+The controller can deliver configuration to APISIX through Admin API mode or Standalone API-driven mode. See [APISIX Ingress Controller Resources](./resources.md) for the Kubernetes resources the controller watches and [Configure Routes](../getting-started/configure-routes.md) for a working routing example.
 
 ## Admin API Mode
 
-In the traditional deployment approach, APISIX uses etcd as its configuration center, allowing administrators to dynamically manage routes, upstreams, and other resources through RESTful APIs. It supports distributed cluster deployments with real-time configuration synchronization.
+In Admin API mode, APISIX uses etcd as its configuration center. APISIX Ingress Controller sends translated routes, upstreams, and other resources to the APISIX Admin API, and APISIX stores the configuration in etcd. This mode supports distributed APISIX clusters with dynamic configuration synchronization.
 
 ![Admin API Architecture](../../../assets/images/ingress-admin-api-architecture.png)
 
 ## Standalone Mode (Experimental)
 
-APISIX runs independently without relying on etcd, supporting two sub-modes - file-driven (managing configuration through conf/apisix.yaml files) and API-driven (storing configuration in memory with full configuration management through the dedicated /apisix/admin/configs endpoint).
+APISIX Standalone mode does not require etcd. It supports file-driven configuration through `conf/apisix.yaml` and API-driven configuration stored in memory through the `/apisix/admin/configs` endpoint.
 
-This mode is particularly suitable for Kubernetes environments and single-node deployments, where the API-driven memory management approach combines the convenience of traditional Admin API with the simplicity of Standalone mode.
+APISIX Ingress Controller uses the API-driven variant to publish the complete configuration to APISIX. This mode reduces external dependencies in Kubernetes and single-node deployments, but it is currently experimental.
 
 ![Standalone Architecture](../../../assets/images/ingress-standalone-architecture.png)
+
+Configure the control plane mode, endpoint or Service, TLS verification, and authentication with `GatewayProxy`. See [Configure CP Endpoint and Admin Key](../reference/example.md#configure-cp-endpoint-and-admin-key) for an example and the [ControlPlaneProvider API reference](../reference/api-reference.md#controlplaneprovider) for all available fields.

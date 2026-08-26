@@ -34,8 +34,9 @@ import (
 
 var _ = Describe("TCPRoute E2E Test", Label("networking.k8s.io", "tcproute"), func() {
 	s := scaffold.NewDefaultScaffold()
-	Context("TCPRoute Base", func() {
-		var tcpGateway = `
+
+	// Shared by every TCPRoute context so the listener port cannot drift between them.
+	var tcpGateway = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -59,8 +60,9 @@ spec:
       name: apisix-proxy-config
 `
 
+	Context("TCPRoute Base", func() {
 		var tcpRoute = `
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1
 kind: TCPRoute
 metadata:
   name: tcp-app-1
@@ -118,29 +120,8 @@ spec:
 	})
 
 	Context("TCPRoute With BackendTrafficPolicy", func() {
-		var tcpGateway = `
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: %s
-spec:
-  gatewayClassName: %s
-  listeners:
-  - name: tcp
-    protocol: TCP
-    port: 80
-    allowedRoutes:
-      kinds:
-      - kind: TCPRoute
-  infrastructure:
-    parametersRef:
-      group: apisix.apache.org
-      kind: GatewayProxy
-      name: apisix-proxy-config
-`
-
 		var tcpRoute = `
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1
 kind: TCPRoute
 metadata:
   name: tcp-tls-upstream
@@ -203,32 +184,8 @@ spec:
 	})
 
 	Context("TCPRoute With L4RoutePolicy", func() {
-		var tcpGateway = `
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: %s
-spec:
-  gatewayClassName: %s
-  listeners:
-  - name: tcp
-    protocol: TCP
-    # Must equal APISIX's physical stream_proxy TCP port: the e2e controller runs
-    # with listener_port_match_mode=auto, so sectionName targeting injects
-    # server_port from this listener; it must match the port connections arrive on.
-    port: 9100
-    allowedRoutes:
-      kinds:
-      - kind: TCPRoute
-  infrastructure:
-    parametersRef:
-      group: apisix.apache.org
-      kind: GatewayProxy
-      name: apisix-proxy-config
-`
-
 		var tcpRoute = `
-apiVersion: gateway.networking.k8s.io/v1alpha2
+apiVersion: gateway.networking.k8s.io/v1
 kind: TCPRoute
 metadata:
   name: tcp-l4policy

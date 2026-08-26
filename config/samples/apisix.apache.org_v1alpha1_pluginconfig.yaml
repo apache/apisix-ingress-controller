@@ -1,15 +1,13 @@
-apiVersion: apisix.apache.org/v2
-kind: ApisixPluginConfig
+apiVersion: apisix.apache.org/v1alpha1
+kind: PluginConfig
 metadata:
   labels:
     app.kubernetes.io/name: apisix-ingress-controller
     app.kubernetes.io/managed-by: kustomize
-  name: apisixpluginconfig-sample
+  name: pluginconfig-sample
 spec:
-  ingressClassName: apisix
   plugins:
     - name: response-rewrite
-      enable: true
       config:
         headers:
           set:

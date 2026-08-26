@@ -24,6 +24,16 @@ on:
   pull_request:
     branches:
       - master
+  # The report submitted to the Gateway API conformance reports repository is
+  # produced here, with image_tag naming the release to test. It cannot key off
+  # the tag push itself: push-docker.yaml publishes the images on that same
+  # event, so they do not exist yet when this would start pulling them.
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Released tag to test, for example 2.2.0. Run it from that same tag, since the skip list and the manifests come from the checked-out ref. Leave empty to build and test the checked-out commit."
+        required: false
+        default: ""
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -35,13 +45,18 @@ permissions:
 jobs:
   conformance-test:
     env:
-      CONFORMANCE_TEST_REPORT_OUTPUT: /tmp/apisix-ingress-controller-conformance-report.yaml
+      # The report name encodes the mode, so each provider writes its own file
+      # and the two can be submitted side by side. apisix is the controller's
+      # default provider, the standalone run declares a named mode.
+      CONFORMANCE_MODE: ${{ matrix.conformance_mode }}
     timeout-minutes: 60
     strategy:
       matrix:
-        provider_type:
-        - apisix-standalone
-        - apisix
+        include:
+        - provider_type: apisix-standalone
+          conformance_mode: apisix-standalone
+        - provider_type: apisix
+          conformance_mode: default
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -58,7 +73,11 @@ jobs:
         run: |
           go install sigs.k8s.io/kind@v0.27.0
 
+      # A release run must exercise the published images for that release,
+      # otherwise the report would describe a local build while claiming the
+      # release version. Every other run tests what was just built.
       - name: Build images
+        if: ${{ !inputs.image_tag }}
         env:
           TAG: dev
           ARCH: amd64
@@ -74,38 +93,91 @@ jobs:
 
       - name: Install And Run Cloud Provider KIND
         run: |
-          go install sigs.k8s.io/cloud-provider-kind@v0.6.0
-          nohup cloud-provider-kind > /tmp/kind-loadbalancer.log 2>&1 &
+          make kind-lb
   
       - name: Install Gateway API And CRDs
         run: |
           make install
 
       - name: Loading Docker Image to Kind Cluster
+        if: ${{ !inputs.image_tag }}
         run: |
           make kind-load-adc-image
           make kind-load-ingress-image
 
+      # A release run pulls the published images instead, and the report names
+      # the release rather than the commit.
+      - name: Resolve Released Images
+        if: ${{ inputs.image_tag }}
+        shell: bash
+        run: |
+          # The report names image_tag, but the skip list, the supported feature
+          # list and the manifests come from the ref this runs on, so only a run
+          # from that same tag is submittable. It stays a warning rather than an
+          # error because running from another ref is how this path gets
+          # rehearsed against an already published release, and the workflow a
+          # tag run executes is the one inside that tag, which cannot be fixed
+          # afterwards without a new tag.
+          if [ "${{ github.ref_name }}" != "${{ inputs.image_tag }}" ]; then
+            echo "::warning::running from ${{ github.ref_name }} while reporting ${{ inputs.image_tag }}, this report is a rehearsal and must not be submitted"
+          fi
+          echo "CONFORMANCE_IMAGE_TAG=${{ inputs.image_tag }}" >> $GITHUB_ENV
+
       - name: Run Conformance Test
+        id: conformance
         shell: bash
         continue-on-error: true
         env:
           PROVIDER_TYPE: ${{ matrix.provider_type }}
         run: |
           make conformance-test
-      
+
       - name: Show Conformance Report
+        if: always()
         shell: bash
         run: |
-          cat ${CONFORMANCE_TEST_REPORT_OUTPUT}
+          cat ./*-report.yaml || echo "no report was produced"
+
+      # The suite runs most tests with t.Parallel, and those report their result
+      # after the report has been written, so a parallel failure leaves the
+      # report at Failed: 0 while the suite exits non-zero. The step outcome is
+      # the only place such a failure shows, which is why the run above is
+      # continue-on-error and the verdict is reached here instead.
+      - name: Check Conformance Result
+        if: always()
+        shell: bash
+        env:
+          STRICT: ${{ inputs.image_tag != '' }}
+          RUN_OUTCOME: ${{ steps.conformance.outcome }}
+        run: |
+          problem=""
+          if [ "${RUN_OUTCOME}" != "success" ]; then
+            problem="the suite exited non-zero, see the failures above"
+          elif ! ls ./*-report.yaml >/dev/null 2>&1; then
+            problem="no report was produced"
+          elif grep -qE '^[[:space:]]+result: failure' ./*-report.yaml; then
+            problem="the report contains a failing profile"
+          fi
+          if [ -n "${problem}" ]; then
+            echo "::error::${problem}"
+            grep -nE '^[[:space:]]+result:' ./*-report.yaml 2>/dev/null || true
+            if [ "${STRICT}" = "true" ]; then
+              exit 1
+            fi
+            echo "::warning::not a release run, not failing the job"
+          fi
 
       - name: Get Logs from apisix-ingress-controller
+        if: always()
         shell: bash
         run: |
           kubectl logs -n apisix-conformance-test -l app=apisix-ingress-controller
 
       - name: Upload Gateway API Conformance Report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: apisix-ingress-controller-conformance-report-${{ matrix.provider_type }}.yaml
-          path: ${{ env.CONFORMANCE_TEST_REPORT_OUTPUT }}
+          # The artifact keeps the upstream report file name, so a release run
+          # can be submitted straight from the download without renaming it.
+          name: conformance-report-${{ matrix.provider_type }}
+          path: ./*-report.yaml

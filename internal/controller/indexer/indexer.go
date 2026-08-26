@@ -28,7 +28,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
@@ -110,13 +109,13 @@ func SetupGatewayAPIIndexer(mgr ctrl.Manager) error {
 	setupLog := ctrl.LoggerFrom(context.Background()).WithName("indexer").WithName("gatewayapi")
 
 	for resource, setup := range map[client.Object]func(ctrl.Manager) error{
-		&gatewayv1.Gateway{}:        setupGatewayIndexer,
-		&gatewayv1.HTTPRoute{}:      setupHTTPRouteIndexer,
-		&gatewayv1.GRPCRoute{}:      setupGRPCRouteIndexer,
-		&gatewayv1alpha2.TCPRoute{}: setupTCPRouteIndexer,
-		&gatewayv1alpha2.UDPRoute{}: setupUDPRouteIndexer,
-		&gatewayv1alpha2.TLSRoute{}: setupTLSRouteIndexer,
-		&gatewayv1.GatewayClass{}:   setupGatewayClassIndexer,
+		&gatewayv1.Gateway{}:      setupGatewayIndexer,
+		&gatewayv1.HTTPRoute{}:    setupHTTPRouteIndexer,
+		&gatewayv1.GRPCRoute{}:    setupGRPCRouteIndexer,
+		&gatewayv1.TCPRoute{}:     setupTCPRouteIndexer,
+		&gatewayv1.UDPRoute{}:     setupUDPRouteIndexer,
+		&gatewayv1.TLSRoute{}:     setupTLSRouteIndexer,
+		&gatewayv1.GatewayClass{}: setupGatewayClassIndexer,
 	} {
 		installed, err := utils.HasAPIResource(mgr, resource)
 		if err != nil {
@@ -319,7 +318,7 @@ func setupHTTPRouteIndexer(mgr ctrl.Manager) error {
 func setupTCPRouteIndexer(mgr ctrl.Manager) error {
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
-		&gatewayv1alpha2.TCPRoute{},
+		&gatewayv1.TCPRoute{},
 		ParentRefs,
 		TCPRouteParentRefsIndexFunc,
 	); err != nil {
@@ -328,7 +327,7 @@ func setupTCPRouteIndexer(mgr ctrl.Manager) error {
 
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
-		&gatewayv1alpha2.TCPRoute{},
+		&gatewayv1.TCPRoute{},
 		ServiceIndexRef,
 		TCPPRouteServiceIndexFunc,
 	); err != nil {
@@ -340,7 +339,7 @@ func setupTCPRouteIndexer(mgr ctrl.Manager) error {
 func setupUDPRouteIndexer(mgr ctrl.Manager) error {
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
-		&gatewayv1alpha2.UDPRoute{},
+		&gatewayv1.UDPRoute{},
 		ParentRefs,
 		UDPRouteParentRefsIndexFunc,
 	); err != nil {
@@ -349,7 +348,7 @@ func setupUDPRouteIndexer(mgr ctrl.Manager) error {
 
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
-		&gatewayv1alpha2.UDPRoute{},
+		&gatewayv1.UDPRoute{},
 		ServiceIndexRef,
 		UDPRouteServiceIndexFunc,
 	); err != nil {
@@ -697,7 +696,7 @@ func HTTPRouteParentRefsIndexFunc(rawObj client.Object) []string {
 }
 
 func TCPRouteParentRefsIndexFunc(rawObj client.Object) []string {
-	tr := rawObj.(*gatewayv1alpha2.TCPRoute)
+	tr := rawObj.(*gatewayv1.TCPRoute)
 	keys := make([]string, 0, len(tr.Spec.ParentRefs))
 	for _, ref := range tr.Spec.ParentRefs {
 		ns := tr.GetNamespace()
@@ -710,7 +709,7 @@ func TCPRouteParentRefsIndexFunc(rawObj client.Object) []string {
 }
 
 func UDPRouteParentRefsIndexFunc(rawObj client.Object) []string {
-	ur := rawObj.(*gatewayv1alpha2.UDPRoute)
+	ur := rawObj.(*gatewayv1.UDPRoute)
 	keys := make([]string, 0, len(ur.Spec.ParentRefs))
 	for _, ref := range ur.Spec.ParentRefs {
 		ns := ur.GetNamespace()
@@ -741,7 +740,7 @@ func HTTPRouteServiceIndexFunc(rawObj client.Object) []string {
 }
 
 func TCPPRouteServiceIndexFunc(rawObj client.Object) []string {
-	tr := rawObj.(*gatewayv1alpha2.TCPRoute)
+	tr := rawObj.(*gatewayv1.TCPRoute)
 	keys := make([]string, 0, len(tr.Spec.Rules))
 	for _, rule := range tr.Spec.Rules {
 		for _, backend := range rule.BackendRefs {
@@ -759,7 +758,7 @@ func TCPPRouteServiceIndexFunc(rawObj client.Object) []string {
 }
 
 func UDPRouteServiceIndexFunc(rawObj client.Object) []string {
-	ur := rawObj.(*gatewayv1alpha2.UDPRoute)
+	ur := rawObj.(*gatewayv1.UDPRoute)
 	keys := make([]string, 0, len(ur.Spec.Rules))
 	for _, rule := range ur.Spec.Rules {
 		for _, backend := range rule.BackendRefs {

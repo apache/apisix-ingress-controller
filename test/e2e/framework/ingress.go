@@ -58,6 +58,11 @@ type IngressDeployOpts struct {
 	ListenerPortMatchMode string
 }
 
+// Methods rather than fields, so a caller that executes the template directly
+// cannot end up rendering an empty image.
+func (IngressDeployOpts) ControllerImage() string { return IngressImage }
+func (IngressDeployOpts) ADCImage() string        { return ADCImage }
+
 func (f *Framework) DeployIngress(opts IngressDeployOpts) {
 	buf := bytes.NewBuffer(nil)
 

@@ -6,4 +6,10 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: httproutepolicy-sample
 spec:
-  # TODO(user): Add fields here
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: httpbin
+  priority: 100
+  vars:
+    - ["http_x_route_name", "==", "httpbin"]
