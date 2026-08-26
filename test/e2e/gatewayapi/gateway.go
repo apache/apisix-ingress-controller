@@ -26,6 +26,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -831,4 +832,182 @@ spec:
 			assertGatewayAddress(gatewayName, updatedAddr, gatewayv1.HostnameAddressType)
 		})
 	})
+
+	Context("Gateway Status Address from publishService", func() {
+		var gatewayProxyWithPublishServiceYaml = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  name: apisix-proxy-config
+  namespace: %s
+spec:
+  publishService: %s/%s
+  provider:
+    type: ControlPlane
+    controlPlane:
+      endpoints:
+      - %s
+      auth:
+        type: AdminKey
+        adminKey:
+          value: "%s"
+`
+		var defaultGatewayClass = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: %s
+spec:
+  controllerName: "%s"
+`
+		var defaultGateway = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: %s
+spec:
+  gatewayClassName: %s
+  listeners:
+  - name: http
+    protocol: HTTP
+    port: 80
+  infrastructure:
+    parametersRef:
+      group: apisix.apache.org
+      kind: GatewayProxy
+      name: apisix-proxy-config
+`
+		const publishServiceName = "apisix-publish-svc"
+
+		// createPublishService creates a LoadBalancer Service and, because kind has
+		// no cloud provider to do it, writes the external address into its status.
+		createPublishService := func(lbIngress ...corev1.LoadBalancerIngress) {
+			svcYaml := fmt.Sprintf(`
+apiVersion: v1
+kind: Service
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  type: LoadBalancer
+  selector:
+    app: httpbin
+  ports:
+  - port: 80
+    targetPort: 80
+`, publishServiceName, s.Namespace())
+			Expect(s.CreateResourceFromStringWithNamespace(svcYaml, s.Namespace())).
+				NotTo(HaveOccurred(), "creating publish Service")
+			setPublishServiceAddress(s, publishServiceName, lbIngress...)
+		}
+
+		createGatewayClassAndGateway := func(gatewayClassName, gatewayName string) {
+			By("create GatewayClass")
+			Expect(s.CreateResourceFromStringWithNamespace(
+				fmt.Sprintf(defaultGatewayClass, gatewayClassName, s.GetControllerName()), ""),
+			).NotTo(HaveOccurred(), "creating GatewayClass")
+
+			By("create Gateway")
+			Expect(s.CreateResourceFromStringWithNamespace(
+				fmt.Sprintf(defaultGateway, gatewayName, gatewayClassName), s.Namespace()),
+			).NotTo(HaveOccurred(), "creating Gateway")
+		}
+
+		assertGatewayAddresses := func(gatewayName string, expected ...gatewayv1.GatewayStatusAddress) {
+			s.RetryAssertion(func() error {
+				var gateway gatewayv1.Gateway
+				if err := s.GetKubeClient().Get(context.Background(), k8stypes.NamespacedName{
+					Name:      gatewayName,
+					Namespace: s.Namespace(),
+				}, &gateway); err != nil {
+					return err
+				}
+				addrs := gateway.Status.Addresses
+				if len(addrs) != len(expected) {
+					return fmt.Errorf("expected %d status addresses, got %d: %+v", len(expected), len(addrs), addrs)
+				}
+				for i, want := range expected {
+					if addrs[i].Value != want.Value {
+						return fmt.Errorf("address %d: expected value %s, got %s", i, want.Value, addrs[i].Value)
+					}
+					if addrs[i].Type == nil {
+						return fmt.Errorf("address %d: expected type to be set, got nil", i)
+					}
+					if *addrs[i].Type != *want.Type {
+						return fmt.Errorf("address %d: expected type %s, got %s", i, *want.Type, *addrs[i].Type)
+					}
+				}
+				return nil
+			}).ShouldNot(HaveOccurred(), "check Gateway status addresses")
+		}
+
+		It("falls back to publishService when statusAddress is empty", func() {
+			By("create LoadBalancer publish Service with an IP and a hostname")
+			createPublishService(
+				corev1.LoadBalancerIngress{IP: "10.99.88.77"},
+				corev1.LoadBalancerIngress{Hostname: "lb.example.com"},
+			)
+
+			By("create GatewayProxy with publishService and no statusAddress")
+			Expect(s.CreateResourceFromString(fmt.Sprintf(gatewayProxyWithPublishServiceYaml,
+				s.Namespace(), s.Namespace(), publishServiceName, s.Deployer.GetAdminEndpoint(), s.AdminKey()),
+			)).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			createGatewayClassAndGateway(s.Namespace(), s.Namespace())
+
+			By("check Gateway status addresses come from the publish Service")
+			assertGatewayAddresses(s.Namespace(),
+				gatewayv1.GatewayStatusAddress{Type: ptr.To(gatewayv1.IPAddressType), Value: "10.99.88.77"},
+				gatewayv1.GatewayStatusAddress{Type: ptr.To(gatewayv1.HostnameAddressType), Value: "lb.example.com"},
+			)
+		})
+
+		It("prefers statusAddress over publishService when both are set", func() {
+			By("create LoadBalancer publish Service")
+			createPublishService(corev1.LoadBalancerIngress{IP: "10.99.88.77"})
+
+			By("create GatewayProxy with both statusAddress and publishService")
+			Expect(s.CreateResourceFromString(fmt.Sprintf(`
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  name: apisix-proxy-config
+  namespace: %s
+spec:
+  statusAddress:
+  - 192.168.1.100
+  publishService: %s/%s
+  provider:
+    type: ControlPlane
+    controlPlane:
+      endpoints:
+      - %s
+      auth:
+        type: AdminKey
+        adminKey:
+          value: "%s"
+`, s.Namespace(), s.Namespace(), publishServiceName, s.Deployer.GetAdminEndpoint(), s.AdminKey()),
+			)).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			createGatewayClassAndGateway(s.Namespace(), s.Namespace())
+
+			By("check only the static statusAddress is published")
+			assertGatewayAddresses(s.Namespace(),
+				gatewayv1.GatewayStatusAddress{Type: ptr.To(gatewayv1.IPAddressType), Value: "192.168.1.100"})
+		})
+	})
 })
+
+// setPublishServiceAddress writes lbIngress into the Service's
+// status.loadBalancer.ingress, standing in for the cloud provider that assigns
+// a LoadBalancer address in a real cluster.
+func setPublishServiceAddress(s *scaffold.Scaffold, name string, lbIngress ...corev1.LoadBalancerIngress) {
+	var svc corev1.Service
+	Expect(s.GetKubeClient().Get(context.Background(), k8stypes.NamespacedName{
+		Name:      name,
+		Namespace: s.Namespace(),
+	}, &svc)).NotTo(HaveOccurred(), "getting publish Service")
+	svc.Status.LoadBalancer.Ingress = lbIngress
+	Expect(s.GetKubeClient().Status().Update(context.Background(), &svc)).
+		NotTo(HaveOccurred(), "updating publish Service status")
+}

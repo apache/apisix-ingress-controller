@@ -707,35 +707,24 @@ func (r *IngressReconciler) updateStatus(ctx context.Context, tctx *provider.Tra
 		// 2. if the IngressStatusAddress is not configured, try to use the PublishService
 		publishService := gatewayProxy.Spec.PublishService
 		if publishService != "" {
-			// parse the namespace/name format
-			namespace, name, err := SplitMetaNamespaceKey(publishService)
+			// a bare name resolves against the GatewayProxy's namespace, where
+			// the publish Service lives, matching the Gateway API path
+			svc, err := resolvePublishService(ctx, r.Client, publishService, gatewayProxy.GetNamespace())
 			if err != nil {
-				return fmt.Errorf("invalid ingress-publish-service format: %s, expected format: namespace/name", publishService)
+				return err
 			}
-			// if the namespace is not specified, use the ingress namespace
-			if namespace == "" {
-				namespace = ingress.Namespace
-			}
-
-			svc := &corev1.Service{}
-			if err := r.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, svc); err != nil {
-				return fmt.Errorf("failed to get publish service %s: %w", publishService, err)
-			}
+			namespace, name := svc.Namespace, svc.Name
 
 			switch svc.Spec.Type {
 			case corev1.ServiceTypeLoadBalancer:
-				// get the LoadBalancer IP and Hostname of the service
-				for _, ip := range svc.Status.LoadBalancer.Ingress {
-					if ip.IP != "" {
-						loadBalancerStatus.Ingress = append(loadBalancerStatus.Ingress, networkingv1.IngressLoadBalancerIngress{
-							IP: ip.IP,
-						})
+				for _, addr := range serviceLoadBalancerAddresses(svc) {
+					lbIngress := networkingv1.IngressLoadBalancerIngress{}
+					if net.ParseIP(addr) != nil {
+						lbIngress.IP = addr
+					} else {
+						lbIngress.Hostname = addr
 					}
-					if ip.Hostname != "" {
-						loadBalancerStatus.Ingress = append(loadBalancerStatus.Ingress, networkingv1.IngressLoadBalancerIngress{
-							Hostname: ip.Hostname,
-						})
-					}
+					loadBalancerStatus.Ingress = append(loadBalancerStatus.Ingress, lbIngress)
 				}
 			case corev1.ServiceTypeClusterIP:
 				// For ClusterIP services, propagate load balancer status from any other

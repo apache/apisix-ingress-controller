@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"time"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -45,6 +46,10 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 	pkgutils "github.com/apache/apisix-ingress-controller/pkg/utils"
 )
+
+// publishServiceRetryInterval polls an unresolvable publishService, since
+// Service events are not watched.
+const publishServiceRetryInterval = time.Minute
 
 // GatewayReconciler reconciles a Gateway object.
 type GatewayReconciler struct { //nolint:revive
@@ -161,6 +166,7 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	conditionProgrammedStatus, conditionProgrammedMsg := true, "Programmed"
+	conditionProgrammedReason := gatewayv1.GatewayReasonProgrammed
 
 	r.Log.Info("gateway has been accepted", "gateway", gateway.GetName())
 	type conditionStatus struct {
@@ -186,7 +192,12 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
-	var addrs []gatewayv1.GatewayStatusAddress
+	var (
+		addrs             []gatewayv1.GatewayStatusAddress
+		addrResolveFailed bool
+		addrResolveErr    error
+		addrRetryAfter    time.Duration
+	)
 
 	rk := utils.NamespacedNameKind(gateway)
 
@@ -205,10 +216,24 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			msg:    "gateway proxy not found",
 		}
 	} else {
-		for _, addr := range gatewayProxy.Spec.StatusAddress {
-			if addr == "" {
-				continue
+		statusAddresses, err := r.resolveStatusAddresses(ctx, &gatewayProxy)
+		if err != nil {
+			addrResolveFailed = true
+			if internaltypes.IsSomeReasonError(err, gatewayv1.GatewayReasonAddressNotAssigned) {
+				// a config problem, not a controller failure: report it on the
+				// Programmed condition instead of the reconcile error metric
+				r.Log.Info("cannot resolve gateway status addresses",
+					"gateway", req.NamespacedName, "reason", err.Error())
+				conditionProgrammedStatus = false
+				conditionProgrammedMsg = err.Error()
+				conditionProgrammedReason = gatewayv1.GatewayReasonAddressNotAssigned
+				addrRetryAfter = publishServiceRetryInterval
+			} else {
+				r.Log.Error(err, "failed to resolve gateway status addresses", "gateway", req.NamespacedName)
+				addrResolveErr = err
 			}
+		}
+		for _, addr := range statusAddresses {
 			addrType := gatewayv1.IPAddressType
 			if net.ParseIP(addr) == nil {
 				addrType = gatewayv1.HostnameAddressType
@@ -252,8 +277,8 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	accepted := SetGatewayConditionAccepted(gateway, acceptStatus.status, acceptStatus.reason, acceptStatus.msg)
-	programmed := SetGatewayConditionProgrammed(gateway, conditionProgrammedStatus, conditionProgrammedMsg)
-	addressesChanged := !reflect.DeepEqual(gateway.Status.Addresses, addrs)
+	programmed := SetGatewayConditionProgrammed(gateway, conditionProgrammedStatus, conditionProgrammedReason, conditionProgrammedMsg)
+	addressesChanged := !addrResolveFailed && !reflect.DeepEqual(gateway.Status.Addresses, addrs)
 	if accepted || programmed || addressesChanged || len(listenerStatuses) > 0 {
 		if addressesChanged {
 			gateway.Status.Addresses = addrs
@@ -277,10 +302,41 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			}),
 		})
 
-		return ctrl.Result{}, nil
+		return ctrl.Result{RequeueAfter: addrRetryAfter}, addrResolveErr
 	}
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: addrRetryAfter}, addrResolveErr
+}
+
+// resolveStatusAddresses returns the addresses to publish in
+// Gateway.status.addresses: the statically configured statusAddress if set,
+// otherwise the external addresses of the Service named by publishService.
+// A bare Service name resolves against the GatewayProxy's namespace.
+func (r *GatewayReconciler) resolveStatusAddresses(
+	ctx context.Context,
+	gatewayProxy *v1alpha1.GatewayProxy,
+) ([]string, error) {
+	if len(gatewayProxy.Spec.StatusAddress) > 0 {
+		return utils.Filter(gatewayProxy.Spec.StatusAddress, func(addr string) bool {
+			return addr != ""
+		}), nil
+	}
+
+	if gatewayProxy.Spec.PublishService == "" {
+		return nil, nil
+	}
+
+	// a bare name is resolved against the GatewayProxy's namespace
+	svc, err := resolvePublishService(ctx, r.Client, gatewayProxy.Spec.PublishService, gatewayProxy.GetNamespace())
+	if err != nil {
+		return nil, err
+	}
+	if svc.Spec.Type != corev1.ServiceTypeLoadBalancer {
+		r.Log.Info("publish service is not a LoadBalancer; no address to publish",
+			"service", gatewayProxy.Spec.PublishService, "type", svc.Spec.Type)
+		return nil, nil
+	}
+	return serviceLoadBalancerAddresses(svc), nil
 }
 
 func (r *GatewayReconciler) matchesGatewayClass(obj client.Object) bool {
