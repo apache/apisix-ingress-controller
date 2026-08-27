@@ -31,11 +31,15 @@ concurrency:
 
 env:
   ADC_VERSION: dev
+  ADC_RUST_VERSION: "0.30.0"
 
 jobs:
   e2e-test:
     strategy:
       matrix:
+        adc_impl:
+        - node
+        - rust
         provider_type:
         - apisix-standalone
         - apisix
@@ -91,8 +95,8 @@ jobs:
         run: |
           make install
 
-      - name: Extract adc binary
-        if: ${{ env.ADC_VERSION == 'dev' }}
+      - name: Setup adc (node)
+        if: ${{ env.ADC_VERSION == 'dev' && matrix.adc_impl == 'node' }}
         run: |
           docker create --name adc-temp ghcr.io/api7/adc:dev
           # main.cjs lives in the image's WORKDIR, not at the container root,
@@ -101,6 +105,24 @@ jobs:
           docker rm adc-temp
           node $(pwd)/adc.js -v
           echo "ADC_BIN=node $(pwd)/adc.js" >> $GITHUB_ENV
+
+      - name: Setup adc (rust)
+        if: ${{ matrix.adc_impl == 'rust' }}
+        run: |
+          curl -fsSL -o adc.tar.gz "https://github.com/api7/adc/releases/download/v${{ env.ADC_RUST_VERSION }}/adc_rust_${{ env.ADC_RUST_VERSION }}_linux_amd64.tar.gz"
+          tar -xzf adc.tar.gz adc
+          chmod +x adc
+          ./adc --version
+
+          # The pod manifest points ADCImage at a real image, unlike ADC_BIN
+          # (a bare host path the test scaffold execs directly) — the Rust
+          # binary needs to be wrapped in one to stand in as the sidecar.
+          cp .github/adc-rust/Dockerfile .github/adc-rust/entrypoint.sh ./
+          docker build -t adc-rust:dev -f Dockerfile .
+          kind load docker-image adc-rust:dev --name apisix-ingress-cluster
+
+          echo "ADC_BIN=$(pwd)/adc" >> $GITHUB_ENV
+          echo "ADC_IMAGE=adc-rust:dev" >> $GITHUB_ENV
 
       - name: Start OpenLDAP server
         run: make e2e-ldap
@@ -120,6 +142,12 @@ jobs:
           fi
 
   disable-gateway-api:
+    strategy:
+      matrix:
+        adc_impl:
+        - node
+        - rust
+      fail-fast: false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -163,8 +191,8 @@ jobs:
         run: |
           make kind-load-images
 
-      - name: Extract adc binary
-        if: ${{ env.ADC_VERSION == 'dev' }}
+      - name: Setup adc (node)
+        if: ${{ env.ADC_VERSION == 'dev' && matrix.adc_impl == 'node' }}
         run: |
           docker create --name adc-temp ghcr.io/api7/adc:dev
           # main.cjs lives in the image's WORKDIR, not at the container root,
@@ -173,6 +201,24 @@ jobs:
           docker rm adc-temp
           node $(pwd)/adc.js -v
           echo "ADC_BIN=node $(pwd)/adc.js" >> $GITHUB_ENV
+
+      - name: Setup adc (rust)
+        if: ${{ matrix.adc_impl == 'rust' }}
+        run: |
+          curl -fsSL -o adc.tar.gz "https://github.com/api7/adc/releases/download/v${{ env.ADC_RUST_VERSION }}/adc_rust_${{ env.ADC_RUST_VERSION }}_linux_amd64.tar.gz"
+          tar -xzf adc.tar.gz adc
+          chmod +x adc
+          ./adc --version
+
+          # The pod manifest points ADCImage at a real image, unlike ADC_BIN
+          # (a bare host path the test scaffold execs directly) — the Rust
+          # binary needs to be wrapped in one to stand in as the sidecar.
+          cp .github/adc-rust/Dockerfile .github/adc-rust/entrypoint.sh ./
+          docker build -t adc-rust:dev -f Dockerfile .
+          kind load docker-image adc-rust:dev --name apisix-ingress-cluster
+
+          echo "ADC_BIN=$(pwd)/adc" >> $GITHUB_ENV
+          echo "ADC_IMAGE=adc-rust:dev" >> $GITHUB_ENV
 
       - name: Install CRDs
         run: make install-crds
