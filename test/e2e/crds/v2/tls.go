@@ -19,7 +19,9 @@ package v2
 
 import (
 	"context"
+	cryptotls "crypto/tls"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -323,25 +325,44 @@ spec:
 					tls[0].Client.SkipMtlsURIRegex[0] == skipMtlsUriRegex
 			}).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(BeTrue())
 
+			// A raw net/http client rather than s.NewAPISIXHttpsClient: its
+			// httpexpect reporter turns a transient TLS handshake error into an
+			// immediate spec failure, which defeats the Eventually retry while
+			// APISIX is still rebuilding its SNI router right after the sync.
+			transport := &http.Transport{
+				TLSClientConfig: &cryptotls.Config{InsecureSkipVerify: true, ServerName: host},
+			}
+			defer transport.CloseIdleConnections()
+			httpsClient := &http.Client{Timeout: 5 * time.Second, Transport: transport}
+			httpsGet := func(path string) (int, error) {
+				req, err := http.NewRequest(http.MethodGet, "https://"+s.GetAPISIXHTTPSEndpoint()+path, nil)
+				if err != nil {
+					return 0, err
+				}
+				req.Host = host
+				resp, err := httpsClient.Do(req)
+				if err != nil {
+					return 0, err
+				}
+				defer resp.Body.Close()
+				_, _ = io.Copy(io.Discard, resp.Body)
+				return resp.StatusCode, nil
+			}
+
 			By("test HTTPS request to path matching skip_mtls_uri_regex without client cert")
-			Eventually(func() int {
-				return s.NewAPISIXHttpsClient(host).
-					GET("/ip").
-					WithHost(host).
-					Expect().
-					Raw().StatusCode
+			Eventually(func() (int, error) {
+				return httpsGet("/ip")
 			}).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(Equal(http.StatusOK))
 
 			By("test HTTPS request to non-matching path without client cert should fail")
-			Eventually(func() bool {
-				resp := s.NewAPISIXHttpsClient(host).
-					GET("/get").
-					WithHost(host).
-					Expect().
-					Raw()
-				return resp.StatusCode == http.StatusBadRequest ||
-					resp.StatusCode == http.StatusForbidden ||
-					resp.StatusCode >= 500
+			Eventually(func() (bool, error) {
+				status, err := httpsGet("/get")
+				if err != nil {
+					return false, err
+				}
+				return status == http.StatusBadRequest ||
+					status == http.StatusForbidden ||
+					status >= 500, nil
 			}).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(BeTrue())
 
 			// Verify the configuration details
