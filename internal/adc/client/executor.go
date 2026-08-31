@@ -84,7 +84,11 @@ type ADCServerOpts struct {
 	LabelSelector       map[string]string `json:"labelSelector,omitempty"`
 	IncludeResourceType []string          `json:"includeResourceType,omitempty"`
 	TlsSkipVerify       *bool             `json:"tlsSkipVerify,omitempty"`
-	CacheKey            string            `json:"cacheKey"`
+	// CaCert is the PEM-encoded CA certificate (or bundle) the ADC server verifies
+	// the control plane against. Older ADC servers ignore it, and omitempty keeps
+	// requests without a CA bundle byte for byte what they were.
+	CaCert   string `json:"caCert,omitempty"`
+	CacheKey string `json:"cacheKey"`
 	// BypassCache is only accepted by the /sync task of ADC >= 0.27.0. Both ADC task
 	// schemas reject unknown fields, so omitempty is what keeps every other request --
 	// /validate, and every sync that is not recovering from a rejection -- byte for byte
@@ -103,6 +107,7 @@ func (r ADCServerRequest) MarshalLog() any {
 		"labelSelector":       r.Task.Opts.LabelSelector,
 		"includeResourceType": r.Task.Opts.IncludeResourceType,
 		"tlsSkipVerify":       r.Task.Opts.TlsSkipVerify,
+		"hasCaCert":           r.Task.Opts.CaCert != "",
 		"cacheKey":            r.Task.Opts.CacheKey,
 		"config":              r.Task.Config.MarshalLog(),
 	}
@@ -244,7 +249,7 @@ func (e *HTTPADCExecutor) runHTTPSyncForSingleServer(ctx context.Context, server
 	}
 
 	// Build HTTP request
-	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, types, resources, http.MethodPut, pathSync)
+	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, types, resources, pathSync)
 	if err != nil {
 		return fmt.Errorf("failed to build HTTP request: %w", err)
 	}
@@ -278,7 +283,7 @@ func (e *HTTPADCExecutor) runHTTPValidateForSingleServer(ctx context.Context, se
 		return fmt.Errorf("failed to load resources from file %s: %w", filePath, err)
 	}
 
-	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, types, resources, http.MethodPut, pathValidate)
+	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, types, resources, pathValidate)
 	if err != nil {
 		return fmt.Errorf("failed to build validate request: %w", err)
 	}
@@ -349,7 +354,7 @@ func (e *HTTPADCExecutor) loadResourcesFromFile(filePath string) (*adctypes.Reso
 }
 
 // buildHTTPRequest builds the HTTP request for ADC Server
-func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr string, config adctypes.Config, labels map[string]string, types []string, resources *adctypes.Resources, method string, path string) (*http.Request, error) {
+func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr string, config adctypes.Config, labels map[string]string, types []string, resources *adctypes.Resources, path string) (*http.Request, error) {
 	// Prepare request body
 	tlsVerify := config.TlsVerify
 	bypassCache := path == pathSync && config.BypassCache
@@ -362,6 +367,7 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr strin
 				LabelSelector:       labels,
 				IncludeResourceType: types,
 				TlsSkipVerify:       ptr.To(!tlsVerify),
+				CaCert:              config.CaCert,
 				CacheKey:            config.Name,
 				BypassCache:         bypassCache,
 			},
@@ -385,10 +391,11 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr strin
 		"labelSelector", labels,
 		"includeResourceType", types,
 		"tlsSkipVerify", !tlsVerify,
+		"hasCaCert", config.CaCert != "",
 	)
 
 	// Create HTTP request
-	req, err := http.NewRequestWithContext(ctx, method, e.serverURL+path, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, e.serverURL+path, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
 	}

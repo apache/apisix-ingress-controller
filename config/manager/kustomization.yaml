@@ -17,4 +17,4 @@ images:
   newTag: dev
 - name: sidecar
   newName: ghcr.io/api7/adc
-  newTag: 0.27.1
+  newTag: 0.29.0
