@@ -17,6 +17,8 @@ package ssl
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"sort"
 	"strings"
@@ -42,7 +44,11 @@ var logger = log.Log.WithName("ssl-conflict-detector")
 type HostCertMapping struct {
 	Host            string
 	CertificateHash string
-	ResourceRef     string
+	// ClientConfigHash digests the mTLS client-verification config (CA ref, depth,
+	// skip regexes). Empty when the resource enforces no mTLS. Two resources for the
+	// same host+cert but differing client config are still a conflict.
+	ClientConfigHash string
+	ResourceRef      string
 }
 
 // SSLConflict exposes the conflict details to the admission webhook for reporting.
@@ -92,22 +98,23 @@ func (d *ConflictDetector) DetectConflicts(ctx context.Context, obj client.Objec
 	conflicts := make([]SSLConflict, 0)
 
 	// First, check for conflicts within the new resource itself.
-	seen := make(map[string]string, len(newMappings))
+	seen := make(map[string]HostCertMapping, len(newMappings))
 	for _, mapping := range newMappings {
 		if mapping.Host == "" || mapping.CertificateHash == "" {
 			continue
 		}
 		if prev, ok := seen[mapping.Host]; ok {
-			if prev != mapping.CertificateHash {
+			if prev.CertificateHash != mapping.CertificateHash ||
+				prev.ClientConfigHash != mapping.ClientConfigHash {
 				conflicts = append(conflicts, SSLConflict{
 					Host:                mapping.Host,
 					ConflictingResource: mapping.ResourceRef,
-					CertificateHash:     prev,
+					CertificateHash:     prev.CertificateHash,
 				})
 			}
 			continue
 		}
-		seen[mapping.Host] = mapping.CertificateHash
+		seen[mapping.Host] = mapping
 	}
 
 	if len(conflicts) > 0 {
@@ -129,12 +136,12 @@ func FormatConflicts(conflicts []SSLConflict) string {
 	if len(conflicts) == 0 {
 		return ""
 	}
-	var sb strings.Builder
-	sb.WriteString("SSL configuration conflicts detected:")
+	// Single line: admission warnings are HTTP headers, so newlines are dropped.
+	parts := make([]string, 0, len(conflicts))
 	for _, conflict := range conflicts {
-		sb.WriteString(fmt.Sprintf("\n- Host '%s' is already configured with a different certificate in %s", conflict.Host, conflict.ConflictingResource))
+		parts = append(parts, fmt.Sprintf("host '%s' is already configured with a different certificate in %s", conflict.Host, conflict.ConflictingResource))
 	}
-	return sb.String()
+	return "SSL configuration conflicts detected: " + strings.Join(parts, "; ")
 }
 
 // BuildGatewayMappings calculates host-to-certificate mappings for a Gateway.
@@ -251,15 +258,40 @@ func (d *ConflictDetector) BuildApisixTlsMappings(ctx context.Context, tls *apiv
 	// if len(hosts) == 0 {
 	// 	hosts = info.hosts
 	// }
+	clientHash := clientConfigHash(tls.Spec.Client)
 	for _, host := range hosts {
 		mappings = append(mappings, HostCertMapping{
-			Host:            host,
-			CertificateHash: info.hash,
-			ResourceRef:     fmt.Sprintf("%s/%s/%s", internaltypes.KindApisixTls, tls.Namespace, tls.Name),
+			Host:             host,
+			CertificateHash:  info.hash,
+			ClientConfigHash: clientHash,
+			ResourceRef:      fmt.Sprintf("%s/%s/%s", internaltypes.KindApisixTls, tls.Namespace, tls.Name),
 		})
 	}
 
 	return mappings
+}
+
+// clientConfigHash digests an ApisixTls mTLS client-verification config into a
+// stable key. Returns "" when no mTLS is configured, so a resource that enforces
+// mTLS and one that doesn't produce different keys for the same host+cert. It
+// keys on the CA secret reference (namespace/name), which uniquely identifies
+// the trust anchor, plus depth and the skip regexes.
+func clientConfigHash(client *apiv2.ApisixMutualTlsClientConfig) string {
+	if client == nil {
+		return ""
+	}
+	regexes := append([]string(nil), client.SkipMTLSUriRegex...)
+	sort.Strings(regexes)
+	// Length-prefix each regex so entries containing commas can't alias
+	// (e.g. {"a,b"} vs {"a","b"}), which would collide the hash.
+	var b strings.Builder
+	fmt.Fprintf(&b, "ca=%s/%s;depth=%d;skip=%d:",
+		client.CASecret.Namespace, client.CASecret.Name, client.Depth, len(regexes))
+	for _, r := range regexes {
+		fmt.Fprintf(&b, "%d:%s", len(r), r)
+	}
+	sum := sha256.Sum256([]byte(b.String()))
+	return hex.EncodeToString(sum[:])
 }
 
 func (d *ConflictDetector) getSecretInfo(ctx context.Context, nn types.NamespacedName) (*secretInfo, error) {
@@ -324,10 +356,10 @@ func (d *ConflictDetector) resolveGatewayProxy(ctx context.Context, obj client.O
 	}
 }
 
-func (d *ConflictDetector) findExternalConflicts(ctx context.Context, obj client.Object, gatewayProxy *v1alpha1.GatewayProxy, hosts map[string]string) ([]SSLConflict, error) {
+func (d *ConflictDetector) findExternalConflicts(ctx context.Context, obj client.Object, gatewayProxy *v1alpha1.GatewayProxy, newMappings map[string]HostCertMapping) ([]SSLConflict, error) {
 	excludeUID := obj.GetUID()
-	hostValues := make([]string, 0, len(hosts))
-	for host := range hosts {
+	hostValues := make([]string, 0, len(newMappings))
+	for host := range newMappings {
 		hostValues = append(hostValues, host)
 	}
 	sort.Strings(hostValues)
@@ -338,24 +370,54 @@ func (d *ConflictDetector) findExternalConflicts(ctx context.Context, obj client
 
 	var noHostCandidates []client.Object
 	noHostFetched := false
+	var allTLSResources []client.Object
+	allFetched := false
 
 	for _, host := range hostValues {
-		candidates, err := d.listResourcesByHost(ctx, host)
-		if err != nil {
-			logger.Error(err, "failed to list resources by host", "host", host)
-			return nil, err
-		}
-		if host != "" {
-			if !noHostFetched {
-				// List resources with empty host.
-				noHostCandidates, err = d.listResourcesByHost(ctx, "")
+		var (
+			candidates []client.Object
+			err        error
+		)
+		if strings.HasPrefix(host, "*.") {
+			// A wildcard covers many exact hosts; the host index can't answer a
+			// suffix query, so enumerate all TLS resources and filter by overlap.
+			if !allFetched {
+				allTLSResources, err = d.listAllTLSResources(ctx)
 				if err != nil {
-					logger.Error(err, "failed to list resources by host", "host", "", "object", objectKey(obj))
+					logger.Error(err, "failed to list TLS resources", "object", objectKey(obj))
 					return nil, err
 				}
-				noHostFetched = true
+				allFetched = true
 			}
-			candidates = mergeCandidateObjects(candidates, noHostCandidates)
+			candidates = allTLSResources
+		} else {
+			candidates, err = d.listResourcesByHost(ctx, host)
+			if err != nil {
+				logger.Error(err, "failed to list resources by host", "host", host)
+				return nil, err
+			}
+			// Also look up a covering wildcard, which is indexed under a
+			// different key (e.g. "*.example.com" for host "app.example.com").
+			if parent := sslutil.ParentWildcard(host); parent != "" {
+				wildcardCandidates, err := d.listResourcesByHost(ctx, parent)
+				if err != nil {
+					logger.Error(err, "failed to list resources by host", "host", parent)
+					return nil, err
+				}
+				candidates = mergeCandidateObjects(candidates, wildcardCandidates)
+			}
+			if host != "" {
+				if !noHostFetched {
+					// List resources with empty host.
+					noHostCandidates, err = d.listResourcesByHost(ctx, "")
+					if err != nil {
+						logger.Error(err, "failed to list resources by host", "host", "", "object", objectKey(obj))
+						return nil, err
+					}
+					noHostFetched = true
+				}
+				candidates = mergeCandidateObjects(candidates, noHostCandidates)
+			}
 		}
 		for _, candidate := range candidates {
 			if candidate.GetUID() == excludeUID {
@@ -376,8 +438,12 @@ func (d *ConflictDetector) findExternalConflicts(ctx context.Context, obj client
 			if !ok {
 				continue
 			}
-			// same cert hash, no conflict
-			if mapping.CertificateHash == hosts[host] {
+			// Same server cert AND same mTLS client config: no conflict. A
+			// differing client config is still a conflict even when the server
+			// cert matches.
+			newMapping := newMappings[host]
+			if mapping.CertificateHash == newMapping.CertificateHash &&
+				mapping.ClientConfigHash == newMapping.ClientConfigHash {
 				continue
 			}
 
@@ -407,6 +473,39 @@ func (d *ConflictDetector) findExternalConflicts(ctx context.Context, obj client
 	for _, key := range keys {
 		results = append(results, conflictSet[key])
 	}
+	return results, nil
+}
+
+// listAllTLSResources enumerates every TLS-bearing Gateway, Ingress and
+// ApisixTls. Used when the incoming host is a wildcard, whose covered exact
+// hosts can't be resolved through the exact-key host index.
+func (d *ConflictDetector) listAllTLSResources(ctx context.Context) ([]client.Object, error) {
+	results := make([]client.Object, 0)
+
+	var gatewayList gatewayv1.GatewayList
+	if err := d.client.List(ctx, &gatewayList); err != nil {
+		return nil, err
+	}
+	for i := range gatewayList.Items {
+		results = append(results, gatewayList.Items[i].DeepCopy())
+	}
+
+	var ingressList networkingv1.IngressList
+	if err := d.client.List(ctx, &ingressList); err != nil {
+		return nil, err
+	}
+	for i := range ingressList.Items {
+		results = append(results, ingressList.Items[i].DeepCopy())
+	}
+
+	var tlsList apiv2.ApisixTlsList
+	if err := d.client.List(ctx, &tlsList); err != nil {
+		return nil, err
+	}
+	for i := range tlsList.Items {
+		results = append(results, tlsList.Items[i].DeepCopy())
+	}
+
 	return results, nil
 }
 
@@ -478,7 +577,12 @@ func (d *ConflictDetector) mappingForHostWithCache(ctx context.Context, obj clie
 	}
 
 	for _, mapping := range mappings {
-		if mapping.Host == host {
+		if mapping.Host == "" {
+			continue
+		}
+		// Wildcard-aware: an exact host and a covering wildcard overlap even
+		// though their index keys differ ("app.example.com" vs "*.example.com").
+		if sslutil.HostsOverlap(mapping.Host, host) {
 			return mapping, true
 		}
 	}

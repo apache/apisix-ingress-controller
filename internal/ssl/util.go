@@ -180,6 +180,77 @@ func NormalizeHosts(hosts []string) []string {
 	return normalized
 }
 
+// HostsOverlap reports whether two SNI host patterns can both match a common
+// concrete hostname. It understands single-label wildcards ("*.example.com"
+// matches "app.example.com" but not "a.b.example.com"). Two distinct wildcards
+// never share a concrete host.
+func HostsOverlap(a, b string) bool {
+	a = strings.ToLower(strings.TrimSpace(a))
+	b = strings.ToLower(strings.TrimSpace(b))
+	if a == "" || b == "" {
+		return false
+	}
+	if a == b {
+		return true
+	}
+	aWild := strings.HasPrefix(a, "*.")
+	bWild := strings.HasPrefix(b, "*.")
+	switch {
+	case aWild && bWild:
+		return false
+	case aWild:
+		return wildcardCovers(a, b)
+	case bWild:
+		return wildcardCovers(b, a)
+	default:
+		return false
+	}
+}
+
+// wildcardCovers reports whether wildcard "*.suffix" matches the exact host,
+// i.e. host is exactly "<single-label>.suffix".
+func wildcardCovers(wildcard, host string) bool {
+	suffix := wildcard[1:] // ".example.com"
+	if !strings.HasSuffix(host, suffix) {
+		return false
+	}
+	label := host[:len(host)-len(suffix)]
+	return label != "" && !strings.Contains(label, ".")
+}
+
+// HostCoveredBy reports whether a certificate SAN covers an SNI host. Coverage
+// is directional: an exact SAN covers only the identical host; a wildcard SAN
+// "*.suffix" covers single-label subdomains "<label>.suffix". A wildcard host is
+// covered only by an identical wildcard SAN (an exact SAN can't serve it).
+func HostCoveredBy(host, san string) bool {
+	host = strings.ToLower(strings.TrimSpace(host))
+	san = strings.ToLower(strings.TrimSpace(san))
+	if host == "" || san == "" {
+		return false
+	}
+	if host == san {
+		return true
+	}
+	if strings.HasPrefix(san, "*.") {
+		return wildcardCovers(san, host)
+	}
+	return false
+}
+
+// ParentWildcard returns the single-label covering wildcard for an exact host,
+// e.g. "app.example.com" -> "*.example.com". Returns "" if host is empty, is
+// itself a wildcard, or has no parent label.
+func ParentWildcard(host string) string {
+	if host == "" || strings.HasPrefix(host, "*.") {
+		return ""
+	}
+	i := strings.IndexByte(host, '.')
+	if i < 0 || i == len(host)-1 {
+		return ""
+	}
+	return "*." + host[i+1:]
+}
+
 // CertificateHash returns the SHA-256 hash of the leaf certificate contained in the PEM data.
 // The hash is calculated from the DER-encoded bytes so that formatting differences (whitespace,
 // line endings, certificate ordering) do not affect the result.
