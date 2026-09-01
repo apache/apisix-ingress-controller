@@ -125,6 +125,7 @@ spec:
 					ContainSubstring(`status: "False"`),
 					ContainSubstring(`reason: SyncFailed`),
 					ContainSubstring(`unknown plugin [non-existent-plugin]`),
+					ContainSubstring(fmt.Sprintf(`(resource: ApisixRoute/%s/default)`, s.Namespace())),
 				),
 			)
 
