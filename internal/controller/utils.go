@@ -324,14 +324,21 @@ func parentRefTargetsListenerExplicitly(parentRef gatewayv1.ParentReference) boo
 	return parentRef.Port != nil
 }
 
+// ParseRouteParentRefs resolves the parentRefs of a route to the Gateways this
+// controller manages. The second return value reports that at least one
+// parentRef could not be resolved, because its Gateway or that Gateway's
+// GatewayClass does not exist. An empty gateway list then means "ownership
+// unknown", not "owned by another controller", and callers must not act on the
+// route's data plane configuration.
 func ParseRouteParentRefs(
 	ctx context.Context,
 	mgrc client.Client,
 	log logr.Logger,
 	route client.Object,
 	parentRefs []gatewayv1.ParentReference,
-) ([]RouteParentRefContext, error) {
+) ([]RouteParentRefContext, bool, error) {
 	gateways := make([]RouteParentRefContext, 0)
+	unresolved := false
 	for _, parentRef := range parentRefs {
 		namespace := route.GetNamespace()
 		if parentRef.Namespace != nil {
@@ -349,9 +356,10 @@ func ParseRouteParentRefs(
 			Name:      name,
 		}, &gateway); err != nil {
 			if client.IgnoreNotFound(err) == nil {
+				unresolved = true
 				continue
 			}
-			return nil, fmt.Errorf("failed to retrieve gateway for route: %w", err)
+			return nil, false, fmt.Errorf("failed to retrieve gateway for route: %w", err)
 		}
 
 		gatewayClass := gatewayv1.GatewayClass{}
@@ -359,9 +367,10 @@ func ParseRouteParentRefs(
 			Name: string(gateway.Spec.GatewayClassName),
 		}, &gatewayClass); err != nil {
 			if client.IgnoreNotFound(err) == nil {
+				unresolved = true
 				continue
 			}
-			return nil, fmt.Errorf("failed to retrieve gatewayclass for gateway: %w", err)
+			return nil, false, fmt.Errorf("failed to retrieve gatewayclass for gateway: %w", err)
 		}
 
 		if string(gatewayClass.Spec.ControllerName) != config.ControllerConfig.ControllerName {
@@ -499,7 +508,7 @@ func ParseRouteParentRefs(
 		}
 	}
 
-	return gateways, nil
+	return gateways, unresolved, nil
 }
 
 // reuseUnchangedListenerStatus keeps the previously published status when

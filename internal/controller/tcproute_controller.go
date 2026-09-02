@@ -273,12 +273,17 @@ func (r *TCPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		msg:    "Route is accepted",
 	}
 
-	gateways, err := ParseRouteParentRefs(ctx, r.Client, r.Log, tr, tr.Spec.ParentRefs)
+	gateways, unresolvedParents, err := ParseRouteParentRefs(ctx, r.Client, r.Log, tr, tr.Spec.ParentRefs)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	if len(gateways) == 0 {
+		if unresolvedParents {
+			// See the HTTPRoute reconciler: an unresolvable parentRef leaves ownership
+			// unknown rather than disproven, so the data plane must be left alone.
+			return ctrl.Result{}, nil
+		}
 		// See the HTTPRoute reconciler: a route that no longer references a
 		// Gateway managed by this controller must have its previously pushed
 		// configuration removed, or the data plane keeps serving it.

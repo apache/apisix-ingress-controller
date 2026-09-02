@@ -163,12 +163,18 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		msg:    "Route is accepted",
 	}
 
-	gateways, err := ParseRouteParentRefs(ctx, r.Client, r.Log, hr, hr.Spec.ParentRefs)
+	gateways, unresolvedParents, err := ParseRouteParentRefs(ctx, r.Client, r.Log, hr, hr.Spec.ParentRefs)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	if len(gateways) == 0 {
+		if unresolvedParents {
+			// A missing Gateway or GatewayClass leaves ownership unknown rather than
+			// disproven. GatewayClass is cluster-scoped, so while one is absent every
+			// route under it resolves empty and deleting would drain the data plane.
+			return ctrl.Result{}, nil
+		}
 		// The route does not reference any Gateway managed by this controller.
 		// It may have referenced one before, e.g. when its parentRefs are
 		// repointed at a Gateway belonging to another GatewayClass, so the
