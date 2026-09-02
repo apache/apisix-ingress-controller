@@ -19,7 +19,6 @@ package controller
 
 import (
 	"context"
-	"net/http"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -41,23 +40,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
-	"github.com/apache/apisix-ingress-controller/internal/provider"
 )
-
-// recordingProvider counts data plane pushes so tests can assert whether a
-// reconcile reached Provider.Update.
-type recordingProvider struct {
-	updated int
-}
-
-func (p *recordingProvider) Update(context.Context, *provider.TranslateContext, client.Object) error {
-	p.updated++
-	return nil
-}
-func (p *recordingProvider) Delete(context.Context, client.Object) error { return nil }
-func (p *recordingProvider) Start(context.Context) error                 { return nil }
-func (p *recordingProvider) NeedLeaderElection() bool                    { return false }
-func (p *recordingProvider) Register(string, *http.ServeMux)             {}
 
 type recordingUpdater struct {
 	updates []status.Update
