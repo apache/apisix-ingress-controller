@@ -240,9 +240,10 @@ func (c *Client) Delete(ctx context.Context, args Task) error {
 	return c.applySync(ctx, args, delta)
 }
 
-func (c *Client) DeleteConfig(ctx context.Context, args Task) error {
-	_, err := c.applyStoreChanges(args, true)
-	return err
+// DeleteConfig removes the stored configuration for args.Key and reports what
+// it removed, so callers can skip a data plane sync when the key held nothing.
+func (c *Client) DeleteConfig(ctx context.Context, args Task) (StoreDelta, error) {
+	return c.applyStoreChanges(args, true)
 }
 
 func (c *Client) Validate(ctx context.Context, task Task) error {
