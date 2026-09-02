@@ -31,7 +31,7 @@ concurrency:
 
 env:
   ADC_VERSION: dev
-  ADC_RUST_VERSION: "0.0.1"
+  ADC_RUST_VERSION: "0.30.1"
 
 jobs:
   e2e-test:
