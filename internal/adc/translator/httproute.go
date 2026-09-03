@@ -46,7 +46,7 @@ func (t *Translator) fillPluginsFromHTTPRouteFilters(
 	filters []gatewayv1.HTTPRouteFilter,
 	matches []gatewayv1.HTTPRouteMatch,
 	tctx *provider.TranslateContext,
-) {
+) error {
 	for _, filter := range filters {
 		switch filter.Type {
 		case gatewayv1.HTTPRouteFilterRequestHeaderModifier:
@@ -60,35 +60,42 @@ func (t *Translator) fillPluginsFromHTTPRouteFilters(
 		case gatewayv1.HTTPRouteFilterResponseHeaderModifier:
 			t.fillPluginFromHTTPResponseHeaderFilter(plugins, filter.ResponseHeaderModifier)
 		case gatewayv1.HTTPRouteFilterExtensionRef:
-			t.fillPluginFromExtensionRef(plugins, namespace, filter.ExtensionRef, tctx)
+			if err := t.fillPluginFromExtensionRef(plugins, namespace, filter.ExtensionRef, tctx); err != nil {
+				return err
+			}
 		case gatewayv1.HTTPRouteFilterCORS:
 			t.fillPluginFromHTTPCORSFilter(plugins, filter.CORS)
 		}
 	}
+	return nil
 }
 
-func (t *Translator) fillPluginFromExtensionRef(plugins adctypes.Plugins, namespace string, extensionRef *gatewayv1.LocalObjectReference, tctx *provider.TranslateContext) {
+func (t *Translator) fillPluginFromExtensionRef(plugins adctypes.Plugins, namespace string, extensionRef *gatewayv1.LocalObjectReference, tctx *provider.TranslateContext) error {
 	if extensionRef == nil {
-		return
+		return nil
 	}
-	if extensionRef.Kind == internaltypes.KindPluginConfig {
-		pluginconfig := tctx.PluginConfigs[types.NamespacedName{
-			Namespace: namespace,
-			Name:      string(extensionRef.Name),
-		}]
-		if pluginconfig == nil {
-			return
-		}
-		for _, plugin := range pluginconfig.Spec.Plugins {
-			config, err := renderPluginConfig(plugin, namespace, tctx.Secrets)
-			if err != nil {
-				t.Log.Error(err, "failed to render plugin config", "plugin", plugin.Name)
-				continue
-			}
-			plugins[plugin.Name] = config
-		}
-		t.Log.V(1).Info("fill plugin from extension ref", "plugins", plugins)
+	if extensionRef.Kind != internaltypes.KindPluginConfig {
+		return nil
 	}
+	pluginconfig := tctx.PluginConfigs[types.NamespacedName{
+		Namespace: namespace,
+		Name:      string(extensionRef.Name),
+	}]
+	if pluginconfig == nil {
+		return nil
+	}
+	names := make([]string, 0, len(pluginconfig.Spec.Plugins))
+	for _, plugin := range pluginconfig.Spec.Plugins {
+		config, err := renderPluginConfig(plugin, namespace, tctx.Secrets)
+		if err != nil {
+			return err
+		}
+		plugins[plugin.Name] = config
+		names = append(names, plugin.Name)
+	}
+	// The rendered configuration may hold Secret data, so log the plugin names only.
+	t.Log.V(1).Info("fill plugin from extension ref", "pluginConfig", string(extensionRef.Name), "plugins", names)
+	return nil
 }
 
 func (t *Translator) fillPluginFromURLRewriteFilter(plugins adctypes.Plugins, urlRewrite *gatewayv1.HTTPURLRewriteFilter, matches []gatewayv1.HTTPRouteMatch) {
@@ -703,7 +710,9 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 
 		enableWebsocket, _ := t.translateBackendsToUpstreams(tctx, rule, httpRoute, service)
 
-		t.fillPluginsFromHTTPRouteFilters(service.Plugins, httpRoute.GetNamespace(), rule.Filters, rule.Matches, tctx)
+		if err := t.fillPluginsFromHTTPRouteFilters(service.Plugins, httpRoute.GetNamespace(), rule.Filters, rule.Matches, tctx); err != nil {
+			return nil, err
+		}
 
 		matches := rule.Matches
 		if len(matches) == 0 {

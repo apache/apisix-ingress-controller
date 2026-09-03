@@ -19,9 +19,11 @@ package translator
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
+	"github.com/go-logr/logr/funcr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -112,10 +114,10 @@ func TestFillPluginFromExtensionRef_ResolvesSecretRef(t *testing.T) {
 	}
 
 	plugins := adctypes.Plugins{}
-	translator.fillPluginFromExtensionRef(plugins, "default", &gatewayv1.LocalObjectReference{
+	require.NoError(t, translator.fillPluginFromExtensionRef(plugins, "default", &gatewayv1.LocalObjectReference{
 		Kind: internaltypes.KindPluginConfig,
 		Name: "oidc",
-	}, tctx)
+	}, tctx))
 
 	assert.Equal(t, map[string]any{
 		"scope":         "openid profile",
@@ -123,7 +125,7 @@ func TestFillPluginFromExtensionRef_ResolvesSecretRef(t *testing.T) {
 	}, plugins["openid-connect"])
 }
 
-func TestFillPluginFromExtensionRef_SkipsPluginWithMissingSecret(t *testing.T) {
+func TestFillPluginFromExtensionRef_MissingSecretFailsTranslation(t *testing.T) {
 	translator := NewTranslator(logr.Discard(), "")
 	tctx := provider.NewDefaultTranslateContext(context.Background())
 	tctx.PluginConfigs[types.NamespacedName{Namespace: "default", Name: "oidc"}] = &v1alpha1.PluginConfig{
@@ -132,21 +134,44 @@ func TestFillPluginFromExtensionRef_SkipsPluginWithMissingSecret(t *testing.T) {
 			Plugins: []v1alpha1.Plugin{{
 				Name:      "openid-connect",
 				SecretRef: &corev1.LocalObjectReference{Name: "oidc-credentials"},
-			}, {
-				Name:   "response-rewrite",
-				Config: apiextensionsv1.JSON{Raw: []byte(`{"body":"hello"}`)},
 			}},
 		},
 	}
 
-	plugins := adctypes.Plugins{}
-	translator.fillPluginFromExtensionRef(plugins, "default", &gatewayv1.LocalObjectReference{
+	// The route must not be programmed without the plugin its filter asks for.
+	err := translator.fillPluginFromExtensionRef(adctypes.Plugins{}, "default", &gatewayv1.LocalObjectReference{
 		Kind: internaltypes.KindPluginConfig,
 		Name: "oidc",
 	}, tctx)
+	assert.ErrorContains(t, err, "default/oidc-credentials")
+}
 
-	// A plugin whose Secret is missing must not be programmed with a partial
-	// configuration, but it must not hide the other plugins either.
-	assert.NotContains(t, plugins, "openid-connect")
-	assert.Equal(t, map[string]any{"body": "hello"}, plugins["response-rewrite"])
+func TestFillPluginFromExtensionRef_DoesNotLogSecretValues(t *testing.T) {
+	var logged strings.Builder
+	logger := funcr.New(func(prefix, args string) {
+		logged.WriteString(args)
+	}, funcr.Options{Verbosity: 10})
+
+	translator := NewTranslator(logger, "")
+	tctx := provider.NewDefaultTranslateContext(context.Background())
+	tctx.PluginConfigs[types.NamespacedName{Namespace: "default", Name: "oidc"}] = &v1alpha1.PluginConfig{
+		ObjectMeta: metav1.ObjectMeta{Name: "oidc", Namespace: "default"},
+		Spec: v1alpha1.PluginConfigSpec{
+			Plugins: []v1alpha1.Plugin{{
+				Name:      "openid-connect",
+				SecretRef: &corev1.LocalObjectReference{Name: "oidc-credentials"},
+			}},
+		},
+	}
+	tctx.Secrets[types.NamespacedName{Namespace: "default", Name: "oidc-credentials"}] = &corev1.Secret{
+		Data: map[string][]byte{"client_secret": []byte("s3cr3t")},
+	}
+
+	require.NoError(t, translator.fillPluginFromExtensionRef(adctypes.Plugins{}, "default", &gatewayv1.LocalObjectReference{
+		Kind: internaltypes.KindPluginConfig,
+		Name: "oidc",
+	}, tctx))
+
+	assert.Contains(t, logged.String(), "openid-connect")
+	assert.NotContains(t, logged.String(), "s3cr3t")
 }
