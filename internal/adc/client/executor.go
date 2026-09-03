@@ -397,6 +397,21 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr strin
 	return req, nil
 }
 
+// distinctReasons joins every distinct, non-empty reason in failed, in the order first
+// seen -- several resources failing for the exact same reason (a rejected conf_version,
+// say) still reports it once.
+func distinctReasons(failed []adctypes.SyncStatus) string {
+	seen := make(map[string]bool, len(failed))
+	reasons := make([]string, 0, len(failed))
+	for _, f := range failed {
+		if f.Reason != "" && !seen[f.Reason] {
+			seen[f.Reason] = true
+			reasons = append(reasons, f.Reason)
+		}
+	}
+	return strings.Join(reasons, "; ")
+}
+
 // handleHTTPResponse handles the HTTP response from ADC Server
 func (e *HTTPADCExecutor) handleHTTPResponse(resp *http.Response, serverAddr string) error {
 	body, err := io.ReadAll(resp.Body)
@@ -410,51 +425,59 @@ func (e *HTTPADCExecutor) handleHTTPResponse(resp *http.Response, serverAddr str
 		"response", string(body),
 	)
 
-	// not only 200, HTTP 202 is also accepted
-	if resp.StatusCode/100 != 2 {
+	// ADC Server's /sync status codes:
+	//   - 200: apisix-standalone, every server took and confirmed the write.
+	//   - 202: apisix/api7ee always (no confirm concept); apisix-standalone when every
+	//     server took the write but not every one confirmed it, or one server rejected
+	//     it while others accepted.
+	//   - 400: malformed request, unrelated to any backend's content rejection (see 422).
+	//   - 413: request body over the fixed 100 MB limit.
+	//   - 422: apisix-standalone, every server ended up success:false on the write itself
+	//     (rejected the content, unreachable, or a mix -- concurrent writes aren't
+	//     cancelled on the first failure).
+	//   - 500: ADC Server failed before attempting the write at all (e.g. can't reach any
+	//     server to fetch the current remote state) -- never a verdict on the write.
+	// Only 200/202/422 carry a SyncResult body -- the other three shouldn't be parsed as
+	// one: most fields are optional, so an unrelated shape can unmarshal as an empty,
+	// unremarkable "success".
+	switch resp.StatusCode {
+	case http.StatusOK, http.StatusAccepted, http.StatusUnprocessableEntity:
+	default:
 		return types.ADCExecutionServerAddrError{
 			ServerAddr: serverAddr,
 			Err:        fmt.Sprintf("HTTP %d: %s", resp.StatusCode, string(body)),
 		}
 	}
 
-	// Parse response body
 	var result adctypes.SyncResult
 	if err := json.Unmarshal(body, &result); err != nil {
 		return fmt.Errorf("failed to unmarshal response body: %s, err: %w", string(body), err)
 	}
 
-	// Check for sync failures
-	// For apisix-standalone mode: Failed is always empty, check EndpointStatus instead
-	if result.FailedCount > 0 {
-		if len(result.Failed) > 0 {
-			reason := result.Failed[0].Reason
-			e.log.Error(fmt.Errorf("ADC Server sync failed: %s", reason), "ADC Server sync failed", "result", result)
-			return types.ADCExecutionServerAddrError{
-				ServerAddr:     serverAddr,
-				Err:            reason,
-				FailedStatuses: result.Failed,
-			}
+	if len(result.Failed) > 0 {
+		reason := distinctReasons(result.Failed)
+		e.log.Error(fmt.Errorf("ADC Server sync failed: %s", reason), "ADC Server sync failed", "result", result)
+		return types.ADCExecutionServerAddrError{
+			ServerAddr:       serverAddr,
+			Err:              reason,
+			FailedStatuses:   result.Failed,
+			EndpointStatuses: result.EndpointStatus,
 		}
-		if len(result.EndpointStatus) > 0 {
-			// apisix-standalone mode: use EndpointStatus
-			var failedEndpoints []string
-			for _, ep := range result.EndpointStatus {
-				if !ep.Success {
-					failedEndpoints = append(failedEndpoints, fmt.Sprintf("%s: %s", ep.Server, ep.Reason))
-				}
-			}
-			if len(failedEndpoints) > 0 {
-				reason := strings.Join(failedEndpoints, "; ")
-				e.log.Error(fmt.Errorf("ADC Server sync failed (standalone mode): %s", reason), "ADC Server sync failed", "result", result)
-				return types.ADCExecutionServerAddrError{
-					ServerAddr: serverAddr,
-					Err:        reason,
-					FailedStatuses: []adctypes.SyncStatus{
-						{Reason: reason},
-					},
-				}
-			}
+	}
+
+	var failedEndpoints []string
+	for _, ep := range result.EndpointStatus {
+		if !ep.Success {
+			failedEndpoints = append(failedEndpoints, fmt.Sprintf("%s: %s", ep.Server, ep.Reason))
+		}
+	}
+	if len(failedEndpoints) > 0 {
+		reason := strings.Join(failedEndpoints, "; ")
+		e.log.Error(fmt.Errorf("ADC Server sync failed (standalone mode): %s", reason), "ADC Server sync failed", "result", result)
+		return types.ADCExecutionServerAddrError{
+			ServerAddr:       serverAddr,
+			Err:              reason,
+			EndpointStatuses: result.EndpointStatus,
 		}
 	}
 

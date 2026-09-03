@@ -722,10 +722,21 @@ type SyncResult struct {
 // This is only used in apisix-standalone mode where endpoint-level status is reported
 // instead of resource-level status.
 type EndpointStatus struct {
-	Server  string `json:"server"`
-	Success bool   `json:"success"`
-	Reason  string `json:"reason,omitempty"`
+	Server       string       `json:"server"`
+	Success      bool         `json:"success"`
+	Confirmation Confirmation `json:"confirmation,omitempty"`
+	Reason       string       `json:"reason,omitempty"`
 }
+
+type Confirmation string
+
+const (
+	// ConfirmationApplied means configuration has been accepted and applied.
+	ConfirmationApplied Confirmation = "applied"
+
+	// ConfirmationAccepted means the configuration has been accepted but not yet applied.
+	ConfirmationAccepted Confirmation = "accepted"
+)
 
 type SyncStatus struct {
 	Event    StatusEvent     `json:"event"`
