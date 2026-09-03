@@ -291,6 +291,19 @@ spec:
 				),
 			)
 
+			By("check a Warning event was recorded on the GatewayProxy")
+			s.RetryAssertion(func() string {
+				output, _ := s.GetOutputFromString("events",
+					"--field-selector", "involvedObject.kind=GatewayProxy,involvedObject.name="+name,
+					"-n", s.Namespace())
+				return output
+			}).Should(
+				And(
+					ContainSubstring("Warning"),
+					ContainSubstring("DataPlaneInstanceUnavailable"),
+				),
+			)
+
 			By("check the ApisixRoute itself is not marked as failed")
 			s.RetryAssertion(func() string {
 				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml", "-n", s.Namespace())

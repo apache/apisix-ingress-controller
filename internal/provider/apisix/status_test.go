@@ -18,10 +18,12 @@
 package apisix
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/record"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
@@ -112,7 +114,7 @@ func TestMarkGatewayProxyDataPlaneUnavailableTargetsTheConfigNameItself(t *testi
 	d := &apisixProvider{log: logr.Discard()}
 	statusUpdateMap := map[types.NamespacedNameKind][]string{}
 
-	d.markGatewayProxyDataPlaneUnavailable("GatewayProxy/ns/gp", "boom", statusUpdateMap)
+	d.markGatewayProxyDataPlaneUnavailable("GatewayProxy/ns/gp", "boom", nil, statusUpdateMap)
 
 	want := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "gp"}
 	if got := statusUpdateMap[want]; len(got) != 1 || got[0] != "boom" {
@@ -127,9 +129,62 @@ func TestMarkGatewayProxyDataPlaneUnavailableIgnoresAnUnparseableConfigName(t *t
 	d := &apisixProvider{log: logr.Discard()}
 	statusUpdateMap := map[types.NamespacedNameKind][]string{}
 
-	d.markGatewayProxyDataPlaneUnavailable("not-a-valid-key", "boom", statusUpdateMap)
+	d.markGatewayProxyDataPlaneUnavailable("not-a-valid-key", "boom", nil, statusUpdateMap)
 
 	if len(statusUpdateMap) != 0 {
 		t.Errorf("expected nothing marked for an unparseable configName, got %v", statusUpdateMap)
+	}
+}
+
+func TestRecordFailedEndpointEventsFiresOneWarningPerFailedEndpoint(t *testing.T) {
+	recorder := record.NewFakeRecorder(2)
+	d := &apisixProvider{log: logr.Discard()}
+	d.EventRecorder = recorder
+	nnk := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "gp"}
+
+	d.recordFailedEndpointEvents(nnk, []adctypes.EndpointStatus{
+		{Server: "http://apisix-1:9180", Success: true},
+		{Server: "http://apisix-2:9180", Success: false, Reason: "connection refused"},
+		{Server: "http://apisix-3:9180", Success: false, Reason: "TLS handshake failed"},
+	})
+
+	first := <-recorder.Events
+	if !strings.Contains(first, "Warning") || !strings.Contains(first, "DataPlaneInstanceUnavailable") ||
+		!strings.Contains(first, "http://apisix-2:9180: connection refused") {
+		t.Errorf("first event = %q, want the apisix-2 failure", first)
+	}
+
+	second := <-recorder.Events
+	if !strings.Contains(second, "Warning") || !strings.Contains(second, "DataPlaneInstanceUnavailable") ||
+		!strings.Contains(second, "http://apisix-3:9180: TLS handshake failed") {
+		t.Errorf("second event = %q, want the apisix-3 failure", second)
+	}
+
+	select {
+	case e := <-recorder.Events:
+		t.Errorf("unexpected third event %q, the successful endpoint should not fire one", e)
+	default:
+	}
+}
+
+func TestRecordFailedEndpointEventsNoopsWithoutARecorder(t *testing.T) {
+	d := &apisixProvider{log: logr.Discard()}
+	nnk := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "gp"}
+
+	// Must not panic when no EventRecorder was configured.
+	d.recordFailedEndpointEvents(nnk, []adctypes.EndpointStatus{{Server: "http://apisix-1:9180", Success: false}})
+}
+
+func TestRecordGatewayProxyRecoveredEventFiresNormal(t *testing.T) {
+	recorder := record.NewFakeRecorder(1)
+	d := &apisixProvider{log: logr.Discard()}
+	d.EventRecorder = recorder
+	nnk := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "gp"}
+
+	d.recordGatewayProxyRecoveredEvent(nnk)
+
+	event := <-recorder.Events
+	if !strings.Contains(event, "Normal") || !strings.Contains(event, "DataPlaneAvailable") {
+		t.Errorf("recovery event = %q, want it to contain Normal and DataPlaneAvailable", event)
 	}
 }

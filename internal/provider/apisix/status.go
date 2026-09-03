@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -61,6 +62,9 @@ func (d *apisixProvider) handleStatusUpdate(statusUpdateMap map[types.Namespaced
 	for nnk := range d.statusUpdateMap {
 		if _, ok := statusUpdateMap[nnk]; !ok {
 			d.updateStatus(nnk, successCondition(nnk))
+			if nnk.Kind == types.KindGatewayProxy {
+				d.recordGatewayProxyRecoveredEvent(nnk)
+			}
 		}
 	}
 	// Update the failure history with the current failure set.
@@ -95,6 +99,38 @@ func newGatewayProxyDataPlaneAvailableCondition(available bool, reason, msg stri
 		LastTransitionTime: metav1.Now(),
 		Reason:             reason,
 		Message:            cutils.TruncateConditionMessage(msg),
+	}
+}
+
+// recordGatewayProxyRecoveredEvent fires once a GatewayProxy leaves the failure
+// history entirely, i.e. every instance took the last sync.
+func (d *apisixProvider) recordGatewayProxyRecoveredEvent(nnk types.NamespacedNameKind) {
+	if d.EventRecorder == nil {
+		return
+	}
+	gatewayProxy := &apiv1alpha1.GatewayProxy{
+		ObjectMeta: metav1.ObjectMeta{Name: nnk.Name, Namespace: nnk.Namespace},
+	}
+	d.EventRecorder.Event(gatewayProxy, corev1.EventTypeNormal, GatewayProxyReasonDataPlaneAvailable,
+		"every data plane instance took the last sync")
+}
+
+// recordFailedEndpointEvents fires one Warning event per failed EndpointStatus entry,
+// so each instance's own failure history (when it started, how often) is visible on
+// its own, not folded into everyone else's.
+func (d *apisixProvider) recordFailedEndpointEvents(nnk types.NamespacedNameKind, endpoints []adctypes.EndpointStatus) {
+	if d.EventRecorder == nil {
+		return
+	}
+	gatewayProxy := &apiv1alpha1.GatewayProxy{
+		ObjectMeta: metav1.ObjectMeta{Name: nnk.Name, Namespace: nnk.Namespace},
+	}
+	for _, ep := range endpoints {
+		if ep.Success {
+			continue
+		}
+		d.EventRecorder.Event(gatewayProxy, corev1.EventTypeWarning, GatewayProxyReasonDataPlaneInstanceUnavailable,
+			fmt.Sprintf("%s: %s", ep.Server, ep.Reason))
 	}
 }
 
@@ -330,7 +366,7 @@ func (d *apisixProvider) handleEmptyFailedStatuses(
 	statusUpdateMap map[types.NamespacedNameKind][]string,
 ) {
 	if msg := unavailableEndpointsMessage(failedStatus.EndpointStatuses); msg != "" {
-		d.markGatewayProxyDataPlaneUnavailable(configName, msg, statusUpdateMap)
+		d.markGatewayProxyDataPlaneUnavailable(configName, msg, failedStatus.EndpointStatuses, statusUpdateMap)
 		return
 	}
 	d.smearAllResources(configName, failedStatus.Error(), statusUpdateMap)
@@ -353,10 +389,12 @@ func unavailableEndpointsMessage(endpoints []adctypes.EndpointStatus) string {
 		len(failed), len(endpoints), strings.Join(failed, "; "))
 }
 
-// markGatewayProxyDataPlaneUnavailable marks the GatewayProxy configName names.
+// markGatewayProxyDataPlaneUnavailable marks the GatewayProxy configName names, and
+// fires one event per failed endpoint.
 func (d *apisixProvider) markGatewayProxyDataPlaneUnavailable(
 	configName string,
 	msg string,
+	endpoints []adctypes.EndpointStatus,
 	statusUpdateMap map[types.NamespacedNameKind][]string,
 ) {
 	var gatewayProxy types.NamespacedNameKind
@@ -365,6 +403,7 @@ func (d *apisixProvider) markGatewayProxyDataPlaneUnavailable(
 		return
 	}
 	statusUpdateMap[gatewayProxy] = append(statusUpdateMap[gatewayProxy], msg)
+	d.recordFailedEndpointEvents(gatewayProxy, endpoints)
 }
 
 // smearAllResources is the last resort when nothing can be attributed: it marks every
