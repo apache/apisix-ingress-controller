@@ -1691,6 +1691,65 @@ spec:
     config:
       body: "Updated"
 `
+		var echoSecret = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: echo-secret
+stringData:
+  body: "Hello from Secret"
+  headers.X-Origin: "secret"
+`
+		var echoSecretUpdated = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: echo-secret
+stringData:
+  body: "Updated from Secret"
+  headers.X-Origin: "secret"
+`
+		var echoPluginWithSecretRef = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: PluginConfig
+metadata:
+  name: example-plugin-config-secret
+spec:
+  plugins:
+  - name: echo
+    secretRef:
+      name: echo-secret
+    config:
+      headers:
+        X-Config: "config"
+`
+		var extensionRefEchoPluginWithSecretRef = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: httpbin-secret
+  namespace: %s
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - httpbin.example
+  rules:
+  - matches:
+    - path:
+        type: Exact
+        value: /get
+    filters:
+    - type: ExtensionRef
+      extensionRef:
+        group: apisix.apache.org
+        kind: PluginConfig
+        name: example-plugin-config-secret
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
+
 		var extensionRefEchoPlugin = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -2052,6 +2111,48 @@ spec:
 				Path:     "/get",
 				Host:     "httpbin.example",
 				Check:    scaffold.WithExpectedBodyContains("Updated"),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+		})
+
+		It("HTTPRoute ExtensionRef with plugin secretRef", func() {
+			By("create Secret and PluginConfig")
+			Expect(s.CreateResourceFromStringWithNamespace(echoSecret, s.Namespace())).
+				NotTo(HaveOccurred(), "creating Secret")
+			Expect(s.CreateResourceFromStringWithNamespace(echoPluginWithSecretRef, s.Namespace())).
+				NotTo(HaveOccurred(), "creating PluginConfig")
+			s.ResourceApplied("HTTPRoute", "httpbin-secret", fmt.Sprintf(extensionRefEchoPluginWithSecretRef, s.Namespace(), s.Namespace()), 1)
+
+			By("the Secret provides the plugin config, spec.config is kept")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedBodyContains("Hello from Secret"),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.example",
+				Check: scaffold.WithExpectedHeaders(map[string]string{
+					"X-Config": "config",
+					"X-Origin": "secret",
+				}),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+
+			By("updating the Secret updates the plugin config")
+			Expect(s.CreateResourceFromStringWithNamespace(echoSecretUpdated, s.Namespace())).
+				NotTo(HaveOccurred(), "updating Secret")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedBodyContains("Updated from Secret"),
 				Timeout:  time.Second * 30,
 				Interval: time.Second * 2,
 			})

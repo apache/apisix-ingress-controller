@@ -107,7 +107,10 @@ func (r *TLSRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if r.supportsL4RoutePolicy {
 		bdr.Watches(&v1alpha1.L4RoutePolicy{},
 			handler.EnqueueRequestsFromMapFunc(r.listTLSRoutesForL4RoutePolicy),
-		)
+		).
+			Watches(&corev1.Secret{},
+				handler.EnqueueRequestsFromMapFunc(r.listTLSRoutesForSecret),
+			)
 	}
 
 	if GetEnableReferenceGrant() {
@@ -548,4 +551,13 @@ func (r *TLSRouteReconciler) listTLSRoutesForL4RoutePolicy(ctx context.Context, 
 		requests = append(requests, reconcile.Request{NamespacedName: nn})
 	}
 	return requests
+}
+
+// listTLSRoutesForSecret maps a Secret to the TLSRoutes whose L4RoutePolicy plugins reference it.
+func (r *TLSRouteReconciler) listTLSRoutesForSecret(ctx context.Context, obj client.Object) []reconcile.Request {
+	var requests []reconcile.Request
+	for _, policy := range listL4RoutePoliciesForSecret(ctx, r.Client, r.Log, obj) {
+		requests = append(requests, r.listTLSRoutesForL4RoutePolicy(ctx, &policy)...)
+	}
+	return pkgutils.DedupComparable(requests)
 }

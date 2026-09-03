@@ -301,6 +301,9 @@ func ProcessL4RoutePolicy(
 
 	winner := list.Items[0].DeepCopy()
 	tctx.L4RoutePolicies[types.NamespacedName{Namespace: winner.Namespace, Name: winner.Name}] = winner
+	if err := loadPluginSecrets(tctx, c, tctx, winner.Namespace, winner.Spec.Plugins); err != nil {
+		log.Error(err, "failed to load Secrets referenced by L4RoutePolicy plugins", "policy", types.NamespacedName{Namespace: winner.Namespace, Name: winner.Name})
+	}
 
 	for i := range list.Items {
 		policy := list.Items[i]

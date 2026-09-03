@@ -45,6 +45,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
+	pkgutils "github.com/apache/apisix-ingress-controller/pkg/utils"
 )
 
 // GRPCRouteReconciler reconciles a GatewayClass object.
@@ -74,6 +75,9 @@ func (r *GRPCRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		).
 		Watches(&v1alpha1.PluginConfig{},
 			handler.EnqueueRequestsFromMapFunc(r.listGRPCRoutesByExtensionRef),
+		).
+		Watches(&corev1.Secret{},
+			handler.EnqueueRequestsFromMapFunc(r.listGRPCRoutesForSecret),
 		).
 		Watches(&gatewayv1.Gateway{},
 			handler.EnqueueRequestsFromMapFunc(r.listGRPCRoutesForGateway),
@@ -489,6 +493,10 @@ func (r *GRPCRouteReconciler) processGRPCRoute(tctx *provider.TranslateContext, 
 					Namespace: grpcroute.GetNamespace(),
 					Name:      string(filter.ExtensionRef.Name),
 				}] = pluginconfig
+				if err := loadPluginSecrets(tctx, r.Client, tctx, grpcroute.GetNamespace(), pluginconfig.Spec.Plugins); err != nil {
+					terror = err
+					continue
+				}
 			}
 		}
 		for _, backend := range rule.BackendRefs {
@@ -585,4 +593,26 @@ func (r *GRPCRouteReconciler) listGRPCRoutesForReferenceGrant(ctx context.Contex
 		}
 	}
 	return requests
+}
+
+// listGRPCRoutesForSecret maps a Secret to the GRPCRoutes that reference, through a PluginConfig
+// extension filter, a plugin configured with that Secret.
+func (r *GRPCRouteReconciler) listGRPCRoutesForSecret(ctx context.Context, obj client.Object) []reconcile.Request {
+	secret, ok := obj.(*corev1.Secret)
+	if !ok {
+		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to Secret")
+		return nil
+	}
+	pcList := &v1alpha1.PluginConfigList{}
+	if err := r.List(ctx, pcList, client.MatchingFields{
+		indexer.SecretIndexRef: indexer.GenIndexKey(secret.GetNamespace(), secret.GetName()),
+	}); err != nil {
+		r.Log.Error(err, "failed to list plugin configs by secret reference", "secret", secret.GetName())
+		return nil
+	}
+	var requests []reconcile.Request
+	for i := range pcList.Items {
+		requests = append(requests, r.listGRPCRoutesByExtensionRef(ctx, &pcList.Items[i])...)
+	}
+	return pkgutils.DedupComparable(requests)
 }

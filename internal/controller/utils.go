@@ -2032,3 +2032,42 @@ func serviceLoadBalancerAddresses(svc *corev1.Service) []string {
 	}
 	return addrs
 }
+
+// loadPluginSecrets loads the Secrets referenced by apisix.apache.org/v1alpha1 plugins
+// into the translate context. A plugin may only reference a Secret in the namespace of
+// the object that declares it.
+func loadPluginSecrets(ctx context.Context, c client.Client, tctx *provider.TranslateContext, namespace string, plugins []v1alpha1.Plugin) error {
+	for _, plugin := range plugins {
+		if plugin.SecretRef == nil || plugin.SecretRef.Name == "" {
+			continue
+		}
+		secretNN := k8stypes.NamespacedName{Namespace: namespace, Name: plugin.SecretRef.Name}
+		if _, ok := tctx.Secrets[secretNN]; ok {
+			continue
+		}
+		secret := new(corev1.Secret)
+		if err := c.Get(ctx, secretNN, secret); err != nil {
+			return fmt.Errorf("failed to get Secret %s referenced by plugin %s: %w", secretNN, plugin.Name, err)
+		}
+		tctx.Secrets[secretNN] = secret
+	}
+	return nil
+}
+
+// listL4RoutePoliciesForSecret returns the L4RoutePolicies whose plugins reference the
+// given Secret.
+func listL4RoutePoliciesForSecret(ctx context.Context, c client.Client, log logr.Logger, obj client.Object) []v1alpha1.L4RoutePolicy {
+	secret, ok := obj.(*corev1.Secret)
+	if !ok {
+		log.Error(errors.New("unexpected object type"), "failed to convert object to Secret")
+		return nil
+	}
+	var list v1alpha1.L4RoutePolicyList
+	if err := c.List(ctx, &list, client.MatchingFields{
+		indexer.SecretIndexRef: indexer.GenIndexKey(secret.GetNamespace(), secret.GetName()),
+	}); err != nil {
+		log.Error(err, "failed to list L4RoutePolicy by secret reference", "secret", utils.NamespacedName(secret))
+		return nil
+	}
+	return list.Items
+}
