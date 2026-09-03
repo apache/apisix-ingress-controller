@@ -42,7 +42,7 @@ func TestHTTPADCExecutorBuildHTTPRequestBypassCache(t *testing.T) {
 
 	build := func(config adctypes.Config, path string) (ADCServerOpts, string) {
 		req, err := e.buildHTTPRequest(context.Background(), "http://apisix:9180", config, nil, nil,
-			&adctypes.Resources{}, http.MethodPut, path)
+			&adctypes.Resources{}, path)
 		require.NoError(t, err)
 		body, err := io.ReadAll(req.Body)
 		require.NoError(t, err)
@@ -69,6 +69,37 @@ func TestHTTPADCExecutorBuildHTTPRequestBypassCache(t *testing.T) {
 	// reach it, even when the config carries the flag.
 	_, raw = build(config, pathValidate)
 	assert.NotContains(t, raw, "bypassCache")
+}
+
+func TestHTTPADCExecutorBuildHTTPRequestCaCert(t *testing.T) {
+	e := &HTTPADCExecutor{
+		serverURL: "http://127.0.0.1:3000",
+		log:       logr.Discard(),
+	}
+
+	build := func(config adctypes.Config) (ADCServerOpts, string) {
+		req, err := e.buildHTTPRequest(context.Background(), "https://apisix:9180", config, nil, nil,
+			&adctypes.Resources{}, pathSync)
+		require.NoError(t, err)
+		body, err := io.ReadAll(req.Body)
+		require.NoError(t, err)
+		var parsed ADCServerRequest
+		require.NoError(t, json.Unmarshal(body, &parsed))
+		return parsed.Task.Opts, string(body)
+	}
+
+	// Without a CA bundle the request stays what an ADC server that predates caCert
+	// already accepts.
+	opts, raw := build(adctypes.Config{Name: "GatewayProxy/ns/name", TlsVerify: true})
+	assert.Empty(t, opts.CaCert)
+	assert.NotContains(t, raw, "caCert")
+
+	const caCert = "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----"
+	opts, raw = build(adctypes.Config{Name: "GatewayProxy/ns/name", TlsVerify: true, CaCert: caCert})
+	assert.Equal(t, caCert, opts.CaCert)
+	assert.Contains(t, raw, "caCert")
+	// verification stays on, otherwise the bundle would be pointless
+	assert.Equal(t, false, *opts.TlsSkipVerify)
 }
 
 // confVersionError is what a push carrying a conf_version older than the data plane's

@@ -29,7 +29,7 @@ KIND_NAME ?= apisix-ingress-cluster
 CLOUD_PROVIDER_KIND_VERSION ?= v0.6.0
 CLOUD_PROVIDER_KIND_PID ?= /tmp/cloud-provider-kind.pid
 
-ADC_VERSION ?= 0.27.1
+ADC_VERSION ?= 0.29.0
 
 DIR := $(shell pwd)
 
