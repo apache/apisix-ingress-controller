@@ -163,12 +163,33 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		msg:    "Route is accepted",
 	}
 
-	gateways, err := ParseRouteParentRefs(ctx, r.Client, r.Log, hr, hr.Spec.ParentRefs)
+	gateways, unresolvedParents, err := ParseRouteParentRefs(ctx, r.Client, r.Log, hr, hr.Spec.ParentRefs)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	if len(gateways) == 0 {
+		if unresolvedParents {
+			// A missing Gateway or GatewayClass leaves ownership unknown rather than
+			// disproven. GatewayClass is cluster-scoped, so while one is absent every
+			// route under it resolves empty and deleting would drain the data plane.
+			return ctrl.Result{}, nil
+		}
+		// The route does not reference any Gateway managed by this controller.
+		// It may have referenced one before, e.g. when its parentRefs are
+		// repointed at a Gateway belonging to another GatewayClass, so the
+		// configuration a previous reconcile pushed has to be removed. Without
+		// this the data plane keeps serving the route indefinitely.
+		// Provider.Delete derives the resource labels from the object Kind, which
+		// is empty on objects read through the client.
+		hr.TypeMeta = metav1.TypeMeta{
+			Kind:       KindHTTPRoute,
+			APIVersion: gatewayv1.GroupVersion.String(),
+		}
+		if err := r.Provider.Delete(ctx, hr); err != nil {
+			r.Log.Error(err, "failed to delete httproute", "httproute", hr)
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, nil
 	}
 

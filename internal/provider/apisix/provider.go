@@ -228,13 +228,19 @@ func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 			Labels: labels,
 		})
 	}
-	defer d.syncNotify()
-	return d.client.DeleteConfig(ctx, adcclient.Task{
+	delta, err := d.client.DeleteConfig(ctx, adcclient.Task{
 		Key:           nnk,
 		Name:          nnk.String(),
 		Labels:        labels,
 		ResourceTypes: resourceTypes,
 	})
+	// Syncing pushes the whole store to every data plane. Objects this controller
+	// never configured delete nothing, and reconciles for them are frequent, so
+	// notify only when the store actually changed.
+	if len(delta.Deleted) > 0 {
+		d.syncNotify()
+	}
+	return err
 }
 
 func (d *apisixProvider) buildConfig(tctx *provider.TranslateContext, nnk types.NamespacedNameKind) (map[types.NamespacedNameKind]adctypes.Config, error) {
