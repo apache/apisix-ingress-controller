@@ -715,16 +715,13 @@ func (r *HTTPRouteReconciler) listHTTPRoutesForSecret(ctx context.Context, obj c
 		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to Secret")
 		return nil
 	}
-	pcList := &v1alpha1.PluginConfigList{}
-	if err := r.List(ctx, pcList, client.MatchingFields{
-		indexer.SecretIndexRef: indexer.GenIndexKey(secret.GetNamespace(), secret.GetName()),
-	}); err != nil {
-		r.Log.Error(err, "failed to list plugin configs by secret reference", "secret", secret.GetName())
-		return nil
-	}
 	var requests []reconcile.Request
-	for i := range pcList.Items {
-		requests = append(requests, r.listHTTPRoutesByExtensionRef(ctx, &pcList.Items[i])...)
+	for _, pcRef := range ListRequests(ctx, r.Client, r.Log, &v1alpha1.PluginConfigList{}, client.MatchingFields{
+		indexer.SecretIndexRef: indexer.GenIndexKey(secret.GetNamespace(), secret.GetName()),
+	}) {
+		requests = append(requests, ListRequests(ctx, r.Client, r.Log, &gatewayv1.HTTPRouteList{}, client.MatchingFields{
+			indexer.ExtensionRef: indexer.GenIndexKey(pcRef.Namespace, pcRef.Name),
+		})...)
 	}
 	return pkgutils.DedupComparable(requests)
 }
