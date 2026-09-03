@@ -344,7 +344,7 @@ spec:
 				if err != nil {
 					return 0, err
 				}
-				defer resp.Body.Close()
+				defer func() { _ = resp.Body.Close() }()
 				_, _ = io.Copy(io.Discard, resp.Body)
 				return resp.StatusCode, nil
 			}
