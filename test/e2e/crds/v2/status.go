@@ -220,6 +220,89 @@ spec:
 			})
 		})
 
+		It("gateway proxy reports an unreachable data plane instance", func() {
+			if os.Getenv("PROVIDER_TYPE") != "apisix-standalone" {
+				Skip("EndpointStatus, and the GatewayProxy condition derived from it, only exists in apisix-standalone mode")
+			}
+
+			const name = "gateway-proxy-partial-instance"
+			gatewayProxyYaml := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  provider:
+    type: ControlPlane
+    controlPlane:
+      mode: apisix-standalone
+      endpoints:
+      - %s
+      - http://unreachable-instance.invalid:9180
+      auth:
+        type: AdminKey
+        adminKey:
+          value: "%s"
+`, name, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			By("create GatewayProxy with one unreachable endpoint")
+			err := s.CreateResourceFromString(gatewayProxyYaml)
+			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			ingressClassYaml := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: %s
+spec:
+  controller: %s
+  parameters:
+    apiGroup: "apisix.apache.org"
+    kind: "GatewayProxy"
+    name: %s
+    namespace: %s
+    scope: Namespace
+`, name, s.GetControllerName(), name, s.Namespace())
+			By("create IngressClass")
+			err = s.CreateResourceFromStringWithNamespace(ingressClassYaml, "")
+			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
+
+			By("apply ApisixRoute through it")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, fmt.Sprintf(ar, s.Namespace(), name))
+
+			By("check route in APISIX")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:  "GET",
+				Path:    "/get",
+				Headers: map[string]string{"Host": "httpbin"},
+				Check:   scaffold.WithExpectedStatus(200),
+			})
+
+			By("check GatewayProxy status")
+			s.RetryAssertion(func() string {
+				output, _ := s.GetOutputFromString("gatewayproxy", name, "-o", "yaml", "-n", s.Namespace())
+				return output
+			}).Should(
+				And(
+					ContainSubstring("type: DataPlaneAvailable"),
+					ContainSubstring(`status: "False"`),
+					ContainSubstring("reason: DataPlaneInstanceUnavailable"),
+					ContainSubstring("unreachable-instance.invalid"),
+				),
+			)
+
+			By("check the ApisixRoute itself is not marked as failed")
+			s.RetryAssertion(func() string {
+				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml", "-n", s.Namespace())
+				return output
+			}).Should(
+				And(
+					ContainSubstring(`status: "True"`),
+					ContainSubstring("reason: Accepted"),
+				),
+			)
+		})
+
 		It("update the same status only once", func() {
 			By("apply ApisixRoute")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, fmt.Sprintf(ar, s.Namespace(), s.Namespace()))
