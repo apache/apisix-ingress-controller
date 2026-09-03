@@ -2358,9 +2358,11 @@ spec:
 				&apiv2.ApisixRoute{}, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("check upstreams")
-			upstreams, err := s.DefaultDataplaneResource().Upstream().List(context.Background())
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(upstreams).Should(HaveLen(4))
+			Eventually(func(g Gomega) {
+				upstreams, err := s.DefaultDataplaneResource().Upstream().List(context.Background())
+				g.Expect(err).ShouldNot(HaveOccurred())
+				g.Expect(upstreams).Should(HaveLen(4))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 
 			By("verify ApisixRoute works")
 			s.RequestAssert(&scaffold.RequestAssert{
