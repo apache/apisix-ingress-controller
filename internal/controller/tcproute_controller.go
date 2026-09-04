@@ -67,7 +67,14 @@ func (r *TCPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	bdr := ctrl.NewControllerManagedBy(mgr).
 		For(&gatewayv1.TCPRoute{}).
-		WithEventFilter(predicate.GenerationChangedPredicate{}).
+		// A Secret carries no generation, so GenerationChangedPredicate would drop its
+		// updates and a plugin would keep the Secret data read at the last spec change.
+		WithEventFilter(
+			predicate.Or(
+				predicate.GenerationChangedPredicate{},
+				predicate.NewPredicateFuncs(TypePredicate[*corev1.Secret]()),
+			),
+		).
 		Watches(&discoveryv1.EndpointSlice{},
 			handler.EnqueueRequestsFromMapFunc(r.listTCPRoutesByServiceRef),
 		).
@@ -107,7 +114,10 @@ func (r *TCPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if r.supportsL4RoutePolicy {
 		bdr.Watches(&v1alpha1.L4RoutePolicy{},
 			handler.EnqueueRequestsFromMapFunc(r.listTCPRoutesForL4RoutePolicy),
-		)
+		).
+			Watches(&corev1.Secret{},
+				handler.EnqueueRequestsFromMapFunc(r.listTCPRoutesForSecret),
+			)
 	}
 
 	if GetEnableReferenceGrant() {
@@ -556,4 +566,13 @@ func (r *TCPRouteReconciler) listTCPRoutesForL4RoutePolicy(ctx context.Context, 
 		requests = append(requests, reconcile.Request{NamespacedName: nn})
 	}
 	return requests
+}
+
+// listTCPRoutesForSecret maps a Secret to the TCPRoutes whose L4RoutePolicy plugins reference it.
+func (r *TCPRouteReconciler) listTCPRoutesForSecret(ctx context.Context, obj client.Object) []reconcile.Request {
+	var requests []reconcile.Request
+	for _, policy := range listL4RoutePoliciesForSecret(ctx, r.Client, r.Log, obj) {
+		requests = append(requests, r.listTCPRoutesForL4RoutePolicy(ctx, &policy)...)
+	}
+	return pkgutils.DedupComparable(requests)
 }

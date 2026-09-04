@@ -300,12 +300,28 @@ func ProcessL4RoutePolicy(
 	})
 
 	winner := list.Items[0].DeepCopy()
-	tctx.L4RoutePolicies[types.NamespacedName{Namespace: winner.Namespace, Name: winner.Name}] = winner
+	// A policy whose Secrets cannot be read is not attached at all, so a route is never
+	// programmed with a subset of the plugins the policy asks for.
+	secretErr := loadPluginSecrets(tctx, c, tctx, winner.Namespace, winner.Spec.Plugins)
+	if secretErr != nil {
+		log.Error(secretErr, "failed to load Secrets referenced by L4RoutePolicy plugins", "policy", types.NamespacedName{Namespace: winner.Namespace, Name: winner.Name})
+	} else {
+		tctx.L4RoutePolicies[types.NamespacedName{Namespace: winner.Namespace, Name: winner.Name}] = winner
+	}
 
 	for i := range list.Items {
 		policy := list.Items[i]
 		var condition metav1.Condition
-		if i == 0 {
+		if i == 0 && secretErr != nil {
+			condition = metav1.Condition{
+				Type:               string(gatewayv1.PolicyConditionAccepted),
+				Status:             metav1.ConditionFalse,
+				ObservedGeneration: policy.GetGeneration(),
+				LastTransitionTime: metav1.Now(),
+				Reason:             string(gatewayv1.PolicyReasonInvalid),
+				Message:            secretErr.Error(),
+			}
+		} else if i == 0 {
 			condition = metav1.Condition{
 				Type:               string(gatewayv1.PolicyConditionAccepted),
 				Status:             metav1.ConditionTrue,
