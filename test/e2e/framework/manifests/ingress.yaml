@@ -119,6 +119,7 @@ rules:
   - apisixupstreams/status
   - backendtrafficpolicies/status
   - consumers/status
+  - gatewayproxies/status
   - httproutepolicies/status
   - l4routepolicies/status
   verbs:
@@ -238,7 +239,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: {{ .Namespace }}-apisix-ingress-leader-election-role
+  name: apisix-ingress-leader-election-role
 subjects:
 - kind: ServiceAccount
   name: apisix-ingress-controller-manager

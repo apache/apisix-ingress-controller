@@ -170,17 +170,35 @@ spec:
 			err = s.CreateResourceFromString(string(newServiceYaml))
 			Expect(err).NotTo(HaveOccurred(), "creating service")
 
-			By("check ApisixRoute status")
-			s.RetryAssertion(func() string {
-				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
-				return output
-			}).WithTimeout(60 * time.Second).
-				Should(
-					And(
-						ContainSubstring(`status: "False"`),
-						ContainSubstring(`reason: SyncFailed`),
-					),
-				)
+			if os.Getenv("PROVIDER_TYPE") == "apisix-standalone" {
+				// In standalone mode every instance behind the Service is now
+				// unreachable, so this is reported on the GatewayProxy, not smeared
+				// onto the ApisixRoute (see the dedicated GatewayProxy test below).
+				By("check GatewayProxy status")
+				s.RetryAssertion(func() string {
+					output, _ := s.GetOutputFromString("gatewayproxy", "apisix-proxy-config", "-o", "yaml")
+					return output
+				}).WithTimeout(60 * time.Second).
+					Should(
+						And(
+							ContainSubstring("type: DataPlaneAvailable"),
+							ContainSubstring(`status: "False"`),
+							ContainSubstring("reason: DataPlaneInstanceUnavailable"),
+						),
+					)
+			} else {
+				By("check ApisixRoute status")
+				s.RetryAssertion(func() string {
+					output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
+					return output
+				}).WithTimeout(60 * time.Second).
+					Should(
+						And(
+							ContainSubstring(`status: "False"`),
+							ContainSubstring(`reason: SyncFailed`),
+						),
+					)
+			}
 
 			By("update service to original spec")
 			serviceYaml, err = s.GetOutputFromString("svc", framework.ProviderType, "-o", "yaml")
@@ -199,17 +217,32 @@ spec:
 			err = s.CreateResourceFromString(string(newServiceYaml))
 			Expect(err).NotTo(HaveOccurred(), "creating service")
 
-			By("check ApisixRoute status after scaling up")
-			s.RetryAssertion(func() string {
-				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
-				return output
-			}).WithTimeout(60 * time.Second).
-				Should(
-					And(
-						ContainSubstring(`status: "True"`),
-						ContainSubstring(`reason: Accepted`),
-					),
-				)
+			if os.Getenv("PROVIDER_TYPE") == "apisix-standalone" {
+				By("check GatewayProxy status after scaling up")
+				s.RetryAssertion(func() string {
+					output, _ := s.GetOutputFromString("gatewayproxy", "apisix-proxy-config", "-o", "yaml")
+					return output
+				}).WithTimeout(60 * time.Second).
+					Should(
+						And(
+							ContainSubstring("type: DataPlaneAvailable"),
+							ContainSubstring(`status: "True"`),
+							ContainSubstring("reason: DataPlaneAvailable"),
+						),
+					)
+			} else {
+				By("check ApisixRoute status after scaling up")
+				s.RetryAssertion(func() string {
+					output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
+					return output
+				}).WithTimeout(60 * time.Second).
+					Should(
+						And(
+							ContainSubstring(`status: "True"`),
+							ContainSubstring(`reason: Accepted`),
+						),
+					)
+			}
 
 			By("check route in APISIX")
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -240,12 +273,13 @@ spec:
       endpoints:
       - %s
       - http://unreachable-instance.invalid:9180
+      - http://unreachable-instance-2.invalid:9180
       auth:
         type: AdminKey
         adminKey:
           value: "%s"
 `, name, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
-			By("create GatewayProxy with one unreachable endpoint")
+			By("create GatewayProxy with two unreachable endpoints")
 			err := s.CreateResourceFromString(gatewayProxyYaml)
 			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
 
@@ -291,16 +325,29 @@ spec:
 				),
 			)
 
-			By("check a Warning event was recorded on the GatewayProxy")
-			s.RetryAssertion(func() string {
-				output, _ := s.GetOutputFromString("events",
+			By("check a separate Warning event was recorded for each unreachable endpoint")
+			s.RetryAssertion(func() []string {
+				output, err := s.GetOutputFromString("events",
 					"--field-selector", "involvedObject.kind=GatewayProxy,involvedObject.name="+name,
-					"-n", s.Namespace())
-				return output
+					"-n", s.Namespace(), "-o", "yaml")
+				if err != nil {
+					return nil
+				}
+				var events corev1.EventList
+				if err := yaml.Unmarshal([]byte(output), &events); err != nil {
+					return nil
+				}
+				messages := make([]string, 0, len(events.Items))
+				for _, e := range events.Items {
+					if e.Type == "Warning" && e.Reason == "DataPlaneInstanceUnavailable" {
+						messages = append(messages, e.Message)
+					}
+				}
+				return messages
 			}).Should(
-				And(
-					ContainSubstring("Warning"),
-					ContainSubstring("DataPlaneInstanceUnavailable"),
+				ConsistOf(
+					ContainSubstring("unreachable-instance.invalid"),
+					ContainSubstring("unreachable-instance-2.invalid"),
 				),
 			)
 
