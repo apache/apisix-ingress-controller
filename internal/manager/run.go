@@ -223,7 +223,7 @@ func Run(ctx context.Context, logger logr.Logger) error {
 		SyncPeriod:            config.ControllerConfig.ProviderConfig.SyncPeriod.Duration,
 		InitSyncDelay:         config.ControllerConfig.ProviderConfig.InitSyncDelay.Duration,
 		ListenerPortMatchMode: config.ControllerConfig.ListenerPortMatchMode,
-		EventRecorder:         mgr.GetEventRecorderFor("apisix-provider"),
+		EventRecorder:         mgr.GetEventRecorderFor("apisix-provider"), //nolint:staticcheck
 	}
 	provider, err := provider.New(providerType, logger, updater.Writer(), readier, providerOptions)
 	if err != nil {

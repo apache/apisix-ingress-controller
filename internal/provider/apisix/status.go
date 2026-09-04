@@ -375,7 +375,7 @@ func (d *apisixProvider) handleEmptyFailedStatuses(
 // unavailableEndpointsMessage summarizes every EndpointStatus entry that didn't
 // succeed, in the order given. Empty means none did (or there were none to check).
 func unavailableEndpointsMessage(endpoints []adctypes.EndpointStatus) string {
-	var failed []string
+	failed := make([]string, 0, len(endpoints))
 	for _, ep := range endpoints {
 		if ep.Success {
 			continue

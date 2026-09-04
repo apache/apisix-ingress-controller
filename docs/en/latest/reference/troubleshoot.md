@@ -80,7 +80,7 @@ For the history of which specific instance failed and when, check the GatewayPro
 kubectl describe gatewayproxy <gateway-proxy-name>
 ```
 
-```
+```text
 Events:
   Type     Reason                        Age   From             Message
   ----     ------                        ----  ----             -------

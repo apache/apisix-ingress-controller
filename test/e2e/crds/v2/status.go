@@ -109,7 +109,7 @@ spec:
       servicePort: 80
 `
 		It("unknown plugin", func() {
-			if os.Getenv("PROVIDER_TYPE") == "apisix-standalone" {
+			if os.Getenv("PROVIDER_TYPE") == framework.ProviderTypeAPISIXStandalone {
 				Skip("apisix standalone does not validate unknown plugins")
 			}
 			By("apply ApisixRoute with valid plugin")
@@ -170,7 +170,7 @@ spec:
 			err = s.CreateResourceFromString(string(newServiceYaml))
 			Expect(err).NotTo(HaveOccurred(), "creating service")
 
-			if os.Getenv("PROVIDER_TYPE") == "apisix-standalone" {
+			if os.Getenv("PROVIDER_TYPE") == framework.ProviderTypeAPISIXStandalone {
 				// In standalone mode every instance behind the Service is now
 				// unreachable, so this is reported on the GatewayProxy, not smeared
 				// onto the ApisixRoute (see the dedicated GatewayProxy test below).
@@ -217,7 +217,7 @@ spec:
 			err = s.CreateResourceFromString(string(newServiceYaml))
 			Expect(err).NotTo(HaveOccurred(), "creating service")
 
-			if os.Getenv("PROVIDER_TYPE") == "apisix-standalone" {
+			if os.Getenv("PROVIDER_TYPE") == framework.ProviderTypeAPISIXStandalone {
 				By("check GatewayProxy status after scaling up")
 				s.RetryAssertion(func() string {
 					output, _ := s.GetOutputFromString("gatewayproxy", "apisix-proxy-config", "-o", "yaml")
@@ -254,7 +254,7 @@ spec:
 		})
 
 		It("gateway proxy reports an unreachable data plane instance", func() {
-			if os.Getenv("PROVIDER_TYPE") != "apisix-standalone" {
+			if os.Getenv("PROVIDER_TYPE") != framework.ProviderTypeAPISIXStandalone {
 				Skip("EndpointStatus, and the GatewayProxy condition derived from it, only exists in apisix-standalone mode")
 			}
 
