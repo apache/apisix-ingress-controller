@@ -109,7 +109,7 @@ spec:
       servicePort: 80
 `
 		It("unknown plugin", func() {
-			if os.Getenv("PROVIDER_TYPE") == "apisix-standalone" {
+			if os.Getenv("PROVIDER_TYPE") == framework.ProviderTypeAPISIXStandalone {
 				Skip("apisix standalone does not validate unknown plugins")
 			}
 			By("apply ApisixRoute with valid plugin")
@@ -170,17 +170,35 @@ spec:
 			err = s.CreateResourceFromString(string(newServiceYaml))
 			Expect(err).NotTo(HaveOccurred(), "creating service")
 
-			By("check ApisixRoute status")
-			s.RetryAssertion(func() string {
-				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
-				return output
-			}).WithTimeout(60 * time.Second).
-				Should(
-					And(
-						ContainSubstring(`status: "False"`),
-						ContainSubstring(`reason: SyncFailed`),
-					),
-				)
+			if os.Getenv("PROVIDER_TYPE") == framework.ProviderTypeAPISIXStandalone {
+				// In standalone mode every instance behind the Service is now
+				// unreachable, so this is reported on the GatewayProxy, not smeared
+				// onto the ApisixRoute (see the dedicated GatewayProxy test below).
+				By("check GatewayProxy status")
+				s.RetryAssertion(func() string {
+					output, _ := s.GetOutputFromString("gatewayproxy", "apisix-proxy-config", "-o", "yaml")
+					return output
+				}).WithTimeout(60 * time.Second).
+					Should(
+						And(
+							ContainSubstring("type: DataPlaneAvailable"),
+							ContainSubstring(`status: "False"`),
+							ContainSubstring("reason: DataPlaneInstanceUnavailable"),
+						),
+					)
+			} else {
+				By("check ApisixRoute status")
+				s.RetryAssertion(func() string {
+					output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
+					return output
+				}).WithTimeout(60 * time.Second).
+					Should(
+						And(
+							ContainSubstring(`status: "False"`),
+							ContainSubstring(`reason: SyncFailed`),
+						),
+					)
+			}
 
 			By("update service to original spec")
 			serviceYaml, err = s.GetOutputFromString("svc", framework.ProviderType, "-o", "yaml")
@@ -199,17 +217,32 @@ spec:
 			err = s.CreateResourceFromString(string(newServiceYaml))
 			Expect(err).NotTo(HaveOccurred(), "creating service")
 
-			By("check ApisixRoute status after scaling up")
-			s.RetryAssertion(func() string {
-				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
-				return output
-			}).WithTimeout(60 * time.Second).
-				Should(
-					And(
-						ContainSubstring(`status: "True"`),
-						ContainSubstring(`reason: Accepted`),
-					),
-				)
+			if os.Getenv("PROVIDER_TYPE") == framework.ProviderTypeAPISIXStandalone {
+				By("check GatewayProxy status after scaling up")
+				s.RetryAssertion(func() string {
+					output, _ := s.GetOutputFromString("gatewayproxy", "apisix-proxy-config", "-o", "yaml")
+					return output
+				}).WithTimeout(60 * time.Second).
+					Should(
+						And(
+							ContainSubstring("type: DataPlaneAvailable"),
+							ContainSubstring(`status: "True"`),
+							ContainSubstring("reason: DataPlaneAvailable"),
+						),
+					)
+			} else {
+				By("check ApisixRoute status after scaling up")
+				s.RetryAssertion(func() string {
+					output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
+					return output
+				}).WithTimeout(60 * time.Second).
+					Should(
+						And(
+							ContainSubstring(`status: "True"`),
+							ContainSubstring(`reason: Accepted`),
+						),
+					)
+			}
 
 			By("check route in APISIX")
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -218,6 +251,116 @@ spec:
 				Host:   "httpbin",
 				Check:  scaffold.WithExpectedStatus(200),
 			})
+		})
+
+		It("gateway proxy reports an unreachable data plane instance", func() {
+			if os.Getenv("PROVIDER_TYPE") != framework.ProviderTypeAPISIXStandalone {
+				Skip("EndpointStatus, and the GatewayProxy condition derived from it, only exists in apisix-standalone mode")
+			}
+
+			const name = "gateway-proxy-partial-instance"
+			gatewayProxyYaml := fmt.Sprintf(`
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  provider:
+    type: ControlPlane
+    controlPlane:
+      mode: apisix-standalone
+      endpoints:
+      - %s
+      - http://unreachable-instance.invalid:9180
+      - http://unreachable-instance-2.invalid:9180
+      auth:
+        type: AdminKey
+        adminKey:
+          value: "%s"
+`, name, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			By("create GatewayProxy with two unreachable endpoints")
+			err := s.CreateResourceFromString(gatewayProxyYaml)
+			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			ingressClassYaml := fmt.Sprintf(`
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: %s
+spec:
+  controller: %s
+  parameters:
+    apiGroup: "apisix.apache.org"
+    kind: "GatewayProxy"
+    name: %s
+    namespace: %s
+    scope: Namespace
+`, name, s.GetControllerName(), name, s.Namespace())
+			By("create IngressClass")
+			err = s.CreateResourceFromStringWithNamespace(ingressClassYaml, "")
+			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
+
+			By("apply ApisixRoute through it")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"}, &apiv2.ApisixRoute{}, fmt.Sprintf(ar, s.Namespace(), name))
+
+			By("check route in APISIX")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:  "GET",
+				Path:    "/get",
+				Headers: map[string]string{"Host": "httpbin"},
+				Check:   scaffold.WithExpectedStatus(200),
+			})
+
+			By("check GatewayProxy status")
+			s.RetryAssertion(func() string {
+				output, _ := s.GetOutputFromString("gatewayproxy", name, "-o", "yaml", "-n", s.Namespace())
+				return output
+			}).Should(
+				And(
+					ContainSubstring("type: DataPlaneAvailable"),
+					ContainSubstring(`status: "False"`),
+					ContainSubstring("reason: DataPlaneInstanceUnavailable"),
+					ContainSubstring("unreachable-instance.invalid"),
+				),
+			)
+
+			By("check a separate Warning event was recorded for each unreachable endpoint")
+			s.RetryAssertion(func() []string {
+				output, err := s.GetOutputFromString("events",
+					"--field-selector", "involvedObject.kind=GatewayProxy,involvedObject.name="+name,
+					"-n", s.Namespace(), "-o", "yaml")
+				if err != nil {
+					return nil
+				}
+				var events corev1.EventList
+				if err := yaml.Unmarshal([]byte(output), &events); err != nil {
+					return nil
+				}
+				messages := make([]string, 0, len(events.Items))
+				for _, e := range events.Items {
+					if e.Type == "Warning" && e.Reason == "DataPlaneInstanceUnavailable" {
+						messages = append(messages, e.Message)
+					}
+				}
+				return messages
+			}).Should(
+				ConsistOf(
+					ContainSubstring("unreachable-instance.invalid"),
+					ContainSubstring("unreachable-instance-2.invalid"),
+				),
+			)
+
+			By("check the ApisixRoute itself is not marked as failed")
+			s.RetryAssertion(func() string {
+				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml", "-n", s.Namespace())
+				return output
+			}).Should(
+				And(
+					ContainSubstring(`status: "True"`),
+					ContainSubstring("reason: Accepted"),
+				),
+			)
 		})
 
 		It("update the same status only once", func() {

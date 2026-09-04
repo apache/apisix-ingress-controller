@@ -71,6 +71,7 @@ import (
 // CustomResourceDefinition
 // +kubebuilder:rbac:groups=apisix.apache.org,resources=pluginconfigs,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apisix.apache.org,resources=gatewayproxies,verbs=get;list;watch
+// +kubebuilder:rbac:groups=apisix.apache.org,resources=gatewayproxies/status,verbs=get;update
 // +kubebuilder:rbac:groups=apisix.apache.org,resources=consumers,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apisix.apache.org,resources=consumers/status,verbs=get;update
 // +kubebuilder:rbac:groups=apisix.apache.org,resources=backendtrafficpolicies,verbs=get;list;watch

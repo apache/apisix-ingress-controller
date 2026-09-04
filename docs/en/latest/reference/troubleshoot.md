@@ -55,6 +55,40 @@ curl "http://127.0.0.1:9180/apisix/admin/routes" -H "X-API-KEY: ${ADMIN_API_KEY}
 
 For reference, see [Admin API](https://apisix.apache.org/docs/apisix/admin-api/).
 
+## Check Data Plane Instance Availability
+
+When running APISIX in standalone mode with more than one instance, a route can be reachable through some instances but not others, for example if one instance is unreachable or rejects the synchronized configuration. This is not reflected on the affected route's own status, since the route itself was valid; it shows up on the `GatewayProxy` that addresses those instances.
+
+Check the `DataPlaneAvailable` condition:
+
+```shell
+kubectl get gatewayproxy <gateway-proxy-name> -o yaml
+```
+
+```yaml
+status:
+  conditions:
+  - type: DataPlaneAvailable
+    status: "False"
+    reason: DataPlaneInstanceUnavailable
+    message: "1/3 gateway instance(s) failed to apply the last sync: http://apisix-2:9180: connection refused"
+```
+
+For the history of which specific instance failed and when, check the GatewayProxy's events:
+
+```shell
+kubectl describe gatewayproxy <gateway-proxy-name>
+```
+
+```text
+Events:
+  Type     Reason                        Age   From             Message
+  ----     ------                        ----  ----             -------
+  Warning  DataPlaneInstanceUnavailable  8s    apisix-provider  http://apisix-2:9180: connection refused
+```
+
+Each unreachable or rejecting instance is reported as its own `Warning` event, so instances failing for different reasons, or at different times, don't get folded into one message.
+
 ## Gateway API Routes Return 404
 
 Gateway API HTTPRoute or GRPCRoute resources may return `404` when the Gateway listener ports do not match the ports that APISIX actually listens on.

@@ -20,6 +20,8 @@ package provider
 import (
 	"time"
 
+	"k8s.io/client-go/tools/record"
+
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 )
 
@@ -34,6 +36,7 @@ type Options struct {
 	DefaultBackendMode      string
 	DefaultResolveEndpoints bool
 	ListenerPortMatchMode   config.ListenerPortMatchMode
+	EventRecorder           record.EventRecorder
 }
 
 func (o *Options) ApplyToList(lo *Options) {
@@ -54,6 +57,9 @@ func (o *Options) ApplyToList(lo *Options) {
 	}
 	if o.ListenerPortMatchMode != "" {
 		lo.ListenerPortMatchMode = o.ListenerPortMatchMode
+	}
+	if o.EventRecorder != nil {
+		lo.EventRecorder = o.EventRecorder
 	}
 }
 
