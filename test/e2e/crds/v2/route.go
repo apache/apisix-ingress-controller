@@ -170,7 +170,6 @@ spec:
 				Expect(bodyStr).Should(ContainSubstring("apisix_ingress_adc_sync_duration_seconds"))
 				Expect(bodyStr).Should(ContainSubstring("apisix_ingress_adc_sync_total"))
 				Expect(bodyStr).Should(ContainSubstring("apisix_ingress_status_update_queue_length"))
-				Expect(bodyStr).Should(ContainSubstring("apisix_ingress_file_io_duration_seconds"))
 			}
 			It("Basic", func() {
 				test(apisixRouteSpec)

@@ -262,7 +262,7 @@ func (e *HTTPADCExecutor) runHTTPValidateForSingleServer(ctx context.Context, se
 }
 
 // buildHTTPRequest builds the HTTP request for ADC Server
-func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr string, config adctypes.Config, labels map[string]string, types []string, resources *adctypes.Resources, path string) (*http.Request, error) {
+func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr string, config adctypes.Config, labels map[string]string, resourceTypes []string, resources *adctypes.Resources, path string) (*http.Request, error) {
 	// Prepare request body
 	tlsVerify := config.TlsVerify
 	bypassCache := path == pathSync && config.BypassCache
@@ -273,7 +273,7 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr strin
 				Server:              strings.Split(serverAddr, ","),
 				Token:               config.Token,
 				LabelSelector:       labels,
-				IncludeResourceType: types,
+				IncludeResourceType: resourceTypes,
 				TlsSkipVerify:       ptr.To(!tlsVerify),
 				CaCert:              config.CaCert,
 				CacheKey:            config.Name,
@@ -297,7 +297,7 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr strin
 		"cacheKey", config.Name,
 		"bypassCache", bypassCache,
 		"labelSelector", labels,
-		"includeResourceType", types,
+		"includeResourceType", resourceTypes,
 		"tlsSkipVerify", !tlsVerify,
 		"hasCaCert", config.CaCert != "",
 	)

@@ -306,13 +306,17 @@ func (c *Client) syncOne(ctx context.Context, in SyncInput) error {
 	status := adctypes.StatusSuccess
 	if err != nil {
 		status = "failure"
-		c.log.Error(err, "failed to execute adc command", "config", config)
+		c.log.Error(err, "failed to sync with ADC", "config", config)
 
 		var execErr types.ADCExecutionError
 		if errors.As(err, &execErr) {
 			errs.Errors = append(errs.Errors, execErr)
 			pkgmetrics.RecordExecutionError(config.Name, execErr.Name)
 		} else {
+			errs.Errors = append(errs.Errors, types.ADCExecutionError{
+				Name:         config.Name,
+				FailedErrors: []types.ADCExecutionServerAddrError{{Err: err.Error()}},
+			})
 			pkgmetrics.RecordExecutionError(config.Name, "unknown")
 		}
 	}
