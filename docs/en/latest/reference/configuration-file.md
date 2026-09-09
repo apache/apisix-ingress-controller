@@ -84,7 +84,7 @@ provider:
 
 ## Listener port matching
 
-`listener_port_match_mode` turns a Gateway listener port into a `server_port` route variable. It is the only mechanism that binds a route to a specific listener port, so it is also what decides whether a route attached to an HTTPS listener can be reached over plaintext HTTP on the same host and path. Two preconditions decide whether it takes effect.
+`listener_port_match_mode` turns a Gateway listener port into a `server_port` route variable, binding a route to a specific listener port. Two preconditions decide whether it takes effect.
 
 **The Gateway listener port must equal the port APISIX listens on.** APISIX evaluates `server_port` against the port it accepted the connection on, not the port the Gateway declares. If the Gateway declares `443` while APISIX listens on `9443` behind a Service that maps `443` to `9443`, the injected predicate is `server_port == 443` and it matches nothing, so the route stops serving on both protocols. The controller cannot open data plane ports, so declaring the port APISIX actually listens on is the only working configuration. Verify with a real request after changing the mode; a successful Helm upgrade and a ready pod do not prove the route still matches.
 
