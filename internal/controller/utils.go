@@ -335,14 +335,21 @@ func parentRefTargetsListenerExplicitly(parentRef gatewayv1.ParentReference) boo
 	return parentRef.Port != nil
 }
 
+// ParseRouteParentRefs resolves the parentRefs of a route to the Gateways this
+// controller manages. The second return value reports that at least one
+// parentRef could not be resolved, because its Gateway or that Gateway's
+// GatewayClass does not exist. An empty gateway list then means "ownership
+// unknown", not "owned by another controller", and callers must not act on the
+// route's data plane configuration.
 func ParseRouteParentRefs(
 	ctx context.Context,
 	mgrc client.Client,
 	log logr.Logger,
 	route client.Object,
 	parentRefs []gatewayv1.ParentReference,
-) ([]RouteParentRefContext, error) {
+) ([]RouteParentRefContext, bool, error) {
 	gateways := make([]RouteParentRefContext, 0)
+	unresolved := false
 	for _, parentRef := range parentRefs {
 		namespace := route.GetNamespace()
 		if parentRef.Namespace != nil {
@@ -360,9 +367,10 @@ func ParseRouteParentRefs(
 			Name:      name,
 		}, &gateway); err != nil {
 			if client.IgnoreNotFound(err) == nil {
+				unresolved = true
 				continue
 			}
-			return nil, fmt.Errorf("failed to retrieve gateway for route: %w", err)
+			return nil, false, fmt.Errorf("failed to retrieve gateway for route: %w", err)
 		}
 
 		gatewayClass := gatewayv1.GatewayClass{}
@@ -370,9 +378,10 @@ func ParseRouteParentRefs(
 			Name: string(gateway.Spec.GatewayClassName),
 		}, &gatewayClass); err != nil {
 			if client.IgnoreNotFound(err) == nil {
+				unresolved = true
 				continue
 			}
-			return nil, fmt.Errorf("failed to retrieve gatewayclass for gateway: %w", err)
+			return nil, false, fmt.Errorf("failed to retrieve gatewayclass for gateway: %w", err)
 		}
 
 		if string(gatewayClass.Spec.ControllerName) != config.ControllerConfig.ControllerName {
@@ -510,7 +519,7 @@ func ParseRouteParentRefs(
 		}
 	}
 
-	return gateways, nil
+	return gateways, unresolved, nil
 }
 
 // reuseUnchangedListenerStatus keeps the previously published status when
@@ -2042,4 +2051,43 @@ func serviceLoadBalancerAddresses(svc *corev1.Service) []string {
 		}
 	}
 	return addrs
+}
+
+// loadPluginSecrets loads the Secrets referenced by apisix.apache.org/v1alpha1 plugins
+// into the translate context. A plugin may only reference a Secret in the namespace of
+// the object that declares it.
+func loadPluginSecrets(ctx context.Context, c client.Client, tctx *provider.TranslateContext, namespace string, plugins []v1alpha1.Plugin) error {
+	for _, plugin := range plugins {
+		if plugin.SecretRef == nil || plugin.SecretRef.Name == "" {
+			continue
+		}
+		secretNN := k8stypes.NamespacedName{Namespace: namespace, Name: plugin.SecretRef.Name}
+		if _, ok := tctx.Secrets[secretNN]; ok {
+			continue
+		}
+		secret := new(corev1.Secret)
+		if err := c.Get(ctx, secretNN, secret); err != nil {
+			return fmt.Errorf("failed to get Secret %s referenced by plugin %s: %w", secretNN, plugin.Name, err)
+		}
+		tctx.Secrets[secretNN] = secret
+	}
+	return nil
+}
+
+// listL4RoutePoliciesForSecret returns the L4RoutePolicies whose plugins reference the
+// given Secret.
+func listL4RoutePoliciesForSecret(ctx context.Context, c client.Client, log logr.Logger, obj client.Object) []v1alpha1.L4RoutePolicy {
+	secret, ok := obj.(*corev1.Secret)
+	if !ok {
+		log.Error(errors.New("unexpected object type"), "failed to convert object to Secret")
+		return nil
+	}
+	var list v1alpha1.L4RoutePolicyList
+	if err := c.List(ctx, &list, client.MatchingFields{
+		indexer.SecretIndexRef: indexer.GenIndexKey(secret.GetNamespace(), secret.GetName()),
+	}); err != nil {
+		log.Error(err, "failed to list L4RoutePolicy by secret reference", "secret", utils.NamespacedName(secret))
+		return nil
+	}
+	return list.Items
 }

@@ -45,6 +45,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
+	pkgutils "github.com/apache/apisix-ingress-controller/pkg/utils"
 )
 
 // GRPCRouteReconciler reconciles a GatewayClass object.
@@ -68,12 +69,22 @@ func (r *GRPCRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	bdr := ctrl.NewControllerManagedBy(mgr).
 		For(&gatewayv1.GRPCRoute{}).
-		WithEventFilter(predicate.GenerationChangedPredicate{}).
+		// A Secret carries no generation, so GenerationChangedPredicate would drop its
+		// updates and a plugin would keep the Secret data read at the last spec change.
+		WithEventFilter(
+			predicate.Or(
+				predicate.GenerationChangedPredicate{},
+				predicate.NewPredicateFuncs(TypePredicate[*corev1.Secret]()),
+			),
+		).
 		Watches(&discoveryv1.EndpointSlice{},
 			handler.EnqueueRequestsFromMapFunc(r.listGRPCRoutesByServiceRef),
 		).
 		Watches(&v1alpha1.PluginConfig{},
 			handler.EnqueueRequestsFromMapFunc(r.listGRPCRoutesByExtensionRef),
+		).
+		Watches(&corev1.Secret{},
+			handler.EnqueueRequestsFromMapFunc(r.listGRPCRoutesForSecret),
 		).
 		Watches(&gatewayv1.Gateway{},
 			handler.EnqueueRequestsFromMapFunc(r.listGRPCRoutesForGateway),
@@ -181,12 +192,28 @@ func (r *GRPCRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		msg:    "Route is accepted",
 	}
 
-	gateways, err := ParseRouteParentRefs(ctx, r.Client, r.Log, gr, gr.Spec.ParentRefs)
+	gateways, unresolvedParents, err := ParseRouteParentRefs(ctx, r.Client, r.Log, gr, gr.Spec.ParentRefs)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	if len(gateways) == 0 {
+		if unresolvedParents {
+			// See the HTTPRoute reconciler: an unresolvable parentRef leaves ownership
+			// unknown rather than disproven, so the data plane must be left alone.
+			return ctrl.Result{}, nil
+		}
+		// See the HTTPRoute reconciler: a route that no longer references a
+		// Gateway managed by this controller must have its previously pushed
+		// configuration removed, or the data plane keeps serving it.
+		gr.TypeMeta = metav1.TypeMeta{
+			Kind:       KindGRPCRoute,
+			APIVersion: gatewayv1.GroupVersion.String(),
+		}
+		if err := r.Provider.Delete(ctx, gr); err != nil {
+			r.Log.Error(err, "failed to delete grpcroute", "grpcroute", gr)
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, nil
 	}
 
@@ -504,6 +531,10 @@ func (r *GRPCRouteReconciler) processGRPCRoute(tctx *provider.TranslateContext, 
 					Namespace: grpcroute.GetNamespace(),
 					Name:      string(filter.ExtensionRef.Name),
 				}] = pluginconfig
+				if err := loadPluginSecrets(tctx, r.Client, tctx, grpcroute.GetNamespace(), pluginconfig.Spec.Plugins); err != nil {
+					terror = err
+					continue
+				}
 			}
 		}
 		for _, backend := range rule.BackendRefs {
@@ -600,4 +631,23 @@ func (r *GRPCRouteReconciler) listGRPCRoutesForReferenceGrant(ctx context.Contex
 		}
 	}
 	return requests
+}
+
+// listGRPCRoutesForSecret maps a Secret to the GRPCRoutes that reference, through a PluginConfig
+// extension filter, a plugin configured with that Secret.
+func (r *GRPCRouteReconciler) listGRPCRoutesForSecret(ctx context.Context, obj client.Object) []reconcile.Request {
+	secret, ok := obj.(*corev1.Secret)
+	if !ok {
+		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to Secret")
+		return nil
+	}
+	var requests []reconcile.Request
+	for _, pcRef := range ListRequests(ctx, r.Client, r.Log, &v1alpha1.PluginConfigList{}, client.MatchingFields{
+		indexer.SecretIndexRef: indexer.GenIndexKey(secret.GetNamespace(), secret.GetName()),
+	}) {
+		requests = append(requests, ListRequests(ctx, r.Client, r.Log, &gatewayv1.GRPCRouteList{}, client.MatchingFields{
+			indexer.ExtensionRef: indexer.GenIndexKey(pcRef.Namespace, pcRef.Name),
+		})...)
+	}
+	return pkgutils.DedupComparable(requests)
 }

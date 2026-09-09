@@ -22,6 +22,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
+	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 )
 
@@ -83,6 +84,61 @@ func allListenerPorts(listeners []gatewayv1.Listener) map[int32]struct{} {
 		ports[listener.Port] = struct{}{}
 	}
 	return ports
+}
+
+// listenerScheme returns the request scheme shared by every listener the route
+// attached to, or "" when they disagree, when there are none, or when any of
+// them is a protocol that carries no request scheme.
+//
+// Only an unambiguous answer pins the route. A route attached to both an HTTP and
+// an HTTPS listener is meant to serve both, and a listener protocol that has no
+// scheme at all - TLS, TCP, UDP, which carry the L4 route kinds - leaves the
+// route alone rather than being guessed at.
+func listenerScheme(listeners []gatewayv1.Listener) string {
+	scheme := ""
+	for _, listener := range listeners {
+		var current string
+		switch listener.Protocol {
+		case gatewayv1.HTTPProtocolType:
+			current = apiv2.SchemeHTTP
+		case gatewayv1.HTTPSProtocolType:
+			current = apiv2.SchemeHTTPS
+		default:
+			return ""
+		}
+		if scheme != "" && scheme != current {
+			return ""
+		}
+		scheme = current
+	}
+	return scheme
+}
+
+// pinRoutesToListenerScheme pins the routes of one rule to the scheme their
+// listeners accept, when the listeners agree on one.
+func (t *Translator) pinRoutesToListenerScheme(listeners []gatewayv1.Listener, routes []*adctypes.Route) {
+	scheme := listenerScheme(listeners)
+	if scheme == "" {
+		return
+	}
+	for _, route := range routes {
+		addSchemeVar(route, scheme)
+	}
+}
+
+// addSchemeVar pins a route to the scheme of the connection APISIX accepted.
+//
+// Unlike server_port this holds whatever port mapping sits in front of the data
+// plane, because $scheme reflects the connection itself rather than a number the
+// Gateway declared. It is therefore independent of listener_port_match_mode,
+// which exists to pin a route to a listener port and cannot isolate protocols
+// unless the declared ports happen to match the ones APISIX listens on.
+func addSchemeVar(route *adctypes.Route, scheme string) {
+	route.Vars = append(route.Vars, []adctypes.StringOrSlice{
+		{StrVal: "scheme"},
+		{StrVal: "=="},
+		{StrVal: scheme},
+	})
 }
 
 // shouldInjectServerPortVars decides whether to pin the route to the matched

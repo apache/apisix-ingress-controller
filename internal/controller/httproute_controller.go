@@ -48,6 +48,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
+	pkgutils "github.com/apache/apisix-ingress-controller/pkg/utils"
 )
 
 // HTTPRouteReconciler reconciles a GatewayClass object.
@@ -71,12 +72,22 @@ func (r *HTTPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	bdr := ctrl.NewControllerManagedBy(mgr).
 		For(&gatewayv1.HTTPRoute{}).
-		WithEventFilter(predicate.GenerationChangedPredicate{}).
+		// A Secret carries no generation, so GenerationChangedPredicate would drop its
+		// updates and a plugin would keep the Secret data read at the last spec change.
+		WithEventFilter(
+			predicate.Or(
+				predicate.GenerationChangedPredicate{},
+				predicate.NewPredicateFuncs(TypePredicate[*corev1.Secret]()),
+			),
+		).
 		Watches(&discoveryv1.EndpointSlice{},
 			handler.EnqueueRequestsFromMapFunc(r.listHTTPRoutesByServiceRef),
 		).
 		Watches(&v1alpha1.PluginConfig{},
 			handler.EnqueueRequestsFromMapFunc(r.listHTTPRoutesByExtensionRef),
+		).
+		Watches(&corev1.Secret{},
+			handler.EnqueueRequestsFromMapFunc(r.listHTTPRoutesForSecret),
 		).
 		Watches(&gatewayv1.Gateway{},
 			handler.EnqueueRequestsFromMapFunc(r.listHTTPRoutesForGateway),
@@ -163,12 +174,33 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		msg:    "Route is accepted",
 	}
 
-	gateways, err := ParseRouteParentRefs(ctx, r.Client, r.Log, hr, hr.Spec.ParentRefs)
+	gateways, unresolvedParents, err := ParseRouteParentRefs(ctx, r.Client, r.Log, hr, hr.Spec.ParentRefs)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	if len(gateways) == 0 {
+		if unresolvedParents {
+			// A missing Gateway or GatewayClass leaves ownership unknown rather than
+			// disproven. GatewayClass is cluster-scoped, so while one is absent every
+			// route under it resolves empty and deleting would drain the data plane.
+			return ctrl.Result{}, nil
+		}
+		// The route does not reference any Gateway managed by this controller.
+		// It may have referenced one before, e.g. when its parentRefs are
+		// repointed at a Gateway belonging to another GatewayClass, so the
+		// configuration a previous reconcile pushed has to be removed. Without
+		// this the data plane keeps serving the route indefinitely.
+		// Provider.Delete derives the resource labels from the object Kind, which
+		// is empty on objects read through the client.
+		hr.TypeMeta = metav1.TypeMeta{
+			Kind:       KindHTTPRoute,
+			APIVersion: gatewayv1.GroupVersion.String(),
+		}
+		if err := r.Provider.Delete(ctx, hr); err != nil {
+			r.Log.Error(err, "failed to delete httproute", "httproute", hr)
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, nil
 	}
 
@@ -584,6 +616,10 @@ func (r *HTTPRouteReconciler) processHTTPRoute(tctx *provider.TranslateContext, 
 					Namespace: httpRoute.GetNamespace(),
 					Name:      string(filter.ExtensionRef.Name),
 				}] = pluginconfig
+				if err := loadPluginSecrets(tctx, r.Client, tctx, httpRoute.GetNamespace(), pluginconfig.Spec.Plugins); err != nil {
+					terror = err
+					continue
+				}
 			}
 		}
 		for _, backend := range rule.BackendRefs {
@@ -712,4 +748,23 @@ func (r *HTTPRouteReconciler) listHTTPRoutesForReferenceGrant(ctx context.Contex
 		}
 	}
 	return requests
+}
+
+// listHTTPRoutesForSecret maps a Secret to the HTTPRoutes that reference, through a PluginConfig
+// extension filter, a plugin configured with that Secret.
+func (r *HTTPRouteReconciler) listHTTPRoutesForSecret(ctx context.Context, obj client.Object) []reconcile.Request {
+	secret, ok := obj.(*corev1.Secret)
+	if !ok {
+		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to Secret")
+		return nil
+	}
+	var requests []reconcile.Request
+	for _, pcRef := range ListRequests(ctx, r.Client, r.Log, &v1alpha1.PluginConfigList{}, client.MatchingFields{
+		indexer.SecretIndexRef: indexer.GenIndexKey(secret.GetNamespace(), secret.GetName()),
+	}) {
+		requests = append(requests, ListRequests(ctx, r.Client, r.Log, &gatewayv1.HTTPRouteList{}, client.MatchingFields{
+			indexer.ExtensionRef: indexer.GenIndexKey(pcRef.Namespace, pcRef.Name),
+		})...)
+	}
+	return pkgutils.DedupComparable(requests)
 }

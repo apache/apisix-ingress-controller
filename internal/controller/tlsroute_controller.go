@@ -67,7 +67,14 @@ func (r *TLSRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	bdr := ctrl.NewControllerManagedBy(mgr).
 		For(&gatewayv1.TLSRoute{}).
-		WithEventFilter(predicate.GenerationChangedPredicate{}).
+		// A Secret carries no generation, so GenerationChangedPredicate would drop its
+		// updates and a plugin would keep the Secret data read at the last spec change.
+		WithEventFilter(
+			predicate.Or(
+				predicate.GenerationChangedPredicate{},
+				predicate.NewPredicateFuncs(TypePredicate[*corev1.Secret]()),
+			),
+		).
 		Watches(&discoveryv1.EndpointSlice{},
 			handler.EnqueueRequestsFromMapFunc(r.listTLSRoutesByServiceRef),
 		).
@@ -107,7 +114,10 @@ func (r *TLSRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if r.supportsL4RoutePolicy {
 		bdr.Watches(&v1alpha1.L4RoutePolicy{},
 			handler.EnqueueRequestsFromMapFunc(r.listTLSRoutesForL4RoutePolicy),
-		)
+		).
+			Watches(&corev1.Secret{},
+				handler.EnqueueRequestsFromMapFunc(r.listTLSRoutesForSecret),
+			)
 	}
 
 	if GetEnableReferenceGrant() {
@@ -273,12 +283,28 @@ func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		msg:    "Route is accepted",
 	}
 
-	gateways, err := ParseRouteParentRefs(ctx, r.Client, r.Log, tr, tr.Spec.ParentRefs)
+	gateways, unresolvedParents, err := ParseRouteParentRefs(ctx, r.Client, r.Log, tr, tr.Spec.ParentRefs)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	if len(gateways) == 0 {
+		if unresolvedParents {
+			// See the HTTPRoute reconciler: an unresolvable parentRef leaves ownership
+			// unknown rather than disproven, so the data plane must be left alone.
+			return ctrl.Result{}, nil
+		}
+		// See the HTTPRoute reconciler: a route that no longer references a
+		// Gateway managed by this controller must have its previously pushed
+		// configuration removed, or the data plane keeps serving it.
+		tr.TypeMeta = metav1.TypeMeta{
+			Kind:       types.KindTLSRoute,
+			APIVersion: gatewayv1.GroupVersion.String(),
+		}
+		if err := r.Provider.Delete(ctx, tr); err != nil {
+			r.Log.Error(err, "failed to delete tlsroute", "tlsroute", tr)
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, nil
 	}
 
@@ -563,4 +589,13 @@ func (r *TLSRouteReconciler) listTLSRoutesForL4RoutePolicy(ctx context.Context, 
 		requests = append(requests, reconcile.Request{NamespacedName: nn})
 	}
 	return requests
+}
+
+// listTLSRoutesForSecret maps a Secret to the TLSRoutes whose L4RoutePolicy plugins reference it.
+func (r *TLSRouteReconciler) listTLSRoutesForSecret(ctx context.Context, obj client.Object) []reconcile.Request {
+	var requests []reconcile.Request
+	for _, policy := range listL4RoutePoliciesForSecret(ctx, r.Client, r.Log, obj) {
+		requests = append(requests, r.listTLSRoutesForL4RoutePolicy(ctx, &policy)...)
+	}
+	return pkgutils.DedupComparable(requests)
 }

@@ -217,6 +217,25 @@ spec:
       - "0.0.0.0/0"
 `
 
+		var l4RoutePolicyMissingSecret = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: L4RoutePolicy
+metadata:
+  name: tcp-block-all
+spec:
+  targetRefs:
+  - group: gateway.networking.k8s.io
+    kind: TCPRoute
+    name: tcp-l4policy
+  plugins:
+  - name: ip-restriction
+    secretRef:
+      name: no-such-secret
+    config:
+      blacklist:
+      - "0.0.0.0/0"
+`
+
 		BeforeEach(func() {
 			Expect(s.CreateResourceFromString(s.GetGatewayProxySpec())).NotTo(HaveOccurred(), "creating GatewayProxy")
 			Expect(s.CreateResourceFromString(s.GetGatewayClassYaml())).NotTo(HaveOccurred(), "creating GatewayClass")
@@ -249,6 +268,27 @@ spec:
 			Expect(s.DeleteResource("L4RoutePolicy", "tcp-block-all")).NotTo(HaveOccurred(), "deleting L4RoutePolicy")
 
 			By("verifying TCP traffic recovers after L4RoutePolicy deletion")
+			s.HTTPOverTCPConnectAssert(true, time.Minute*3)
+		})
+
+		It("L4RoutePolicy with a missing plugin Secret is rejected", func() {
+			By("creating TCPRoute")
+			s.ResourceApplied("TCPRoute", "tcp-l4policy", fmt.Sprintf(tcpRoute, s.Namespace()), 1)
+			s.HTTPOverTCPConnectAssert(true, time.Minute*3)
+
+			By("applying an L4RoutePolicy whose plugin references a Secret that does not exist")
+			s.ApplyL4RoutePolicy(
+				types.NamespacedName{Name: s.Namespace()},
+				types.NamespacedName{Namespace: s.Namespace(), Name: "tcp-block-all"},
+				l4RoutePolicyMissingSecret,
+				metav1.Condition{
+					Type:   string(gatewayv1.PolicyConditionAccepted),
+					Status: metav1.ConditionFalse,
+					Reason: string(gatewayv1.PolicyReasonInvalid),
+				},
+			)
+
+			By("verifying the policy plugins are not attached")
 			s.HTTPOverTCPConnectAssert(true, time.Minute*3)
 		})
 	})
