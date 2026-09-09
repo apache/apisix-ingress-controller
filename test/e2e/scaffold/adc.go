@@ -28,7 +28,7 @@ import (
 
 	"github.com/api7/gopkg/pkg/log"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v3"
+	"sigs.k8s.io/yaml"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator"
@@ -196,6 +196,9 @@ func (a *adcDataplaneResource) dumpResources(ctx context.Context) (*translator.T
 		return nil, err
 	}
 
+	// sigs.k8s.io/yaml converts to JSON first, so types with a custom
+	// UnmarshalJSON decode correctly. gopkg.in/yaml does not call it, and fails on
+	// adc.StringOrSlice, which every route var is built from.
 	var resources adctypes.Resources
 	if err := yaml.Unmarshal(yamlData, &resources); err != nil {
 		return nil, err
