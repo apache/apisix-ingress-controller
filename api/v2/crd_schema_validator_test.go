@@ -27,7 +27,6 @@ import (
 	structuralschema "k8s.io/apiextensions-apiserver/pkg/apiserver/schema"
 	"k8s.io/apiextensions-apiserver/pkg/apiserver/schema/cel"
 	"k8s.io/apiextensions-apiserver/pkg/apiserver/validation"
-	utiljson "k8s.io/apimachinery/pkg/util/json"
 	celconfig "k8s.io/apiserver/pkg/apis/cel"
 	sigsyaml "sigs.k8s.io/yaml"
 )
@@ -47,11 +46,8 @@ func (v *crdSchemaValidator) Validate(t *testing.T, obj any) error {
 	data, err := json.Marshal(obj)
 	require.NoError(t, err, "failed to marshal object")
 
-	// Decode with the apimachinery helper, which turns integral JSON numbers into
-	// int64 the way the API server does. encoding/json would leave them as float64,
-	// and CEL rejects a float64 where the schema declares x-kubernetes-int-or-string.
 	var raw map[string]interface{}
-	require.NoError(t, utiljson.Unmarshal(data, &raw), "failed to unmarshal to map")
+	require.NoError(t, json.Unmarshal(data, &raw), "failed to unmarshal to map")
 
 	schemaValidator, _, err := validation.NewSchemaValidator(v.internal)
 	require.NoError(t, err, "failed to build schema validator")
