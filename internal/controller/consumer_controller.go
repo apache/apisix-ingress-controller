@@ -290,7 +290,7 @@ func (r *ConsumerReconciler) processSpec(ctx context.Context, tctx *provider.Tra
 		}] = &secret
 
 	}
-	return nil
+	return loadPluginSecrets(ctx, r.Client, tctx, consumer.GetNamespace(), consumer.Spec.Plugins)
 }
 
 func (r *ConsumerReconciler) updateStatus(consumer *v1alpha1.Consumer, err error) {
