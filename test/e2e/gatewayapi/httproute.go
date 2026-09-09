@@ -186,7 +186,10 @@ spec:
 			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(exactRouteByGet, gatewayName), 1)
 
 			By("access dataplane to check the HTTPRoute")
+			// The Gateway has only an HTTPS listener, so the route is pinned to the
+			// https scheme and is reached over TLS, not on the plaintext port.
 			s.RequestAssert(&scaffold.RequestAssert{
+				Client:   s.NewAPISIXHttpsClient("api6.com"),
 				Method:   "GET",
 				Path:     "/get",
 				Host:     "api6.com",
@@ -195,11 +198,20 @@ spec:
 				Interval: time.Second * 2,
 			})
 
+			By("the same request must not be served over plaintext")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "api6.com",
+				Check:  scaffold.WithExpectedStatus(404),
+			})
+
 			By("delete HTTPRoute")
 			err := s.DeleteResourceFromString(fmt.Sprintf(exactRouteByGet, gatewayName))
 			Expect(err).NotTo(HaveOccurred(), "deleting HTTPRoute")
 
 			s.RequestAssert(&scaffold.RequestAssert{
+				Client: s.NewAPISIXHttpsClient("api6.com"),
 				Method: "GET",
 				Path:   "/get",
 				Host:   "api6.com",
@@ -2545,7 +2557,10 @@ spec:
 		})
 		It("HTTPS backend", func() {
 			s.ResourceApplied("HTTPRoute", "nginx", fmt.Sprintf(httproute, s.Namespace()), 1)
+			// beforeEachHTTPS builds a Gateway with only an HTTPS listener, so the
+			// route is reached over TLS rather than on the plaintext port.
 			s.RequestAssert(&scaffold.RequestAssert{
+				Client: s.NewAPISIXHttpsClient("api6.com"),
 				Method: "GET",
 				Path:   "/get",
 				Host:   "api6.com",
