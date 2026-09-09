@@ -47,19 +47,19 @@ func TestTranslateHTTPRouteSchemeVar(t *testing.T) {
 	pathMatchType := gatewayv1.PathMatchPathPrefix
 	pathValue := "/"
 
-	https := func(port int32, hostname *gatewayv1.Hostname) gatewayv1.Listener {
+	https := func(port gatewayv1.PortNumber, hostname *gatewayv1.Hostname) gatewayv1.Listener {
 		return gatewayv1.Listener{
 			Name:     "https",
 			Protocol: gatewayv1.HTTPSProtocolType,
-			Port:     gatewayv1.PortNumber(port),
+			Port:     port,
 			Hostname: hostname,
 		}
 	}
-	plain := func(port int32) gatewayv1.Listener {
+	plain := func(port gatewayv1.PortNumber) gatewayv1.Listener {
 		return gatewayv1.Listener{
 			Name:     "http",
 			Protocol: gatewayv1.HTTPProtocolType,
-			Port:     gatewayv1.PortNumber(port),
+			Port:     port,
 		}
 	}
 
