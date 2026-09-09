@@ -109,8 +109,9 @@ func acceptedCondition(t *testing.T, updater *recordingUpdater) metav1.Condition
 }
 
 // An empty servicePort is compared against Service port names, so it silently
-// matches a single-port Service that omits its port name. The CRD rejects new
-// objects, but objects that predate the rule still reach the reconciler.
+// matches a single-port Service that omits its port name. Nothing in the CRD
+// schema rejects it, so validateHTTPBackend is the only thing standing between
+// this value and a published route; the admission webhook runs the same check.
 func TestApisixRouteReconcile_EmptyServicePortIsRejected(t *testing.T) {
 	for name, ports := range map[string][]corev1.ServicePort{
 		"named port":   {{Name: "http", Port: 80, TargetPort: intstr.FromInt32(8080)}},
