@@ -386,7 +386,7 @@ func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		APIVersion: gatewayv1.GroupVersion.String(),
 	}
 	if err := r.Provider.Delete(ctx, tr); err != nil {
-		r.Log.Error(err, "failed to delete tlsroute", "tlsroute", tr)
+		r.Log.Error(err, "failed to delete tlsroute", "tlsroute", utils.NamespacedName(tr))
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil

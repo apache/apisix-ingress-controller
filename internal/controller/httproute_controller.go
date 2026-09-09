@@ -306,7 +306,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		APIVersion: gatewayv1.GroupVersion.String(),
 	}
 	if err := r.Provider.Delete(ctx, hr); err != nil {
-		r.Log.Error(err, "failed to delete httproute", "httproute", hr)
+		r.Log.Error(err, "failed to delete httproute", "httproute", utils.NamespacedName(hr))
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil

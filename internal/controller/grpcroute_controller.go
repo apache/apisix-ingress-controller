@@ -304,7 +304,7 @@ func (r *GRPCRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		APIVersion: gatewayv1.GroupVersion.String(),
 	}
 	if err := r.Provider.Delete(ctx, gr); err != nil {
-		r.Log.Error(err, "failed to delete grpcroute", "grpcroute", gr)
+		r.Log.Error(err, "failed to delete grpcroute", "grpcroute", utils.NamespacedName(gr))
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil

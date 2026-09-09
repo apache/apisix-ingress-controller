@@ -394,7 +394,7 @@ func (r *TCPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		APIVersion: gatewayv1.GroupVersion.String(),
 	}
 	if err := r.Provider.Delete(ctx, tr); err != nil {
-		r.Log.Error(err, "failed to delete tcproute", "tcproute", tr)
+		r.Log.Error(err, "failed to delete tcproute", "tcproute", utils.NamespacedName(tr))
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
