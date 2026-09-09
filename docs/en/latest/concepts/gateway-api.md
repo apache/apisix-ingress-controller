@@ -90,3 +90,13 @@ The fields below are specified in the Gateway API specification but are either p
 | `spec.listeners[].tls.mode`                          | Partially supported  | `Terminate` is implemented; `Passthrough` is effectively unsupported for Gateway listeners.    |
 | `spec.listeners[].tls.frontendValidation`            | Partially supported  | Enables downstream (client) mTLS. `caCertificateRefs` may reference a `ConfigMap` (Gateway API Core support) or a `Secret` (implementation-specific) holding the CA certificate under the `ca.crt` key; clients are then required to present a certificate signed by one of the referenced CAs. |
 | `spec.addresses`                                     | Not supported        | Controller does not read or act on `spec.addresses`.                                           |
+
+## HTTPS listeners and plaintext requests
+
+A route that attaches only to `HTTPS` listeners is pinned to the `https` scheme, so a plaintext request for the same hostname and path does not match it and falls through to whatever else is configured, or to `404`.
+
+The predicate is evaluated against the connection APISIX accepted, so it holds regardless of the port mapping in front of the data plane. This is what distinguishes it from [`listener_port_match_mode`](../reference/configuration-file.md#listener-port-matching), which pins a route to a listener port and can only isolate protocols when the Gateway's declared ports are the ports APISIX listens on.
+
+A route that also attaches to an `HTTP` listener is not pinned, because it is meant to serve both.
+
+The one deployment this does not fit is TLS terminated in front of APISIX, where the connection APISIX accepts is plaintext even though the client used HTTPS. Declare those listeners as `HTTP`, since the Gateway is not terminating TLS in that topology and the listener's `certificateRefs` would go unused.

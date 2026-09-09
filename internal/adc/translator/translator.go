@@ -85,6 +85,36 @@ func allListenerPorts(listeners []gatewayv1.Listener) map[int32]struct{} {
 	return ports
 }
 
+// listenersAllTerminateTLS reports whether every listener the route attached to
+// terminates TLS. Only then can the route be pinned to the https scheme: a route
+// that also attaches to a plaintext listener must keep matching plaintext.
+func listenersAllTerminateTLS(listeners []gatewayv1.Listener) bool {
+	if len(listeners) == 0 {
+		return false
+	}
+	for _, listener := range listeners {
+		if listener.Protocol != gatewayv1.HTTPSProtocolType {
+			return false
+		}
+	}
+	return true
+}
+
+// addSchemeVar pins a route to the scheme of the connection APISIX accepted.
+//
+// Unlike server_port this holds whatever port mapping sits in front of the data
+// plane, because $scheme reflects the connection itself rather than a number the
+// Gateway declared. It is therefore independent of listener_port_match_mode,
+// which exists to pin a route to a listener port and cannot isolate protocols
+// unless the declared ports happen to match the ones APISIX listens on.
+func addSchemeVar(route *adctypes.Route, scheme string) {
+	route.Vars = append(route.Vars, []adctypes.StringOrSlice{
+		{StrVal: "scheme"},
+		{StrVal: "=="},
+		{StrVal: scheme},
+	})
+}
+
 // shouldInjectServerPortVars decides whether to pin the route to the matched
 // listener port(s) via a server_port predicate.
 //

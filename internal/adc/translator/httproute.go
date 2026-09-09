@@ -742,6 +742,16 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 			routes = append(routes, route)
 		}
 
+		// A route that attached only to HTTPS listeners must not answer plaintext
+		// requests for the same host and path. Nothing else enforces that: hostname
+		// matching cannot tell the two apart, and server_port only can when the
+		// Gateway's declared ports equal the ports APISIX listens on.
+		if listenersAllTerminateTLS(tctx.Listeners) {
+			for _, route := range routes {
+				addSchemeVar(route, apiv2.SchemeHTTPS)
+			}
+		}
+
 		// Hostname-less listener ports decide whether a server_port var is needed;
 		// hostname listeners are isolated by host, not port.
 		listenerPorts := collectServerPortMatchPorts(tctx.Listeners)
