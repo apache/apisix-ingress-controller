@@ -186,14 +186,7 @@ func (r *GRPCRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	// No parentRef resolves to one of our Gateways any more, either because the
-	// parentRef was removed or repointed or because the Gateway is gone. Retract
-	// the configuration an earlier reconcile published for it.
 	if len(gateways) == 0 {
-		if err := r.Provider.Delete(ctx, gr); err != nil {
-			r.Log.Error(err, "failed to delete grpcroute", "grpcroute", gr)
-			return ctrl.Result{}, err
-		}
 		return ctrl.Result{}, nil
 	}
 
@@ -277,6 +270,12 @@ func (r *GRPCRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// The route still resolves to one of our Gateways but no parent accepts it any
 	// more, so retract what an earlier reconcile published. The store is what every
 	// sync pushes, so leaving the entry keeps the data plane serving the route.
+	// Provider.Delete derives the resource labels from the object Kind, which is not
+	// set on every object read through the client.
+	gr.TypeMeta = metav1.TypeMeta{
+		Kind:       KindGRPCRoute,
+		APIVersion: gatewayv1.GroupVersion.String(),
+	}
 	if err := r.Provider.Delete(ctx, gr); err != nil {
 		r.Log.Error(err, "failed to delete grpcroute", "grpcroute", gr)
 		return ctrl.Result{}, err

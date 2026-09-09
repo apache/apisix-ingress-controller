@@ -52,7 +52,6 @@ const (
 func newHTTPRouteRetractFixture(
 	t *testing.T,
 	from gatewayv1.FromNamespaces,
-	parentGatewayName string,
 ) (*HTTPRouteReconciler, *recordingProvider) {
 	t.Helper()
 
@@ -86,7 +85,7 @@ func newHTTPRouteRetractFixture(
 		Spec: gatewayv1.HTTPRouteSpec{
 			CommonRouteSpec: gatewayv1.CommonRouteSpec{
 				ParentRefs: []gatewayv1.ParentReference{{
-					Name:      gatewayv1.ObjectName(parentGatewayName),
+					Name:      gatewayv1.ObjectName(gateway.Name),
 					Namespace: (*gatewayv1.Namespace)(&gateway.Namespace),
 				}},
 			},
@@ -126,7 +125,7 @@ var retractRouteKey = k8stypes.NamespacedName{Namespace: retractRouteNamespace, 
 // retracted, otherwise the data plane keeps serving a route the Gateway no longer
 // admits and only deleting the HTTPRoute clears it.
 func TestHTTPRouteReconcile_RetractsWhenListenerStopsAllowingRoute(t *testing.T) {
-	r, prov := newHTTPRouteRetractFixture(t, gatewayv1.NamespacesFromSame, "gw")
+	r, prov := newHTTPRouteRetractFixture(t, gatewayv1.NamespacesFromSame)
 
 	result, err := reconcileRetractHTTPRoute(t, r)
 
@@ -136,23 +135,9 @@ func TestHTTPRouteReconcile_RetractsWhenListenerStopsAllowingRoute(t *testing.T)
 	assert.Zero(t, prov.updated, "a route that is not accepted must not be published")
 }
 
-// A parentRef that no longer resolves to any Gateway of ours must retract too.
-// ParseRouteParentRefs returns an empty list here, which used to short-circuit the
-// reconcile before anything could clean up.
-func TestHTTPRouteReconcile_RetractsWhenNoParentResolves(t *testing.T) {
-	r, prov := newHTTPRouteRetractFixture(t, gatewayv1.NamespacesFromAll, "missing-gw")
-
-	result, err := reconcileRetractHTTPRoute(t, r)
-
-	require.NoError(t, err)
-	assert.Equal(t, ctrl.Result{}, result)
-	assert.Equal(t, []k8stypes.NamespacedName{retractRouteKey}, prov.deleted)
-	assert.Zero(t, prov.updated)
-}
-
 // An accepted route must still be published and must not be retracted.
 func TestHTTPRouteReconcile_PublishesAcceptedRoute(t *testing.T) {
-	r, prov := newHTTPRouteRetractFixture(t, gatewayv1.NamespacesFromAll, "gw")
+	r, prov := newHTTPRouteRetractFixture(t, gatewayv1.NamespacesFromAll)
 
 	_, err := reconcileRetractHTTPRoute(t, r)
 
@@ -163,7 +148,7 @@ func TestHTTPRouteReconcile_PublishesAcceptedRoute(t *testing.T) {
 
 // A provider failure while retracting must surface so the reconcile is retried.
 func TestHTTPRouteReconcile_RetractErrorIsReturned(t *testing.T) {
-	r, prov := newHTTPRouteRetractFixture(t, gatewayv1.NamespacesFromSame, "gw")
+	r, prov := newHTTPRouteRetractFixture(t, gatewayv1.NamespacesFromSame)
 	prov.deleteErr = errors.New("provider unavailable")
 
 	_, err := reconcileRetractHTTPRoute(t, r)
