@@ -25,6 +25,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	k8stypes "k8s.io/apimachinery/pkg/types"
@@ -52,7 +53,7 @@ const (
 func newHTTPRouteRetractFixture(
 	t *testing.T,
 	from gatewayv1.FromNamespaces,
-) (*HTTPRouteReconciler, *recordingProvider) {
+) (*HTTPRouteReconciler, *recordingProvider, *recordingUpdater) {
 	t.Helper()
 
 	scheme := runtime.NewScheme()
@@ -83,6 +84,10 @@ func newHTTPRouteRetractFixture(
 	route := &gatewayv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{Namespace: retractRouteNamespace, Name: retractRouteName},
 		Spec: gatewayv1.HTTPRouteSpec{
+			// A route with hostnames of its own is what makes filterHostnames fail
+			// once no listener matches, which is how a route-wide reason used to
+			// overwrite the parent's own.
+			Hostnames: []gatewayv1.Hostname{"tenant.example"},
 			CommonRouteSpec: gatewayv1.CommonRouteSpec{
 				ParentRefs: []gatewayv1.ParentReference{{
 					Name:      gatewayv1.ObjectName(gateway.Name),
@@ -101,14 +106,15 @@ func newHTTPRouteRetractFixture(
 	require.NoError(t, readier.Start(context.Background()))
 
 	prov := &recordingProvider{}
+	updater := &recordingUpdater{}
 	return &HTTPRouteReconciler{
 		Client:   cli,
 		Scheme:   scheme,
 		Log:      logr.Discard(),
 		Provider: prov,
-		Updater:  &recordingUpdater{},
+		Updater:  updater,
 		Readier:  readier,
-	}, prov
+	}, prov, updater
 }
 
 func reconcileRetractHTTPRoute(t *testing.T, r *HTTPRouteReconciler) (ctrl.Result, error) {
@@ -125,7 +131,7 @@ var retractRouteKey = k8stypes.NamespacedName{Namespace: retractRouteNamespace, 
 // retracted, otherwise the data plane keeps serving a route the Gateway no longer
 // admits and only deleting the HTTPRoute clears it.
 func TestHTTPRouteReconcile_RetractsWhenListenerStopsAllowingRoute(t *testing.T) {
-	r, prov := newHTTPRouteRetractFixture(t, gatewayv1.NamespacesFromSame)
+	r, prov, updater := newHTTPRouteRetractFixture(t, gatewayv1.NamespacesFromSame)
 
 	result, err := reconcileRetractHTTPRoute(t, r)
 
@@ -133,11 +139,24 @@ func TestHTTPRouteReconcile_RetractsWhenListenerStopsAllowingRoute(t *testing.T)
 	assert.Equal(t, ctrl.Result{}, result)
 	assert.Equal(t, []k8stypes.NamespacedName{retractRouteKey}, prov.deleted)
 	assert.Zero(t, prov.updated, "a route that is not accepted must not be published")
+
+	// The reason must say why this parent rejected the route. The route-wide
+	// status derived from filterHostnames would otherwise report
+	// NoMatchingListenerHostname, which is a symptom of nothing having matched
+	// rather than the cause.
+	require.Len(t, updater.updates, 1)
+	mutated, ok := updater.updates[0].Mutator.Mutate(&gatewayv1.HTTPRoute{}).(*gatewayv1.HTTPRoute)
+	require.True(t, ok)
+	require.Len(t, mutated.Status.Parents, 1)
+	accepted := meta.FindStatusCondition(mutated.Status.Parents[0].Conditions, string(gatewayv1.RouteConditionAccepted))
+	require.NotNil(t, accepted)
+	assert.Equal(t, metav1.ConditionFalse, accepted.Status)
+	assert.Equal(t, string(gatewayv1.RouteReasonNotAllowedByListeners), accepted.Reason)
 }
 
 // An accepted route must still be published and must not be retracted.
 func TestHTTPRouteReconcile_PublishesAcceptedRoute(t *testing.T) {
-	r, prov := newHTTPRouteRetractFixture(t, gatewayv1.NamespacesFromAll)
+	r, prov, _ := newHTTPRouteRetractFixture(t, gatewayv1.NamespacesFromAll)
 
 	_, err := reconcileRetractHTTPRoute(t, r)
 
@@ -148,7 +167,7 @@ func TestHTTPRouteReconcile_PublishesAcceptedRoute(t *testing.T) {
 
 // A provider failure while retracting must surface so the reconcile is retried.
 func TestHTTPRouteReconcile_RetractErrorIsReturned(t *testing.T) {
-	r, prov := newHTTPRouteRetractFixture(t, gatewayv1.NamespacesFromSame)
+	r, prov, _ := newHTTPRouteRetractFixture(t, gatewayv1.NamespacesFromSame)
 	prov.deleteErr = errors.New("provider unavailable")
 
 	_, err := reconcileRetractHTTPRoute(t, r)
