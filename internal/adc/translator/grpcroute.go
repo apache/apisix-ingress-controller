@@ -315,11 +315,7 @@ func (t *Translator) TranslateGRPCRoute(tctx *provider.TranslateContext, grpcRou
 
 		// A route answers only the schemes its listeners accept. See the HTTPRoute
 		// translator for why neither hostname matching nor server_port covers this.
-		if scheme := listenerScheme(tctx.Listeners); scheme != "" {
-			for _, route := range routes {
-				addSchemeVar(route, scheme)
-			}
-		}
+		t.pinRoutesToListenerScheme(tctx.Listeners, routes)
 
 		// Hostname-less listener ports decide whether a server_port var is needed;
 		// hostname listeners are isolated by host, not port. When it is added, match

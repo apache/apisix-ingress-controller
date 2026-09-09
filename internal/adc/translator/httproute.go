@@ -748,11 +748,7 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 		// Nothing else enforces that: hostname matching cannot tell the two apart, and
 		// server_port only can when the Gateway's declared ports equal the ports
 		// APISIX listens on.
-		if scheme := listenerScheme(tctx.Listeners); scheme != "" {
-			for _, route := range routes {
-				addSchemeVar(route, scheme)
-			}
-		}
+		t.pinRoutesToListenerScheme(tctx.Listeners, routes)
 
 		// Hostname-less listener ports decide whether a server_port var is needed;
 		// hostname listeners are isolated by host, not port.

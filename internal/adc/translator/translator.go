@@ -114,6 +114,18 @@ func listenerScheme(listeners []gatewayv1.Listener) string {
 	return scheme
 }
 
+// pinRoutesToListenerScheme pins the routes of one rule to the scheme their
+// listeners accept, when the listeners agree on one.
+func (t *Translator) pinRoutesToListenerScheme(listeners []gatewayv1.Listener, routes []*adctypes.Route) {
+	scheme := listenerScheme(listeners)
+	if scheme == "" {
+		return
+	}
+	for _, route := range routes {
+		addSchemeVar(route, scheme)
+	}
+}
+
 // addSchemeVar pins a route to the scheme of the connection APISIX accepted.
 //
 // Unlike server_port this holds whatever port mapping sits in front of the data
