@@ -241,9 +241,17 @@ func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 		return nil
 	}
 
-	defer d.syncNotify()
-	_, err := d.removeResourceState(nnk, resourceTypes, labels)
-	return err
+	removed, err := d.removeResourceState(nnk, resourceTypes, labels)
+	if err != nil {
+		return err
+	}
+	// Syncing pushes the whole store to every data plane. Objects this controller never
+	// configured delete nothing, and reconciles for them are frequent, so notify only
+	// when the store actually changed.
+	if len(removed) > 0 {
+		d.syncNotify()
+	}
+	return nil
 }
 
 // applyResourceState upserts a resource's config associations and its contribution to each
