@@ -192,7 +192,14 @@ func TestTranslateGRPCRouteServerPortVarsByMode(t *testing.T) {
 			got, err := translator.TranslateGRPCRoute(tctx, grpcRoute)
 			assert.NoError(t, err)
 			if assert.Len(t, got.Services, 1) && assert.Len(t, got.Services[0].Routes, 1) {
-				assert.Equal(t, tt.expected, got.Services[0].Routes[0].Vars)
+				// Every listener in this table is HTTP, so the route also carries the
+				// scheme predicate. TestTranslateHTTPRouteSchemeVar covers that on its own.
+				want := append(adctypes.Vars{{
+					{StrVal: "scheme"},
+					{StrVal: "=="},
+					{StrVal: "http"},
+				}}, tt.expected...)
+				assert.Equal(t, want, got.Services[0].Routes[0].Vars)
 			}
 		})
 	}

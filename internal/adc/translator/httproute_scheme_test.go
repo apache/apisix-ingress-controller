@@ -32,16 +32,17 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 )
 
-var httpsSchemeVar = []adctypes.StringOrSlice{
-	{StrVal: "scheme"},
-	{StrVal: "=="},
-	{StrVal: "https"},
+func schemeVar(scheme string) []adctypes.StringOrSlice {
+	return []adctypes.StringOrSlice{
+		{StrVal: "scheme"},
+		{StrVal: "=="},
+		{StrVal: scheme},
+	}
 }
 
-// A route attached only to HTTPS listeners must not answer plaintext requests for
-// the same host and path. $scheme is evaluated against the connection APISIX
-// accepted, so this holds whatever port mapping sits in front of the data plane,
-// and it is therefore independent of listener_port_match_mode.
+// A route answers only the schemes its listeners accept. $scheme is evaluated
+// against the connection APISIX accepted, so this holds whatever port mapping sits
+// in front of the data plane, and it is independent of listener_port_match_mode.
 func TestTranslateHTTPRouteSchemeVar(t *testing.T) {
 	pathMatchType := gatewayv1.PathMatchPathPrefix
 	pathValue := "/"
@@ -63,48 +64,55 @@ func TestTranslateHTTPRouteSchemeVar(t *testing.T) {
 	}
 
 	tests := []struct {
-		name       string
-		mode       config.ListenerPortMatchMode
-		listeners  []gatewayv1.Listener
-		wantScheme bool
+		name      string
+		mode      config.ListenerPortMatchMode
+		listeners []gatewayv1.Listener
+		// want is the scheme the route must be pinned to, or "" for no pinning.
+		want string
 	}{
 		{
-			name:       "https listener pins the scheme with the default mode",
-			mode:       config.ListenerPortMatchModeOff,
-			listeners:  []gatewayv1.Listener{https(443, nil)},
-			wantScheme: true,
+			name:      "https listener pins https with the default mode",
+			mode:      config.ListenerPortMatchModeOff,
+			listeners: []gatewayv1.Listener{https(443, nil)},
+			want:      "https",
 		},
 		{
 			// The declared 443 need not be the port APISIX listens on, which is what
 			// makes server_port unusable here and the scheme var necessary.
-			name:       "https listener with a hostname is pinned too",
-			mode:       config.ListenerPortMatchModeOff,
-			listeners:  []gatewayv1.Listener{https(443, ptr.To(gatewayv1.Hostname("secure.example")))},
-			wantScheme: true,
+			name:      "https listener with a hostname is pinned too",
+			mode:      config.ListenerPortMatchModeOff,
+			listeners: []gatewayv1.Listener{https(443, ptr.To(gatewayv1.Hostname("secure.example")))},
+			want:      "https",
 		},
 		{
-			name:       "a plaintext listener in the set keeps the route on both schemes",
-			mode:       config.ListenerPortMatchModeOff,
-			listeners:  []gatewayv1.Listener{https(443, nil), plain(80)},
-			wantScheme: false,
+			name:      "http listener pins http",
+			mode:      config.ListenerPortMatchModeOff,
+			listeners: []gatewayv1.Listener{plain(80)},
+			want:      "http",
 		},
 		{
-			name:       "plaintext only is left alone",
-			mode:       config.ListenerPortMatchModeOff,
-			listeners:  []gatewayv1.Listener{plain(80)},
-			wantScheme: false,
+			name:      "several listeners of the same protocol still pin it",
+			mode:      config.ListenerPortMatchModeOff,
+			listeners: []gatewayv1.Listener{https(443, nil), https(8443, ptr.To(gatewayv1.Hostname("secure.example")))},
+			want:      "https",
 		},
 		{
-			name:       "no listener means nothing to pin",
-			mode:       config.ListenerPortMatchModeOff,
-			listeners:  nil,
-			wantScheme: false,
+			name:      "a route attached to both protocols serves both",
+			mode:      config.ListenerPortMatchModeOff,
+			listeners: []gatewayv1.Listener{https(443, nil), plain(80)},
+			want:      "",
 		},
 		{
-			name:       "auto mode still pins the scheme",
-			mode:       config.ListenerPortMatchModeAuto,
-			listeners:  []gatewayv1.Listener{https(9443, nil)},
-			wantScheme: true,
+			name:      "no listener means nothing to pin",
+			mode:      config.ListenerPortMatchModeOff,
+			listeners: nil,
+			want:      "",
+		},
+		{
+			name:      "auto mode does not change the scheme predicate",
+			mode:      config.ListenerPortMatchModeAuto,
+			listeners: []gatewayv1.Listener{https(9443, nil)},
+			want:      "https",
 		},
 	}
 
@@ -130,13 +138,41 @@ func TestTranslateHTTPRouteSchemeVar(t *testing.T) {
 				return
 			}
 			vars := got.Services[0].Routes[0].Vars
-			if tt.wantScheme {
-				assert.Contains(t, vars, httpsSchemeVar,
-					"a route attached only to HTTPS listeners must be pinned to the https scheme")
+			if tt.want != "" {
+				assert.Contains(t, vars, schemeVar(tt.want),
+					"a route whose listeners agree on a scheme must be pinned to it")
 				return
 			}
-			assert.NotContains(t, vars, httpsSchemeVar,
-				"a route that can be reached over plaintext must not be pinned to https")
+			assert.NotContains(t, vars, schemeVar("http"))
+			assert.NotContains(t, vars, schemeVar("https"),
+				"a route whose listeners disagree must serve both schemes")
+		})
+	}
+}
+
+// The L4 protocols carry TLSRoute, TCPRoute and UDPRoute, which have no request
+// scheme. listenerScheme must refuse to pin those rather than guess, so that a
+// listener set containing one leaves the route alone.
+func TestListenerScheme(t *testing.T) {
+	listener := func(protocol gatewayv1.ProtocolType) gatewayv1.Listener {
+		return gatewayv1.Listener{Name: gatewayv1.SectionName(protocol), Protocol: protocol, Port: 443}
+	}
+
+	for name, tt := range map[string]struct {
+		listeners []gatewayv1.Listener
+		want      string
+	}{
+		"http":              {[]gatewayv1.Listener{listener(gatewayv1.HTTPProtocolType)}, "http"},
+		"https":             {[]gatewayv1.Listener{listener(gatewayv1.HTTPSProtocolType)}, "https"},
+		"tls":               {[]gatewayv1.Listener{listener(gatewayv1.TLSProtocolType)}, ""},
+		"tcp":               {[]gatewayv1.Listener{listener(gatewayv1.TCPProtocolType)}, ""},
+		"udp":               {[]gatewayv1.Listener{listener(gatewayv1.UDPProtocolType)}, ""},
+		"https beside tls":  {[]gatewayv1.Listener{listener(gatewayv1.HTTPSProtocolType), listener(gatewayv1.TLSProtocolType)}, ""},
+		"http beside https": {[]gatewayv1.Listener{listener(gatewayv1.HTTPProtocolType), listener(gatewayv1.HTTPSProtocolType)}, ""},
+		"none":              {nil, ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.Equal(t, tt.want, listenerScheme(tt.listeners))
 		})
 	}
 }

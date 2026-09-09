@@ -22,6 +22,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
+	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 )
 
@@ -85,19 +86,32 @@ func allListenerPorts(listeners []gatewayv1.Listener) map[int32]struct{} {
 	return ports
 }
 
-// listenersAllTerminateTLS reports whether every listener the route attached to
-// terminates TLS. Only then can the route be pinned to the https scheme: a route
-// that also attaches to a plaintext listener must keep matching plaintext.
-func listenersAllTerminateTLS(listeners []gatewayv1.Listener) bool {
-	if len(listeners) == 0 {
-		return false
-	}
+// listenerScheme returns the request scheme shared by every listener the route
+// attached to, or "" when they disagree, when there are none, or when any of
+// them is a protocol that carries no request scheme.
+//
+// Only an unambiguous answer pins the route. A route attached to both an HTTP and
+// an HTTPS listener is meant to serve both, and a listener protocol that has no
+// scheme at all - TLS, TCP, UDP, which carry the L4 route kinds - leaves the
+// route alone rather than being guessed at.
+func listenerScheme(listeners []gatewayv1.Listener) string {
+	scheme := ""
 	for _, listener := range listeners {
-		if listener.Protocol != gatewayv1.HTTPSProtocolType {
-			return false
+		var current string
+		switch listener.Protocol {
+		case gatewayv1.HTTPProtocolType:
+			current = apiv2.SchemeHTTP
+		case gatewayv1.HTTPSProtocolType:
+			current = apiv2.SchemeHTTPS
+		default:
+			return ""
 		}
+		if scheme != "" && scheme != current {
+			return ""
+		}
+		scheme = current
 	}
-	return true
+	return scheme
 }
 
 // addSchemeVar pins a route to the scheme of the connection APISIX accepted.

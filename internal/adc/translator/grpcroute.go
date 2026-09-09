@@ -313,12 +313,11 @@ func (t *Translator) TranslateGRPCRoute(tctx *provider.TranslateContext, grpcRou
 			routes = append(routes, route)
 		}
 
-		// A route that attached only to HTTPS listeners must not answer plaintext
-		// requests for the same host and path. See the HTTPRoute translator for why
-		// neither hostname matching nor server_port covers this.
-		if listenersAllTerminateTLS(tctx.Listeners) {
+		// A route answers only the schemes its listeners accept. See the HTTPRoute
+		// translator for why neither hostname matching nor server_port covers this.
+		if scheme := listenerScheme(tctx.Listeners); scheme != "" {
 			for _, route := range routes {
-				addSchemeVar(route, apiv2.SchemeHTTPS)
+				addSchemeVar(route, scheme)
 			}
 		}
 

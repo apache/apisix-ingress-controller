@@ -91,12 +91,14 @@ The fields below are specified in the Gateway API specification but are either p
 | `spec.listeners[].tls.frontendValidation`            | Partially supported  | Enables downstream (client) mTLS. `caCertificateRefs` may reference a `ConfigMap` (Gateway API Core support) or a `Secret` (implementation-specific) holding the CA certificate under the `ca.crt` key; clients are then required to present a certificate signed by one of the referenced CAs. |
 | `spec.addresses`                                     | Not supported        | Controller does not read or act on `spec.addresses`.                                           |
 
-## HTTPS listeners and plaintext requests
+## Listener protocol and the request scheme
 
-A route that attaches only to `HTTPS` listeners is pinned to the `https` scheme, so a plaintext request for the same hostname and path does not match it and falls through to whatever else is configured, or to `404`.
+A route answers only the schemes its listeners accept. When every listener a route attached to is `HTTPS`, the route is pinned to the `https` scheme, so a plaintext request for the same hostname and path does not match it. When they are all `HTTP`, it is pinned to `http`. A route attached to both is pinned to neither, because it is meant to serve both.
 
-The predicate is evaluated against the connection APISIX accepted, so it holds regardless of the port mapping in front of the data plane. This is what distinguishes it from [`listener_port_match_mode`](../reference/configuration-file.md#listener-port-matching), which pins a route to a listener port and can only isolate protocols when the Gateway's declared ports are the ports APISIX listens on.
+The predicate is evaluated against the connection APISIX accepted, so it holds regardless of the port mapping in front of the data plane. That is what distinguishes it from [`listener_port_match_mode`](../reference/configuration-file.md#listener-port-matching), which pins a route to a listener port and can only isolate protocols when the Gateway's declared ports are the ports APISIX listens on.
 
-A route that also attaches to an `HTTP` listener is not pinned, because it is meant to serve both.
+`TLS`, `TCP` and `UDP` listeners carry the L4 route kinds, which have no request scheme. A route is left unpinned if any of its listeners uses one of these.
 
 The one deployment this does not fit is TLS terminated in front of APISIX, where the connection APISIX accepts is plaintext even though the client used HTTPS. Declare those listeners as `HTTP`, since the Gateway is not terminating TLS in that topology and the listener's `certificateRefs` would go unused.
+
+This narrows which requests reach a route but does not amount to full Listener Isolation, an Extended Gateway API feature that also covers hostname overlap between listeners on the same port. `GatewayHTTPListenerIsolation` is not claimed.
