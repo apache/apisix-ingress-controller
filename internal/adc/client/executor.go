@@ -26,7 +26,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -47,22 +46,8 @@ const (
 )
 
 type ADCExecutor interface {
-	Execute(ctx context.Context, config adctypes.Config, args []string) error
-	Validate(ctx context.Context, config adctypes.Config, args []string) error
-}
-
-func BuildADCExecuteArgs(filePath string, labels map[string]string, types []string) []string {
-	args := []string{
-		"sync",
-		"-f", filePath,
-	}
-	for k, v := range labels {
-		args = append(args, "--label-selector", k+"="+v)
-	}
-	for _, t := range types {
-		args = append(args, "--include-resource-type", t)
-	}
-	return args
+	Execute(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) error
+	Validate(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) error
 }
 
 // ADCServerRequest represents the request body for ADC Server /sync endpoint
@@ -157,16 +142,16 @@ func NewHTTPADCExecutor(log logr.Logger, serverURL string, timeout time.Duration
 }
 
 // Execute implements the ADCExecutor interface using HTTP calls
-func (e *HTTPADCExecutor) Execute(ctx context.Context, config adctypes.Config, args []string) error {
-	return e.runHTTPSync(ctx, config, args)
+func (e *HTTPADCExecutor) Execute(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) error {
+	return e.runHTTPSync(ctx, config, resources, labels, resourceTypes)
 }
 
-func (e *HTTPADCExecutor) Validate(ctx context.Context, config adctypes.Config, args []string) error {
-	return e.runHTTPValidate(ctx, config, args)
+func (e *HTTPADCExecutor) Validate(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) error {
+	return e.runHTTPValidate(ctx, config, resources, labels, resourceTypes)
 }
 
 // runHTTPSync performs HTTP sync to ADC Server for each server address
-func (e *HTTPADCExecutor) runHTTPSync(ctx context.Context, config adctypes.Config, args []string) error {
+func (e *HTTPADCExecutor) runHTTPSync(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) error {
 	var execErrs = types.ADCExecutionError{
 		Name: config.Name,
 	}
@@ -180,7 +165,7 @@ func (e *HTTPADCExecutor) runHTTPSync(ctx context.Context, config adctypes.Confi
 	e.log.V(1).Info("running http sync", "serverAddrs", serverAddrs)
 
 	for _, addr := range serverAddrs {
-		if err := e.runHTTPSyncForSingleServer(ctx, addr, config, args); err != nil {
+		if err := e.runHTTPSyncForSingleServer(ctx, addr, config, resources, labels, resourceTypes); err != nil {
 			e.log.Error(err, "failed to run http sync for server", "server", addr)
 			var execErr types.ADCExecutionServerAddrError
 			if errors.As(err, &execErr) {
@@ -199,7 +184,7 @@ func (e *HTTPADCExecutor) runHTTPSync(ctx context.Context, config adctypes.Confi
 	return nil
 }
 
-func (e *HTTPADCExecutor) runHTTPValidate(ctx context.Context, config adctypes.Config, args []string) error {
+func (e *HTTPADCExecutor) runHTTPValidate(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) error {
 	var validationErr = types.ADCValidationError{
 		Name: config.Name,
 	}
@@ -211,7 +196,7 @@ func (e *HTTPADCExecutor) runHTTPValidate(ctx context.Context, config adctypes.C
 	e.log.V(1).Info("running http validate", "serverAddrs", serverAddrs)
 
 	for _, addr := range serverAddrs {
-		if err := e.runHTTPValidateForSingleServer(ctx, addr, config, args); err != nil {
+		if err := e.runHTTPValidateForSingleServer(ctx, addr, config, resources, labels, resourceTypes); err != nil {
 			e.log.Error(err, "failed to run http validate for server", "server", addr)
 			var validationServerErr types.ADCValidationServerAddrError
 			if errors.As(err, &validationServerErr) {
@@ -232,29 +217,15 @@ func (e *HTTPADCExecutor) runHTTPValidate(ctx context.Context, config adctypes.C
 }
 
 // runHTTPSyncForSingleServer performs HTTP sync to a single ADC Server
-func (e *HTTPADCExecutor) runHTTPSyncForSingleServer(ctx context.Context, serverAddr string, config adctypes.Config, args []string) error {
+func (e *HTTPADCExecutor) runHTTPSyncForSingleServer(ctx context.Context, serverAddr string, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) error {
 	ctx, cancel := context.WithTimeout(ctx, e.httpClient.Timeout)
 	defer cancel()
 
-	// Parse args to extract labels, types, and file path
-	labels, types, filePath, err := e.parseArgs(args)
-	if err != nil {
-		return fmt.Errorf("failed to parse args: %w", err)
-	}
-
-	// Load resources from file
-	resources, err := e.loadResourcesFromFile(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to load resources from file %s: %w", filePath, err)
-	}
-
-	// Build HTTP request
-	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, types, resources, pathSync)
+	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, resourceTypes, resources, pathSync)
 	if err != nil {
 		return fmt.Errorf("failed to build HTTP request: %w", err)
 	}
 
-	// Send HTTP request
 	resp, err := e.httpClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("failed to send HTTP request: %w", err)
@@ -265,25 +236,14 @@ func (e *HTTPADCExecutor) runHTTPSyncForSingleServer(ctx context.Context, server
 		}
 	}()
 
-	// Handle HTTP response
 	return e.handleHTTPResponse(resp, serverAddr)
 }
 
-func (e *HTTPADCExecutor) runHTTPValidateForSingleServer(ctx context.Context, serverAddr string, config adctypes.Config, args []string) error {
+func (e *HTTPADCExecutor) runHTTPValidateForSingleServer(ctx context.Context, serverAddr string, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) error {
 	ctx, cancel := context.WithTimeout(ctx, e.httpClient.Timeout)
 	defer cancel()
 
-	labels, types, filePath, err := e.parseArgs(args)
-	if err != nil {
-		return fmt.Errorf("failed to parse args: %w", err)
-	}
-
-	resources, err := e.loadResourcesFromFile(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to load resources from file %s: %w", filePath, err)
-	}
-
-	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, types, resources, pathValidate)
+	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, resourceTypes, resources, pathValidate)
 	if err != nil {
 		return fmt.Errorf("failed to build validate request: %w", err)
 	}
@@ -299,58 +259,6 @@ func (e *HTTPADCExecutor) runHTTPValidateForSingleServer(ctx context.Context, se
 	}()
 
 	return e.handleHTTPValidateResponse(resp, serverAddr)
-}
-
-// parseArgs parses the command line arguments to extract labels, types, and file path
-func (e *HTTPADCExecutor) parseArgs(args []string) (map[string]string, []string, string, error) {
-	labels := make(map[string]string)
-	var types []string
-	var filePath string
-
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case "-f":
-			if i+1 < len(args) {
-				filePath = args[i+1]
-				i++
-			}
-		case "--label-selector":
-			if i+1 < len(args) {
-				labelPair := args[i+1]
-				parts := strings.SplitN(labelPair, "=", 2)
-				if len(parts) == 2 {
-					labels[parts[0]] = parts[1]
-				}
-				i++
-			}
-		case "--include-resource-type":
-			if i+1 < len(args) {
-				types = append(types, args[i+1])
-				i++
-			}
-		}
-	}
-
-	if filePath == "" {
-		return nil, nil, "", errors.New("file path not found in args")
-	}
-
-	return labels, types, filePath, nil
-}
-
-// loadResourcesFromFile loads ADC resources from the specified file
-func (e *HTTPADCExecutor) loadResourcesFromFile(filePath string) (*adctypes.Resources, error) {
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %w", err)
-	}
-
-	var resources adctypes.Resources
-	if err := json.Unmarshal(data, &resources); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal resources: %w", err)
-	}
-
-	return &resources, nil
 }
 
 // buildHTTPRequest builds the HTTP request for ADC Server
