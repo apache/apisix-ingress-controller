@@ -462,6 +462,8 @@ spec:
 
 The `k8s.apisix.apache.org/enable-websocket` annotation enables WebSocket support for an Ingress when set to `true`.
 
+Setting `appProtocol: kubernetes.io/ws` (or `kubernetes.io/wss`) on the backend Service port has the same effect and is the only way to enable WebSocket for an `HTTPRoute`. See [Proxying WebSocket](../concepts/gateway-api.md#proxying-websocket).
+
 For example:
 
 ```yaml

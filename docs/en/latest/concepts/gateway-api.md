@@ -90,3 +90,28 @@ The fields below are specified in the Gateway API specification but are either p
 | `spec.listeners[].tls.mode`                          | Partially supported  | `Terminate` is implemented; `Passthrough` is effectively unsupported for Gateway listeners.    |
 | `spec.listeners[].tls.frontendValidation`            | Partially supported  | Enables downstream (client) mTLS. `caCertificateRefs` may reference a `ConfigMap` (Gateway API Core support) or a `Secret` (implementation-specific) holding the CA certificate under the `ca.crt` key; clients are then required to present a certificate signed by one of the referenced CAs. |
 | `spec.addresses`                                     | Not supported        | Controller does not read or act on `spec.addresses`.                                           |
+
+## Proxying WebSocket
+
+An `HTTPRoute` has no field that enables WebSocket. The controller decides from the `appProtocol` of the Service port the route sends traffic to, so the Service is where the protocol is declared:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: websocket-service
+spec:
+  ports:
+  - name: ws
+    port: 80
+    targetPort: 8080
+    appProtocol: kubernetes.io/ws    # use kubernetes.io/wss for a TLS backend
+```
+
+Without it the route is proxied as ordinary HTTP: the upgrade request is answered with a normal `200` response instead of `101 Switching Protocols`, and the connection is never upgraded. Nothing in the `HTTPRoute` status reports this, because the route itself is valid.
+
+`appProtocol` also selects the upstream scheme: `kubernetes.io/ws` and `http` proxy over HTTP, `kubernetes.io/wss` and `https` proxy over HTTPS.
+
+The other resources declare it on the route instead. An `ApisixRoute` uses `spec.http[].websocket: true`, and an Ingress uses the [`k8s.apisix.apache.org/enable-websocket`](../reference/annotations.md#enable-websocket) annotation. An Ingress accepts either the annotation or the Service `appProtocol`.
+
+Two behaviors are worth knowing when verifying a change. Switching the backend Service or its endpoints only affects connections opened afterwards, and deleting the `HTTPRoute` stops new requests but does not terminate WebSocket connections that are already open.
