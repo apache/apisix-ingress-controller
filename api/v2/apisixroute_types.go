@@ -190,6 +190,7 @@ type ApisixRouteHTTPBackend struct {
 	ServiceName string `json:"serviceName" yaml:"serviceName"`
 	// ServicePort is the port of the Kubernetes Service.
 	// This can be either the port name or port number.
+	// +kubebuilder:validation:XValidation:rule="type(self) == int ? self > 0 && self <= 65535 : size(self) > 0",message="servicePort must be a port number between 1 and 65535, or a non-empty port name"
 	ServicePort intstr.IntOrString `json:"servicePort" yaml:"servicePort"`
 	// ResolveGranularity determines how the backend service is resolved.
 	// Valid values are `endpoints` and `service`. When set to `endpoints`,
@@ -248,6 +249,7 @@ type ApisixRouteStreamBackend struct {
 	ServiceName string `json:"serviceName" yaml:"serviceName"`
 	// ServicePort is the port of the Kubernetes Service.
 	// This can be either the port name or port number.
+	// +kubebuilder:validation:XValidation:rule="type(self) == int ? self > 0 && self <= 65535 : size(self) > 0",message="servicePort must be a port number between 1 and 65535, or a non-empty port name"
 	ServicePort intstr.IntOrString `json:"servicePort" yaml:"servicePort"`
 	// ResolveGranularity determines how the backend service is resolved.
 	// Valid values are `endpoint` and `service`. When set to `endpoint`,

@@ -125,3 +125,55 @@ func TestApisixRoute_PathScope_EmptyName(t *testing.T) {
 	}
 	assert.NoError(t, v.Validate(t, ar))
 }
+
+func newRouteWithServicePort(port intstr.IntOrString) *apisixv2.ApisixRoute {
+	return &apisixv2.ApisixRoute{
+		Spec: apisixv2.ApisixRouteSpec{
+			IngressClassName: "apisix",
+			HTTP: []apisixv2.ApisixRouteHTTP{
+				{
+					Name:      "rule0",
+					Websocket: boolPtr(false),
+					Match:     apisixv2.ApisixRouteHTTPMatch{Paths: []string{"/*"}},
+					Backends: []apisixv2.ApisixRouteHTTPBackend{
+						{ServiceName: "my-svc", ServicePort: port, Weight: intPtr(100)},
+					},
+				},
+			},
+		},
+	}
+}
+
+// An empty servicePort is accepted by the int-or-string schema but can never
+// resolve: it is compared against Service port names, so it matches nothing, or
+// matches a single-port Service that omits its port name by accident.
+func TestApisixRoute_ServicePort_Rejected(t *testing.T) {
+	v := loadApisixRouteSchema(t)
+
+	for name, port := range map[string]intstr.IntOrString{
+		"empty name":  intstr.FromString(""),
+		"zero":        intstr.FromInt(0),
+		"negative":    intstr.FromInt(-1),
+		"above 65535": intstr.FromInt(65536),
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := v.Validate(t, newRouteWithServicePort(port))
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "servicePort must be a port number")
+		})
+	}
+}
+
+func TestApisixRoute_ServicePort_Accepted(t *testing.T) {
+	v := loadApisixRouteSchema(t)
+
+	for name, port := range map[string]intstr.IntOrString{
+		"port number":  intstr.FromInt(80),
+		"highest port": intstr.FromInt(65535),
+		"named port":   intstr.FromString("http"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.NoError(t, v.Validate(t, newRouteWithServicePort(port)))
+		})
+	}
+}

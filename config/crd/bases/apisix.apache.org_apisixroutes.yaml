@@ -163,6 +163,11 @@ spec:
                               ServicePort is the port of the Kubernetes Service.
                               This can be either the port name or port number.
                             x-kubernetes-int-or-string: true
+                            x-kubernetes-validations:
+                            - message: servicePort must be a port number between 1
+                                and 65535, or a non-empty port name
+                              rule: 'type(self) == int ? self > 0 && self <= 65535
+                                : size(self) > 0'
                           subset:
                             description: |-
                               Subset specifies a named subset of the target Service.
@@ -407,6 +412,11 @@ spec:
                             ServicePort is the port of the Kubernetes Service.
                             This can be either the port name or port number.
                           x-kubernetes-int-or-string: true
+                          x-kubernetes-validations:
+                          - message: servicePort must be a port number between 1 and
+                              65535, or a non-empty port name
+                            rule: 'type(self) == int ? self > 0 && self <= 65535 :
+                              size(self) > 0'
                         subset:
                           description: |-
                             Subset specifies a named subset of the target Service.
