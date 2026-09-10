@@ -69,7 +69,6 @@ func TestTaskMarshalLogRedactsSecrets(t *testing.T) {
 	log := bufferLogger(&buf)
 
 	task := Task{
-		Key:  types.NamespacedNameKind{Namespace: "ns", Name: "route-1", Kind: "ApisixRoute"},
 		Name: "ns/route-1",
 		Configs: map[types.NamespacedNameKind]adctypes.Config{
 			{}: {Name: "gw", Token: secretAdminKey, ServerAddrs: []string{"http://x"}},

@@ -125,7 +125,7 @@ type fakeExecutor struct {
 	bypassSeq []bool
 }
 
-func (f *fakeExecutor) Execute(_ context.Context, config adctypes.Config, _ []string) error {
+func (f *fakeExecutor) Execute(_ context.Context, config adctypes.Config, _ *adctypes.Resources, _ map[string]string, _ []string) error {
 	f.bypassSeq = append(f.bypassSeq, config.BypassCache)
 	if len(f.errs) == 0 {
 		return nil
@@ -135,7 +135,9 @@ func (f *fakeExecutor) Execute(_ context.Context, config adctypes.Config, _ []st
 	return err
 }
 
-func (f *fakeExecutor) Validate(context.Context, adctypes.Config, []string) error { return nil }
+func (f *fakeExecutor) Validate(context.Context, adctypes.Config, *adctypes.Resources, map[string]string, []string) error {
+	return nil
+}
 
 // newTestClient starts out as a controller that has just been elected: no ADC baseline is
 // known to be current, so the first sync of a cacheKey rebuilds it.
@@ -158,12 +160,10 @@ func afterFirstSync(exec ADCExecutor) *Client {
 
 const syncTaskCacheKey = "GatewayProxy/ns/name"
 
-func newSyncTask() Task {
-	return Task{
-		Name: "GatewayProxy/ns/name-sync",
-		Configs: map[types.NamespacedNameKind]adctypes.Config{
-			{}: {Name: "GatewayProxy/ns/name", BackendType: "apisix-standalone"},
-		},
+func newSyncInput() SyncInput {
+	return SyncInput{
+		Name:      "GatewayProxy/ns/name-sync",
+		Config:    adctypes.Config{Name: "GatewayProxy/ns/name", BackendType: "apisix-standalone"},
 		Resources: &adctypes.Resources{},
 	}
 }
@@ -175,13 +175,13 @@ func TestClientSyncRebuildsOnceAfterElectionThenReusesTheADCCache(t *testing.T) 
 	// The sidecar may still hold a baseline from an earlier term, so the first sync of a
 	// cacheKey re-derives it from the data plane. Once ADC has accepted that sync, its
 	// baseline is current and later syncs diff against it.
-	require.NoError(t, c.sync(context.Background(), newSyncTask()))
-	require.NoError(t, c.sync(context.Background(), newSyncTask()))
+	require.NoError(t, c.syncOne(context.Background(), newSyncInput()))
+	require.NoError(t, c.syncOne(context.Background(), newSyncInput()))
 	assert.Equal(t, []bool{true, false}, exec.bypassSeq)
 
 	// Winning the election again puts every baseline back in doubt.
 	c.InvalidateADCCache()
-	require.NoError(t, c.sync(context.Background(), newSyncTask()))
+	require.NoError(t, c.syncOne(context.Background(), newSyncInput()))
 	assert.Equal(t, []bool{true, false, true}, exec.bypassSeq)
 }
 
@@ -193,8 +193,8 @@ func TestClientSyncRebuildsAgainWhenTheRebuildWasNotAccepted(t *testing.T) {
 	}}}
 	c := newTestClient(exec)
 
-	require.Error(t, c.sync(context.Background(), newSyncTask()))
-	require.NoError(t, c.sync(context.Background(), newSyncTask()))
+	require.Error(t, c.syncOne(context.Background(), newSyncInput()))
+	require.NoError(t, c.syncOne(context.Background(), newSyncInput()))
 
 	assert.Equal(t, []bool{true, true}, exec.bypassSeq)
 }
@@ -205,16 +205,16 @@ func TestClientSyncRebuildsADCBaselineWhenTheDataPlaneRejectsThePush(t *testing.
 
 	// The data plane holds a conf_version newer than the one the ADC baseline carries, so
 	// the push is rejected. The retry rebuilds that baseline from the data plane.
-	task := newSyncTask()
-	require.NoError(t, c.sync(context.Background(), task))
+	in := newSyncInput()
+	require.NoError(t, c.syncOne(context.Background(), in))
 
 	assert.Equal(t, []bool{false, true}, exec.bypassSeq)
 
 	// BypassCache is scoped to the request that recovers from the rejection. Were it to
-	// survive in the task, it would reach the config the ConfigManager holds and turn a
+	// survive in the input, it would reach the config ConfigManager holds and turn a
 	// one-off rebuild into a data plane fetch on every later sync.
-	assert.False(t, task.Configs[types.NamespacedNameKind{}].BypassCache,
-		"the rebuild must not write BypassCache back into the task config")
+	assert.False(t, in.Config.BypassCache,
+		"the rebuild must not write BypassCache back into the input's config")
 }
 
 func TestClientSyncDoesNotRebuildOnUnrelatedFailures(t *testing.T) {
@@ -229,7 +229,7 @@ func TestClientSyncDoesNotRebuildOnUnrelatedFailures(t *testing.T) {
 			exec := &fakeExecutor{errs: []error{err}}
 			c := afterFirstSync(exec)
 
-			require.Error(t, c.sync(context.Background(), newSyncTask()))
+			require.Error(t, c.syncOne(context.Background(), newSyncInput()))
 
 			assert.Equal(t, []bool{false}, exec.bypassSeq)
 		})
@@ -242,7 +242,7 @@ func TestClientSyncRebuildsHoweverTheRejectionIsWorded(t *testing.T) {
 	exec := &fakeExecutor{errs: []error{rejection("upstreams_conf_version has moved backwards")}}
 	c := afterFirstSync(exec)
 
-	require.NoError(t, c.sync(context.Background(), newSyncTask()))
+	require.NoError(t, c.syncOne(context.Background(), newSyncInput()))
 
 	assert.Equal(t, []bool{false, true}, exec.bypassSeq)
 }
@@ -253,9 +253,9 @@ func TestClientSyncDoesNotRebuildOutsideStandalone(t *testing.T) {
 	exec := &fakeExecutor{errs: []error{confVersionError()}}
 	c := afterFirstSync(exec)
 
-	task := newSyncTask()
-	task.Configs[types.NamespacedNameKind{}] = adctypes.Config{Name: "GatewayProxy/ns/name", BackendType: "apisix"}
-	require.Error(t, c.sync(context.Background(), task))
+	in := newSyncInput()
+	in.Config = adctypes.Config{Name: "GatewayProxy/ns/name", BackendType: "apisix"}
+	require.Error(t, c.syncOne(context.Background(), in))
 
 	assert.Equal(t, []bool{false}, exec.bypassSeq)
 }
@@ -266,7 +266,7 @@ func TestClientSyncSurfacesErrorWhenRebuildFails(t *testing.T) {
 	exec := &fakeExecutor{errs: []error{confVersionError(), rejection(`unrecognized key "bypassCache"`)}}
 	c := afterFirstSync(exec)
 
-	err := c.sync(context.Background(), newSyncTask())
+	err := c.syncOne(context.Background(), newSyncInput())
 
 	require.Error(t, err, "a rebuild that still fails must not be swallowed")
 	assert.Equal(t, []bool{false, true}, exec.bypassSeq, "the rebuild is attempted once, not in a loop")
@@ -282,7 +282,7 @@ func TestClientSyncDoesNotReportTheSameRejectionTwice(t *testing.T) {
 	exec := &fakeExecutor{errs: []error{confVersionError(), confVersionError()}}
 	c := afterFirstSync(exec)
 
-	err := c.sync(context.Background(), newSyncTask())
+	err := c.syncOne(context.Background(), newSyncInput())
 
 	var execErrs types.ADCExecutionErrors
 	require.ErrorAs(t, err, &execErrs)
