@@ -30,16 +30,12 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  ADC_VERSION: dev
   ADC_RUST_VERSION: "0.30.2"
 
 jobs:
   e2e-test:
     strategy:
       matrix:
-        adc_impl:
-        - node
-        - rust
         provider_type:
         - apisix-standalone
         - apisix
@@ -59,11 +55,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.26"
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: "*"
 
       - name: Install kind
         run: |
@@ -95,19 +86,7 @@ jobs:
         run: |
           make install
 
-      - name: Setup adc (node)
-        if: ${{ env.ADC_VERSION == 'dev' && matrix.adc_impl == 'node' }}
-        run: |
-          docker create --name adc-temp ghcr.io/api7/adc:dev
-          # main.cjs lives in the image's WORKDIR, not at the container root,
-          # and docker cp resolves a relative SRC_PATH against the root.
-          docker cp "adc-temp:$(docker inspect -f '{{.Config.WorkingDir}}' adc-temp)/main.cjs" adc.js
-          docker rm adc-temp
-          node $(pwd)/adc.js -v
-          echo "ADC_BIN=node $(pwd)/adc.js" >> $GITHUB_ENV
-
       - name: Setup adc (rust)
-        if: ${{ matrix.adc_impl == 'rust' }}
         run: |
           curl -fsSL -o adc.tar.gz "https://github.com/api7/adc/releases/download/v${{ env.ADC_RUST_VERSION }}/adc_rust_${{ env.ADC_RUST_VERSION }}_linux_amd64.tar.gz"
           tar -xzf adc.tar.gz adc
@@ -142,12 +121,6 @@ jobs:
           fi
 
   disable-gateway-api:
-    strategy:
-      matrix:
-        adc_impl:
-        - node
-        - rust
-      fail-fast: false
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -159,11 +132,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.26"
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: "*"
 
       - name: Install kind
         run: |
@@ -191,19 +159,7 @@ jobs:
         run: |
           make kind-load-images
 
-      - name: Setup adc (node)
-        if: ${{ env.ADC_VERSION == 'dev' && matrix.adc_impl == 'node' }}
-        run: |
-          docker create --name adc-temp ghcr.io/api7/adc:dev
-          # main.cjs lives in the image's WORKDIR, not at the container root,
-          # and docker cp resolves a relative SRC_PATH against the root.
-          docker cp "adc-temp:$(docker inspect -f '{{.Config.WorkingDir}}' adc-temp)/main.cjs" adc.js
-          docker rm adc-temp
-          node $(pwd)/adc.js -v
-          echo "ADC_BIN=node $(pwd)/adc.js" >> $GITHUB_ENV
-
       - name: Setup adc (rust)
-        if: ${{ matrix.adc_impl == 'rust' }}
         run: |
           curl -fsSL -o adc.tar.gz "https://github.com/api7/adc/releases/download/v${{ env.ADC_RUST_VERSION }}/adc_rust_${{ env.ADC_RUST_VERSION }}_linux_amd64.tar.gz"
           tar -xzf adc.tar.gz adc
