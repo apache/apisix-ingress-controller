@@ -181,9 +181,13 @@ var (
 func TestApisixRouteReconcile_RetractsWhenPluginConfigIsMissing(t *testing.T) {
 	r, prov := newApisixRoutePluginConfigFixture(t, interceptor.Funcs{})
 
-	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: retractApisixRouteKey})
+	result, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: retractApisixRouteKey})
 
-	require.Error(t, err)
+	// No error and no requeue: the reference does not come back on its own, so
+	// retrying it forever with backoff only produces log noise. The
+	// ApisixPluginConfig watch reconciles the route again when it returns.
+	require.NoError(t, err)
+	assert.Equal(t, ctrl.Result{}, result)
 	assert.Equal(t, []k8stypes.NamespacedName{retractApisixRouteKey}, prov.deleted)
 	assert.Zero(t, prov.updated)
 }
@@ -205,9 +209,10 @@ func TestApisixRouteReconcile_KeepsRouteWhenPluginConfigReadFails(t *testing.T) 
 func TestIngressReconcile_RetractsWhenPluginConfigIsMissing(t *testing.T) {
 	r, prov := newIngressPluginConfigFixture(t, interceptor.Funcs{})
 
-	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: retractIngressKey})
+	result, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: retractIngressKey})
 
-	require.Error(t, err)
+	require.NoError(t, err)
+	assert.Equal(t, ctrl.Result{}, result)
 	assert.Equal(t, []k8stypes.NamespacedName{retractIngressKey}, prov.deleted)
 	assert.Zero(t, prov.updated)
 }

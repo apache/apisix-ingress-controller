@@ -202,6 +202,10 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				r.Log.Error(derr, "failed to delete ingress", "ingress", utils.NamespacedName(ingress))
 				return ctrl.Result{}, derr
 			}
+			// Requeueing would retry forever with backoff for a reference that does
+			// not come back on its own; the ApisixPluginConfig watch reconciles the
+			// Ingress again when it does.
+			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err
 	}

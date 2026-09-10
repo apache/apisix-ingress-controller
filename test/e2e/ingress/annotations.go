@@ -751,6 +751,91 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "unmarshalling echo plugin config")
 			Expect(echoConfig["body"]).To(Equal("hello from plugin config"), "checking echo plugin body")
 		})
+		It("stops serving when the referenced ApisixPluginConfig is deleted", func() {
+			pluginConfig := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixPluginConfig
+metadata:
+  name: revoked-plugin-config
+spec:
+  ingressClassName: %s
+  plugins:
+  - name: response-rewrite
+    enable: true
+    config:
+      headers:
+        X-Revocation-Test: "must-disappear"
+`
+			ingressWithPluginConfig := `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: revoked-plugin-config-test
+  annotations:
+    k8s.apisix.apache.org/plugin-config-name: "revoked-plugin-config"
+spec:
+  ingressClassName: %s
+  rules:
+  - host: revoked-plugin-config.example
+    http:
+      paths:
+      - path: /get
+        pathType: Exact
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
+			applyPluginConfig := func() {
+				Expect(s.CreateResourceFromString(fmt.Sprintf(pluginConfig, s.Namespace()))).
+					ShouldNot(HaveOccurred(), "creating ApisixPluginConfig")
+			}
+
+			applyPluginConfig()
+			Expect(s.CreateResourceFromString(fmt.Sprintf(ingressWithPluginConfig, s.Namespace()))).
+				ShouldNot(HaveOccurred(), "creating Ingress")
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "revoked-plugin-config.example",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedHeader("X-Revocation-Test", "must-disappear"),
+				},
+			})
+
+			By("delete only the ApisixPluginConfig, leaving the Ingress in place")
+			Expect(s.DeleteResource("ApisixPluginConfig", "revoked-plugin-config")).
+				ShouldNot(HaveOccurred(), "deleting ApisixPluginConfig")
+
+			// Without the retraction the Ingress keeps forwarding and keeps applying
+			// the deleted plugin, so the header would still come back with a 200.
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "revoked-plugin-config.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+
+			By("recreating it under the same name restores the Ingress")
+			applyPluginConfig()
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "revoked-plugin-config.example",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedHeader("X-Revocation-Test", "must-disappear"),
+				},
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+		})
+
 		It("methods", func() {
 			Expect(s.CreateResourceFromString(fmt.Sprintf(allowMethods, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
 			Expect(s.CreateResourceFromString(fmt.Sprintf(blockMethods, s.Namespace()))).ShouldNot(HaveOccurred(), "creating Ingress")
