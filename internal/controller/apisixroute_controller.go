@@ -155,10 +155,10 @@ func (r *ApisixRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 				r.Log.Error(derr, "failed to delete apisixroute", "apisixroute", utils.NamespacedName(&ar))
 				return ctrl.Result{}, derr
 			}
-			// The deferred updateStatus still reports the reason. Returning the
-			// error as well would requeue forever with backoff: the reference does
-			// not come back on its own, and the ApisixPluginConfig watch reconciles
-			// the route again when it does.
+			// err is the local variable the deferred updateStatus reads, so the
+			// status still reports the reason. Returning it as well would requeue
+			// forever with backoff: the reference does not come back on its own, and
+			// the ApisixPluginConfig watch reconciles the route again when it does.
 			return ctrl.Result{}, nil
 		}
 		return ctrl.Result{}, err

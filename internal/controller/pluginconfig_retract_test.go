@@ -90,7 +90,7 @@ func newApisixRoutePluginConfigFixture(
 	t *testing.T,
 	interceptorFuncs interceptor.Funcs,
 	extraObjects ...client.Object,
-) (*ApisixRouteReconciler, *recordingProvider) {
+) (*ApisixRouteReconciler, *recordingProvider, *recordingUpdater) {
 	t.Helper()
 
 	scheme := retractPluginConfigScheme(t)
@@ -118,14 +118,15 @@ func newApisixRoutePluginConfigFixture(
 		Build()
 
 	prov := &recordingProvider{}
+	updater := &recordingUpdater{}
 	return &ApisixRouteReconciler{
 		Client:   cli,
 		Scheme:   scheme,
 		Log:      logr.Discard(),
 		Provider: prov,
-		Updater:  &recordingUpdater{},
+		Updater:  updater,
 		Readier:  newRetractReadier(t, cli),
-	}, prov
+	}, prov, updater
 }
 
 func newIngressPluginConfigFixture(
@@ -179,7 +180,7 @@ var (
 // data plane keeps applying the deleted plugins while the status reports the spec
 // as invalid, and only deleting the route itself clears it.
 func TestApisixRouteReconcile_RetractsWhenPluginConfigIsMissing(t *testing.T) {
-	r, prov := newApisixRoutePluginConfigFixture(t, interceptor.Funcs{})
+	r, prov, updater := newApisixRoutePluginConfigFixture(t, interceptor.Funcs{})
 
 	result, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: retractApisixRouteKey})
 
@@ -190,12 +191,25 @@ func TestApisixRouteReconcile_RetractsWhenPluginConfigIsMissing(t *testing.T) {
 	assert.Equal(t, ctrl.Result{}, result)
 	assert.Equal(t, []k8stypes.NamespacedName{retractApisixRouteKey}, prov.deleted)
 	assert.Zero(t, prov.updated)
+
+	// Retracting without saying why would be the same disagreement the other way
+	// round. The reason travels on the error the deferred updateStatus reads, which
+	// returning nil must not disturb.
+	require.Len(t, updater.updates, 1)
+	mutated, ok := updater.updates[0].Mutator.Mutate(&apiv2.ApisixRoute{}).(*apiv2.ApisixRoute)
+	require.True(t, ok)
+	require.Len(t, mutated.Status.Conditions, 1)
+	accepted := mutated.Status.Conditions[0]
+	assert.Equal(t, string(apiv2.ConditionTypeAccepted), accepted.Type)
+	assert.Equal(t, metav1.ConditionFalse, accepted.Status)
+	assert.Equal(t, string(apiv2.ConditionReasonInvalidSpec), accepted.Reason)
+	assert.Contains(t, accepted.Message, "ApisixPluginConfig not found")
 }
 
 // A read failure that is not NotFound is transient. Retracting on it would drop a
 // working route because the API server hiccuped.
 func TestApisixRouteReconcile_KeepsRouteWhenPluginConfigReadFails(t *testing.T) {
-	r, prov := newApisixRoutePluginConfigFixture(t, failGetOn[*apiv2.ApisixPluginConfig]())
+	r, prov, _ := newApisixRoutePluginConfigFixture(t, failGetOn[*apiv2.ApisixPluginConfig]())
 
 	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: retractApisixRouteKey})
 
@@ -233,7 +247,7 @@ func TestReconcile_PublishesWhenPluginConfigExists(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Namespace: retractPluginConfigNamespace, Name: retractPluginConfigName},
 	}
 
-	ar, arProv := newApisixRoutePluginConfigFixture(t, interceptor.Funcs{}, pc.DeepCopy())
+	ar, arProv, _ := newApisixRoutePluginConfigFixture(t, interceptor.Funcs{}, pc.DeepCopy())
 	_, err := ar.Reconcile(context.Background(), ctrl.Request{NamespacedName: retractApisixRouteKey})
 	require.NoError(t, err)
 	assert.Empty(t, arProv.deleted)
