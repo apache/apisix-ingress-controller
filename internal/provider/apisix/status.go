@@ -50,9 +50,18 @@ const (
 // It maintains a history of failed resources in d.statusUpdateMap.
 //
 // For resources in the current failure map (statusUpdateMap), it marks them as failed.
-// For resources that exist only in the previous failure history (i.e. not in this sync's failures),
-// it marks them as accepted (success).
-func (d *apisixProvider) handleStatusUpdate(statusUpdateMap map[types.NamespacedNameKind][]string) {
+// For resources that exist only in the previous failure history (i.e. not in this sync's
+// failures), it marks them as accepted (success), except a GatewayProxy, which only
+// counts as recovered if attempted says this round actually reached the data plane for
+// it. A GatewayProxy dropping out of the failure map because its config wasn't attempted
+// this round at all is not recovery; without this check that case would be indistinguishable
+// from a genuine sync success.
+func (d *apisixProvider) handleStatusUpdate(attempted []types.NamespacedNameKind, statusUpdateMap map[types.NamespacedNameKind][]string) {
+	attemptedSet := make(map[types.NamespacedNameKind]struct{}, len(attempted))
+	for _, nnk := range attempted {
+		attemptedSet[nnk] = struct{}{}
+	}
+
 	// Mark all resources in the current failure set as failed.
 	for nnk, msgs := range statusUpdateMap {
 		d.updateStatus(nnk, failureCondition(nnk, strings.Join(msgs, "; ")))
@@ -60,12 +69,16 @@ func (d *apisixProvider) handleStatusUpdate(statusUpdateMap map[types.Namespaced
 
 	// Mark resources that exist only in the previous failure history as successful.
 	for nnk := range d.statusUpdateMap {
-		if _, ok := statusUpdateMap[nnk]; !ok {
-			d.updateStatus(nnk, successCondition(nnk))
-			if nnk.Kind == types.KindGatewayProxy {
-				d.recordGatewayProxyRecoveredEvent(nnk)
-			}
+		if _, stillFailing := statusUpdateMap[nnk]; stillFailing {
+			continue
 		}
+		if nnk.Kind == types.KindGatewayProxy {
+			if _, wasAttempted := attemptedSet[nnk]; !wasAttempted {
+				continue
+			}
+			d.recordGatewayProxyRecoveredEvent(nnk)
+		}
+		d.updateStatus(nnk, successCondition(nnk))
 	}
 	// Update the failure history with the current failure set.
 	d.statusUpdateMap = statusUpdateMap
@@ -357,19 +370,19 @@ func (d *apisixProvider) resolveADCExecutionErrors(
 }
 
 // handleEmptyFailedStatuses runs when nothing could be attributed to a specific
-// resource. A failed EndpointStatus entry means an unreachable or rejecting instance,
-// so it's marked on the GatewayProxy instead of smearing every resource; only a plain
-// transport error with no structured response at all falls back to smearing.
+// resource: always the GatewayProxy, never a smear across every resource under it.
+// A failed EndpointStatus entry gives a per-instance message; otherwise (a plain
+// transport error with no structured response at all) falls back to the raw error.
 func (d *apisixProvider) handleEmptyFailedStatuses(
 	configName string,
 	failedStatus types.ADCExecutionServerAddrError,
 	statusUpdateMap map[types.NamespacedNameKind][]string,
 ) {
-	if msg := unavailableEndpointsMessage(failedStatus.EndpointStatuses); msg != "" {
-		d.markGatewayProxyDataPlaneUnavailable(configName, msg, failedStatus.EndpointStatuses, statusUpdateMap)
-		return
+	msg := unavailableEndpointsMessage(failedStatus.EndpointStatuses)
+	if msg == "" {
+		msg = failedStatus.Error()
 	}
-	d.smearAllResources(configName, failedStatus.Error(), statusUpdateMap)
+	d.markGatewayProxyDataPlaneUnavailable(configName, msg, failedStatus.EndpointStatuses, statusUpdateMap)
 }
 
 // unavailableEndpointsMessage summarizes every EndpointStatus entry that didn't
@@ -404,41 +417,6 @@ func (d *apisixProvider) markGatewayProxyDataPlaneUnavailable(
 	}
 	statusUpdateMap[gatewayProxy] = append(statusUpdateMap[gatewayProxy], msg)
 	d.recordFailedEndpointEvents(gatewayProxy, endpoints)
-}
-
-// smearAllResources is the last resort when nothing can be attributed: it marks every
-// resource under this config.
-func (d *apisixProvider) smearAllResources(
-	configName string,
-	msg string,
-	statusUpdateMap map[types.NamespacedNameKind][]string,
-) {
-	resource, err := d.store.GetResources(configName)
-	if err != nil {
-		d.log.Error(err, "failed to get resources from store", "configName", configName)
-		return
-	}
-
-	for _, obj := range resource.Services {
-		d.addResourceToStatusUpdateMap(obj.GetLabels(), msg, statusUpdateMap)
-	}
-
-	for _, obj := range resource.Consumers {
-		d.addResourceToStatusUpdateMap(obj.GetLabels(), msg, statusUpdateMap)
-	}
-
-	for _, obj := range resource.SSLs {
-		d.addResourceToStatusUpdateMap(obj.GetLabels(), msg, statusUpdateMap)
-	}
-
-	globalRules, err := d.store.ListGlobalRules(configName)
-	if err != nil {
-		d.log.Error(err, "failed to list global rules", "configName", configName)
-		return
-	}
-	for _, rule := range globalRules {
-		d.addResourceToStatusUpdateMap(rule.GetLabels(), msg, statusUpdateMap)
-	}
 }
 
 func (d *apisixProvider) handleDetailedFailedStatuses(
