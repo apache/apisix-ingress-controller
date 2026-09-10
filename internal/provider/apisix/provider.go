@@ -43,6 +43,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/provider/common"
 	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
+	pkgmetrics "github.com/apache/apisix-ingress-controller/pkg/metrics"
 )
 
 const (
@@ -71,6 +72,13 @@ type apisixProvider struct {
 	// syncLocks serializes, per cacheKey, reading that GatewayProxy's current resource
 	// snapshot together with pushing it
 	syncLocks *keyedMutex
+
+	// rebuiltMu guards rebuiltBaselines.
+	rebuiltMu sync.Mutex
+	// rebuiltBaselines holds the cacheKeys whose ADC diff baseline this leadership term
+	// has already re-derived from the data plane. A key absent from it is pushed with
+	// BypassCache first. See invalidateBaselineCache.
+	rebuiltBaselines map[string]struct{}
 
 	updater         status.Updater
 	statusUpdateMap map[types.NamespacedNameKind][]string
@@ -101,17 +109,18 @@ func New(log logr.Logger, updater status.Updater, readier readiness.ReadinessMan
 	configManager := common.NewConfigManager[types.NamespacedNameKind, adctypes.Config]()
 
 	return &apisixProvider{
-		client:        cli,
-		store:         store,
-		configManager: configManager,
-		debugProvider: common.NewADCDebugProvider(store, configManager),
-		syncLocks:     newKeyedMutex(),
-		Options:       o,
-		translator:    translator.NewTranslator(log, o.ListenerPortMatchMode),
-		updater:       updater,
-		readier:       readier,
-		syncCh:        make(chan struct{}, 1),
-		log:           logger,
+		client:           cli,
+		store:            store,
+		configManager:    configManager,
+		debugProvider:    common.NewADCDebugProvider(store, configManager),
+		syncLocks:        newKeyedMutex(),
+		rebuiltBaselines: make(map[string]struct{}),
+		Options:          o,
+		translator:       translator.NewTranslator(log, o.ListenerPortMatchMode),
+		updater:          updater,
+		readier:          readier,
+		syncCh:           make(chan struct{}, 1),
+		log:              logger,
 	}, nil
 }
 
@@ -318,6 +327,35 @@ func (d *apisixProvider) evictFromStore(
 	return nil
 }
 
+// invalidateBaselineCache forgets which ADC diff baselines are known to be current, so
+// the next push of each cacheKey re-derives its baseline from the data plane.
+//
+// Called on leader acquisition, the one moment a stale baseline can enter the picture.
+// The ADC server is a sidecar that outlives the controller process: losing the lease
+// terminates the manager container but not the sidecar, so what ADC holds for a cacheKey
+// (the last synced content plus the conf_version it generated) can still be the snapshot
+// this pod left behind in an earlier term, while the leader in between kept pushing and
+// moved the data plane's conf_version past it. APISIX standalone requires those versions
+// to be monotonic and refuses the whole configuration otherwise.
+func (d *apisixProvider) invalidateBaselineCache() {
+	d.rebuiltMu.Lock()
+	defer d.rebuiltMu.Unlock()
+	clear(d.rebuiltBaselines)
+}
+
+func (d *apisixProvider) baselineIsCurrent(cacheKey string) bool {
+	d.rebuiltMu.Lock()
+	defer d.rebuiltMu.Unlock()
+	_, ok := d.rebuiltBaselines[cacheKey]
+	return ok
+}
+
+func (d *apisixProvider) markBaselineCurrent(cacheKey string) {
+	d.rebuiltMu.Lock()
+	defer d.rebuiltMu.Unlock()
+	d.rebuiltBaselines[cacheKey] = struct{}{}
+}
+
 // syncConfigNow reads name's current data (via build, called only once this cacheKey's
 // lock is actually held) and pushes it -- one atomic read-then-push step per cacheKey, so
 // whichever caller is granted the lock decides what to push only once it holds it: nothing
@@ -335,8 +373,74 @@ func (d *apisixProvider) syncConfigNow(
 	if err != nil {
 		return types.ADCExecutionErrors{}, err
 	}
-	failedMap, err := d.client.Sync(ctx, []adcclient.SyncInput{input})
-	return failedMap[name], err
+	execErrs := d.pushConfig(ctx, input)
+	if len(execErrs.Errors) > 0 {
+		return execErrs, execErrs
+	}
+	return execErrs, nil
+}
+
+// pushConfig syncs input through the adc client once, and when apisix-standalone rejects
+// it over a stale conf_version, asks ADC to rebuild its diff baseline from the data plane
+// (SyncInput.Config.BypassCache) and syncs again. The adc client never retries on its
+// own: this is the one rejection AIC knows how to answer, so AIC owns both the decision
+// and the record of which baselines this leadership term has already rebuilt.
+//
+// invalidateBaselineCache on leader acquisition forces the first push of every cacheKey
+// this term to rebuild, which covers where staleness comes from. This retry is the safety
+// net for a desync no leadership change explains, such as another writer on the same data
+// plane, and a conf_version the data plane refuses is the only way that shows itself.
+func (d *apisixProvider) pushConfig(ctx context.Context, input adcclient.SyncInput) types.ADCExecutionErrors {
+	backend := input.Config.BackendType
+	if backend == "" {
+		backend = d.DefaultBackendMode
+	}
+	standalone := backend == adcclient.BackendAPISIXStandalone
+
+	input.Config.BypassCache = standalone && !d.baselineIsCurrent(input.Name)
+	err := d.client.Sync(ctx, input)
+
+	var execErrs types.ADCExecutionErrors
+	if standalone && !input.Config.BypassCache && adcclient.IsConfVersionRejection(err) {
+		d.log.Info("data plane rejected a stale conf_version, rebuilding the ADC baseline",
+			"config", input.Name, "error", err.Error())
+		// The rebuild is not rate limited, so a rejection on every push (someone else writing
+		// to this data plane) turns every push into a full fetch and diff, and this counter
+		// is what says so.
+		pkgmetrics.RecordExecutionError(input.Name, "conf_version_conflict")
+
+		rejection := err
+		input.Config.BypassCache = true
+		err = d.client.Sync(ctx, input)
+
+		// Keep the rejection visible when the rebuild itself fails: on its own a failed
+		// rebuild points nowhere near what it was rebuilding for (an ADC server too old for
+		// bypassCache answers with a schema error). Unless the rebuild hit the very same
+		// rejection, where repeating it only pads the status message.
+		if err != nil && err.Error() != rejection.Error() {
+			execErrs.Errors = append(execErrs.Errors, toADCExecutionError(input.Name, rejection))
+		}
+	}
+
+	// Only a push ADC accepted proves its baseline is now derived from the data plane.
+	if err == nil && input.Config.BypassCache {
+		d.markBaselineCurrent(input.Name)
+	}
+	if err != nil {
+		execErrs.Errors = append(execErrs.Errors, toADCExecutionError(input.Name, err))
+	}
+	return execErrs
+}
+
+// toADCExecutionError shapes one sync error into the per-config form status reporting
+// consumes. A parsed per-server error travels through with its structured detail intact;
+// anything else becomes a bare message.
+func toADCExecutionError(name string, err error) types.ADCExecutionError {
+	var addrErr types.ADCExecutionServerAddrError
+	if errors.As(err, &addrErr) {
+		return types.ADCExecutionError{Name: name, FailedErrors: []types.ADCExecutionServerAddrError{addrErr}}
+	}
+	return types.ADCExecutionError{Name: name, FailedErrors: []types.ADCExecutionServerAddrError{{Err: err.Error()}}}
 }
 
 // syncEvictedConfigsNow pushes an empty resource set for each of the given configs
@@ -386,7 +490,7 @@ func (d *apisixProvider) Start(ctx context.Context) error {
 	// one thing that leaves the ADC sidecar holding a baseline from an earlier term: it
 	// survives the manager container, the configuration it was derived from does not.
 	// Rebuild every baseline from the data plane before syncing from it.
-	d.client.InvalidateADCCache()
+	d.invalidateBaselineCache()
 
 	d.log.Info("starting provider, waiting for readiness")
 	d.readier.WaitReady(ctx, 5*time.Minute)

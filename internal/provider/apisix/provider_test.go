@@ -56,12 +56,13 @@ func newTestProvider(t *testing.T) *apisixProvider {
 	cli, err := adcclient.New(logr.Discard(), ProviderTypeAPISIX, time.Second)
 	require.NoError(t, err)
 	return &apisixProvider{
-		client:        cli,
-		store:         cache.NewStore(logr.Discard()),
-		configManager: common.NewConfigManager[types.NamespacedNameKind, adctypes.Config](),
-		syncLocks:     newKeyedMutex(),
-		syncCh:        make(chan struct{}, 1),
-		log:           logr.Discard(),
+		client:           cli,
+		store:            cache.NewStore(logr.Discard()),
+		configManager:    common.NewConfigManager[types.NamespacedNameKind, adctypes.Config](),
+		syncLocks:        newKeyedMutex(),
+		rebuiltBaselines: make(map[string]struct{}),
+		syncCh:           make(chan struct{}, 1),
+		log:              logr.Discard(),
 	}
 }
 
