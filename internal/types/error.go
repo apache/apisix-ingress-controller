@@ -37,6 +37,29 @@ func (e ReasonError) Error() string {
 	return e.Message
 }
 
+// DependencyMissingError marks a validation failure caused by a referenced object
+// that is absent rather than temporarily unreadable. The distinction matters when
+// deciding what to do with configuration already published for the owner: an
+// absent reference will not come back on its own, so keeping the last good
+// configuration leaves the data plane contradicting the Accepted=False status
+// written alongside it, while a transient read failure must be retried instead.
+type DependencyMissingError struct {
+	Err error
+}
+
+func (e DependencyMissingError) Error() string {
+	return e.Err.Error()
+}
+
+func (e DependencyMissingError) Unwrap() error {
+	return e.Err
+}
+
+func IsDependencyMissing(err error) bool {
+	var dme DependencyMissingError
+	return errors.As(err, &dme)
+}
+
 func IsSomeReasonError[Reason ~string](err error, reasons ...Reason) bool {
 	if err == nil {
 		return false
