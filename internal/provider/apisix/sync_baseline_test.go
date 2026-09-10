@@ -87,11 +87,11 @@ func scriptedADC(t *testing.T, script ...adcResp) func() []adcclient.ADCServerRe
 	}
 }
 
-func standaloneInput(name string) adcclient.SyncInput {
+func standaloneInput() adcclient.SyncInput {
 	return adcclient.SyncInput{
-		Name: name,
+		Name: "proxy",
 		Config: adctypes.Config{
-			Name:        name,
+			Name:        "proxy",
 			BackendType: adcclient.BackendAPISIXStandalone,
 			ServerAddrs: []string{"http://apisix:9180"},
 		},
@@ -110,7 +110,7 @@ func bypassSeq(reqs []adcclient.ADCServerRequest) []bool {
 func TestPushRebuildsBaselineOncePerTermThenReusesIt(t *testing.T) {
 	reqs := scriptedADC(t, respOK())
 	d := newTestProvider(t)
-	in := standaloneInput("proxy")
+	in := standaloneInput()
 
 	require.Empty(t, d.pushConfig(context.Background(), in).Errors)
 	require.Empty(t, d.pushConfig(context.Background(), in).Errors)
@@ -125,7 +125,7 @@ func TestPushRebuildsAgainWhenTheRebuildWasNotAccepted(t *testing.T) {
 	// Nothing proves the baseline current except ADC accepting the push that rebuilt it.
 	reqs := scriptedADC(t, respRejected("connection refused"), respOK())
 	d := newTestProvider(t)
-	in := standaloneInput("proxy")
+	in := standaloneInput()
 
 	require.NotEmpty(t, d.pushConfig(context.Background(), in).Errors)
 	require.Empty(t, d.pushConfig(context.Background(), in).Errors)
@@ -136,7 +136,7 @@ func TestPushRebuildsAgainWhenTheRebuildWasNotAccepted(t *testing.T) {
 func TestPushRebuildsBaselineWhenTheDataPlaneRejectsAStaleConfVersion(t *testing.T) {
 	reqs := scriptedADC(t, respOK(), respConfVersionRejected(), respOK())
 	d := newTestProvider(t)
-	in := standaloneInput("proxy")
+	in := standaloneInput()
 
 	require.Empty(t, d.pushConfig(context.Background(), in).Errors) // settles the baseline
 	require.Empty(t, d.pushConfig(context.Background(), in).Errors) // rejected, then retried with a rebuild
@@ -157,7 +157,7 @@ func TestPushDoesNotRebuildOnUnrelatedFailures(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			reqs := scriptedADC(t, respOK(), respRejected(reason))
 			d := newTestProvider(t)
-			in := standaloneInput("proxy")
+			in := standaloneInput()
 
 			require.Empty(t, d.pushConfig(context.Background(), in).Errors)
 			require.NotEmpty(t, d.pushConfig(context.Background(), in).Errors)
@@ -172,7 +172,7 @@ func TestPushDoesNotRebuildOutsideStandalone(t *testing.T) {
 	// exists in standalone mode.
 	reqs := scriptedADC(t, respConfVersionRejected())
 	d := newTestProvider(t)
-	in := standaloneInput("proxy")
+	in := standaloneInput()
 	in.Config.BackendType = "apisix"
 
 	require.NotEmpty(t, d.pushConfig(context.Background(), in).Errors)
@@ -185,7 +185,7 @@ func TestPushSurfacesBothReasonsWhenTheRebuildAlsoFails(t *testing.T) {
 	// its own points nowhere near the cause. The rejection that triggered it must stay.
 	reqs := scriptedADC(t, respOK(), respConfVersionRejected(), respRejected(`unrecognized key "bypassCache"`))
 	d := newTestProvider(t)
-	in := standaloneInput("proxy")
+	in := standaloneInput()
 
 	require.Empty(t, d.pushConfig(context.Background(), in).Errors)
 	execErrs := d.pushConfig(context.Background(), in)
@@ -202,7 +202,7 @@ func TestPushDoesNotReportTheSameRejectionTwice(t *testing.T) {
 	// again by the time it is pushed. Reporting that one rejection twice only pads status.
 	scriptedADC(t, respOK(), respConfVersionRejected(), respConfVersionRejected())
 	d := newTestProvider(t)
-	in := standaloneInput("proxy")
+	in := standaloneInput()
 
 	require.Empty(t, d.pushConfig(context.Background(), in).Errors)
 	execErrs := d.pushConfig(context.Background(), in)
@@ -214,7 +214,7 @@ func TestPushRebuildsHoweverTheRejectionIsWorded(t *testing.T) {
 	// The rejection is recognised by the field it names, not the sentence around it.
 	reqs := scriptedADC(t, respOK(), respRejected("upstreams_conf_version has moved backwards"), respOK())
 	d := newTestProvider(t)
-	in := standaloneInput("proxy")
+	in := standaloneInput()
 
 	require.Empty(t, d.pushConfig(context.Background(), in).Errors)
 	require.Empty(t, d.pushConfig(context.Background(), in).Errors)
