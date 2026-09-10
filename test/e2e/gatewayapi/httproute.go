@@ -186,7 +186,10 @@ spec:
 			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(exactRouteByGet, gatewayName), 1)
 
 			By("access dataplane to check the HTTPRoute")
+			// The Gateway has only an HTTPS listener, so the route is pinned to the
+			// https scheme and is reached over TLS, not on the plaintext port.
 			s.RequestAssert(&scaffold.RequestAssert{
+				Client:   s.NewAPISIXHttpsClient("api6.com"),
 				Method:   "GET",
 				Path:     "/get",
 				Host:     "api6.com",
@@ -195,11 +198,20 @@ spec:
 				Interval: time.Second * 2,
 			})
 
+			By("the same request must not be served over plaintext")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "api6.com",
+				Check:  scaffold.WithExpectedStatus(404),
+			})
+
 			By("delete HTTPRoute")
 			err := s.DeleteResourceFromString(fmt.Sprintf(exactRouteByGet, gatewayName))
 			Expect(err).NotTo(HaveOccurred(), "deleting HTTPRoute")
 
 			s.RequestAssert(&scaffold.RequestAssert{
+				Client: s.NewAPISIXHttpsClient("api6.com"),
 				Method: "GET",
 				Path:   "/get",
 				Host:   "api6.com",
@@ -249,6 +261,82 @@ spec:
       group: apisix.apache.org
       kind: GatewayProxy
       name: additional-proxy-config
+`
+
+		// GatewayClass owned by a different controller, plus a Gateway using it.
+		// Moving a route onto this Gateway takes it out of the scope of the
+		// controller under test without deleting the route itself.
+		var foreignGatewayClassYaml = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: %s
+spec:
+  controllerName: "apisix.apache.org/not-exist"
+`
+
+		var foreignGateway = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: foreign-gateway
+spec:
+  gatewayClassName: %s
+  listeners:
+    - name: http-foreign
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All
+`
+
+		// HTTPRoute with a single parent, whose name is filled in by the test.
+		var singleParentHTTPRoute = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: moving-route
+spec:
+  parentRefs:
+  - name: %s
+    namespace: %s
+  hostnames:
+  - httpbin-additional.example
+  rules:
+  - matches:
+    - path:
+        type: Exact
+        value: /get
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
+
+		// The same route with an extra match, so re-applying it bumps the
+		// generation and forces a reconcile while the GatewayClass is missing.
+		var singleParentHTTPRouteExtraMatch = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: moving-route
+spec:
+  parentRefs:
+  - name: %s
+    namespace: %s
+  hostnames:
+  - httpbin-additional.example
+  rules:
+  - matches:
+    - path:
+        type: Exact
+        value: /get
+    - path:
+        type: Exact
+        value: /headers
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
 `
 
 		// HTTPRoute that references both gateways
@@ -371,6 +459,100 @@ spec:
 				Host:   "httpbin-additional.example",
 				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
 			})
+		})
+
+		It("HTTPRoute should stop being served after moving to another controller's Gateway", func() {
+			By("Create HTTPRoute on the additional gateway")
+			s.ResourceApplied("HTTPRoute", "moving-route",
+				fmt.Sprintf(singleParentHTTPRoute, "additional-gateway", additionalSvc.Namespace), 1)
+
+			client, err := s.NewAPISIXClientForGateway(additionalGatewayGroupID)
+			Expect(err).NotTo(HaveOccurred(), "creating client for additional gateway")
+
+			By("HTTPRoute should be accessible through the additional gateway")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Client:   client,
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin-additional.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+
+			By("Create a Gateway owned by another controller")
+			foreignGatewayClassName := fmt.Sprintf("foreign-gatewayclass-%d", time.Now().Nanosecond())
+			err = s.CreateResourceFromStringWithNamespace(
+				fmt.Sprintf(foreignGatewayClassYaml, foreignGatewayClassName), "")
+			Expect(err).NotTo(HaveOccurred(), "creating foreign GatewayClass")
+
+			err = s.CreateResourceFromStringWithNamespace(
+				fmt.Sprintf(foreignGateway, foreignGatewayClassName), additionalSvc.Namespace)
+			Expect(err).NotTo(HaveOccurred(), "creating foreign Gateway")
+
+			By("Move the HTTPRoute's parentRefs to that Gateway")
+			err = s.CreateResourceFromString(
+				fmt.Sprintf(singleParentHTTPRoute, "foreign-gateway", additionalSvc.Namespace))
+			Expect(err).NotTo(HaveOccurred(), "moving HTTPRoute parentRefs")
+
+			By("HTTPRoute should no longer be accessible through the additional gateway")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Client:   client,
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin-additional.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+		})
+
+		It("HTTPRoute should keep being served when its GatewayClass disappears", func() {
+			By("Create HTTPRoute on the additional gateway")
+			s.ResourceApplied("HTTPRoute", "moving-route",
+				fmt.Sprintf(singleParentHTTPRoute, "additional-gateway", additionalSvc.Namespace), 1)
+
+			client, err := s.NewAPISIXClientForGateway(additionalGatewayGroupID)
+			Expect(err).NotTo(HaveOccurred(), "creating client for additional gateway")
+
+			By("HTTPRoute should be accessible through the additional gateway")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Client:   client,
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin-additional.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+
+			By("Delete the GatewayClass the additional Gateway belongs to")
+			// gc-protection keeps the GatewayClass alive for as long as a Gateway
+			// references it, so a plain delete only marks it Terminating and the
+			// lookup still resolves. Dropping the finalizer produces the state a
+			// CRD upgrade or a restore leaves behind: class gone, Gateway alive.
+			_, err = s.RunKubectlAndGetOutput("delete", "gatewayclass", additionalGatewayClassName, "--wait=false")
+			Expect(err).NotTo(HaveOccurred(), "deleting additional GatewayClass")
+			_, err = s.RunKubectlAndGetOutput("patch", "gatewayclass", additionalGatewayClassName,
+				"--type=merge", "-p", `{"metadata":{"finalizers":[]}}`)
+			Expect(err).NotTo(HaveOccurred(), "removing the GatewayClass finalizer")
+
+			s.RetryAssertion(func() error {
+				_, err := s.RunKubectlAndGetOutput("get", "gatewayclass", additionalGatewayClassName)
+				return err
+			}).Should(HaveOccurred(), "GatewayClass should be gone")
+
+			By("Update the HTTPRoute so it reconciles while the GatewayClass is gone")
+			err = s.CreateResourceFromString(
+				fmt.Sprintf(singleParentHTTPRouteExtraMatch, "additional-gateway", additionalSvc.Namespace))
+			Expect(err).NotTo(HaveOccurred(), "updating HTTPRoute")
+
+			By("HTTPRoute should still be served: ownership is unknown, not disproven")
+			request := func() int {
+				return client.GET("/get").WithHost("httpbin-additional.example").Expect().Raw().StatusCode
+			}
+			Consistently(request).WithTimeout(time.Second * 30).ProbeEvery(time.Second * 2).
+				Should(Equal(http.StatusOK))
 		})
 	})
 
@@ -1691,6 +1873,65 @@ spec:
     config:
       body: "Updated"
 `
+		var echoSecret = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: echo-secret
+stringData:
+  body: "Hello from Secret"
+  headers.X-Origin: "secret"
+`
+		var echoSecretUpdated = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: echo-secret
+stringData:
+  body: "Updated from Secret"
+  headers.X-Origin: "secret"
+`
+		var echoPluginWithSecretRef = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: PluginConfig
+metadata:
+  name: example-plugin-config-secret
+spec:
+  plugins:
+  - name: echo
+    secretRef:
+      name: echo-secret
+    config:
+      headers:
+        X-Config: "config"
+`
+		var extensionRefEchoPluginWithSecretRef = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: httpbin-secret
+  namespace: %s
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - httpbin.example
+  rules:
+  - matches:
+    - path:
+        type: Exact
+        value: /get
+    filters:
+    - type: ExtensionRef
+      extensionRef:
+        group: apisix.apache.org
+        kind: PluginConfig
+        name: example-plugin-config-secret
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
+
 		var extensionRefEchoPlugin = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -2052,6 +2293,48 @@ spec:
 				Path:     "/get",
 				Host:     "httpbin.example",
 				Check:    scaffold.WithExpectedBodyContains("Updated"),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+		})
+
+		It("HTTPRoute ExtensionRef with plugin secretRef", func() {
+			By("create Secret and PluginConfig")
+			Expect(s.CreateResourceFromStringWithNamespace(echoSecret, s.Namespace())).
+				NotTo(HaveOccurred(), "creating Secret")
+			Expect(s.CreateResourceFromStringWithNamespace(echoPluginWithSecretRef, s.Namespace())).
+				NotTo(HaveOccurred(), "creating PluginConfig")
+			s.ResourceApplied("HTTPRoute", "httpbin-secret", fmt.Sprintf(extensionRefEchoPluginWithSecretRef, s.Namespace(), s.Namespace()), 1)
+
+			By("the Secret provides the plugin config, spec.config is kept")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedBodyContains("Hello from Secret"),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.example",
+				Check: scaffold.WithExpectedHeaders(map[string]string{
+					"X-Config": "config",
+					"X-Origin": "secret",
+				}),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+
+			By("updating the Secret updates the plugin config")
+			Expect(s.CreateResourceFromStringWithNamespace(echoSecretUpdated, s.Namespace())).
+				NotTo(HaveOccurred(), "updating Secret")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedBodyContains("Updated from Secret"),
 				Timeout:  time.Second * 30,
 				Interval: time.Second * 2,
 			})
@@ -2545,7 +2828,10 @@ spec:
 		})
 		It("HTTPS backend", func() {
 			s.ResourceApplied("HTTPRoute", "nginx", fmt.Sprintf(httproute, s.Namespace()), 1)
+			// beforeEachHTTPS builds a Gateway with only an HTTPS listener, so the
+			// route is reached over TLS rather than on the plaintext port.
 			s.RequestAssert(&scaffold.RequestAssert{
+				Client: s.NewAPISIXHttpsClient("api6.com"),
 				Method: "GET",
 				Path:   "/get",
 				Host:   "api6.com",

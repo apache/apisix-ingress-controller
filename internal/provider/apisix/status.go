@@ -191,7 +191,7 @@ func (d *apisixProvider) updateStatus(nnk types.NamespacedNameKind, condition me
 			}),
 		})
 	case types.KindHTTPRoute:
-		parentRefs := d.client.ConfigManager.GetConfigRefsByResourceKey(nnk)
+		parentRefs := d.configManager.GetConfigRefsByResourceKey(nnk)
 		d.log.V(1).Info("updating HTTPRoute status", "parentRefs", parentRefs)
 		gatewayRefs := map[types.NamespacedNameKind]struct{}{}
 		for _, parentRef := range parentRefs {
@@ -227,7 +227,7 @@ func (d *apisixProvider) updateStatus(nnk types.NamespacedNameKind, condition me
 			}),
 		})
 	case types.KindUDPRoute:
-		parentRefs := d.client.ConfigManager.GetConfigRefsByResourceKey(nnk)
+		parentRefs := d.configManager.GetConfigRefsByResourceKey(nnk)
 		d.log.V(1).Info("updating UDPRoute status", "parentRefs", parentRefs)
 		gatewayRefs := map[types.NamespacedNameKind]struct{}{}
 		for _, parentRef := range parentRefs {
@@ -263,7 +263,7 @@ func (d *apisixProvider) updateStatus(nnk types.NamespacedNameKind, condition me
 			}),
 		})
 	case types.KindTCPRoute:
-		parentRefs := d.client.ConfigManager.GetConfigRefsByResourceKey(nnk)
+		parentRefs := d.configManager.GetConfigRefsByResourceKey(nnk)
 		d.log.V(1).Info("updating TCPRoute status", "parentRefs", parentRefs)
 		gatewayRefs := map[types.NamespacedNameKind]struct{}{}
 		for _, parentRef := range parentRefs {
@@ -299,7 +299,7 @@ func (d *apisixProvider) updateStatus(nnk types.NamespacedNameKind, condition me
 			}),
 		})
 	case types.KindGRPCRoute:
-		parentRefs := d.client.ConfigManager.GetConfigRefsByResourceKey(nnk)
+		parentRefs := d.configManager.GetConfigRefsByResourceKey(nnk)
 		d.log.V(1).Info("updating GRPCRoute status", "parentRefs", parentRefs)
 		gatewayRefs := map[types.NamespacedNameKind]struct{}{}
 		for _, parentRef := range parentRefs {
@@ -413,7 +413,7 @@ func (d *apisixProvider) smearAllResources(
 	msg string,
 	statusUpdateMap map[types.NamespacedNameKind][]string,
 ) {
-	resource, err := d.client.GetResources(configName)
+	resource, err := d.store.GetResources(configName)
 	if err != nil {
 		d.log.Error(err, "failed to get resources from store", "configName", configName)
 		return
@@ -431,7 +431,7 @@ func (d *apisixProvider) smearAllResources(
 		d.addResourceToStatusUpdateMap(obj.GetLabels(), msg, statusUpdateMap)
 	}
 
-	globalRules, err := d.client.ListGlobalRules(configName)
+	globalRules, err := d.store.ListGlobalRules(configName)
 	if err != nil {
 		d.log.Error(err, "failed to list global rules", "configName", configName)
 		return
@@ -453,7 +453,7 @@ func (d *apisixProvider) handleDetailedFailedStatuses(
 			return
 		}
 		id := status.Event.ResourceID
-		labels, err := d.client.GetResourceLabel(configName, status.Event.ResourceType, id)
+		labels, err := d.store.GetResourceLabel(configName, status.Event.ResourceType, id)
 		if err != nil {
 			d.log.Error(err, "failed to get resource label",
 				"configName", configName,

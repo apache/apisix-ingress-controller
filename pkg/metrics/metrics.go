@@ -58,16 +58,6 @@ var (
 			Help: "Current length of the status update queue",
 		},
 	)
-
-	// File I/O operation duration histogram
-	FileIODuration = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "apisix_ingress_file_io_duration_seconds",
-			Help:    "Time spent on file I/O operations",
-			Buckets: prometheus.DefBuckets,
-		},
-		[]string{"operation", "status"},
-	)
 )
 
 // init registers all metrics with the global prometheus registry
@@ -78,7 +68,6 @@ func init() {
 		ADCSyncTotal,
 		ADCExecutionErrors,
 		StatusUpdateQueueLength,
-		FileIODuration,
 	)
 }
 
@@ -106,9 +95,4 @@ func IncStatusQueueLength() {
 // DecStatusQueueLength decrements the status update queue length gauge by 1
 func DecStatusQueueLength() {
 	StatusUpdateQueueLength.Dec()
-}
-
-// RecordFileIODuration records the duration of a file I/O operation
-func RecordFileIODuration(operation, status string, duration float64) {
-	FileIODuration.WithLabelValues(operation, status).Observe(duration)
 }

@@ -217,7 +217,6 @@ func (v *adcAdmissionValidator) buildIngressClassConfigs(ctx context.Context, ob
 
 func (v *adcAdmissionValidator) newTask(obj client.Object, configs map[internaltypes.NamespacedNameKind]adctypes.Config, resourceTypes []string, result *adctranslator.TranslateResult) *adcclient.Task {
 	return &adcclient.Task{
-		Key:           utils.NamespacedNameKind(obj),
 		Name:          utils.NamespacedNameKind(obj).String(),
 		Labels:        label.GenLabel(obj),
 		Configs:       configs,

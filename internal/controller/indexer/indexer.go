@@ -63,6 +63,7 @@ func SetupAPIv1alpha1Indexer(mgr ctrl.Manager) error {
 		&v1alpha1.Consumer{}:             setupConsumerIndexer,
 		&v1alpha1.GatewayProxy{}:         setupGatewayProxyIndexer,
 		&v1alpha1.L4RoutePolicy{}:        setupL4RoutePolicyIndexer,
+		&v1alpha1.PluginConfig{}:         setupPluginConfigIndexer,
 	} {
 		installed, err := utils.HasAPIResource(mgr, resource)
 		if err != nil {
@@ -258,6 +259,7 @@ func ConsumerSecretIndexFunc(rawObj client.Object) []string {
 		key := GenIndexKey(ns, credential.SecretRef.Name)
 		secretKeys = append(secretKeys, key)
 	}
+	secretKeys = append(secretKeys, PluginSecretIndexKeys(consumer.GetNamespace(), consumer.Spec.Plugins)...)
 	return secretKeys
 }
 
@@ -518,7 +520,41 @@ func setupL4RoutePolicyIndexer(mgr ctrl.Manager) error {
 	); err != nil {
 		return err
 	}
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&v1alpha1.L4RoutePolicy{},
+		SecretIndexRef,
+		func(obj client.Object) []string {
+			return PluginSecretIndexKeys(obj.GetNamespace(), obj.(*v1alpha1.L4RoutePolicy).Spec.Plugins)
+		},
+	); err != nil {
+		return err
+	}
 	return nil
+}
+
+func setupPluginConfigIndexer(mgr ctrl.Manager) error {
+	return mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&v1alpha1.PluginConfig{},
+		SecretIndexRef,
+		func(obj client.Object) []string {
+			return PluginSecretIndexKeys(obj.GetNamespace(), obj.(*v1alpha1.PluginConfig).Spec.Plugins)
+		},
+	)
+}
+
+// PluginSecretIndexKeys returns the index keys of the Secrets referenced by
+// apisix.apache.org/v1alpha1 plugins. Such Secrets are always in the namespace of the
+// object that declares the plugins.
+func PluginSecretIndexKeys(namespace string, plugins []v1alpha1.Plugin) (keys []string) {
+	for _, plugin := range plugins {
+		if plugin.SecretRef == nil || plugin.SecretRef.Name == "" {
+			continue
+		}
+		keys = append(keys, GenIndexKey(namespace, plugin.SecretRef.Name))
+	}
+	return
 }
 
 func IngressClassIndexFunc(rawObj client.Object) []string {

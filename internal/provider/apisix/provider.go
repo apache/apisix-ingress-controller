@@ -19,6 +19,8 @@ package apisix
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -31,6 +33,7 @@ import (
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
+	"github.com/apache/apisix-ingress-controller/internal/adc/cache"
 	adcclient "github.com/apache/apisix-ingress-controller/internal/adc/client"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
@@ -51,11 +54,23 @@ const (
 	MinSyncPeriod = 1 * time.Second
 )
 
+// apisixProvider owns AIC's own view of what should be live: which Kubernetes resource
+// targets which GatewayProxy config (configManager) and the merged, translated resource
+// snapshot per config (store). It builds the input the adc client package needs and hands
+// it over on every call; the client package holds none of this state itself.
 type apisixProvider struct {
 	provider.Options
 	sync.Mutex
 
 	translator *translator.Translator
+
+	store         *cache.Store
+	configManager *common.ConfigManager[types.NamespacedNameKind, adctypes.Config]
+	debugProvider *common.ADCDebugProvider
+
+	// syncLocks serializes, per cacheKey, reading that GatewayProxy's current resource
+	// snapshot together with pushing it
+	syncLocks *keyedMutex
 
 	updater         status.Updater
 	statusUpdateMap map[types.NamespacedNameKind][]string
@@ -82,19 +97,26 @@ func New(log logr.Logger, updater status.Updater, readier readiness.ReadinessMan
 		return nil, err
 	}
 
+	store := cache.NewStore(logger)
+	configManager := common.NewConfigManager[types.NamespacedNameKind, adctypes.Config]()
+
 	return &apisixProvider{
-		client:     cli,
-		Options:    o,
-		translator: translator.NewTranslator(log, o.ListenerPortMatchMode),
-		updater:    updater,
-		readier:    readier,
-		syncCh:     make(chan struct{}, 1),
-		log:        logger,
+		client:        cli,
+		store:         store,
+		configManager: configManager,
+		debugProvider: common.NewADCDebugProvider(store, configManager),
+		syncLocks:     newKeyedMutex(),
+		Options:       o,
+		translator:    translator.NewTranslator(log, o.ListenerPortMatchMode),
+		updater:       updater,
+		readier:       readier,
+		syncCh:        make(chan struct{}, 1),
+		log:           logger,
 	}, nil
 }
 
 func (d *apisixProvider) Register(pathPrefix string, mux *http.ServeMux) {
-	d.client.ADCDebugProvider.SetupHandler(pathPrefix, mux)
+	d.debugProvider.SetupHandler(pathPrefix, mux)
 }
 
 func (d *apisixProvider) Update(ctx context.Context, tctx *provider.TranslateContext, obj client.Object) error {
@@ -168,23 +190,17 @@ func (d *apisixProvider) Update(ctx context.Context, tctx *provider.TranslateCon
 
 	defer d.syncNotify()
 
-	task := adcclient.Task{
-		Key:           rk,
-		Name:          rk.String(),
-		Labels:        label.GenLabel(obj),
-		Configs:       configs,
-		ResourceTypes: resourceTypes,
-		Resources: &adctypes.Resources{
-			GlobalRules:    result.GlobalRules,
-			PluginMetadata: result.PluginMetadata,
-			Services:       result.Services,
-			SSLs:           result.SSL,
-			Consumers:      result.Consumers,
-		},
+	resources := &adctypes.Resources{
+		GlobalRules:    result.GlobalRules,
+		PluginMetadata: result.PluginMetadata,
+		Services:       result.Services,
+		SSLs:           result.SSL,
+		Consumers:      result.Consumers,
 	}
-	d.log.V(1).Info("updating config", "task", task)
+	labels := label.GenLabel(obj)
+	d.log.V(1).Info("updating config", "resourceKey", rk, "configs", configs, "resourceTypes", resourceTypes)
 
-	return d.client.UpdateConfig(ctx, task)
+	return d.applyResourceState(rk, configs, resourceTypes, resources, labels)
 }
 
 func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
@@ -222,19 +238,135 @@ func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 	// and it is not possible to perform scheduled synchronization
 	// on deleted gateway level resources
 	if len(resourceTypes) == 0 {
-		return d.client.Delete(ctx, adcclient.Task{
-			Key:    nnk,
-			Name:   nnk.String(),
-			Labels: labels,
-		})
+		removed, err := d.removeResourceState(nnk, resourceTypes, labels)
+		if err != nil {
+			return err
+		}
+		d.syncEvictedConfigsNow(ctx, removed, resourceTypes, labels)
+		return nil
 	}
-	defer d.syncNotify()
-	return d.client.DeleteConfig(ctx, adcclient.Task{
-		Key:           nnk,
-		Name:          nnk.String(),
-		Labels:        labels,
-		ResourceTypes: resourceTypes,
-	})
+
+	removed, err := d.removeResourceState(nnk, resourceTypes, labels)
+	if err != nil {
+		return err
+	}
+	// Syncing pushes the whole store to every data plane. Objects this controller never
+	// configured delete nothing, and reconciles for them are frequent, so notify only
+	// when the store actually changed.
+	if len(removed) > 0 {
+		d.syncNotify()
+	}
+	return nil
+}
+
+// applyResourceState upserts a resource's config associations and its contribution to each
+// target config's cached resource snapshot -- the AIC-side bookkeeping the adc client
+// package no longer holds itself.
+func (d *apisixProvider) applyResourceState(
+	rk types.NamespacedNameKind,
+	configs map[types.NamespacedNameKind]adctypes.Config,
+	resourceTypes []string,
+	resources *adctypes.Resources,
+	labels map[string]string,
+) error {
+	d.Lock()
+	defer d.Unlock()
+
+	evicted := d.configManager.Update(rk, configs)
+	if err := d.evictFromStore(evicted, resourceTypes, labels); err != nil {
+		return err
+	}
+	for _, cfg := range configs {
+		if err := d.store.Insert(cfg.Name, resourceTypes, resources, labels); err != nil {
+			return fmt.Errorf("store insert failed for config %s: %w", cfg.Name, err)
+		}
+	}
+	return nil
+}
+
+// removeResourceState forgets a resource's config associations and evicts its contribution
+// from each config it used to reference, returning those configs so an immediate-push
+// caller (see syncEvictedConfigsNow) knows what to push right away.
+func (d *apisixProvider) removeResourceState(
+	rk types.NamespacedNameKind,
+	resourceTypes []string,
+	labels map[string]string,
+) (map[types.NamespacedNameKind]adctypes.Config, error) {
+	d.Lock()
+	defer d.Unlock()
+
+	evicted := d.configManager.Get(rk)
+	d.configManager.Delete(rk)
+	if err := d.evictFromStore(evicted, resourceTypes, labels); err != nil {
+		return nil, err
+	}
+	return evicted, nil
+}
+
+// evictFromStore deletes a resource's contribution from each of the given configs' cached
+// snapshots. Callers must already hold d.Lock.
+func (d *apisixProvider) evictFromStore(
+	configs map[types.NamespacedNameKind]adctypes.Config,
+	resourceTypes []string,
+	labels map[string]string,
+) error {
+	for _, cfg := range configs {
+		if err := d.store.Delete(cfg.Name, resourceTypes, labels); err != nil {
+			return fmt.Errorf("store delete failed for config %s: %w", cfg.Name, err)
+		}
+	}
+	return nil
+}
+
+// syncConfigNow reads name's current data (via build, called only once this cacheKey's
+// lock is actually held) and pushes it -- one atomic read-then-push step per cacheKey, so
+// whichever caller is granted the lock decides what to push only once it holds it: nothing
+// it sends can already be stale relative to whatever the other caller committed to the
+// store before losing the race for the same key. See keyedMutex.
+func (d *apisixProvider) syncConfigNow(
+	ctx context.Context,
+	name string,
+	build func() (adcclient.SyncInput, error),
+) (types.ADCExecutionErrors, error) {
+	unlock := d.syncLocks.Lock(name)
+	defer unlock()
+
+	input, err := build()
+	if err != nil {
+		return types.ADCExecutionErrors{}, err
+	}
+	failedMap, err := d.client.Sync(ctx, []adcclient.SyncInput{input})
+	return failedMap[name], err
+}
+
+// syncEvictedConfigsNow pushes an empty resource set for each of the given configs
+// immediately, instead of waiting for the next scheduled sync round -- through the same
+// per-cacheKey lock the periodic sync uses, so it can never race a periodic round for the
+// same GatewayProxy. Used only when the deleted resource is a Gateway or IngressClass --
+// resourceTypes is empty for those, so the preceding removeResourceState call already
+// reset each config's whole cached snapshot via Store.Delete, and that reset should reach
+// the data plane promptly. Failures are logged, not surfaced as a status update -- this
+// mirrors the deferred path, which only reports through the next scheduled sync round.
+func (d *apisixProvider) syncEvictedConfigsNow(
+	ctx context.Context,
+	configs map[types.NamespacedNameKind]adctypes.Config,
+	resourceTypes []string,
+	labels map[string]string,
+) {
+	for _, cfg := range configs {
+		_, err := d.syncConfigNow(ctx, cfg.Name, func() (adcclient.SyncInput, error) {
+			return adcclient.SyncInput{
+				Name:          cfg.Name,
+				Config:        cfg,
+				Resources:     &adctypes.Resources{},
+				ResourceTypes: resourceTypes,
+				Labels:        labels,
+			}, nil
+		})
+		if err != nil {
+			d.log.Error(err, "failed to sync deleted config", "config", cfg)
+		}
+	}
 }
 
 func (d *apisixProvider) buildConfig(tctx *provider.TranslateContext, nnk types.NamespacedNameKind) (map[types.NamespacedNameKind]adctypes.Config, error) {
@@ -292,10 +424,35 @@ func (d *apisixProvider) Start(ctx context.Context) error {
 	}
 }
 
+// sync pushes every GatewayProxy AIC currently knows about, config by config -- each
+// one's current resource snapshot is only read once syncConfigNow actually holds that
+// cacheKey's lock, so a slow round can never push a snapshot that was already stale by the
+// time its turn came up. All of this round's results are still collected into one
+// statusesMap and handed to handleADCExecutionErrors together, exactly as a single batched
+// sync would: that logic diffs against last round's full picture, not per-config.
 func (d *apisixProvider) sync(ctx context.Context) error {
-	statusesMap, err := d.client.Sync(ctx)
+	configs := d.configManager.List()
+
+	statusesMap := map[string]types.ADCExecutionErrors{}
+	var errs []error
+	for _, config := range configs {
+		execErrs, err := d.syncConfigNow(ctx, config.Name, func() (adcclient.SyncInput, error) {
+			resources, err := d.store.GetResources(config.Name)
+			if err != nil {
+				return adcclient.SyncInput{}, fmt.Errorf("failed to get resources from store: %w", err)
+			}
+			return adcclient.SyncInput{Name: config.Name, Config: config, Resources: resources}, nil
+		})
+		if err != nil {
+			errs = append(errs, fmt.Errorf("config %s: %w", config.Name, err))
+		}
+		if len(execErrs.Errors) > 0 {
+			statusesMap[config.Name] = execErrs
+		}
+	}
+
 	d.handleADCExecutionErrors(statusesMap)
-	return err
+	return errors.Join(errs...)
 }
 
 func (d *apisixProvider) syncNotify() {
@@ -324,12 +481,17 @@ func (d *apisixProvider) updateConfigForGatewayProxy(tctx *provider.TranslateCon
 
 	nnk := utils.NamespacedNameKind(gp)
 	if config == nil {
-		d.client.ConfigManager.DeleteConfig(nnk)
+		d.Lock()
+		d.configManager.DeleteConfig(nnk)
+		d.Unlock()
 		return nil
 	}
+
 	referrers := tctx.GatewayProxyReferrers[utils.NamespacedName(gp)]
-	d.client.ConfigManager.SetConfigRefs(nnk, referrers)
-	d.client.ConfigManager.UpdateConfig(nnk, *config)
+	d.Lock()
+	d.configManager.SetConfigRefs(nnk, referrers)
+	d.configManager.UpdateConfig(nnk, *config)
+	d.Unlock()
 	d.syncNotify()
 	return nil
 }
