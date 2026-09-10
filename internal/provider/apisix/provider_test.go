@@ -40,14 +40,13 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
-// withMockADCServer starts an ADC server stub, points ADC_SERVER_URL at it for the
-// duration of the test, and returns it so the test can inspect what it received.
-func withMockADCServer(t *testing.T, handler http.HandlerFunc) *httptest.Server {
+// withMockADCServer starts an ADC server stub and points ADC_SERVER_URL at it for the
+// duration of the test. The handler itself is how a test inspects what it received.
+func withMockADCServer(t *testing.T, handler http.HandlerFunc) {
 	t.Helper()
 	server := httptest.NewServer(handler)
 	t.Setenv("ADC_SERVER_URL", server.URL)
 	t.Cleanup(server.Close)
-	return server
 }
 
 // newTestProvider builds a minimally-wired apisixProvider against the given mock ADC
