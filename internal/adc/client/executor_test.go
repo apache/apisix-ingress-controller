@@ -295,6 +295,30 @@ func TestHandleHTTPResponse422CarriesBothFailedAndEndpointStatusesButErrPicksFai
 	require.Len(t, addrErr.EndpointStatuses, 2)
 }
 
+func TestRunHTTPSyncFailsForAStandaloneConfigWithNoAddress(t *testing.T) {
+	// A GatewayProxy resolving to no data plane address (scaled to zero, say) must sync
+	// fail for apisix-standalone, which pushes the whole config to one destination, not
+	// pass as a no-op.
+	e := &HTTPADCExecutor{log: logr.Discard()}
+
+	err := e.runHTTPSync(context.Background(),
+		adctypes.Config{Name: "gw", BackendType: BackendAPISIXStandalone}, &adctypes.Resources{}, nil, nil)
+
+	var addrErr types.ADCExecutionServerAddrError
+	require.ErrorAs(t, err, &addrErr)
+	assert.Contains(t, addrErr.Err, "no data plane address")
+}
+
+func TestRunHTTPSyncNoOpsForANonStandaloneConfigWithNoAddress(t *testing.T) {
+	// Every other backend type pushes per address, so no address is nothing to push.
+	e := &HTTPADCExecutor{log: logr.Discard()}
+
+	err := e.runHTTPSync(context.Background(),
+		adctypes.Config{Name: "gw", BackendType: "apisix"}, &adctypes.Resources{}, nil, nil)
+
+	assert.NoError(t, err)
+}
+
 func TestDistinctReasonsJoinsWithoutDuplicates(t *testing.T) {
 	reasons := distinctReasons([]adctypes.SyncStatus{
 		{Reason: "unknown plugin foo"},

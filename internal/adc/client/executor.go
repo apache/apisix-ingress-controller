@@ -162,13 +162,22 @@ func (e *HTTPADCExecutor) Validate(ctx context.Context, config adctypes.Config, 
 // address there even though nothing enforces it yet. Deciding how many addresses a
 // GatewayProxy has belongs to the caller that built config.ServerAddrs.
 //
+// A GatewayProxy with no resolved address is a sync failure for apisix-standalone (the
+// data plane it configures is unreachable, e.g. scaled to zero), and a no-op for every
+// other backend type, which pushes per address and so has nothing to push.
+//
 // This package never decides whether to retry the failure; callers interpret it and ask
 // again if they choose to.
 func (e *HTTPADCExecutor) runHTTPSync(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) error {
-	target := syncTargetAddr(config)
-	if target == "" {
+	standalone := config.BackendType == BackendAPISIXStandalone
+	if len(config.ServerAddrs) == 0 {
+		if standalone {
+			return types.ADCExecutionServerAddrError{Err: "no data plane address to sync apisix-standalone config to"}
+		}
 		return nil
 	}
+
+	target := syncTargetAddr(config)
 	e.log.V(1).Info("running http sync", "server", target)
 
 	ctx, cancel := context.WithTimeout(ctx, e.httpClient.Timeout)
@@ -196,14 +205,11 @@ func (e *HTTPADCExecutor) runHTTPSync(ctx context.Context, config adctypes.Confi
 	return nil
 }
 
-// syncTargetAddr resolves config.ServerAddrs into what one /sync request targets. See
-// runHTTPSync.
+// syncTargetAddr resolves config.ServerAddrs into what one /sync request targets. Callers
+// must have already handled an empty ServerAddrs (see runHTTPSync).
 func syncTargetAddr(config adctypes.Config) string {
 	if config.BackendType == BackendAPISIXStandalone {
 		return strings.Join(config.ServerAddrs, ",")
-	}
-	if len(config.ServerAddrs) == 0 {
-		return ""
 	}
 	return config.ServerAddrs[0]
 }
