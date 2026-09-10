@@ -98,7 +98,7 @@ func (t *Translator) buildL4StreamRoutes(tctx *provider.TranslateContext, namesp
 		// Attach L4RoutePolicy plugins at the stream_route level: the APISIX stream proxy
 		// applies plugins from the stream_route, not from the service.
 		streamRoute.Plugins = make(adctypes.Plugins)
-		t.AttachL4RoutePolicyPlugins(tctx.L4RoutePolicies, namespace, name, routeKind, streamRoute.Plugins)
+		t.AttachL4RoutePolicyPlugins(tctx.L4RoutePolicies, namespace, name, routeKind, streamRoute.Plugins, tctx.Secrets)
 		streamRoutes = append(streamRoutes, streamRoute)
 	}
 	return streamRoutes

@@ -74,7 +74,7 @@ func TestAttachL4RoutePolicyPlugins_AttachesMatchingPolicy(t *testing.T) {
 	}
 
 	plugins := adctypes.Plugins{}
-	tr.AttachL4RoutePolicyPlugins(policies, "default", "my-tcp-route", "TCPRoute", plugins)
+	tr.AttachL4RoutePolicyPlugins(policies, "default", "my-tcp-route", "TCPRoute", plugins, nil)
 
 	assert.Len(t, plugins, 2)
 	assert.Contains(t, plugins, "limit-conn")
@@ -97,7 +97,7 @@ func TestAttachL4RoutePolicyPlugins_NoMatchOnKind(t *testing.T) {
 
 	plugins := adctypes.Plugins{}
 	// Looking for TCPRoute, but policy targets UDPRoute — should not match.
-	tr.AttachL4RoutePolicyPlugins(policies, "default", "my-udp-route", "TCPRoute", plugins)
+	tr.AttachL4RoutePolicyPlugins(policies, "default", "my-udp-route", "TCPRoute", plugins, nil)
 
 	assert.Empty(t, plugins)
 }
@@ -115,7 +115,7 @@ func TestAttachL4RoutePolicyPlugins_NoMatchOnNamespace(t *testing.T) {
 
 	plugins := adctypes.Plugins{}
 	// Route is in "default" namespace, policy is in "other-ns" — should not match.
-	tr.AttachL4RoutePolicyPlugins(policies, "default", "my-tcp-route", "TCPRoute", plugins)
+	tr.AttachL4RoutePolicyPlugins(policies, "default", "my-tcp-route", "TCPRoute", plugins, nil)
 
 	assert.Empty(t, plugins)
 }
@@ -130,7 +130,7 @@ func TestAttachL4RoutePolicyPlugins_EmptyPlugins(t *testing.T) {
 	}
 
 	plugins := adctypes.Plugins{}
-	tr.AttachL4RoutePolicyPlugins(policies, "default", "my-tcp-route", "TCPRoute", plugins)
+	tr.AttachL4RoutePolicyPlugins(policies, "default", "my-tcp-route", "TCPRoute", plugins, nil)
 
 	assert.Empty(t, plugins)
 }
@@ -138,6 +138,6 @@ func TestAttachL4RoutePolicyPlugins_EmptyPlugins(t *testing.T) {
 func TestAttachL4RoutePolicyPlugins_EmptyPolicies(t *testing.T) {
 	tr := NewTranslator(logr.Discard(), "")
 	plugins := adctypes.Plugins{}
-	tr.AttachL4RoutePolicyPlugins(nil, "default", "my-tcp-route", "TCPRoute", plugins)
+	tr.AttachL4RoutePolicyPlugins(nil, "default", "my-tcp-route", "TCPRoute", plugins, nil)
 	assert.Empty(t, plugins)
 }
