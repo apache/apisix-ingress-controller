@@ -114,7 +114,7 @@ func TestPushRebuildsBaselineOncePerTermThenReusesIt(t *testing.T) {
 
 	require.Empty(t, d.pushConfig(context.Background(), in).Errors)
 	require.Empty(t, d.pushConfig(context.Background(), in).Errors)
-	d.invalidateBaselineCache()
+	d.standaloneSyncer.InvalidateBaselines()
 	require.Empty(t, d.pushConfig(context.Background(), in).Errors)
 
 	assert.Equal(t, []bool{true, false, true}, bypassSeq(reqs()),

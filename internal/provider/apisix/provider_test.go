@@ -60,7 +60,7 @@ func newTestProvider(t *testing.T) *apisixProvider {
 		store:            cache.NewStore(logr.Discard()),
 		configManager:    common.NewConfigManager[types.NamespacedNameKind, adctypes.Config](),
 		syncLocks:        newKeyedMutex(),
-		rebuiltBaselines: make(map[string]struct{}),
+		standaloneSyncer: adcclient.NewStandaloneSyncer(cli, logr.Discard()),
 		syncCh:           make(chan struct{}, 1),
 		log:              logr.Discard(),
 	}
