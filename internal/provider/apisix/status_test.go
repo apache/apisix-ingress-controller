@@ -27,6 +27,9 @@ import (
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
+	"github.com/apache/apisix-ingress-controller/internal/adc/cache"
+	"github.com/apache/apisix-ingress-controller/internal/controller/label"
+	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/types"
 )
 
@@ -110,32 +113,6 @@ func TestFailureAndSuccessConditionKeepUsingAcceptedForNonGatewayProxyKinds(t *t
 	}
 }
 
-func TestMarkGatewayProxyDataPlaneUnavailableTargetsTheConfigNameItself(t *testing.T) {
-	d := &apisixProvider{log: logr.Discard()}
-	statusUpdateMap := map[types.NamespacedNameKind][]string{}
-
-	d.markGatewayProxyDataPlaneUnavailable("GatewayProxy/ns/gp", "boom", nil, statusUpdateMap)
-
-	want := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "gp"}
-	if got := statusUpdateMap[want]; len(got) != 1 || got[0] != "boom" {
-		t.Errorf("statusUpdateMap[%v] = %v, want [boom]", want, got)
-	}
-	if len(statusUpdateMap) != 1 {
-		t.Errorf("expected only the GatewayProxy itself to be marked, got %v", statusUpdateMap)
-	}
-}
-
-func TestMarkGatewayProxyDataPlaneUnavailableIgnoresAnUnparseableConfigName(t *testing.T) {
-	d := &apisixProvider{log: logr.Discard()}
-	statusUpdateMap := map[types.NamespacedNameKind][]string{}
-
-	d.markGatewayProxyDataPlaneUnavailable("not-a-valid-key", "boom", nil, statusUpdateMap)
-
-	if len(statusUpdateMap) != 0 {
-		t.Errorf("expected nothing marked for an unparseable configName, got %v", statusUpdateMap)
-	}
-}
-
 func TestRecordFailedEndpointEventsFiresOneWarningPerFailedEndpoint(t *testing.T) {
 	recorder := record.NewFakeRecorder(2)
 	d := &apisixProvider{log: logr.Discard()}
@@ -175,16 +152,176 @@ func TestRecordFailedEndpointEventsNoopsWithoutARecorder(t *testing.T) {
 	d.recordFailedEndpointEvents(nnk, []adctypes.EndpointStatus{{Server: "http://apisix-1:9180", Success: false}})
 }
 
-func TestRecordGatewayProxyRecoveredEventFiresNormal(t *testing.T) {
-	recorder := record.NewFakeRecorder(1)
+// fakeUpdater records every status.Update handed to it, and applies each Mutator against
+// a caller-supplied base object so a test can inspect the condition it actually wrote.
+type fakeUpdater struct {
+	updates []status.Update
+}
+
+func (f *fakeUpdater) Update(u status.Update) {
+	f.updates = append(f.updates, u)
+}
+
+func TestClassifySyncResultHardErrorGoesToGatewayProxy(t *testing.T) {
 	d := &apisixProvider{log: logr.Discard()}
-	d.EventRecorder = recorder
-	nnk := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "gp"}
+	execErrs := types.ADCExecutionErrors{Errors: []types.ADCExecutionError{{
+		Name: "GatewayProxy/ns/gp",
+		FailedErrors: []types.ADCExecutionServerAddrError{{
+			ServerAddr: "http://apisix:9180",
+			Err:        "HTTP 500: boom",
+		}},
+	}}}
 
-	d.recordGatewayProxyRecoveredEvent(nnk)
+	resourceFailures := map[types.NamespacedNameKind][]string{}
+	gatewayProxyMsgs, failedEndpoints := d.classifySyncResult("GatewayProxy/ns/gp", execErrs, resourceFailures)
 
-	event := <-recorder.Events
-	if !strings.Contains(event, "Normal") || !strings.Contains(event, "DataPlaneAvailable") {
-		t.Errorf("recovery event = %q, want it to contain Normal and DataPlaneAvailable", event)
+	if len(resourceFailures) != 0 {
+		t.Errorf("expected no resource attributed, got %v", resourceFailures)
+	}
+	if len(failedEndpoints) != 0 {
+		t.Errorf("expected no endpoints, got %v", failedEndpoints)
+	}
+	if len(gatewayProxyMsgs) != 1 || !strings.Contains(gatewayProxyMsgs[0], "HTTP 500: boom") {
+		t.Errorf("gatewayProxyMsgs = %v, want the raw error", gatewayProxyMsgs)
+	}
+}
+
+func TestClassifySyncResultEndpointFailuresGoToGatewayProxy(t *testing.T) {
+	d := &apisixProvider{log: logr.Discard()}
+	endpoints := []adctypes.EndpointStatus{
+		{Server: "http://apisix-1:9180", Success: true},
+		{Server: "http://apisix-2:9180", Success: false, Reason: "connection refused"},
+	}
+	execErrs := types.ADCExecutionErrors{Errors: []types.ADCExecutionError{{
+		Name: "GatewayProxy/ns/gp",
+		FailedErrors: []types.ADCExecutionServerAddrError{{
+			EndpointStatuses: endpoints,
+		}},
+	}}}
+
+	resourceFailures := map[types.NamespacedNameKind][]string{}
+	gatewayProxyMsgs, failedEndpoints := d.classifySyncResult("GatewayProxy/ns/gp", execErrs, resourceFailures)
+
+	if len(resourceFailures) != 0 {
+		t.Errorf("expected no resource attributed, got %v", resourceFailures)
+	}
+	if len(gatewayProxyMsgs) != 1 || !strings.Contains(gatewayProxyMsgs[0], "http://apisix-2:9180: connection refused") {
+		t.Errorf("gatewayProxyMsgs = %v, want the endpoint summary", gatewayProxyMsgs)
+	}
+	if len(failedEndpoints) != 2 {
+		t.Errorf("failedEndpoints = %v, want every EndpointStatus entry passed through for event firing", failedEndpoints)
+	}
+}
+
+func TestClassifySyncResultAttributesFailedStatusesToTheirResource(t *testing.T) {
+	d := &apisixProvider{log: logr.Discard(), store: cache.NewStore(logr.Discard())}
+	const configName = "GatewayProxy/ns/gp"
+	if err := d.store.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{
+		Services: []*adctypes.Service{{
+			Metadata: adctypes.Metadata{
+				ID: "svc1",
+				Labels: map[string]string{
+					label.LabelKind:      "ApisixRoute",
+					label.LabelName:      "route1",
+					label.LabelNamespace: "ns1",
+				},
+			},
+		}},
+	}, nil); err != nil {
+		t.Fatalf("seeding the store: %v", err)
+	}
+
+	execErrs := types.ADCExecutionErrors{Errors: []types.ADCExecutionError{{
+		Name: configName,
+		FailedErrors: []types.ADCExecutionServerAddrError{{
+			ServerAddr: "http://apisix:9180",
+			FailedStatuses: []adctypes.SyncStatus{{
+				Reason: "unknown plugin foo",
+				Event:  adctypes.StatusEvent{ResourceType: adctypes.TypeService, ResourceID: "svc1"},
+			}},
+		}},
+	}}}
+
+	resourceFailures := map[types.NamespacedNameKind][]string{}
+	gatewayProxyMsgs, _ := d.classifySyncResult(configName, execErrs, resourceFailures)
+
+	if len(gatewayProxyMsgs) != 0 {
+		t.Errorf("expected nothing attributed to the GatewayProxy, got %v", gatewayProxyMsgs)
+	}
+	want := types.NamespacedNameKind{Kind: "ApisixRoute", Namespace: "ns1", Name: "route1"}
+	if got := resourceFailures[want]; len(got) != 1 || !strings.Contains(got[0], "unknown plugin foo") {
+		t.Errorf("resourceFailures[%v] = %v, want the failure reason", want, got)
+	}
+}
+
+func TestClassifySyncResultFallsBackToGatewayProxyWhenAFailedStatusHasNoResourceAttribution(t *testing.T) {
+	// apisix-standalone: FailedStatuses can be non-empty yet carry no Event to resolve a
+	// resource from at all, the whole addrErr is then a GatewayProxy-level signal.
+	d := &apisixProvider{log: logr.Discard()}
+	execErrs := types.ADCExecutionErrors{Errors: []types.ADCExecutionError{{
+		Name: "GatewayProxy/ns/gp",
+		FailedErrors: []types.ADCExecutionServerAddrError{{
+			Err:            "all_failed",
+			FailedStatuses: []adctypes.SyncStatus{{Reason: "schema error"}},
+		}},
+	}}}
+
+	resourceFailures := map[types.NamespacedNameKind][]string{}
+	gatewayProxyMsgs, _ := d.classifySyncResult("GatewayProxy/ns/gp", execErrs, resourceFailures)
+
+	if len(resourceFailures) != 0 {
+		t.Errorf("expected no resource attributed, got %v", resourceFailures)
+	}
+	if len(gatewayProxyMsgs) != 1 {
+		t.Errorf("gatewayProxyMsgs = %v, want exactly one fallback message", gatewayProxyMsgs)
+	}
+}
+
+func TestApplyResourceFailuresWritesNewFailuresAndClearsResolvedOnes(t *testing.T) {
+	updater := &fakeUpdater{}
+	d := &apisixProvider{
+		log:     logr.Discard(),
+		updater: updater,
+		resourceFailures: map[types.NamespacedNameKind][]string{
+			{Kind: types.KindApisixRoute, Namespace: "ns", Name: "resolved"}:  {"used to fail"},
+			{Kind: types.KindApisixRoute, Namespace: "ns", Name: "still-bad"}: {"still failing"},
+		},
+	}
+
+	newFailures := map[types.NamespacedNameKind][]string{
+		{Kind: types.KindApisixRoute, Namespace: "ns", Name: "still-bad"}: {"still failing"},
+		{Kind: types.KindApisixRoute, Namespace: "ns", Name: "newly-bad"}: {"new failure"},
+	}
+
+	d.applyResourceFailures(newFailures)
+
+	byName := map[string]bool{} // name -> whether the mutator it was given marks success
+	for _, u := range updater.updates {
+		cp := u.Mutator.Mutate(&apiv2.ApisixRoute{})
+		route := cp.(*apiv2.ApisixRoute)
+		accepted := false
+		for _, c := range route.Status.Conditions {
+			if c.Type == string(apiv2.ConditionTypeAccepted) {
+				accepted = c.Status == metav1.ConditionTrue
+			}
+		}
+		byName[u.NamespacedName.Name] = accepted
+	}
+
+	if accepted, ok := byName["resolved"]; !ok || !accepted {
+		t.Errorf("expected \"resolved\" to be written Accepted=true, got present=%v accepted=%v", ok, accepted)
+	}
+	if accepted, ok := byName["still-bad"]; !ok || accepted {
+		t.Errorf("expected \"still-bad\" to be written Accepted=false, got present=%v accepted=%v", ok, accepted)
+	}
+	if accepted, ok := byName["newly-bad"]; !ok || accepted {
+		t.Errorf("expected \"newly-bad\" to be written Accepted=false, got present=%v accepted=%v", ok, accepted)
+	}
+	if _, ok := byName["resolved"]; len(byName) != 3 || !ok {
+		t.Errorf("expected exactly 3 writes (resolved, still-bad, newly-bad), got %v", byName)
+	}
+
+	if len(d.resourceFailures) != 2 {
+		t.Errorf("d.resourceFailures should be replaced with newFailures, got %v", d.resourceFailures)
 	}
 }

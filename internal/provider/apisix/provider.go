@@ -79,8 +79,11 @@ type apisixProvider struct {
 	// record of which cacheKeys it has rebuilt. Unused for every other backend type.
 	standaloneSyncer *adcclient.StandaloneSyncer
 
-	updater         status.Updater
-	statusUpdateMap map[types.NamespacedNameKind][]string
+	updater status.Updater
+	// resourceFailures holds which non-GatewayProxy resources currently have a sync
+	// error recorded, so the next round that stops seeing one can clear it. GatewayProxy
+	// keeps no such history: see updateStatusFromSyncResults.
+	resourceFailures map[types.NamespacedNameKind][]string
 
 	readier readiness.ReadinessManager
 
@@ -332,26 +335,27 @@ func (d *apisixProvider) evictFromStore(
 // it sends can already be stale relative to whatever the other caller committed to the
 // store before losing the race for the same key. See keyedMutex.
 //
-// It reports whether this call actually reached the point of dispatching to the data
-// plane (attempted): a build failure never got that far, so a caller building a round's
-// "attempted" set for status purposes should not count it either way.
+// A nil result means build itself failed before anything could be dispatched to the data
+// plane: this round never actually reached pushConfig for this cacheKey, and the caller
+// should leave its status untouched rather than treat the absence of an execution error
+// as success. A non-nil result, empty or not, means pushConfig actually ran.
 func (d *apisixProvider) syncConfigNow(
 	ctx context.Context,
 	name string,
 	build func() (adcclient.SyncInput, error),
-) (attempted bool, execErrs types.ADCExecutionErrors, err error) {
+) (result *types.ADCExecutionErrors, err error) {
 	unlock := d.syncLocks.Lock(name)
 	defer unlock()
 
 	input, err := build()
 	if err != nil {
-		return false, types.ADCExecutionErrors{}, err
+		return nil, err
 	}
-	execErrs = d.pushConfig(ctx, input)
+	execErrs := d.pushConfig(ctx, input)
 	if len(execErrs.Errors) > 0 {
-		return true, execErrs, execErrs
+		return &execErrs, execErrs
 	}
-	return true, execErrs, nil
+	return &execErrs, nil
 }
 
 // pushConfig sends input to its data plane and shapes whatever failed into the form
@@ -427,7 +431,7 @@ func (d *apisixProvider) syncEvictedConfigsNow(
 	labels map[string]string,
 ) {
 	for _, cfg := range configs {
-		_, _, err := d.syncConfigNow(ctx, cfg.Name, func() (adcclient.SyncInput, error) {
+		_, err := d.syncConfigNow(ctx, cfg.Name, func() (adcclient.SyncInput, error) {
 			return adcclient.SyncInput{
 				Name:          cfg.Name,
 				Config:        cfg,
@@ -497,41 +501,40 @@ func (d *apisixProvider) Start(ctx context.Context) error {
 	}
 }
 
-// sync pushes every GatewayProxy AIC currently knows about, config by config, each
-// one's current resource snapshot is only read once syncConfigNow actually holds that
-// cacheKey's lock, so a slow round can never push a snapshot that was already stale by the
-// time its turn came up. All of this round's results are still collected into one
-// statusesMap and handed to handleADCExecutionErrors together, exactly as a single batched
-// sync would: that logic diffs against last round's full picture, not per-config. attempted
-// collects every config this round actually reached the data plane for, regardless of
-// outcome, since handleADCExecutionErrors needs it to tell "recovered" apart from "wasn't
-// touched this round at all".
+// sync pushes every GatewayProxy AIC currently knows about, config by config, each one's
+// current resource snapshot is only read once syncConfigNow actually holds that
+// cacheKey's lock, so a slow round can never push a snapshot that was already stale by
+// the time its turn came up. results collects one entry per config this round actually
+// reached pushConfig for, success (a zero-value types.ADCExecutionErrors) or failure. A
+// config whose build itself failed (a local error, before anything reached the data
+// plane) is left out of results entirely and its status goes untouched this round,
+// logged here rather than silently treated as either outcome; see
+// updateStatusFromSyncResults for what results feeds into.
 func (d *apisixProvider) sync(ctx context.Context) error {
 	configs := d.configManager.List()
 
-	attempted := make([]string, 0, len(configs))
-	statusesMap := map[string]types.ADCExecutionErrors{}
+	results := map[string]types.ADCExecutionErrors{}
 	var errs []error
 	for _, config := range configs {
-		didAttempt, execErrs, err := d.syncConfigNow(ctx, config.Name, func() (adcclient.SyncInput, error) {
+		result, err := d.syncConfigNow(ctx, config.Name, func() (adcclient.SyncInput, error) {
 			resources, err := d.store.GetResources(config.Name)
 			if err != nil {
 				return adcclient.SyncInput{}, fmt.Errorf("failed to get resources from store: %w", err)
 			}
 			return adcclient.SyncInput{Name: config.Name, Config: config, Resources: resources}, nil
 		})
-		if didAttempt {
-			attempted = append(attempted, config.Name)
+		if result == nil {
+			d.log.Error(err, "failed to build sync input, leaving this GatewayProxy's status untouched this round", "config", config.Name)
+			errs = append(errs, fmt.Errorf("config %s: %w", config.Name, err))
+			continue
 		}
+		results[config.Name] = *result
 		if err != nil {
 			errs = append(errs, fmt.Errorf("config %s: %w", config.Name, err))
 		}
-		if len(execErrs.Errors) > 0 {
-			statusesMap[config.Name] = execErrs
-		}
 	}
 
-	d.handleADCExecutionErrors(attempted, statusesMap)
+	d.updateStatusFromSyncResults(results)
 	return errors.Join(errs...)
 }
 
@@ -540,29 +543,6 @@ func (d *apisixProvider) syncNotify() {
 	case d.syncCh <- struct{}{}:
 	default:
 	}
-}
-
-func (d *apisixProvider) handleADCExecutionErrors(attempted []string, statusesMap map[string]types.ADCExecutionErrors) {
-	statusUpdateMap := d.resolveADCExecutionErrors(statusesMap)
-	d.handleStatusUpdate(d.attemptedGatewayProxies(attempted), statusUpdateMap)
-	d.log.V(1).Info("handled ADC execution errors", "status_record", statusesMap, "status_update", statusUpdateMap)
-}
-
-// attemptedGatewayProxies parses this round's attempted config names into GatewayProxy
-// keys, skipping (and logging) any that don't parse. Every config name is a GatewayProxy
-// today, so a failure here means the format changed underneath this code, not a runtime
-// condition to recover from silently.
-func (d *apisixProvider) attemptedGatewayProxies(attempted []string) []types.NamespacedNameKind {
-	nnks := make([]types.NamespacedNameKind, 0, len(attempted))
-	for _, name := range attempted {
-		var nnk types.NamespacedNameKind
-		if err := nnk.FromString(name); err != nil {
-			d.log.Error(err, "failed to parse attempted config name as a GatewayProxy key", "configName", name)
-			continue
-		}
-		nnks = append(nnks, nnk)
-	}
-	return nnks
 }
 
 func (d *apisixProvider) NeedLeaderElection() bool {
