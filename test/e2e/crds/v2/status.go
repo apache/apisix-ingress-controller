@@ -170,35 +170,22 @@ spec:
 			err = s.CreateResourceFromString(string(newServiceYaml))
 			Expect(err).NotTo(HaveOccurred(), "creating service")
 
-			if os.Getenv("PROVIDER_TYPE") == framework.ProviderTypeAPISIXStandalone {
-				// In standalone mode every instance behind the Service is now
-				// unreachable, so this is reported on the GatewayProxy, not smeared
-				// onto the ApisixRoute (see the dedicated GatewayProxy test below).
-				By("check GatewayProxy status")
-				s.RetryAssertion(func() string {
-					output, _ := s.GetOutputFromString("gatewayproxy", "apisix-proxy-config", "-o", "yaml")
-					return output
-				}).WithTimeout(60 * time.Second).
-					Should(
-						And(
-							ContainSubstring("type: DataPlaneAvailable"),
-							ContainSubstring(`status: "False"`),
-							ContainSubstring("reason: DataPlaneInstanceUnavailable"),
-						),
-					)
-			} else {
-				By("check ApisixRoute status")
-				s.RetryAssertion(func() string {
-					output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
-					return output
-				}).WithTimeout(60 * time.Second).
-					Should(
-						And(
-							ContainSubstring(`status: "False"`),
-							ContainSubstring(`reason: SyncFailed`),
-						),
-					)
-			}
+			// This breaks the GatewayProxy's own admin API address, not a route's backend,
+			// so ADC can't even attempt a per-resource push: there's nothing to attribute
+			// this to but the GatewayProxy itself, for either backend type (see
+			// classifySyncResult).
+			By("check GatewayProxy status")
+			s.RetryAssertion(func() string {
+				output, _ := s.GetOutputFromString("gatewayproxy", "apisix-proxy-config", "-o", "yaml")
+				return output
+			}).WithTimeout(60 * time.Second).
+				Should(
+					And(
+						ContainSubstring("type: DataPlaneAvailable"),
+						ContainSubstring(`status: "False"`),
+						ContainSubstring("reason: DataPlaneInstanceUnavailable"),
+					),
+				)
 
 			By("update service to original spec")
 			serviceYaml, err = s.GetOutputFromString("svc", framework.ProviderType, "-o", "yaml")
@@ -217,32 +204,18 @@ spec:
 			err = s.CreateResourceFromString(string(newServiceYaml))
 			Expect(err).NotTo(HaveOccurred(), "creating service")
 
-			if os.Getenv("PROVIDER_TYPE") == framework.ProviderTypeAPISIXStandalone {
-				By("check GatewayProxy status after scaling up")
-				s.RetryAssertion(func() string {
-					output, _ := s.GetOutputFromString("gatewayproxy", "apisix-proxy-config", "-o", "yaml")
-					return output
-				}).WithTimeout(60 * time.Second).
-					Should(
-						And(
-							ContainSubstring("type: DataPlaneAvailable"),
-							ContainSubstring(`status: "True"`),
-							ContainSubstring("reason: DataPlaneAvailable"),
-						),
-					)
-			} else {
-				By("check ApisixRoute status after scaling up")
-				s.RetryAssertion(func() string {
-					output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml")
-					return output
-				}).WithTimeout(60 * time.Second).
-					Should(
-						And(
-							ContainSubstring(`status: "True"`),
-							ContainSubstring(`reason: Accepted`),
-						),
-					)
-			}
+			By("check GatewayProxy status after scaling up")
+			s.RetryAssertion(func() string {
+				output, _ := s.GetOutputFromString("gatewayproxy", "apisix-proxy-config", "-o", "yaml")
+				return output
+			}).WithTimeout(60 * time.Second).
+				Should(
+					And(
+						ContainSubstring("type: DataPlaneAvailable"),
+						ContainSubstring(`status: "True"`),
+						ContainSubstring("reason: DataPlaneAvailable"),
+					),
+				)
 
 			By("check route in APISIX")
 			s.RequestAssert(&scaffold.RequestAssert{

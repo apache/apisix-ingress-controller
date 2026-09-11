@@ -19,7 +19,6 @@ package gatewayapi
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -138,35 +137,22 @@ spec:
 			err = s.CreateResourceFromString(string(newServiceYaml))
 			Expect(err).NotTo(HaveOccurred(), "creating service")
 
-			if os.Getenv("PROVIDER_TYPE") == framework.ProviderTypeAPISIXStandalone {
-				// In standalone mode every instance behind the Service is now
-				// unreachable, so this is reported on the GatewayProxy, not smeared
-				// onto the HTTPRoute's parent status.
-				By("check GatewayProxy status")
-				s.RetryAssertion(func() string {
-					output, _ := s.GetOutputFromString("gatewayproxy", "apisix-proxy-config", "-o", "yaml")
-					return output
-				}).WithTimeout(60 * time.Second).
-					Should(
-						And(
-							ContainSubstring("type: DataPlaneAvailable"),
-							ContainSubstring(`status: "False"`),
-							ContainSubstring("reason: DataPlaneInstanceUnavailable"),
-						),
-					)
-			} else {
-				By("check HTTPRoute status")
-				s.RetryAssertion(func() string {
-					output, _ := s.GetOutputFromString("httproute", "httpbin", "-o", "yaml")
-					return output
-				}).WithTimeout(60 * time.Second).
-					Should(
-						And(
-							ContainSubstring(`status: "False"`),
-							ContainSubstring(`reason: SyncFailed`),
-						),
-					)
-			}
+			// This breaks the GatewayProxy's own admin API address, not a route's backend,
+			// so ADC can't even attempt a per-resource push: there's nothing to attribute
+			// this to but the GatewayProxy itself, for either backend type (see
+			// classifySyncResult).
+			By("check GatewayProxy status")
+			s.RetryAssertion(func() string {
+				output, _ := s.GetOutputFromString("gatewayproxy", "apisix-proxy-config", "-o", "yaml")
+				return output
+			}).WithTimeout(60 * time.Second).
+				Should(
+					And(
+						ContainSubstring("type: DataPlaneAvailable"),
+						ContainSubstring(`status: "False"`),
+						ContainSubstring("reason: DataPlaneInstanceUnavailable"),
+					),
+				)
 
 			By("update service to original spec")
 			serviceYaml, err = s.GetOutputFromString("svc", framework.ProviderType, "-o", "yaml")
