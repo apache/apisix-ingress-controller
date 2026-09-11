@@ -81,12 +81,12 @@ func (v *IngressCustomValidator) ValidateCreate(ctx context.Context, obj runtime
 	}
 
 	detector := sslvalidator.NewConflictDetector(v.Client)
-	conflicts := detector.DetectConflicts(ctx, ingress)
-	if len(conflicts) > 0 {
-		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
-	}
-
 	warnings := v.collectReferenceWarnings(ctx, ingress)
+	// Overlapping SSL config is advisory: APISIX serves overlapping objects and
+	// resolves by SNI, so warn instead of denying.
+	if conflicts := detector.DetectConflicts(ctx, ingress); len(conflicts) > 0 {
+		warnings = append(warnings, sslvalidator.FormatConflicts(conflicts))
+	}
 	return warnings, nil
 }
 
@@ -106,12 +106,12 @@ func (v *IngressCustomValidator) ValidateUpdate(ctx context.Context, oldObj, new
 	}
 
 	detector := sslvalidator.NewConflictDetector(v.Client)
-	conflicts := detector.DetectConflicts(ctx, ingress)
-	if len(conflicts) > 0 {
-		return nil, fmt.Errorf("%s", sslvalidator.FormatConflicts(conflicts))
-	}
-
 	warnings := v.collectReferenceWarnings(ctx, ingress)
+	// Overlapping SSL config is advisory: APISIX serves overlapping objects and
+	// resolves by SNI, so warn instead of denying.
+	if conflicts := detector.DetectConflicts(ctx, ingress); len(conflicts) > 0 {
+		warnings = append(warnings, sslvalidator.FormatConflicts(conflicts))
+	}
 	return warnings, nil
 }
 
