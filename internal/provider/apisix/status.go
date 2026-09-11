@@ -90,38 +90,41 @@ func (d *apisixProvider) updateStatusFromSyncResults(ctx context.Context, result
 
 // classifySyncResult splits one config's this-round result into what belongs on the
 // GatewayProxy (returned) and what belongs on specific Kubernetes resources (added into
-// resourceFailures). A FailedStatuses entry that resolves to a resource via its Event
-// goes there; everything else, no FailedStatuses at all, or a FailedStatuses entry
-// with no Event to resolve, which is what apisix-standalone's own endpoint-driven
-// rejections look like, is a GatewayProxy-level signal instead, using
-// EndpointStatuses for the message when there is one and the raw error otherwise.
+// resourceFailures). The two are independent, not mutually exclusive: a single addrErr
+// can carry both a resource-attributed FailedStatuses entry and a failed
+// EndpointStatuses entry at once (apisix-standalone's own re-validate path attaches
+// EndpointStatuses to every addrErr regardless of what FailedStatuses also names), so
+// checking one must never suppress reporting the other. A FailedStatuses entry that
+// resolves to a resource via its Event goes there; everything else, no FailedStatuses at
+// all, or a FailedStatuses entry with no Event to resolve (apisix-standalone when the
+// rejection can't be pinned on a specific resource), is a GatewayProxy-level signal
+// instead, but only once nothing else already explained this addrErr: EndpointStatuses'
+// own message first, the raw error as a last resort.
 func (d *apisixProvider) classifySyncResult(
 	configName string,
 	execErrs types.ADCExecutionErrors,
 	resourceFailures map[types.NamespacedNameKind][]string,
 ) (gatewayProxyMsgs []string, failedEndpoints []adctypes.EndpointStatus) {
-	unattributed := func(addrErr types.ADCExecutionServerAddrError) {
-		msg := unavailableEndpointsMessage(addrErr.EndpointStatuses)
-		if msg == "" {
-			msg = addrErr.Error()
-		}
-		gatewayProxyMsgs = append(gatewayProxyMsgs, msg)
-		failedEndpoints = append(failedEndpoints, addrErr.EndpointStatuses...)
-	}
-
 	for _, execErr := range execErrs.Errors {
 		for _, addrErr := range execErr.FailedErrors {
+			endpointMsg := unavailableEndpointsMessage(addrErr.EndpointStatuses)
+			if endpointMsg != "" {
+				gatewayProxyMsgs = append(gatewayProxyMsgs, endpointMsg)
+				failedEndpoints = append(failedEndpoints, addrErr.EndpointStatuses...)
+			}
+
 			if len(addrErr.FailedStatuses) == 0 {
-				unattributed(addrErr)
+				if endpointMsg == "" {
+					gatewayProxyMsgs = append(gatewayProxyMsgs, addrErr.Error())
+				}
 				continue
 			}
 
-			attributedAll := true
+			anyUnattributed := false
 			for _, syncStatus := range addrErr.FailedStatuses {
 				if syncStatus.Event.ResourceType == "" {
-					// standalone: this whole addrErr carries no per-resource attribution.
-					attributedAll = false
-					break
+					anyUnattributed = true
+					continue
 				}
 				labels, err := d.store.GetResourceLabel(configName, syncStatus.Event.ResourceType, syncStatus.Event.ResourceID)
 				if err != nil {
@@ -137,8 +140,8 @@ func (d *apisixProvider) classifySyncResult(
 				msg := fmt.Sprintf("ServerAddr: %s, Error: %s", addrErr.ServerAddr, syncStatus.Reason)
 				resourceFailures[resourceKey] = append(resourceFailures[resourceKey], msg)
 			}
-			if !attributedAll {
-				unattributed(addrErr)
+			if anyUnattributed && endpointMsg == "" {
+				gatewayProxyMsgs = append(gatewayProxyMsgs, addrErr.Error())
 			}
 		}
 	}
