@@ -419,6 +419,16 @@ func (r *ApisixRouteReconciler) validateHTTPBackend(tctx *provider.TranslateCont
 		}
 	)
 
+	// An empty port never resolves, and an empty name would otherwise match a
+	// Service port that omits its name, which is allowed for a single-port Service.
+	// Reject it before the reference is resolved: no ordering makes it valid.
+	if backend.ServicePort.Type == intstr.String && backend.ServicePort.StrVal == "" {
+		return types.ReasonError{
+			Reason:  string(apiv2.ConditionReasonInvalidSpec),
+			Message: fmt.Sprintf("servicePort must not be empty, Service: %s", serviceNN),
+		}
+	}
+
 	if err := r.Get(tctx, serviceNN, &service); err != nil {
 		if k8serrors.IsNotFound(err) {
 			r.Log.Info("service not found", "Service", serviceNN)
@@ -466,12 +476,14 @@ func (r *ApisixRouteReconciler) validateHTTPBackend(tctx *provider.TranslateCont
 		}
 		return false
 	}) {
-		r.Log.Error(errors.New("service port not found"),
-			"failed to match service port",
-			"Service", serviceNN,
-			"ServicePort", backend.ServicePort,
-		)
-		return nil
+		// The Service resolves but has no such port. Reporting this as accepted
+		// publishes a route with no upstream node, which answers 503 while the
+		// status claims the spec is fine.
+		return types.ReasonError{
+			Reason: string(apiv2.ConditionReasonInvalidSpec),
+			Message: fmt.Sprintf("service port not found: Service %s has no port %s",
+				serviceNN, backend.ServicePort.String()),
+		}
 	}
 	tctx.Services[serviceNN] = &service
 
