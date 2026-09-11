@@ -16,18 +16,17 @@
 // under the License.
 
 // Package client talks to the ADC server: given a fully-prepared sync or validate
-// request, it translates it to ADC's wire format, sends it, and interprets the response.
-// It holds no bookkeeping of its own about which Kubernetes resource maps to which
-// GatewayProxy, or what a GatewayProxy's current resource snapshot is -- that is AIC's own
-// state, owned by the caller and handed in as input on every call.
+// request, it translates it to ADC's wire format, sends it once, and interprets the
+// response into a typed error. It holds no bookkeeping of its own: not which Kubernetes
+// resource maps to which GatewayProxy, not a GatewayProxy's current resource snapshot,
+// and not whether a data plane's diff baseline can be trusted. All of that is AIC's own
+// state, owned by the caller, which also owns every decision to retry.
 package client
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -43,13 +42,6 @@ type Client struct {
 
 	defaultMode string
 
-	// rebuiltMu guards rebuiltBaselines.
-	rebuiltMu sync.Mutex
-	// rebuiltBaselines holds the cacheKeys whose ADC baseline this leadership term has
-	// already re-derived from the data plane. A key missing from it is synced with
-	// bypassCache first. See InvalidateADCCache.
-	rebuiltBaselines map[string]struct{}
-
 	log logr.Logger
 }
 
@@ -63,54 +55,23 @@ func New(log logr.Logger, defaultMode string, timeout time.Duration) (*Client, e
 	logger.Info("ADC client initialized")
 
 	return &Client{
-		rebuiltBaselines: make(map[string]struct{}),
-		executor:         NewHTTPADCExecutor(log, serverURL, timeout),
-		log:              logger,
-		defaultMode:      defaultMode,
+		executor:    NewHTTPADCExecutor(log, serverURL, timeout),
+		log:         logger,
+		defaultMode: defaultMode,
 	}, nil
 }
 
-// InvalidateADCCache forgets which ADC baselines are known to be current, so that the
-// next sync of each cacheKey re-derives its baseline from the data plane.
-//
-// It is called on leader acquisition, which is the one moment a stale baseline can enter
-// the picture. The ADC server is a sidecar that outlives the controller process: losing
-// the lease terminates the manager container but not the sidecar, so what ADC holds for a
-// cacheKey -- the last synced content plus the conf_version it generated -- can still be
-// the snapshot this pod left behind in an earlier term, while the leader in between kept
-// pushing and moved the data plane's conf_version past it. APISIX standalone requires
-// those versions to be monotonic and refuses the whole configuration otherwise.
-func (c *Client) InvalidateADCCache() {
-	c.rebuiltMu.Lock()
-	defer c.rebuiltMu.Unlock()
-	clear(c.rebuiltBaselines)
-}
-
-func (c *Client) baselineIsCurrent(cacheKey string) bool {
-	c.rebuiltMu.Lock()
-	defer c.rebuiltMu.Unlock()
-	_, ok := c.rebuiltBaselines[cacheKey]
-	return ok
-}
-
-func (c *Client) markBaselineCurrent(cacheKey string) {
-	c.rebuiltMu.Lock()
-	defer c.rebuiltMu.Unlock()
-	c.rebuiltBaselines[cacheKey] = struct{}{}
-}
-
-// isConfVersionRejection reports whether the data plane refused the push because of a
-// conf_version, which is the one rejection re-deriving the baseline can answer.
+// IsConfVersionRejection reports whether err is the data plane refusing a push because
+// its conf_version is behind. That is the one rejection a caller can answer, by asking
+// ADC to rebuild its diff baseline from the data plane (SyncInput.Config.BypassCache) and
+// syncing again. This package never makes that decision; it only lets a caller recognize
+// the case.
 //
 // It matches the field name, not the sentence. conf_version is part of the standalone
-// admin API -- we send those keys ourselves -- so any rejection that concerns it names it,
-// whatever prose APISIX wraps it in. Matching the sentence would tie us to prose APISIX is
-// free to reword; matching the field only breaks if it renames the API.
-//
-// This backs the safety net, not the fix. A baseline is rebuilt on leader acquisition,
-// which is where staleness comes from, so if this ever stopped firing the reported bug
-// would not come back with it.
-func isConfVersionRejection(err error) bool {
+// admin API, callers send those keys themselves, so any rejection that concerns it names
+// the field whatever prose APISIX wraps it in. Matching the sentence would tie this to
+// prose APISIX is free to reword; matching the field only breaks if it renames the API.
+func IsConfVersionRejection(err error) bool {
 	return err != nil && strings.Contains(err.Error(), confVersionField)
 }
 
@@ -196,96 +157,22 @@ func (in SyncInput) MarshalLog() any {
 	}
 }
 
-// Sync pushes every given SyncInput to its data plane in one sweep, and reports the
-// parsed, typed error for each one that failed, keyed by its Name -- an input whose name
-// is absent from the returned map genuinely succeeded. It never returns a raw HTTP status
-// or body; every response ADC can send back is already interpreted by the time it gets
-// here.
-func (c *Client) Sync(ctx context.Context, inputs []SyncInput) (map[string]types.ADCExecutionErrors, error) {
-	if len(inputs) == 0 {
-		return nil, nil
-	}
-	c.log.V(1).Info("syncing resources", "inputs", inputs)
-
-	failedMap := map[string]types.ADCExecutionErrors{}
-	var failedNames []string
-	for _, in := range inputs {
-		if in.Resources == nil {
-			continue
-		}
-		if err := c.syncOne(ctx, in); err != nil {
-			c.log.Error(err, "failed to sync resources", "name", in.Name)
-			failedNames = append(failedNames, in.Name)
-			var execErrs types.ADCExecutionErrors
-			if errors.As(err, &execErrs) {
-				failedMap[in.Name] = execErrs
-			}
-		}
-	}
-
-	var err error
-	if len(failedNames) > 0 {
-		err = fmt.Errorf("failed to sync %d configs: %s",
-			len(failedNames),
-			strings.Join(failedNames, ", "))
-	}
-	return failedMap, err
-}
-
-// push syncs one config through the ADC server, re-deriving the baseline ADC diffs against
-// whenever that baseline cannot be trusted. Beside the error to report it returns the ones
-// to report next to it, which a rebuild that failed leaves behind.
+// Sync sends in to its data plane once and returns the parsed, typed error if the push
+// failed, or nil if it succeeded. It never returns a raw HTTP status or body: every
+// response ADC can send back is already interpreted by the time it gets here, into a
+// types.ADCExecutionServerAddrError. The raw status this call's own metrics are labeled
+// with never leaves this function.
 //
-// The ADC sidecar outlives the controller process, so the baseline it holds for a cacheKey
-// may be one an earlier leadership term left behind. It is re-derived from the data plane
-// the first time this term syncs the key, before anything can be pushed from it, and only
-// a sync ADC accepts settles the question.
-//
-// Rebuilding on leader acquisition covers where staleness comes from. The safety net covers
-// what it cannot foresee -- another writer on this data plane, a desync no leadership change
-// explains -- and a conf_version the data plane refuses is the only way any of that shows
-// itself. Re-read the data plane and push again.
-func (c *Client) push(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) ([]types.ADCExecutionError, error) {
-	standalone := config.BackendType == backendAPISIXStandalone
-	config.BypassCache = standalone && !c.baselineIsCurrent(config.Name)
-
-	err := c.executor.Execute(ctx, config, resources, labels, resourceTypes)
-
-	var alsoReport []types.ADCExecutionError
-	if standalone && !config.BypassCache && isConfVersionRejection(err) {
-		c.log.Info("data plane rejected a stale conf_version, rebuilding the ADC baseline",
-			"config", config.Name, "error", err.Error())
-		// Keep the rejection visible even when the sync recovers. The rebuild is not rate
-		// limited, so a rejection on every sync -- someone else writing to this data plane --
-		// turns every sync into a full fetch and diff, and this counter is what says so.
-		pkgmetrics.RecordExecutionError(config.Name, "conf_version_conflict")
-
-		config.BypassCache = true
-		retryErr := c.executor.Execute(ctx, config, resources, labels, resourceTypes)
-
-		// Report the rejection as well. On its own a failed rebuild says nothing about what it
-		// was rebuilding for, and it is the rejection that names the cause -- an ADC server too
-		// old to know bypassCache, say, answers with a schema error that points nowhere near
-		// it. Unless the rebuild was rejected the same way, in which case saying it twice only
-		// pads the status message.
-		var rejected types.ADCExecutionError
-		if retryErr != nil && retryErr.Error() != err.Error() && errors.As(err, &rejected) {
-			alsoReport = append(alsoReport, rejected)
-		}
-		err = retryErr
+// It never retries. A caller that retries (see IsConfVersionRejection) may call this more
+// than once for what is, from the outside, one logical sync; this call's own duration and
+// (on failure) error are recorded here regardless, so each underlying HTTP round trip
+// stays individually visible, but only the caller knows when that logical sync is
+// actually over, and owns whatever metric reflects that.
+func (c *Client) Sync(ctx context.Context, in SyncInput) error {
+	if in.Resources == nil {
+		return nil
 	}
-
-	// Only a sync ADC accepted proves its baseline is now derived from the data plane.
-	if err == nil && config.BypassCache {
-		c.markBaselineCurrent(config.Name)
-	}
-	return alsoReport, err
-}
-
-func (c *Client) syncOne(ctx context.Context, in SyncInput) error {
 	c.log.V(1).Info("syncing resources", "input", in)
-
-	var errs types.ADCExecutionErrors
 
 	config := in.Config
 	if config.BackendType == "" {
@@ -293,38 +180,15 @@ func (c *Client) syncOne(ctx context.Context, in SyncInput) error {
 	}
 
 	startTime := time.Now()
-	resourceType := strings.Join(in.ResourceTypes, ",")
-	if resourceType == "" {
-		resourceType = "all"
-	}
-
-	alsoReport, err := c.push(ctx, config, in.Resources, in.Labels, in.ResourceTypes)
-	errs.Errors = append(errs.Errors, alsoReport...)
-
-	duration := time.Since(startTime).Seconds()
+	statusCode, err := c.executor.Execute(ctx, config, in.Resources, in.Labels, in.ResourceTypes)
 
 	status := adctypes.StatusSuccess
 	if err != nil {
 		status = "failure"
 		c.log.Error(err, "failed to sync with ADC", "config", config)
-
-		var execErr types.ADCExecutionError
-		if errors.As(err, &execErr) {
-			errs.Errors = append(errs.Errors, execErr)
-			pkgmetrics.RecordExecutionError(config.Name, execErr.Name)
-		} else {
-			errs.Errors = append(errs.Errors, types.ADCExecutionError{
-				Name:         config.Name,
-				FailedErrors: []types.ADCExecutionServerAddrError{{Err: err.Error()}},
-			})
-			pkgmetrics.RecordExecutionError(config.Name, "unknown")
-		}
+		pkgmetrics.RecordClientSyncError(config.Name, statusCode)
 	}
+	pkgmetrics.RecordClientSyncDuration(config.Name, status, time.Since(startTime).Seconds())
 
-	pkgmetrics.RecordSyncDuration(config.Name, resourceType, status, duration)
-
-	if len(errs.Errors) > 0 {
-		return errs
-	}
-	return nil
+	return err
 }

@@ -42,11 +42,19 @@ const (
 	pathSync     = "/sync"
 	pathValidate = "/validate"
 
-	backendAPISIXStandalone = "apisix-standalone"
+	// BackendAPISIXStandalone is the one backend type this package resolves a
+	// multi-address ServerAddrs into a single joined sync target for. It is exported so
+	// apisixProvider, which owns the conf_version rebuild decision, can recognize the
+	// same backend type without repeating the string.
+	BackendAPISIXStandalone = "apisix-standalone"
 )
 
 type ADCExecutor interface {
-	Execute(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) error
+	// Execute performs one sync and returns the raw HTTP status ADC answered with (0 if
+	// the call never got a response at all, e.g. a transport failure) alongside the
+	// parsed error, if any. The status code is for Client.Sync's own metrics; nothing
+	// outside this package ever sees it.
+	Execute(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) (statusCode int, err error)
 	Validate(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) error
 }
 
@@ -142,7 +150,7 @@ func NewHTTPADCExecutor(log logr.Logger, serverURL string, timeout time.Duration
 }
 
 // Execute implements the ADCExecutor interface using HTTP calls
-func (e *HTTPADCExecutor) Execute(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) error {
+func (e *HTTPADCExecutor) Execute(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) (int, error) {
 	return e.runHTTPSync(ctx, config, resources, labels, resourceTypes)
 }
 
@@ -150,38 +158,65 @@ func (e *HTTPADCExecutor) Validate(ctx context.Context, config adctypes.Config, 
 	return e.runHTTPValidate(ctx, config, resources, labels, resourceTypes)
 }
 
-// runHTTPSync performs HTTP sync to ADC Server for each server address
-func (e *HTTPADCExecutor) runHTTPSync(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) error {
-	var execErrs = types.ADCExecutionError{
-		Name: config.Name,
+// runHTTPSync sends config in one /sync request and returns the parsed failure, if any.
+// A sync is one request whatever config.ServerAddrs holds: apisix-standalone joins every
+// entry with commas because ADC addresses them together as one logical destination
+// (buildHTTPRequest splits them back apart into the request body), every other backend
+// type takes the first entry only, since a GatewayProxy is expected to resolve to one
+// address there even though nothing enforces it yet. Deciding how many addresses a
+// GatewayProxy has belongs to the caller that built config.ServerAddrs.
+//
+// A GatewayProxy with no resolved address is a sync failure for apisix-standalone (the
+// data plane it configures is unreachable, e.g. scaled to zero), and a no-op for every
+// other backend type, which pushes per address and so has nothing to push.
+//
+// This package never decides whether to retry the failure; callers interpret it and ask
+// again if they choose to. The returned status code is 0 whenever no HTTP response came
+// back at all (no address to sync to, or the request never reached ADC or got answered).
+func (e *HTTPADCExecutor) runHTTPSync(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) (int, error) {
+	standalone := config.BackendType == BackendAPISIXStandalone
+	if len(config.ServerAddrs) == 0 {
+		if standalone {
+			return 0, types.ADCExecutionServerAddrError{Err: "no data plane address to sync apisix-standalone config to"}
+		}
+		return 0, nil
 	}
 
-	serverAddrs := func() []string {
-		if config.BackendType == backendAPISIXStandalone {
-			return []string{strings.Join(config.ServerAddrs, ",")}
+	target := syncTargetAddr(config)
+	e.log.V(1).Info("running http sync", "server", target)
+
+	ctx, cancel := context.WithTimeout(ctx, e.httpClient.Timeout)
+	defer cancel()
+
+	req, err := e.buildHTTPRequest(ctx, target, config, labels, resourceTypes, resources, pathSync)
+	if err != nil {
+		return 0, types.ADCExecutionServerAddrError{ServerAddr: target, Err: fmt.Sprintf("failed to build HTTP request: %s", err)}
+	}
+
+	resp, err := e.httpClient.Do(req)
+	if err != nil {
+		return 0, types.ADCExecutionServerAddrError{ServerAddr: target, Err: fmt.Sprintf("failed to send HTTP request: %s", err)}
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			e.log.Error(closeErr, "failed to close response body")
 		}
-		return config.ServerAddrs
 	}()
-	e.log.V(1).Info("running http sync", "serverAddrs", serverAddrs)
 
-	for _, addr := range serverAddrs {
-		if err := e.runHTTPSyncForSingleServer(ctx, addr, config, resources, labels, resourceTypes); err != nil {
-			e.log.Error(err, "failed to run http sync for server", "server", addr)
-			var execErr types.ADCExecutionServerAddrError
-			if errors.As(err, &execErr) {
-				execErrs.FailedErrors = append(execErrs.FailedErrors, execErr)
-			} else {
-				execErrs.FailedErrors = append(execErrs.FailedErrors, types.ADCExecutionServerAddrError{
-					ServerAddr: addr,
-					Err:        err.Error(),
-				})
-			}
-		}
+	if err := e.handleHTTPResponse(resp, target); err != nil {
+		e.log.Error(err, "failed to run http sync", "server", target)
+		return resp.StatusCode, err
 	}
-	if len(execErrs.FailedErrors) > 0 {
-		return execErrs
+	return resp.StatusCode, nil
+}
+
+// syncTargetAddr resolves config.ServerAddrs into what one /sync request targets. Callers
+// must have already handled an empty ServerAddrs (see runHTTPSync).
+func syncTargetAddr(config adctypes.Config) string {
+	if config.BackendType == BackendAPISIXStandalone {
+		return strings.Join(config.ServerAddrs, ",")
 	}
-	return nil
+	return config.ServerAddrs[0]
 }
 
 func (e *HTTPADCExecutor) runHTTPValidate(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) error {
@@ -214,29 +249,6 @@ func (e *HTTPADCExecutor) runHTTPValidate(ctx context.Context, config adctypes.C
 		return errors.Join(infraErrs...)
 	}
 	return nil
-}
-
-// runHTTPSyncForSingleServer performs HTTP sync to a single ADC Server
-func (e *HTTPADCExecutor) runHTTPSyncForSingleServer(ctx context.Context, serverAddr string, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) error {
-	ctx, cancel := context.WithTimeout(ctx, e.httpClient.Timeout)
-	defer cancel()
-
-	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, resourceTypes, resources, pathSync)
-	if err != nil {
-		return fmt.Errorf("failed to build HTTP request: %w", err)
-	}
-
-	resp, err := e.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send HTTP request: %w", err)
-	}
-	defer func() {
-		if closeErr := resp.Body.Close(); closeErr != nil {
-			e.log.Error(closeErr, "failed to close response body")
-		}
-	}()
-
-	return e.handleHTTPResponse(resp, serverAddr)
 }
 
 func (e *HTTPADCExecutor) runHTTPValidateForSingleServer(ctx context.Context, serverAddr string, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) error {
