@@ -309,6 +309,61 @@ func TestClassifySyncResultAttributesFailedStatusesToTheirResource(t *testing.T)
 	}
 }
 
+func TestClassifySyncResultIgnoresEndpointStatusesOnAFullyAttributedAddrErr(t *testing.T) {
+	// apisix-standalone's own re-validate path attaches EndpointStatuses to every addrErr
+	// regardless of whether FailedStatuses also named specific resources: an all-rejected
+	// write leaves every endpoint success:false even though the actual cause (bad content
+	// in one resource) is already fully explained by FailedStatuses. Once every
+	// FailedStatuses entry resolves to a resource, that EndpointStatuses data must be
+	// dropped silently, not also smeared onto the GatewayProxy as if the data plane
+	// itself were unreachable.
+	d := &apisixProvider{log: logr.Discard(), store: cache.NewStore(logr.Discard())}
+	const configName = "GatewayProxy/ns/gp"
+	if err := d.store.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{
+		Services: []*adctypes.Service{{
+			Metadata: adctypes.Metadata{
+				ID: "svc1",
+				Labels: map[string]string{
+					label.LabelKind:      "ApisixRoute",
+					label.LabelName:      "route1",
+					label.LabelNamespace: "ns1",
+				},
+			},
+		}},
+	}, nil); err != nil {
+		t.Fatalf("seeding the store: %v", err)
+	}
+
+	execErrs := types.ADCExecutionErrors{Errors: []types.ADCExecutionError{{
+		Name: configName,
+		FailedErrors: []types.ADCExecutionServerAddrError{{
+			ServerAddr: "http://apisix:9180",
+			FailedStatuses: []adctypes.SyncStatus{{
+				Reason: "unknown plugin foo",
+				Event:  adctypes.StatusEvent{ResourceType: adctypes.TypeService, ResourceID: "svc1"},
+			}},
+			EndpointStatuses: []adctypes.EndpointStatus{
+				{Server: "http://apisix-1:9180", Success: false, Reason: "content rejected"},
+				{Server: "http://apisix-2:9180", Success: false, Reason: "content rejected"},
+			},
+		}},
+	}}}
+
+	resourceFailures := map[types.NamespacedNameKind][]string{}
+	gatewayProxyMsgs, failedEndpoints := d.classifySyncResult(configName, execErrs, resourceFailures)
+
+	if len(gatewayProxyMsgs) != 0 {
+		t.Errorf("expected nothing attributed to the GatewayProxy, got %v", gatewayProxyMsgs)
+	}
+	if len(failedEndpoints) != 0 {
+		t.Errorf("expected no endpoint events either, got %v", failedEndpoints)
+	}
+	want := types.NamespacedNameKind{Kind: "ApisixRoute", Namespace: "ns1", Name: "route1"}
+	if got := resourceFailures[want]; len(got) != 1 || !strings.Contains(got[0], "unknown plugin foo") {
+		t.Errorf("resourceFailures[%v] = %v, want the failure reason", want, got)
+	}
+}
+
 func TestClassifySyncResultFallsBackToGatewayProxyWhenAFailedStatusHasNoResourceAttribution(t *testing.T) {
 	// apisix-standalone: FailedStatuses can be non-empty yet carry no Event to resolve a
 	// resource from at all, the whole addrErr is then a GatewayProxy-level signal.
