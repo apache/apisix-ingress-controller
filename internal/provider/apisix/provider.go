@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -43,6 +44,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/provider/common"
 	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
+	pkgmetrics "github.com/apache/apisix-ingress-controller/pkg/metrics"
 )
 
 const (
@@ -71,6 +73,11 @@ type apisixProvider struct {
 	// syncLocks serializes, per cacheKey, reading that GatewayProxy's current resource
 	// snapshot together with pushing it
 	syncLocks *keyedMutex
+
+	// standaloneSyncer owns apisix-standalone's ADC diff-baseline recovery: the
+	// BypassCache decision, the one retry for a stale conf_version, and the per-term
+	// record of which cacheKeys it has rebuilt. Unused for every other backend type.
+	standaloneSyncer *adcclient.StandaloneSyncer
 
 	updater         status.Updater
 	statusUpdateMap map[types.NamespacedNameKind][]string
@@ -101,17 +108,18 @@ func New(log logr.Logger, updater status.Updater, readier readiness.ReadinessMan
 	configManager := common.NewConfigManager[types.NamespacedNameKind, adctypes.Config]()
 
 	return &apisixProvider{
-		client:        cli,
-		store:         store,
-		configManager: configManager,
-		debugProvider: common.NewADCDebugProvider(store, configManager),
-		syncLocks:     newKeyedMutex(),
-		Options:       o,
-		translator:    translator.NewTranslator(log, o.ListenerPortMatchMode),
-		updater:       updater,
-		readier:       readier,
-		syncCh:        make(chan struct{}, 1),
-		log:           logger,
+		client:           cli,
+		store:            store,
+		configManager:    configManager,
+		debugProvider:    common.NewADCDebugProvider(store, configManager),
+		syncLocks:        newKeyedMutex(),
+		standaloneSyncer: adcclient.NewStandaloneSyncer(cli, logger),
+		Options:          o,
+		translator:       translator.NewTranslator(log, o.ListenerPortMatchMode),
+		updater:          updater,
+		readier:          readier,
+		syncCh:           make(chan struct{}, 1),
+		log:              logger,
 	}, nil
 }
 
@@ -335,8 +343,69 @@ func (d *apisixProvider) syncConfigNow(
 	if err != nil {
 		return types.ADCExecutionErrors{}, err
 	}
-	failedMap, err := d.client.Sync(ctx, []adcclient.SyncInput{input})
-	return failedMap[name], err
+	execErrs := d.pushConfig(ctx, input)
+	if len(execErrs.Errors) > 0 {
+		return execErrs, execErrs
+	}
+	return execErrs, nil
+}
+
+// pushConfig sends input to its data plane and shapes whatever failed into the form
+// status reporting consumes. apisix-standalone goes through standaloneSyncer, which may
+// rebuild ADC's diff baseline and retry once; every other backend type is a single
+// one-shot push through the adc client, which never retries.
+//
+// Metrics are recorded here, once per call, around whichever of those two logical syncs
+// ran: the adc client itself records nothing, since a caller that retries may drive it
+// more than once for what is, from the outside, one sync attempt, and only this layer
+// knows when that attempt is actually over.
+func (d *apisixProvider) pushConfig(ctx context.Context, input adcclient.SyncInput) types.ADCExecutionErrors {
+	backend := input.Config.BackendType
+	if backend == "" {
+		backend = d.DefaultBackendMode
+	}
+
+	startTime := time.Now()
+	resourceType := strings.Join(input.ResourceTypes, ",")
+	if resourceType == "" {
+		resourceType = "all"
+	}
+
+	var errs []error
+	if backend == adcclient.BackendAPISIXStandalone {
+		errs = d.standaloneSyncer.Sync(ctx, input)
+	} else if err := d.client.Sync(ctx, input); err != nil {
+		errs = []error{err}
+	}
+
+	status := adctypes.StatusSuccess
+	if len(errs) > 0 {
+		status = "failure"
+		errorType := "unknown"
+		var addrErr types.ADCExecutionServerAddrError
+		if errors.As(errs[len(errs)-1], &addrErr) {
+			errorType = "sync_failed"
+		}
+		pkgmetrics.RecordExecutionError(input.Name, errorType)
+	}
+	pkgmetrics.RecordSyncDuration(input.Name, resourceType, status, time.Since(startTime).Seconds())
+
+	var execErrs types.ADCExecutionErrors
+	for _, err := range errs {
+		execErrs.Errors = append(execErrs.Errors, toADCExecutionError(input.Name, err))
+	}
+	return execErrs
+}
+
+// toADCExecutionError shapes one sync error into the per-config form status reporting
+// consumes. A parsed per-server error travels through with its structured detail intact;
+// anything else becomes a bare message.
+func toADCExecutionError(name string, err error) types.ADCExecutionError {
+	var addrErr types.ADCExecutionServerAddrError
+	if errors.As(err, &addrErr) {
+		return types.ADCExecutionError{Name: name, FailedErrors: []types.ADCExecutionServerAddrError{addrErr}}
+	}
+	return types.ADCExecutionError{Name: name, FailedErrors: []types.ADCExecutionServerAddrError{{Err: err.Error()}}}
 }
 
 // syncEvictedConfigsNow pushes an empty resource set for each of the given configs
@@ -386,7 +455,7 @@ func (d *apisixProvider) Start(ctx context.Context) error {
 	// one thing that leaves the ADC sidecar holding a baseline from an earlier term: it
 	// survives the manager container, the configuration it was derived from does not.
 	// Rebuild every baseline from the data plane before syncing from it.
-	d.client.InvalidateADCCache()
+	d.standaloneSyncer.InvalidateBaselines()
 
 	d.log.Info("starting provider, waiting for readiness")
 	d.readier.WaitReady(ctx, 5*time.Minute)
