@@ -18,6 +18,7 @@
 package apisix
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -64,7 +65,7 @@ const (
 // newly (or still) failing resources are written SyncFailed, and any resource that was
 // failing last round but isn't failing this one gets its error explicitly cleared with
 // an Accepted write.
-func (d *apisixProvider) updateStatusFromSyncResults(results map[string]types.ADCExecutionErrors) {
+func (d *apisixProvider) updateStatusFromSyncResults(ctx context.Context, results map[string]types.ADCExecutionErrors) {
 	resourceFailures := map[types.NamespacedNameKind][]string{}
 
 	for configName, execErrs := range results {
@@ -77,7 +78,7 @@ func (d *apisixProvider) updateStatusFromSyncResults(results map[string]types.AD
 		gatewayProxyMsgs, failedEndpoints := d.classifySyncResult(configName, execErrs, resourceFailures)
 		if len(gatewayProxyMsgs) > 0 {
 			d.updateStatus(gatewayProxy, failureCondition(gatewayProxy, strings.Join(gatewayProxyMsgs, "; ")))
-			d.recordFailedEndpointEvents(gatewayProxy, failedEndpoints)
+			d.recordFailedEndpointEvents(ctx, gatewayProxy, failedEndpoints)
 		} else {
 			d.updateStatus(gatewayProxy, successCondition(gatewayProxy))
 		}
@@ -193,14 +194,31 @@ func newGatewayProxyDataPlaneAvailableCondition(available bool, reason, msg stri
 
 // recordFailedEndpointEvents fires one Warning event per failed EndpointStatus entry,
 // so each instance's own failure history (when it started, how often) is visible on
-// its own, not folded into everyone else's.
-func (d *apisixProvider) recordFailedEndpointEvents(nnk types.NamespacedNameKind, endpoints []adctypes.EndpointStatus) {
+// its own, not folded into everyone else's. The GatewayProxy is fetched fresh from the
+// API server first so the Event's involvedObject carries a real UID: a hand-built stub
+// with only Name/Namespace leaves that UID empty, and kubectl describe resolves events
+// by matching it, so an event against such a stub never shows up there.
+func (d *apisixProvider) recordFailedEndpointEvents(ctx context.Context, nnk types.NamespacedNameKind, endpoints []adctypes.EndpointStatus) {
 	if d.EventRecorder == nil {
 		return
 	}
-	gatewayProxy := &apiv1alpha1.GatewayProxy{
-		ObjectMeta: metav1.ObjectMeta{Name: nnk.Name, Namespace: nnk.Namespace},
+	hasFailure := false
+	for _, ep := range endpoints {
+		if !ep.Success {
+			hasFailure = true
+			break
+		}
 	}
+	if !hasFailure {
+		return
+	}
+
+	gatewayProxy := &apiv1alpha1.GatewayProxy{}
+	if err := d.K8sClient.Get(ctx, nnk.NamespacedName(), gatewayProxy); err != nil {
+		d.log.Error(err, "failed to get GatewayProxy to record failed endpoint events", "name", nnk.Name, "namespace", nnk.Namespace)
+		return
+	}
+
 	for _, ep := range endpoints {
 		if ep.Success {
 			continue

@@ -18,20 +18,37 @@
 package apisix
 
 import (
+	"context"
 	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
+	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
+	apiv1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/adc/cache"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/types"
 )
+
+// fakeK8sClient builds a controller-runtime fake client seeded with objects, for the
+// GatewayProxy lookup recordFailedEndpointEvents does before firing an Event.
+func fakeK8sClient(t *testing.T, objects ...runtime.Object) client.Client {
+	t.Helper()
+	scheme := runtime.NewScheme()
+	require.NoError(t, clientgoscheme.AddToScheme(scheme))
+	require.NoError(t, apiv1alpha1.AddToScheme(scheme))
+	return fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(objects...).Build()
+}
 
 func TestUnavailableEndpointsMessageEmptyWhenEverythingSucceeded(t *testing.T) {
 	msg := unavailableEndpointsMessage([]adctypes.EndpointStatus{
@@ -117,9 +134,12 @@ func TestRecordFailedEndpointEventsFiresOneWarningPerFailedEndpoint(t *testing.T
 	recorder := record.NewFakeRecorder(2)
 	d := &apisixProvider{log: logr.Discard()}
 	d.EventRecorder = recorder
+	d.K8sClient = fakeK8sClient(t, &apiv1alpha1.GatewayProxy{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "gp", UID: "gp-uid"},
+	})
 	nnk := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "gp"}
 
-	d.recordFailedEndpointEvents(nnk, []adctypes.EndpointStatus{
+	d.recordFailedEndpointEvents(context.Background(), nnk, []adctypes.EndpointStatus{
 		{Server: "http://apisix-1:9180", Success: true},
 		{Server: "http://apisix-2:9180", Success: false, Reason: "connection refused"},
 		{Server: "http://apisix-3:9180", Success: false, Reason: "TLS handshake failed"},
@@ -148,8 +168,43 @@ func TestRecordFailedEndpointEventsNoopsWithoutARecorder(t *testing.T) {
 	d := &apisixProvider{log: logr.Discard()}
 	nnk := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "gp"}
 
-	// Must not panic when no EventRecorder was configured.
-	d.recordFailedEndpointEvents(nnk, []adctypes.EndpointStatus{{Server: "http://apisix-1:9180", Success: false}})
+	// Must not panic when no EventRecorder was configured. No K8sClient either: a nil
+	// dereference here would mean this didn't actually return before reaching it.
+	d.recordFailedEndpointEvents(context.Background(), nnk, []adctypes.EndpointStatus{{Server: "http://apisix-1:9180", Success: false}})
+}
+
+func TestRecordFailedEndpointEventsNoopsWhenEveryEndpointSucceeded(t *testing.T) {
+	recorder := record.NewFakeRecorder(1)
+	d := &apisixProvider{log: logr.Discard()}
+	d.EventRecorder = recorder
+	nnk := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "gp"}
+
+	// No K8sClient configured either: with nothing failed, the GatewayProxy lookup this
+	// needs to attribute a failure must never even be attempted.
+	d.recordFailedEndpointEvents(context.Background(), nnk, []adctypes.EndpointStatus{{Server: "http://apisix-1:9180", Success: true}})
+
+	select {
+	case e := <-recorder.Events:
+		t.Errorf("unexpected event %q, nothing failed", e)
+	default:
+	}
+}
+
+func TestRecordFailedEndpointEventsSkipsWhenTheGatewayProxyCannotBeFetched(t *testing.T) {
+	recorder := record.NewFakeRecorder(1)
+	d := &apisixProvider{log: logr.Discard()}
+	d.EventRecorder = recorder
+	d.K8sClient = fakeK8sClient(t) // no GatewayProxy seeded, so Get returns NotFound
+	nnk := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "gp"}
+
+	// Must not panic, and must not fire an event against a zero-value stand-in.
+	d.recordFailedEndpointEvents(context.Background(), nnk, []adctypes.EndpointStatus{{Server: "http://apisix-1:9180", Success: false}})
+
+	select {
+	case e := <-recorder.Events:
+		t.Errorf("unexpected event %q, the GatewayProxy could not be fetched", e)
+	default:
+	}
 }
 
 // fakeUpdater records every status.Update handed to it, and applies each Mutator against

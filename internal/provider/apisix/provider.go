@@ -534,7 +534,7 @@ func (d *apisixProvider) sync(ctx context.Context) error {
 		}
 	}
 
-	d.updateStatusFromSyncResults(results)
+	d.updateStatusFromSyncResults(ctx, results)
 	return errors.Join(errs...)
 }
 
