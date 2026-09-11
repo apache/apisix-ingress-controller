@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -43,6 +44,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/provider/common"
 	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
+	pkgmetrics "github.com/apache/apisix-ingress-controller/pkg/metrics"
 )
 
 const (
@@ -352,10 +354,21 @@ func (d *apisixProvider) syncConfigNow(
 // status reporting consumes. apisix-standalone goes through standaloneSyncer, which may
 // rebuild ADC's diff baseline and retry once; every other backend type is a single
 // one-shot push through the adc client, which never retries.
+//
+// Metrics are recorded here, once per call, around whichever of those two logical syncs
+// ran: the adc client itself records nothing, since a caller that retries may drive it
+// more than once for what is, from the outside, one sync attempt, and only this layer
+// knows when that attempt is actually over.
 func (d *apisixProvider) pushConfig(ctx context.Context, input adcclient.SyncInput) types.ADCExecutionErrors {
 	backend := input.Config.BackendType
 	if backend == "" {
 		backend = d.DefaultBackendMode
+	}
+
+	startTime := time.Now()
+	resourceType := strings.Join(input.ResourceTypes, ",")
+	if resourceType == "" {
+		resourceType = "all"
 	}
 
 	var errs []error
@@ -364,6 +377,18 @@ func (d *apisixProvider) pushConfig(ctx context.Context, input adcclient.SyncInp
 	} else if err := d.client.Sync(ctx, input); err != nil {
 		errs = []error{err}
 	}
+
+	status := adctypes.StatusSuccess
+	if len(errs) > 0 {
+		status = "failure"
+		errorType := "unknown"
+		var addrErr types.ADCExecutionServerAddrError
+		if errors.As(errs[len(errs)-1], &addrErr) {
+			errorType = "sync_failed"
+		}
+		pkgmetrics.RecordExecutionError(input.Name, errorType)
+	}
+	pkgmetrics.RecordSyncDuration(input.Name, resourceType, status, time.Since(startTime).Seconds())
 
 	var execErrs types.ADCExecutionErrors
 	for _, err := range errs {

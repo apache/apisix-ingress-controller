@@ -301,22 +301,24 @@ func TestRunHTTPSyncFailsForAStandaloneConfigWithNoAddress(t *testing.T) {
 	// pass as a no-op.
 	e := &HTTPADCExecutor{log: logr.Discard()}
 
-	err := e.runHTTPSync(context.Background(),
+	statusCode, err := e.runHTTPSync(context.Background(),
 		adctypes.Config{Name: "gw", BackendType: BackendAPISIXStandalone}, &adctypes.Resources{}, nil, nil)
 
 	var addrErr types.ADCExecutionServerAddrError
 	require.ErrorAs(t, err, &addrErr)
 	assert.Contains(t, addrErr.Err, "no data plane address")
+	assert.Zero(t, statusCode, "no HTTP response was ever involved")
 }
 
 func TestRunHTTPSyncNoOpsForANonStandaloneConfigWithNoAddress(t *testing.T) {
 	// Every other backend type pushes per address, so no address is nothing to push.
 	e := &HTTPADCExecutor{log: logr.Discard()}
 
-	err := e.runHTTPSync(context.Background(),
+	statusCode, err := e.runHTTPSync(context.Background(),
 		adctypes.Config{Name: "gw", BackendType: "apisix"}, &adctypes.Resources{}, nil, nil)
 
 	assert.NoError(t, err)
+	assert.Zero(t, statusCode)
 }
 
 func TestDistinctReasonsJoinsWithoutDuplicates(t *testing.T) {

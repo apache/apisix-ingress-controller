@@ -160,11 +160,14 @@ func (in SyncInput) MarshalLog() any {
 // Sync sends in to its data plane once and returns the parsed, typed error if the push
 // failed, or nil if it succeeded. It never returns a raw HTTP status or body: every
 // response ADC can send back is already interpreted by the time it gets here, into a
-// types.ADCExecutionServerAddrError.
+// types.ADCExecutionServerAddrError. The raw status this call's own metrics are labeled
+// with never leaves this function.
 //
-// It never retries. A caller that wants ADC to rebuild its diff baseline from the data
-// plane (see IsConfVersionRejection) sets in.Config.BypassCache and calls again itself,
-// this package keeps no state across calls to base that decision on.
+// It never retries. A caller that retries (see IsConfVersionRejection) may call this more
+// than once for what is, from the outside, one logical sync; this call's own duration and
+// (on failure) error are recorded here regardless, so each underlying HTTP round trip
+// stays individually visible, but only the caller knows when that logical sync is
+// actually over, and owns whatever metric reflects that.
 func (c *Client) Sync(ctx context.Context, in SyncInput) error {
 	if in.Resources == nil {
 		return nil
@@ -177,27 +180,15 @@ func (c *Client) Sync(ctx context.Context, in SyncInput) error {
 	}
 
 	startTime := time.Now()
-	resourceType := strings.Join(in.ResourceTypes, ",")
-	if resourceType == "" {
-		resourceType = "all"
-	}
+	statusCode, err := c.executor.Execute(ctx, config, in.Resources, in.Labels, in.ResourceTypes)
 
-	err := c.executor.Execute(ctx, config, in.Resources, in.Labels, in.ResourceTypes)
-
-	duration := time.Since(startTime).Seconds()
 	status := adctypes.StatusSuccess
 	if err != nil {
 		status = "failure"
 		c.log.Error(err, "failed to sync with ADC", "config", config)
-
-		errorType := "unknown"
-		var execErr types.ADCExecutionServerAddrError
-		if errors.As(err, &execErr) {
-			errorType = "sync_failed"
-		}
-		pkgmetrics.RecordExecutionError(config.Name, errorType)
+		pkgmetrics.RecordClientSyncError(config.Name, statusCode)
 	}
-	pkgmetrics.RecordSyncDuration(config.Name, resourceType, status, duration)
+	pkgmetrics.RecordClientSyncDuration(config.Name, status, time.Since(startTime).Seconds())
 
 	return err
 }
