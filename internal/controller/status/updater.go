@@ -254,6 +254,12 @@ func statusEqual(a, b any, opts ...cmp.Option) bool {
 			return false
 		}
 		statusA, statusB = a.Status, b.Status
+	case *v1alpha1.GatewayProxy:
+		b, ok := b.(*v1alpha1.GatewayProxy)
+		if !ok {
+			return false
+		}
+		statusA, statusB = a.Status, b.Status
 	default:
 		return false
 	}

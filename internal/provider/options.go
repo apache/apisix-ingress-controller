@@ -20,6 +20,9 @@ package provider
 import (
 	"time"
 
+	"k8s.io/client-go/tools/record"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 )
 
@@ -34,6 +37,11 @@ type Options struct {
 	DefaultBackendMode      string
 	DefaultResolveEndpoints bool
 	ListenerPortMatchMode   config.ListenerPortMatchMode
+	EventRecorder           record.EventRecorder
+	// K8sClient reads live Kubernetes objects, e.g. to fetch a resource's real UID
+	// before recording an Event against it. Named to stay unambiguous next to any
+	// provider-specific client, such as apisixProvider's own ADC client.
+	K8sClient client.Client
 }
 
 func (o *Options) ApplyToList(lo *Options) {
@@ -54,6 +62,12 @@ func (o *Options) ApplyToList(lo *Options) {
 	}
 	if o.ListenerPortMatchMode != "" {
 		lo.ListenerPortMatchMode = o.ListenerPortMatchMode
+	}
+	if o.EventRecorder != nil {
+		lo.EventRecorder = o.EventRecorder
+	}
+	if o.K8sClient != nil {
+		lo.K8sClient = o.K8sClient
 	}
 }
 

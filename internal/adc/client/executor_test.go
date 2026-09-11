@@ -143,6 +143,46 @@ func TestHandleHTTPResponseParsesStructuredReasonOn422(t *testing.T) {
 	assert.Equal(t, "unknown plugin foo", addrErr.FailedStatuses[0].Reason)
 }
 
+func TestHandleHTTPResponseParsesTheEventEnvelopeInCamelCase(t *testing.T) {
+	// A literal wire body, not json.Marshal(SyncStatus{...}): marshaling a Go value and
+	// unmarshaling it right back can't catch a tag mismatch, since both sides would agree
+	// on whatever the tag currently says. This is what ADC actually sends (captured from a
+	// real /sync response): Event.ResourceType/ResourceID/ResourceName/ParentID must
+	// deserialize from resourceType/resourceId/resourceName/parentId, not
+	// resource_type/resource_id/resource_name/parent_id, or classifySyncResult can never
+	// attribute a failure to the resource it names.
+	e := &HTTPADCExecutor{log: logr.Discard()}
+	body := `{
+		"status": "partial_failure",
+		"total_resources": 2,
+		"success_count": 1,
+		"failed_count": 1,
+		"success": [],
+		"failed": [{
+			"event": {
+				"resourceType": "route",
+				"type": "create",
+				"parentId": "9bf5441c",
+				"resourceId": "43428b9e",
+				"resourceName": "ns_default_rule0"
+			},
+			"reason": "unknown plugin [non-existent-plugin]"
+		}]
+	}`
+
+	err := e.handleHTTPResponse(httpResponse(http.StatusAccepted, body), "http://apisix:9180")
+
+	var addrErr types.ADCExecutionServerAddrError
+	require.ErrorAs(t, err, &addrErr)
+	require.Len(t, addrErr.FailedStatuses, 1)
+	event := addrErr.FailedStatuses[0].Event
+	assert.Equal(t, "route", event.ResourceType)
+	assert.Equal(t, "create", event.Type)
+	assert.Equal(t, "9bf5441c", event.ParentID)
+	assert.Equal(t, "43428b9e", event.ResourceID)
+	assert.Equal(t, "ns_default_rule0", event.ResourceName)
+}
+
 func TestHandleHTTPResponseErrorsOnAnUnparseableBodyForAStatusThatShouldCarryOne(t *testing.T) {
 	// Nothing actually sends a 2xx/422 body that isn't a SyncResult, but the parse must
 	// still fail loudly rather than silently reading as success.

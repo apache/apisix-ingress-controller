@@ -18,13 +18,17 @@
 package apisix
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
+	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
+	apiv1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
@@ -32,42 +36,217 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/types"
 )
 
-// handleStatusUpdate updates resource conditions based on the latest sync results.
-//
-// It maintains a history of failed resources in d.statusUpdateMap.
-//
-// For resources in the current failure map (statusUpdateMap), it marks them as failed.
-// For resources that exist only in the previous failure history (i.e. not in this sync's failures),
-// it marks them as accepted (success).
-func (d *apisixProvider) handleStatusUpdate(statusUpdateMap map[types.NamespacedNameKind][]string) {
-	// Mark all resources in the current failure set as failed.
-	for nnk, msgs := range statusUpdateMap {
-		d.updateStatus(nnk, cutils.NewConditionTypeAccepted(
-			apiv2.ConditionReasonSyncFailed,
-			false,
-			0,
-			strings.Join(msgs, "; "),
-		))
-	}
+// GatewayProxyConditionDataPlaneAvailable reports whether every APISIX instance a
+// GatewayProxy addresses took the last sync. It lands on the GatewayProxy rather than
+// a Gateway, an IngressClass, or a CRD, since GatewayProxy is what every path shares.
+const (
+	GatewayProxyConditionDataPlaneAvailable = "DataPlaneAvailable"
 
-	// Mark resources that exist only in the previous failure history as successful.
-	for nnk := range d.statusUpdateMap {
-		if _, ok := statusUpdateMap[nnk]; !ok {
-			d.updateStatus(nnk, cutils.NewConditionTypeAccepted(
-				apiv2.ConditionReasonAccepted,
-				true,
-				0,
-				"",
-			))
+	GatewayProxyReasonDataPlaneAvailable           = "DataPlaneAvailable"
+	GatewayProxyReasonDataPlaneInstanceUnavailable = "DataPlaneInstanceUnavailable"
+)
+
+// updateStatusFromSyncResults updates every resource and GatewayProxy status this
+// round's sync results call for. results holds one entry per config sync() actually
+// reached pushConfig for this round, success (a zero-value types.ADCExecutionErrors) or
+// failure; a config sync() could not even build a SyncInput for is absent here entirely
+// and its status is left untouched this round, see sync().
+//
+// GatewayProxy's DataPlaneAvailable condition is recomputed and written fresh every
+// round directly from this round's result, never compared against any remembered
+// history: a config with no error this round is written True, one with any error is
+// written False. That is what makes a GatewayProxy that has always been healthy actually
+// get a True the first time, and what keeps a restart from leaving a stale False stuck
+// forever: the write only ever depends on this round's actual outcome.
+//
+// Resource status can't afford the same full recompute: a config's resource set can be
+// large, and rewriting every one of them every round even when nothing changed would be
+// wasteful. So resources keep a small persisted delta in d.resourceFailures instead:
+// newly (or still) failing resources are written SyncFailed, and any resource that was
+// failing last round but isn't failing this one gets its error explicitly cleared with
+// an Accepted write.
+func (d *apisixProvider) updateStatusFromSyncResults(ctx context.Context, results map[string]types.ADCExecutionErrors) {
+	resourceFailures := map[types.NamespacedNameKind][]string{}
+
+	for configName, execErrs := range results {
+		var gatewayProxy types.NamespacedNameKind
+		if err := gatewayProxy.FromString(configName); err != nil {
+			d.log.Error(err, "failed to parse config name as a GatewayProxy key", "configName", configName)
+			continue
+		}
+
+		gatewayProxyMsgs, failedEndpoints := d.classifySyncResult(configName, execErrs, resourceFailures)
+		if len(gatewayProxyMsgs) > 0 {
+			d.updateStatus(gatewayProxy, failureCondition(gatewayProxy, strings.Join(gatewayProxyMsgs, "; ")))
+			d.recordFailedEndpointEvents(ctx, gatewayProxy, failedEndpoints)
+		} else {
+			d.updateStatus(gatewayProxy, successCondition(gatewayProxy))
 		}
 	}
-	// Update the failure history with the current failure set.
-	d.statusUpdateMap = statusUpdateMap
+
+	d.applyResourceFailures(resourceFailures)
+	d.log.V(1).Info("updated status from sync results", "results", results, "resource_failures", resourceFailures)
+}
+
+// classifySyncResult splits one config's this-round result into what belongs on the
+// GatewayProxy (returned) and what belongs on specific Kubernetes resources (added into
+// resourceFailures). The two are independent, not mutually exclusive: a single addrErr
+// can carry both a resource-attributed FailedStatuses entry and a failed
+// EndpointStatuses entry at once (apisix-standalone's own re-validate path attaches
+// EndpointStatuses to every addrErr regardless of what FailedStatuses also names), so
+// checking one must never suppress reporting the other. A FailedStatuses entry that
+// resolves to a resource via its Event goes there; everything else, no FailedStatuses at
+// all, or a FailedStatuses entry with no Event to resolve (apisix-standalone when the
+// rejection can't be pinned on a specific resource), is a GatewayProxy-level signal
+// instead, but only once nothing else already explained this addrErr: EndpointStatuses'
+// own message first, the raw error as a last resort.
+func (d *apisixProvider) classifySyncResult(
+	configName string,
+	execErrs types.ADCExecutionErrors,
+	resourceFailures map[types.NamespacedNameKind][]string,
+) (gatewayProxyMsgs []string, failedEndpoints []adctypes.EndpointStatus) {
+	for _, execErr := range execErrs.Errors {
+		for _, addrErr := range execErr.FailedErrors {
+			endpointMsg := unavailableEndpointsMessage(addrErr.EndpointStatuses)
+			if endpointMsg != "" {
+				gatewayProxyMsgs = append(gatewayProxyMsgs, endpointMsg)
+				failedEndpoints = append(failedEndpoints, addrErr.EndpointStatuses...)
+			}
+
+			if len(addrErr.FailedStatuses) == 0 {
+				if endpointMsg == "" {
+					gatewayProxyMsgs = append(gatewayProxyMsgs, addrErr.Error())
+				}
+				continue
+			}
+
+			anyUnattributed := false
+			for _, syncStatus := range addrErr.FailedStatuses {
+				if syncStatus.Event.ResourceType == "" {
+					anyUnattributed = true
+					continue
+				}
+				labels, err := d.store.GetResourceLabel(configName, syncStatus.Event.ResourceType, syncStatus.Event.ResourceID)
+				if err != nil {
+					d.log.Error(err, "failed to get resource label",
+						"configName", configName, "resourceType", syncStatus.Event.ResourceType, "id", syncStatus.Event.ResourceID)
+					continue
+				}
+				resourceKey := types.NamespacedNameKind{
+					Name:      labels[label.LabelName],
+					Namespace: labels[label.LabelNamespace],
+					Kind:      labels[label.LabelKind],
+				}
+				msg := fmt.Sprintf("ServerAddr: %s, Error: %s", addrErr.ServerAddr, syncStatus.Reason)
+				resourceFailures[resourceKey] = append(resourceFailures[resourceKey], msg)
+			}
+			if anyUnattributed && endpointMsg == "" {
+				gatewayProxyMsgs = append(gatewayProxyMsgs, addrErr.Error())
+			}
+		}
+	}
+	return gatewayProxyMsgs, failedEndpoints
+}
+
+// applyResourceFailures writes this round's newly (or still) failing resources, and
+// clears the recorded error from any resource that was failing last round but isn't in
+// newFailures now. See updateStatusFromSyncResults for why resources use this delta
+// instead of GatewayProxy's full recompute.
+func (d *apisixProvider) applyResourceFailures(newFailures map[types.NamespacedNameKind][]string) {
+	for resourceKey, msgs := range newFailures {
+		d.updateStatus(resourceKey, failureCondition(resourceKey, strings.Join(msgs, "; ")))
+	}
+	for resourceKey := range d.resourceFailures {
+		if _, stillFailing := newFailures[resourceKey]; !stillFailing {
+			d.updateStatus(resourceKey, successCondition(resourceKey))
+		}
+	}
+	d.resourceFailures = newFailures
+}
+
+// failureCondition and successCondition pick which condition a NamespacedNameKind
+// gets: GatewayProxyConditionDataPlaneAvailable for a GatewayProxy, the existing
+// Accepted/SyncFailed condition for everything else.
+func failureCondition(nnk types.NamespacedNameKind, msg string) metav1.Condition {
+	if nnk.Kind == types.KindGatewayProxy {
+		return newGatewayProxyDataPlaneAvailableCondition(false, GatewayProxyReasonDataPlaneInstanceUnavailable, msg)
+	}
+	return cutils.NewConditionTypeAccepted(apiv2.ConditionReasonSyncFailed, false, 0, msg)
+}
+
+func successCondition(nnk types.NamespacedNameKind) metav1.Condition {
+	if nnk.Kind == types.KindGatewayProxy {
+		return newGatewayProxyDataPlaneAvailableCondition(true, GatewayProxyReasonDataPlaneAvailable, "")
+	}
+	return cutils.NewConditionTypeAccepted(apiv2.ConditionReasonAccepted, true, 0, "")
+}
+
+func newGatewayProxyDataPlaneAvailableCondition(available bool, reason, msg string) metav1.Condition {
+	conditionStatus := metav1.ConditionFalse
+	if available {
+		conditionStatus = metav1.ConditionTrue
+	}
+	return metav1.Condition{
+		Type:               GatewayProxyConditionDataPlaneAvailable,
+		Status:             conditionStatus,
+		LastTransitionTime: metav1.Now(),
+		Reason:             reason,
+		Message:            cutils.TruncateConditionMessage(msg),
+	}
+}
+
+// recordFailedEndpointEvents fires one Warning event per failed EndpointStatus entry,
+// so each instance's own failure history (when it started, how often) is visible on
+// its own, not folded into everyone else's. The GatewayProxy is fetched fresh from the
+// API server first so the Event's involvedObject carries a real UID: a hand-built stub
+// with only Name/Namespace leaves that UID empty, and kubectl describe resolves events
+// by matching it, so an event against such a stub never shows up there.
+func (d *apisixProvider) recordFailedEndpointEvents(ctx context.Context, nnk types.NamespacedNameKind, endpoints []adctypes.EndpointStatus) {
+	if d.EventRecorder == nil {
+		return
+	}
+	hasFailure := false
+	for _, ep := range endpoints {
+		if !ep.Success {
+			hasFailure = true
+			break
+		}
+	}
+	if !hasFailure {
+		return
+	}
+
+	gatewayProxy := &apiv1alpha1.GatewayProxy{}
+	if err := d.K8sClient.Get(ctx, nnk.NamespacedName(), gatewayProxy); err != nil {
+		d.log.Error(err, "failed to get GatewayProxy to record failed endpoint events", "name", nnk.Name, "namespace", nnk.Namespace)
+		return
+	}
+
+	for _, ep := range endpoints {
+		if ep.Success {
+			continue
+		}
+		d.EventRecorder.Event(gatewayProxy, corev1.EventTypeWarning, GatewayProxyReasonDataPlaneInstanceUnavailable,
+			fmt.Sprintf("%s: %s", ep.Server, ep.Reason))
+	}
 }
 
 //nolint:gocyclo
 func (d *apisixProvider) updateStatus(nnk types.NamespacedNameKind, condition metav1.Condition) {
 	switch nnk.Kind {
+	case types.KindGatewayProxy:
+		// Unlike the route kinds below, the condition lands on the GatewayProxy's own
+		// top-level Status.Conditions, not on a per-parent entry.
+		d.updater.Update(status.Update{
+			NamespacedName: nnk.NamespacedName(),
+			Resource:       &apiv1alpha1.GatewayProxy{},
+			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
+				cp := obj.(*apiv1alpha1.GatewayProxy).DeepCopy()
+				condition.ObservedGeneration = cp.GetGeneration()
+				cp.Status.Conditions = cutils.MergeCondition(cp.Status.Conditions, condition)
+				return cp
+			}),
+		})
 	case types.KindApisixRoute:
 		d.updater.Update(status.Update{
 			NamespacedName: nnk.NamespacedName(),
@@ -255,96 +434,19 @@ func (d *apisixProvider) updateStatus(nnk types.NamespacedNameKind, condition me
 	}
 }
 
-func (d *apisixProvider) resolveADCExecutionErrors(
-	statusesMap map[string]types.ADCExecutionErrors,
-) map[types.NamespacedNameKind][]string {
-	statusUpdateMap := map[types.NamespacedNameKind][]string{}
-	for configName, execErrors := range statusesMap {
-		for _, execErr := range execErrors.Errors {
-			for _, failedStatus := range execErr.FailedErrors {
-				if len(failedStatus.FailedStatuses) == 0 {
-					d.handleEmptyFailedStatuses(configName, failedStatus, statusUpdateMap)
-				} else {
-					d.handleDetailedFailedStatuses(configName, failedStatus, statusUpdateMap)
-				}
-			}
-		}
-	}
-
-	return statusUpdateMap
-}
-
-func (d *apisixProvider) handleEmptyFailedStatuses(
-	configName string,
-	failedStatus types.ADCExecutionServerAddrError,
-	statusUpdateMap map[types.NamespacedNameKind][]string,
-) {
-	resource, err := d.store.GetResources(configName)
-	if err != nil {
-		d.log.Error(err, "failed to get resources from store", "configName", configName)
-		return
-	}
-
-	for _, obj := range resource.Services {
-		d.addResourceToStatusUpdateMap(obj.GetLabels(), failedStatus.Error(), statusUpdateMap)
-	}
-
-	for _, obj := range resource.Consumers {
-		d.addResourceToStatusUpdateMap(obj.GetLabels(), failedStatus.Error(), statusUpdateMap)
-	}
-
-	for _, obj := range resource.SSLs {
-		d.addResourceToStatusUpdateMap(obj.GetLabels(), failedStatus.Error(), statusUpdateMap)
-	}
-
-	globalRules, err := d.store.ListGlobalRules(configName)
-	if err != nil {
-		d.log.Error(err, "failed to list global rules", "configName", configName)
-		return
-	}
-	for _, rule := range globalRules {
-		d.addResourceToStatusUpdateMap(rule.GetLabels(), failedStatus.Error(), statusUpdateMap)
-	}
-}
-
-func (d *apisixProvider) handleDetailedFailedStatuses(
-	configName string,
-	failedStatus types.ADCExecutionServerAddrError,
-	statusUpdateMap map[types.NamespacedNameKind][]string,
-) {
-	for _, status := range failedStatus.FailedStatuses {
-		// in the APISIX standalone mode, the related values in the sync failure event are empty.
-		if status.Event.ResourceType == "" {
-			d.handleEmptyFailedStatuses(configName, failedStatus, statusUpdateMap)
-			return
-		}
-		id := status.Event.ResourceID
-		labels, err := d.store.GetResourceLabel(configName, status.Event.ResourceType, id)
-		if err != nil {
-			d.log.Error(err, "failed to get resource label",
-				"configName", configName,
-				"resourceType", status.Event.ResourceType,
-				"id", id,
-			)
+// unavailableEndpointsMessage summarizes every EndpointStatus entry that didn't
+// succeed, in the order given. Empty means none did (or there were none to check).
+func unavailableEndpointsMessage(endpoints []adctypes.EndpointStatus) string {
+	failed := make([]string, 0, len(endpoints))
+	for _, ep := range endpoints {
+		if ep.Success {
 			continue
 		}
-		d.addResourceToStatusUpdateMap(
-			labels,
-			fmt.Sprintf("ServerAddr: %s, Error: %s", failedStatus.ServerAddr, status.Reason),
-			statusUpdateMap,
-		)
+		failed = append(failed, fmt.Sprintf("%s: %s", ep.Server, ep.Reason))
 	}
-}
-
-func (d *apisixProvider) addResourceToStatusUpdateMap(
-	labels map[string]string,
-	msg string,
-	statusUpdateMap map[types.NamespacedNameKind][]string,
-) {
-	statusKey := types.NamespacedNameKind{
-		Name:      labels[label.LabelName],
-		Namespace: labels[label.LabelNamespace],
-		Kind:      labels[label.LabelKind],
+	if len(failed) == 0 {
+		return ""
 	}
-	statusUpdateMap[statusKey] = append(statusUpdateMap[statusKey], msg)
+	return fmt.Sprintf("%d/%d gateway instance(s) failed to apply the last sync: %s",
+		len(failed), len(endpoints), strings.Join(failed, "; "))
 }

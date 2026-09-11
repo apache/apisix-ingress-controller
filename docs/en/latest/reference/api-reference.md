@@ -407,6 +407,8 @@ GatewayProxySpec defines the desired state of GatewayProxy.
 _Appears in:_
 - [GatewayProxy](#gatewayproxy)
 
+
+
 #### GatewayRef
 
 
