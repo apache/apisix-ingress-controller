@@ -268,9 +268,20 @@ func SetRouteConditionAccepted(routeParentStatus *gatewayv1.RouteParentStatus, g
 		condition.Reason = string(gatewayv1.RouteReasonNoMatchingListenerHostname)
 	}
 
-	if !IsConditionPresentAndEqual(routeParentStatus.Conditions, condition) && !slices.ContainsFunc(routeParentStatus.Conditions, func(item metav1.Condition) bool {
-		return item.Type == condition.Type && item.Status == metav1.ConditionFalse && condition.Status == metav1.ConditionTrue
+	// ParseRouteParentRefs already recorded why this particular parent rejected the
+	// route: NotAllowedByListeners, NoMatchingParent, NoMatchingListenerHostname.
+	// status and message here are route-wide, derived from whatever failed first
+	// across every parent, so they must not overwrite that. Leaving them to do so
+	// reports a route rejected by allowedRoutes as NoMatchingListenerHostname,
+	// because filterHostnames finds no listener to intersect against once nothing
+	// matched, and its generic error lands here.
+	if slices.ContainsFunc(routeParentStatus.Conditions, func(item metav1.Condition) bool {
+		return item.Type == condition.Type && item.Status == metav1.ConditionFalse
 	}) {
+		return
+	}
+
+	if !IsConditionPresentAndEqual(routeParentStatus.Conditions, condition) {
 		routeParentStatus.Conditions = MergeCondition(routeParentStatus.Conditions, condition)
 	}
 }
