@@ -567,6 +567,7 @@ _Appears in:_
 | --- | --- |
 | `name` _string_ | Name is the name of the plugin. |
 | `config` _[JSON](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#json-v1-apiextensions-k8s-io)_ | Config is plugin configuration details. |
+| `secretRef` _[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core)_ | SecretRef references a Secret in the same namespace holding sensitive parts of the plugin configuration, so they do not have to be written in `config`. Each Secret key is a dot separated path into the configuration, so the key `session.secret` sets the `secret` field of the `session` object. Values are merged as strings and take precedence over the same path in `config`. |
 
 
 _Appears in:_

@@ -20,9 +20,9 @@ package apisix
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
@@ -34,61 +34,37 @@ import (
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	"github.com/apache/apisix-ingress-controller/internal/adc/cache"
 	adcclient "github.com/apache/apisix-ingress-controller/internal/adc/client"
-	"github.com/apache/apisix-ingress-controller/internal/adc/translator"
-	controllerconfig "github.com/apache/apisix-ingress-controller/internal/controller/config"
-	"github.com/apache/apisix-ingress-controller/internal/provider"
+	"github.com/apache/apisix-ingress-controller/internal/provider/common"
 	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 )
 
-func TestDeleteGatewayProxyUsesCanonicalKeyWithoutTypeMeta(t *testing.T) {
-	requests := make(chan adcclient.ADCServerRequest, 1)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
-		var request adcclient.ADCServerRequest
-		require.NoError(t, json.Unmarshal(body, &request))
-		requests <- request
-		w.Header().Set("Content-Type", "application/json")
-		_, err = w.Write([]byte(`{}`))
-		require.NoError(t, err)
-	}))
-	defer server.Close()
+// withMockADCServer starts an ADC server stub and points ADC_SERVER_URL at it for the
+// duration of the test. The handler itself is how a test inspects what it received.
+func withMockADCServer(t *testing.T, handler http.HandlerFunc) {
+	t.Helper()
+	server := httptest.NewServer(handler)
 	t.Setenv("ADC_SERVER_URL", server.URL)
+	t.Cleanup(server.Close)
+}
 
+// newTestProvider builds a minimally-wired apisixProvider against the given mock ADC
+// server -- every field Client/Delete/sync touch, none of the manager/controller ones.
+func newTestProvider(t *testing.T) *apisixProvider {
+	t.Helper()
 	cli, err := adcclient.New(logr.Discard(), ProviderTypeAPISIX, time.Second)
 	require.NoError(t, err)
-	key := utils.GatewayProxyKey("default", "gp-a")
-	config := adctypes.Config{
-		Name:        key.String(),
-		BackendType: ProviderTypeAPISIX,
-		ServerAddrs: []string{server.URL},
-		Token:       "old-token",
+	return &apisixProvider{
+		client:           cli,
+		store:            cache.NewStore(logr.Discard()),
+		configManager:    common.NewConfigManager[types.NamespacedNameKind, adctypes.Config](),
+		syncLocks:        newKeyedMutex(),
+		standaloneSyncer: adcclient.NewStandaloneSyncer(cli, logr.Discard()),
+		syncCh:           make(chan struct{}, 1),
+		log:              logr.Discard(),
 	}
-	cli.ConfigManager.Update(key, map[types.NamespacedNameKind]adctypes.Config{key: config})
-	require.NoError(t, cli.Store.Insert(config.Name, []string{adctypes.TypeService}, &adctypes.Resources{
-		Services: []*adctypes.Service{{Metadata: adctypes.Metadata{ID: "route-a"}}},
-	}, nil))
-
-	d := &apisixProvider{client: cli, log: logr.Discard()}
-	deleted := &v1alpha1.GatewayProxy{
-		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "gp-a"},
-	}
-
-	require.NoError(t, d.Delete(context.Background(), deleted))
-	select {
-	case request := <-requests:
-		assert.Equal(t, key.String(), request.Task.Opts.CacheKey)
-		assert.Empty(t, request.Task.Config.Services)
-	case <-time.After(time.Second):
-		t.Fatal("expected an empty configuration sync for the deleted GatewayProxy")
-	}
-	_, ok := cli.ConfigManager.GetConfig(key)
-	assert.False(t, ok)
-	resources, err := cli.Store.GetResources(config.Name)
-	require.NoError(t, err)
-	assert.Empty(t, resources.Services)
 }
 
 // TestDeleteNotifiesSyncOnlyWhenConfigWasRemoved covers the cost side of route
@@ -96,14 +72,7 @@ func TestDeleteGatewayProxyUsesCanonicalKeyWithoutTypeMeta(t *testing.T) {
 // for routes this controller never configured are frequent (any EndpointSlice
 // event on a shared backend enqueues them), so those must not notify.
 func TestDeleteNotifiesSyncOnlyWhenConfigWasRemoved(t *testing.T) {
-	cli, err := adcclient.New(logr.Discard(), ProviderTypeAPISIX, time.Second)
-	require.NoError(t, err)
-
-	d := &apisixProvider{
-		client: cli,
-		syncCh: make(chan struct{}, 1),
-		log:    logr.Discard(),
-	}
+	d := newTestProvider(t)
 
 	route := &gatewayv1.HTTPRoute{
 		TypeMeta: metav1.TypeMeta{
@@ -116,7 +85,7 @@ func TestDeleteNotifiesSyncOnlyWhenConfigWasRemoved(t *testing.T) {
 	require.NoError(t, d.Delete(context.Background(), route))
 	require.Empty(t, d.syncCh, "a route this controller never configured must not trigger a sync")
 
-	cli.ConfigManager.Update(utils.NamespacedNameKind(route), map[types.NamespacedNameKind]adctypes.Config{
+	d.configManager.Update(utils.NamespacedNameKind(route), map[types.NamespacedNameKind]adctypes.Config{
 		{Namespace: "default", Name: "proxy", Kind: "GatewayProxy"}: {Name: "proxy"},
 	})
 
@@ -124,18 +93,131 @@ func TestDeleteNotifiesSyncOnlyWhenConfigWasRemoved(t *testing.T) {
 	require.Len(t, d.syncCh, 1, "removing configuration this controller pushed must trigger a sync")
 }
 
-func TestBuildConfigSkipsInactiveGatewayProxy(t *testing.T) {
-	d := &apisixProvider{
-		translator: translator.NewTranslator(logr.Discard(), controllerconfig.ListenerPortMatchModeOff),
+func TestDeleteGatewayProxyUsesCanonicalKeyWithoutTypeMeta(t *testing.T) {
+	var mu sync.Mutex
+	var received []adcclient.ADCServerRequest
+
+	withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
+		var req adcclient.ADCServerRequest
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		mu.Lock()
+		received = append(received, req)
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(adctypes.SyncResult{Status: adctypes.StatusSuccess})
+	})
+
+	d := newTestProvider(t)
+	key := utils.GatewayProxyKey("default", "gp-a")
+	config := adctypes.Config{
+		Name:        key.String(),
+		BackendType: ProviderTypeAPISIX,
+		ServerAddrs: []string{"http://apisix:9180"},
+		Token:       "old-token",
 	}
-	tctx := provider.NewDefaultTranslateContext(context.Background())
-	resourceKey := types.NamespacedNameKind{Namespace: "app", Name: "route-a", Kind: "HTTPRoute"}
-	tctx.GatewayProxies[resourceKey] = v1alpha1.GatewayProxy{
+	d.configManager.UpdateConfig(key, config)
+	require.NoError(t, d.store.Insert(config.Name, []string{adctypes.TypeService}, &adctypes.Resources{
+		Services: []*adctypes.Service{{Metadata: adctypes.Metadata{ID: "route-a"}}},
+	}, nil))
+
+	deleted := &v1alpha1.GatewayProxy{
 		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "gp-a"},
 	}
+	require.NoError(t, d.Delete(context.Background(), deleted))
 
-	configs, err := d.buildConfig(tctx, resourceKey)
-
+	mu.Lock()
+	defer mu.Unlock()
+	require.Len(t, received, 1)
+	assert.Equal(t, key.String(), received[0].Task.Opts.CacheKey)
+	assert.Empty(t, received[0].Task.Config.Services)
+	_, ok := d.configManager.GetConfig(key)
+	assert.False(t, ok)
+	resources, err := d.store.GetResources(config.Name)
 	require.NoError(t, err)
-	require.Empty(t, configs)
+	assert.Empty(t, resources.Services)
+}
+
+// TestDeleteTriggersImmediateSyncForEvictedConfigs covers the immediate-push branch of
+// Delete: a Gateway going away must reach the data plane right away -- an empty resource
+// set for the config it referenced -- not wait for the next scheduled sync round.
+func TestDeleteTriggersImmediateSyncForEvictedConfigs(t *testing.T) {
+	var mu sync.Mutex
+	var received []adcclient.ADCServerRequest
+
+	withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
+		var req adcclient.ADCServerRequest
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		mu.Lock()
+		received = append(received, req)
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(adctypes.SyncResult{Status: adctypes.StatusSuccess})
+	})
+
+	d := newTestProvider(t)
+
+	gw := &gatewayv1.Gateway{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Gateway",
+			APIVersion: gatewayv1.GroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "gw"},
+	}
+	d.configManager.Update(utils.NamespacedNameKind(gw), map[types.NamespacedNameKind]adctypes.Config{
+		{Namespace: "default", Name: "proxy", Kind: "GatewayProxy"}: {
+			Name:        "proxy",
+			BackendType: "apisix",
+			ServerAddrs: []string{"http://apisix:9080"},
+		},
+	})
+
+	require.NoError(t, d.Delete(context.Background(), gw))
+
+	mu.Lock()
+	defer mu.Unlock()
+	require.Len(t, received, 1, "deleting a Gateway must push immediately, not wait for the next scheduled round")
+	assert.Equal(t, "proxy", received[0].Task.Opts.CacheKey)
+	assert.Empty(t, received[0].Task.Config.Services, "the evicted config's push must carry an empty resource set")
+}
+
+// TestSyncStillPushesHealthyConfigsWhenAnotherFails covers sync's error aggregation: one
+// GatewayProxy's push failing must not stop the others in the same round from being
+// attempted, and the failure must still be reported.
+func TestSyncStillPushesHealthyConfigsWhenAnotherFails(t *testing.T) {
+	var mu sync.Mutex
+	seen := map[string]bool{}
+
+	withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
+		var req adcclient.ADCServerRequest
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		mu.Lock()
+		seen[req.Task.Opts.CacheKey] = true
+		mu.Unlock()
+		if req.Task.Opts.CacheKey == "bad" {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"message": "boom"}`))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(adctypes.SyncResult{Status: adctypes.StatusSuccess})
+	})
+
+	d := newTestProvider(t)
+	for _, name := range []string{"bad", "good"} {
+		key := types.NamespacedNameKind{Namespace: "default", Name: name, Kind: "GatewayProxy"}
+		d.configManager.UpdateConfig(key, adctypes.Config{
+			Name:        name,
+			BackendType: "apisix",
+			ServerAddrs: []string{"http://apisix:9080"},
+		})
+	}
+
+	err := d.sync(context.Background())
+	require.Error(t, err, "one config failing must still be reported")
+	assert.Contains(t, err.Error(), "bad")
+
+	mu.Lock()
+	defer mu.Unlock()
+	assert.True(t, seen["bad"], "the failing config must still have been attempted")
+	assert.True(t, seen["good"], "a config failing must not stop the others from being pushed")
 }

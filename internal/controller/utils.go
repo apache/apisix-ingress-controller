@@ -268,9 +268,20 @@ func SetRouteConditionAccepted(routeParentStatus *gatewayv1.RouteParentStatus, g
 		condition.Reason = string(gatewayv1.RouteReasonNoMatchingListenerHostname)
 	}
 
-	if !IsConditionPresentAndEqual(routeParentStatus.Conditions, condition) && !slices.ContainsFunc(routeParentStatus.Conditions, func(item metav1.Condition) bool {
-		return item.Type == condition.Type && item.Status == metav1.ConditionFalse && condition.Status == metav1.ConditionTrue
+	// ParseRouteParentRefs already recorded why this particular parent rejected the
+	// route: NotAllowedByListeners, NoMatchingParent, NoMatchingListenerHostname.
+	// status and message here are route-wide, derived from whatever failed first
+	// across every parent, so they must not overwrite that. Leaving them to do so
+	// reports a route rejected by allowedRoutes as NoMatchingListenerHostname,
+	// because filterHostnames finds no listener to intersect against once nothing
+	// matched, and its generic error lands here.
+	if slices.ContainsFunc(routeParentStatus.Conditions, func(item metav1.Condition) bool {
+		return item.Type == condition.Type && item.Status == metav1.ConditionFalse
 	}) {
+		return
+	}
+
+	if !IsConditionPresentAndEqual(routeParentStatus.Conditions, condition) {
 		routeParentStatus.Conditions = MergeCondition(routeParentStatus.Conditions, condition)
 	}
 }
@@ -2040,4 +2051,43 @@ func serviceLoadBalancerAddresses(svc *corev1.Service) []string {
 		}
 	}
 	return addrs
+}
+
+// loadPluginSecrets loads the Secrets referenced by apisix.apache.org/v1alpha1 plugins
+// into the translate context. A plugin may only reference a Secret in the namespace of
+// the object that declares it.
+func loadPluginSecrets(ctx context.Context, c client.Client, tctx *provider.TranslateContext, namespace string, plugins []v1alpha1.Plugin) error {
+	for _, plugin := range plugins {
+		if plugin.SecretRef == nil || plugin.SecretRef.Name == "" {
+			continue
+		}
+		secretNN := k8stypes.NamespacedName{Namespace: namespace, Name: plugin.SecretRef.Name}
+		if _, ok := tctx.Secrets[secretNN]; ok {
+			continue
+		}
+		secret := new(corev1.Secret)
+		if err := c.Get(ctx, secretNN, secret); err != nil {
+			return fmt.Errorf("failed to get Secret %s referenced by plugin %s: %w", secretNN, plugin.Name, err)
+		}
+		tctx.Secrets[secretNN] = secret
+	}
+	return nil
+}
+
+// listL4RoutePoliciesForSecret returns the L4RoutePolicies whose plugins reference the
+// given Secret.
+func listL4RoutePoliciesForSecret(ctx context.Context, c client.Client, log logr.Logger, obj client.Object) []v1alpha1.L4RoutePolicy {
+	secret, ok := obj.(*corev1.Secret)
+	if !ok {
+		log.Error(errors.New("unexpected object type"), "failed to convert object to Secret")
+		return nil
+	}
+	var list v1alpha1.L4RoutePolicyList
+	if err := c.List(ctx, &list, client.MatchingFields{
+		indexer.SecretIndexRef: indexer.GenIndexKey(secret.GetNamespace(), secret.GetName()),
+	}); err != nil {
+		log.Error(err, "failed to list L4RoutePolicy by secret reference", "secret", utils.NamespacedName(secret))
+		return nil
+	}
+	return list.Items
 }

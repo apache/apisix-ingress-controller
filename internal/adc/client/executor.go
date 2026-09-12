@@ -26,7 +26,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -43,26 +42,20 @@ const (
 	pathSync     = "/sync"
 	pathValidate = "/validate"
 
-	backendAPISIXStandalone = "apisix-standalone"
+	// BackendAPISIXStandalone is the one backend type this package resolves a
+	// multi-address ServerAddrs into a single joined sync target for. It is exported so
+	// apisixProvider, which owns the conf_version rebuild decision, can recognize the
+	// same backend type without repeating the string.
+	BackendAPISIXStandalone = "apisix-standalone"
 )
 
 type ADCExecutor interface {
-	Execute(ctx context.Context, config adctypes.Config, args []string) error
-	Validate(ctx context.Context, config adctypes.Config, args []string) error
-}
-
-func BuildADCExecuteArgs(filePath string, labels map[string]string, types []string) []string {
-	args := []string{
-		"sync",
-		"-f", filePath,
-	}
-	for k, v := range labels {
-		args = append(args, "--label-selector", k+"="+v)
-	}
-	for _, t := range types {
-		args = append(args, "--include-resource-type", t)
-	}
-	return args
+	// Execute performs one sync and returns the raw HTTP status ADC answered with (0 if
+	// the call never got a response at all, e.g. a transport failure) alongside the
+	// parsed error, if any. The status code is for Client.Sync's own metrics; nothing
+	// outside this package ever sees it.
+	Execute(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) (statusCode int, err error)
+	Validate(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) error
 }
 
 // ADCServerRequest represents the request body for ADC Server /sync endpoint
@@ -157,49 +150,76 @@ func NewHTTPADCExecutor(log logr.Logger, serverURL string, timeout time.Duration
 }
 
 // Execute implements the ADCExecutor interface using HTTP calls
-func (e *HTTPADCExecutor) Execute(ctx context.Context, config adctypes.Config, args []string) error {
-	return e.runHTTPSync(ctx, config, args)
+func (e *HTTPADCExecutor) Execute(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) (int, error) {
+	return e.runHTTPSync(ctx, config, resources, labels, resourceTypes)
 }
 
-func (e *HTTPADCExecutor) Validate(ctx context.Context, config adctypes.Config, args []string) error {
-	return e.runHTTPValidate(ctx, config, args)
+func (e *HTTPADCExecutor) Validate(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) error {
+	return e.runHTTPValidate(ctx, config, resources, labels, resourceTypes)
 }
 
-// runHTTPSync performs HTTP sync to ADC Server for each server address
-func (e *HTTPADCExecutor) runHTTPSync(ctx context.Context, config adctypes.Config, args []string) error {
-	var execErrs = types.ADCExecutionError{
-		Name: config.Name,
+// runHTTPSync sends config in one /sync request and returns the parsed failure, if any.
+// A sync is one request whatever config.ServerAddrs holds: apisix-standalone joins every
+// entry with commas because ADC addresses them together as one logical destination
+// (buildHTTPRequest splits them back apart into the request body), every other backend
+// type takes the first entry only, since a GatewayProxy is expected to resolve to one
+// address there even though nothing enforces it yet. Deciding how many addresses a
+// GatewayProxy has belongs to the caller that built config.ServerAddrs.
+//
+// A GatewayProxy with no resolved address is a sync failure for apisix-standalone (the
+// data plane it configures is unreachable, e.g. scaled to zero), and a no-op for every
+// other backend type, which pushes per address and so has nothing to push.
+//
+// This package never decides whether to retry the failure; callers interpret it and ask
+// again if they choose to. The returned status code is 0 whenever no HTTP response came
+// back at all (no address to sync to, or the request never reached ADC or got answered).
+func (e *HTTPADCExecutor) runHTTPSync(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) (int, error) {
+	standalone := config.BackendType == BackendAPISIXStandalone
+	if len(config.ServerAddrs) == 0 {
+		if standalone {
+			return 0, types.ADCExecutionServerAddrError{Err: "no data plane address to sync apisix-standalone config to"}
+		}
+		return 0, nil
 	}
 
-	serverAddrs := func() []string {
-		if config.BackendType == backendAPISIXStandalone {
-			return []string{strings.Join(config.ServerAddrs, ",")}
+	target := syncTargetAddr(config)
+	e.log.V(1).Info("running http sync", "server", target)
+
+	ctx, cancel := context.WithTimeout(ctx, e.httpClient.Timeout)
+	defer cancel()
+
+	req, err := e.buildHTTPRequest(ctx, target, config, labels, resourceTypes, resources, pathSync)
+	if err != nil {
+		return 0, types.ADCExecutionServerAddrError{ServerAddr: target, Err: fmt.Sprintf("failed to build HTTP request: %s", err)}
+	}
+
+	resp, err := e.httpClient.Do(req)
+	if err != nil {
+		return 0, types.ADCExecutionServerAddrError{ServerAddr: target, Err: fmt.Sprintf("failed to send HTTP request: %s", err)}
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			e.log.Error(closeErr, "failed to close response body")
 		}
-		return config.ServerAddrs
 	}()
-	e.log.V(1).Info("running http sync", "serverAddrs", serverAddrs)
 
-	for _, addr := range serverAddrs {
-		if err := e.runHTTPSyncForSingleServer(ctx, addr, config, args); err != nil {
-			e.log.Error(err, "failed to run http sync for server", "server", addr)
-			var execErr types.ADCExecutionServerAddrError
-			if errors.As(err, &execErr) {
-				execErrs.FailedErrors = append(execErrs.FailedErrors, execErr)
-			} else {
-				execErrs.FailedErrors = append(execErrs.FailedErrors, types.ADCExecutionServerAddrError{
-					ServerAddr: addr,
-					Err:        err.Error(),
-				})
-			}
-		}
+	if err := e.handleHTTPResponse(resp, target); err != nil {
+		e.log.Error(err, "failed to run http sync", "server", target)
+		return resp.StatusCode, err
 	}
-	if len(execErrs.FailedErrors) > 0 {
-		return execErrs
-	}
-	return nil
+	return resp.StatusCode, nil
 }
 
-func (e *HTTPADCExecutor) runHTTPValidate(ctx context.Context, config adctypes.Config, args []string) error {
+// syncTargetAddr resolves config.ServerAddrs into what one /sync request targets. Callers
+// must have already handled an empty ServerAddrs (see runHTTPSync).
+func syncTargetAddr(config adctypes.Config) string {
+	if config.BackendType == BackendAPISIXStandalone {
+		return strings.Join(config.ServerAddrs, ",")
+	}
+	return config.ServerAddrs[0]
+}
+
+func (e *HTTPADCExecutor) runHTTPValidate(ctx context.Context, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) error {
 	var validationErr = types.ADCValidationError{
 		Name: config.Name,
 	}
@@ -211,7 +231,7 @@ func (e *HTTPADCExecutor) runHTTPValidate(ctx context.Context, config adctypes.C
 	e.log.V(1).Info("running http validate", "serverAddrs", serverAddrs)
 
 	for _, addr := range serverAddrs {
-		if err := e.runHTTPValidateForSingleServer(ctx, addr, config, args); err != nil {
+		if err := e.runHTTPValidateForSingleServer(ctx, addr, config, resources, labels, resourceTypes); err != nil {
 			e.log.Error(err, "failed to run http validate for server", "server", addr)
 			var validationServerErr types.ADCValidationServerAddrError
 			if errors.As(err, &validationServerErr) {
@@ -231,59 +251,11 @@ func (e *HTTPADCExecutor) runHTTPValidate(ctx context.Context, config adctypes.C
 	return nil
 }
 
-// runHTTPSyncForSingleServer performs HTTP sync to a single ADC Server
-func (e *HTTPADCExecutor) runHTTPSyncForSingleServer(ctx context.Context, serverAddr string, config adctypes.Config, args []string) error {
+func (e *HTTPADCExecutor) runHTTPValidateForSingleServer(ctx context.Context, serverAddr string, config adctypes.Config, resources *adctypes.Resources, labels map[string]string, resourceTypes []string) error {
 	ctx, cancel := context.WithTimeout(ctx, e.httpClient.Timeout)
 	defer cancel()
 
-	// Parse args to extract labels, types, and file path
-	labels, types, filePath, err := e.parseArgs(args)
-	if err != nil {
-		return fmt.Errorf("failed to parse args: %w", err)
-	}
-
-	// Load resources from file
-	resources, err := e.loadResourcesFromFile(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to load resources from file %s: %w", filePath, err)
-	}
-
-	// Build HTTP request
-	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, types, resources, pathSync)
-	if err != nil {
-		return fmt.Errorf("failed to build HTTP request: %w", err)
-	}
-
-	// Send HTTP request
-	resp, err := e.httpClient.Do(req)
-	if err != nil {
-		return fmt.Errorf("failed to send HTTP request: %w", err)
-	}
-	defer func() {
-		if closeErr := resp.Body.Close(); closeErr != nil {
-			e.log.Error(closeErr, "failed to close response body")
-		}
-	}()
-
-	// Handle HTTP response
-	return e.handleHTTPResponse(resp, serverAddr)
-}
-
-func (e *HTTPADCExecutor) runHTTPValidateForSingleServer(ctx context.Context, serverAddr string, config adctypes.Config, args []string) error {
-	ctx, cancel := context.WithTimeout(ctx, e.httpClient.Timeout)
-	defer cancel()
-
-	labels, types, filePath, err := e.parseArgs(args)
-	if err != nil {
-		return fmt.Errorf("failed to parse args: %w", err)
-	}
-
-	resources, err := e.loadResourcesFromFile(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to load resources from file %s: %w", filePath, err)
-	}
-
-	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, types, resources, pathValidate)
+	req, err := e.buildHTTPRequest(ctx, serverAddr, config, labels, resourceTypes, resources, pathValidate)
 	if err != nil {
 		return fmt.Errorf("failed to build validate request: %w", err)
 	}
@@ -301,60 +273,8 @@ func (e *HTTPADCExecutor) runHTTPValidateForSingleServer(ctx context.Context, se
 	return e.handleHTTPValidateResponse(resp, serverAddr)
 }
 
-// parseArgs parses the command line arguments to extract labels, types, and file path
-func (e *HTTPADCExecutor) parseArgs(args []string) (map[string]string, []string, string, error) {
-	labels := make(map[string]string)
-	var types []string
-	var filePath string
-
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case "-f":
-			if i+1 < len(args) {
-				filePath = args[i+1]
-				i++
-			}
-		case "--label-selector":
-			if i+1 < len(args) {
-				labelPair := args[i+1]
-				parts := strings.SplitN(labelPair, "=", 2)
-				if len(parts) == 2 {
-					labels[parts[0]] = parts[1]
-				}
-				i++
-			}
-		case "--include-resource-type":
-			if i+1 < len(args) {
-				types = append(types, args[i+1])
-				i++
-			}
-		}
-	}
-
-	if filePath == "" {
-		return nil, nil, "", errors.New("file path not found in args")
-	}
-
-	return labels, types, filePath, nil
-}
-
-// loadResourcesFromFile loads ADC resources from the specified file
-func (e *HTTPADCExecutor) loadResourcesFromFile(filePath string) (*adctypes.Resources, error) {
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read file: %w", err)
-	}
-
-	var resources adctypes.Resources
-	if err := json.Unmarshal(data, &resources); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal resources: %w", err)
-	}
-
-	return &resources, nil
-}
-
 // buildHTTPRequest builds the HTTP request for ADC Server
-func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr string, config adctypes.Config, labels map[string]string, types []string, resources *adctypes.Resources, path string) (*http.Request, error) {
+func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr string, config adctypes.Config, labels map[string]string, resourceTypes []string, resources *adctypes.Resources, path string) (*http.Request, error) {
 	// Prepare request body
 	tlsVerify := config.TlsVerify
 	bypassCache := path == pathSync && config.BypassCache
@@ -365,7 +285,7 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr strin
 				Server:              strings.Split(serverAddr, ","),
 				Token:               config.Token,
 				LabelSelector:       labels,
-				IncludeResourceType: types,
+				IncludeResourceType: resourceTypes,
 				TlsSkipVerify:       ptr.To(!tlsVerify),
 				CaCert:              config.CaCert,
 				CacheKey:            config.Name,
@@ -389,7 +309,7 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr strin
 		"cacheKey", config.Name,
 		"bypassCache", bypassCache,
 		"labelSelector", labels,
-		"includeResourceType", types,
+		"includeResourceType", resourceTypes,
 		"tlsSkipVerify", !tlsVerify,
 		"hasCaCert", config.CaCert != "",
 	)

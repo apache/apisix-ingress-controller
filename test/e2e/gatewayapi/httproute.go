@@ -186,7 +186,10 @@ spec:
 			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(exactRouteByGet, gatewayName), 1)
 
 			By("access dataplane to check the HTTPRoute")
+			// The Gateway has only an HTTPS listener, so the route is pinned to the
+			// https scheme and is reached over TLS, not on the plaintext port.
 			s.RequestAssert(&scaffold.RequestAssert{
+				Client:   s.NewAPISIXHttpsClient("api6.com"),
 				Method:   "GET",
 				Path:     "/get",
 				Host:     "api6.com",
@@ -195,15 +198,146 @@ spec:
 				Interval: time.Second * 2,
 			})
 
-			By("delete HTTPRoute")
-			err := s.DeleteResourceFromString(fmt.Sprintf(exactRouteByGet, gatewayName))
-			Expect(err).NotTo(HaveOccurred(), "deleting HTTPRoute")
-
+			By("the same request must not be served over plaintext")
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
 				Path:   "/get",
 				Host:   "api6.com",
 				Check:  scaffold.WithExpectedStatus(404),
+			})
+
+			By("delete HTTPRoute")
+			err := s.DeleteResourceFromString(fmt.Sprintf(exactRouteByGet, gatewayName))
+			Expect(err).NotTo(HaveOccurred(), "deleting HTTPRoute")
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Client: s.NewAPISIXHttpsClient("api6.com"),
+				Method: "GET",
+				Path:   "/get",
+				Host:   "api6.com",
+				Check:  scaffold.WithExpectedStatus(404),
+			})
+		})
+	})
+
+	Context("HTTPRoute revoked by its listener", func() {
+		// The listener starts out admitting HTTPRoute and is then narrowed to
+		// GRPCRoute only. The route object is untouched throughout, which is the
+		// point: revoking a route's access must not require editing the route.
+		var gatewayAllowingKinds = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: %s
+spec:
+  gatewayClassName: %s
+  listeners:
+    - name: http1
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        kinds:
+        - group: gateway.networking.k8s.io
+          kind: %s
+  infrastructure:
+    parametersRef:
+      group: apisix.apache.org
+      kind: GatewayProxy
+      name: apisix-proxy-config
+`
+
+		var route = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: httpbin
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - httpbin.example
+  rules:
+  - matches:
+    - path:
+        type: Exact
+        value: /get
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
+
+		// allowKind rewrites the listener to admit only the given route kind.
+		var allowKind = func(kind string) {
+			Expect(s.CreateResourceFromString(
+				fmt.Sprintf(gatewayAllowingKinds, s.Namespace(), s.Namespace(), kind),
+			)).NotTo(HaveOccurred(), "applying Gateway allowing "+kind)
+		}
+
+		BeforeEach(func() {
+			By("create GatewayProxy")
+			Expect(s.CreateResourceFromString(s.GetGatewayProxySpec())).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			By("create GatewayClass")
+			Expect(s.CreateResourceFromString(s.GetGatewayClassYaml())).NotTo(HaveOccurred(), "creating GatewayClass")
+			s.RetryAssertion(func() string {
+				gcyaml, _ := s.GetResourceYaml("GatewayClass", s.Namespace())
+				return gcyaml
+			}).Should(ContainSubstring("message: the gatewayclass has been accepted by the apisix-ingress-controller"),
+				"check GatewayClass condition")
+
+			By("create Gateway admitting HTTPRoute")
+			allowKind("HTTPRoute")
+			s.RetryAssertion(func() string {
+				gwyaml, _ := s.GetResourceYaml("Gateway", s.Namespace())
+				return gwyaml
+			}).Should(ContainSubstring("message: the gateway has been accepted by the apisix-ingress-controller"),
+				"check Gateway condition status")
+		})
+
+		It("stops serving the route and resumes when the listener admits it again", func() {
+			By("create HTTPRoute")
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(route, s.Namespace()), 1)
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+
+			By("narrow the listener to GRPCRoute, leaving the HTTPRoute untouched")
+			allowKind("GRPCRoute")
+
+			By("the route reports that no listener accepts it")
+			s.RetryAssertion(func() string {
+				routeYaml, _ := s.GetResourceYaml("HTTPRoute", "httpbin")
+				return routeYaml
+			}).Should(ContainSubstring("reason: NotAllowedByListeners"), "check HTTPRoute condition")
+
+			By("and the data plane stops serving it")
+			// Without the retraction the previously published route keeps
+			// forwarding, so the status and the data plane disagree until the
+			// HTTPRoute itself is deleted.
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+
+			By("restore the listener and the route is served again")
+			allowKind("HTTPRoute")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
 			})
 		})
 	})
@@ -1861,6 +1995,65 @@ spec:
     config:
       body: "Updated"
 `
+		var echoSecret = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: echo-secret
+stringData:
+  body: "Hello from Secret"
+  headers.X-Origin: "secret"
+`
+		var echoSecretUpdated = `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: echo-secret
+stringData:
+  body: "Updated from Secret"
+  headers.X-Origin: "secret"
+`
+		var echoPluginWithSecretRef = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: PluginConfig
+metadata:
+  name: example-plugin-config-secret
+spec:
+  plugins:
+  - name: echo
+    secretRef:
+      name: echo-secret
+    config:
+      headers:
+        X-Config: "config"
+`
+		var extensionRefEchoPluginWithSecretRef = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: httpbin-secret
+  namespace: %s
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - httpbin.example
+  rules:
+  - matches:
+    - path:
+        type: Exact
+        value: /get
+    filters:
+    - type: ExtensionRef
+      extensionRef:
+        group: apisix.apache.org
+        kind: PluginConfig
+        name: example-plugin-config-secret
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
+
 		var extensionRefEchoPlugin = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -2222,6 +2415,48 @@ spec:
 				Path:     "/get",
 				Host:     "httpbin.example",
 				Check:    scaffold.WithExpectedBodyContains("Updated"),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+		})
+
+		It("HTTPRoute ExtensionRef with plugin secretRef", func() {
+			By("create Secret and PluginConfig")
+			Expect(s.CreateResourceFromStringWithNamespace(echoSecret, s.Namespace())).
+				NotTo(HaveOccurred(), "creating Secret")
+			Expect(s.CreateResourceFromStringWithNamespace(echoPluginWithSecretRef, s.Namespace())).
+				NotTo(HaveOccurred(), "creating PluginConfig")
+			s.ResourceApplied("HTTPRoute", "httpbin-secret", fmt.Sprintf(extensionRefEchoPluginWithSecretRef, s.Namespace(), s.Namespace()), 1)
+
+			By("the Secret provides the plugin config, spec.config is kept")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedBodyContains("Hello from Secret"),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.example",
+				Check: scaffold.WithExpectedHeaders(map[string]string{
+					"X-Config": "config",
+					"X-Origin": "secret",
+				}),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+
+			By("updating the Secret updates the plugin config")
+			Expect(s.CreateResourceFromStringWithNamespace(echoSecretUpdated, s.Namespace())).
+				NotTo(HaveOccurred(), "updating Secret")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedBodyContains("Updated from Secret"),
 				Timeout:  time.Second * 30,
 				Interval: time.Second * 2,
 			})
@@ -2715,7 +2950,10 @@ spec:
 		})
 		It("HTTPS backend", func() {
 			s.ResourceApplied("HTTPRoute", "nginx", fmt.Sprintf(httproute, s.Namespace()), 1)
+			// beforeEachHTTPS builds a Gateway with only an HTTPS listener, so the
+			// route is reached over TLS rather than on the plaintext port.
 			s.RequestAssert(&scaffold.RequestAssert{
+				Client: s.NewAPISIXHttpsClient("api6.com"),
 				Method: "GET",
 				Path:   "/get",
 				Host:   "api6.com",
