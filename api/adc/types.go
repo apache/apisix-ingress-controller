@@ -697,9 +697,11 @@ type RequestMirror struct {
 
 // RedirectConfig is the rule config for redirect plugin.
 type RedirectConfig struct {
-	HttpToHttps bool   `json:"http_to_https,omitempty" yaml:"http_to_https,omitempty"`
-	URI         string `json:"uri,omitempty" yaml:"uri,omitempty"`
-	RetCode     int    `json:"ret_code,omitempty" yaml:"ret_code,omitempty"`
+	HttpToHttps       bool     `json:"http_to_https,omitempty" yaml:"http_to_https,omitempty"`
+	URI               string   `json:"uri,omitempty" yaml:"uri,omitempty"`
+	RegexURI          []string `json:"regex_uri,omitempty" yaml:"regex_uri,omitempty"`
+	RetCode           int      `json:"ret_code,omitempty" yaml:"ret_code,omitempty"`
+	AppendQueryString bool     `json:"append_query_string,omitempty" yaml:"append_query_string,omitempty"`
 }
 
 const (

@@ -20,6 +20,7 @@ package translator
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -52,7 +53,7 @@ func (t *Translator) fillPluginsFromHTTPRouteFilters(
 		case gatewayv1.HTTPRouteFilterRequestHeaderModifier:
 			t.fillPluginFromHTTPRequestHeaderFilter(plugins, filter.RequestHeaderModifier)
 		case gatewayv1.HTTPRouteFilterRequestRedirect:
-			t.fillPluginFromHTTPRequestRedirectFilter(plugins, filter.RequestRedirect)
+			t.fillPluginFromHTTPRequestRedirectFilter(plugins, filter.RequestRedirect, matches)
 		case gatewayv1.HTTPRouteFilterRequestMirror:
 			t.fillPluginFromHTTPRequestMirrorFilter(plugins, namespace, filter.RequestMirror, apiv2.SchemeHTTP)
 		case gatewayv1.HTTPRouteFilterURLRewrite:
@@ -117,42 +118,34 @@ func (t *Translator) fillPluginFromURLRewriteFilter(plugins adctypes.Plugins, ur
 		case gatewayv1.FullPathHTTPPathModifier:
 			plugin.RewriteTarget = *urlRewrite.Path.ReplaceFullPath
 		case gatewayv1.PrefixMatchHTTPPathModifier:
-			prefixPaths := make([]string, 0, len(matches))
-			for _, match := range matches {
-				if match.Path == nil || match.Path.Type == nil || *match.Path.Type != gatewayv1.PathMatchPathPrefix {
-					continue
-				}
-				prefixPaths = append(prefixPaths, *match.Path.Value)
-			}
-			if len(prefixPaths) == 0 || urlRewrite.Path.ReplacePrefixMatch == nil {
-				break
-			}
-			prefixGroup := "(" + strings.Join(prefixPaths, "|") + ")"
-			replaceTarget := *urlRewrite.Path.ReplacePrefixMatch
-			// Handle ReplacePrefixMatch path rewrite
-			// If replaceTarget == "/", special handling is required to avoid
-			// producing double slashes or empty paths.
-			var regexPattern, regexTarget string
-			if replaceTarget == "/" {
-				// Match either "/prefix" or "/prefix/<remainder>"
-				// Pattern captures the remainder (if any) without a leading slash.
-				// Template reconstructs "/" + remainder, resulting in:
-				//   /prefix/three → /three
-				//   /prefix       → /
-				regexPattern = "^" + prefixGroup + "(?:/(.*))?$"
-				regexTarget = "/" + "$2"
-			} else {
-				// Match either "/prefix" or "/prefix/<remainder>"
-				// Pattern captures the remainder (including leading slash) as $2.
-				// Template appends it to replaceTarget:
-				//   /prefix/one/two → /one/two
-				//   /prefix/one     → /one
-				regexPattern = "^" + prefixGroup + "(/.*)?$"
-				regexTarget = replaceTarget + "$2"
-			}
-			plugin.RewriteTargetRegex = []string{regexPattern, regexTarget}
+			plugin.RewriteTargetRegex = buildPrefixMatchRegex(
+				*matches[0].Path.Value,
+				*urlRewrite.Path.ReplacePrefixMatch,
+			)
 		}
 	}
+}
+
+func buildPrefixMatchRegex(matchPrefix, replacePrefix string) []string {
+	matchPrefix = strings.TrimSuffix(matchPrefix, "/")
+	replacePrefix = strings.TrimSuffix(replacePrefix, "/")
+	if matchPrefix == "" {
+		matchPrefix = "/"
+	}
+
+	if matchPrefix == "/" {
+		regexTarget := "/$1"
+		if replacePrefix != "" {
+			regexTarget = replacePrefix + "/$1"
+		}
+		return []string{"^/(.*)$", regexTarget}
+	}
+
+	quotedPrefix := regexp.QuoteMeta(matchPrefix)
+	if replacePrefix == "" {
+		return []string{"^" + quotedPrefix + "(?:/(.*))?$", "/$1"}
+	}
+	return []string{"^" + quotedPrefix + "(/.*)?$", replacePrefix + "$1"}
 }
 
 func (t *Translator) fillPluginFromHTTPCORSFilter(plugins adctypes.Plugins, cors *gatewayv1.HTTPCORSFilter) {
@@ -287,7 +280,7 @@ func (t *Translator) fillPluginFromHTTPRequestMirrorFilter(plugins adctypes.Plug
 	plugin.Host = host
 }
 
-func (t *Translator) fillPluginFromHTTPRequestRedirectFilter(plugins adctypes.Plugins, reqRedirect *gatewayv1.HTTPRequestRedirectFilter) {
+func (t *Translator) fillPluginFromHTTPRequestRedirectFilter(plugins adctypes.Plugins, reqRedirect *gatewayv1.HTTPRequestRedirectFilter, matches []gatewayv1.HTTPRouteMatch) {
 	pluginName := adctypes.PluginRedirect
 	obj := plugins[pluginName]
 
@@ -316,12 +309,40 @@ func (t *Translator) fillPluginFromHTTPRequestRedirectFilter(plugins adctypes.Pl
 	}
 
 	if reqRedirect.Port != nil {
-		uri = fmt.Sprintf("%s://%s:%d$request_uri", scheme, hostname, int(*reqRedirect.Port))
+		uri = fmt.Sprintf("%s://%s:%d", scheme, hostname, int(*reqRedirect.Port))
 	} else {
-		uri = fmt.Sprintf("%s://%s$request_uri", scheme, hostname)
+		uri = fmt.Sprintf("%s://%s", scheme, hostname)
 	}
+
 	plugin.RetCode = code
-	plugin.URI = uri
+	if reqRedirect.Path == nil {
+		plugin.URI = uri + "$request_uri"
+		return
+	}
+
+	switch reqRedirect.Path.Type {
+	case gatewayv1.FullPathHTTPPathModifier:
+		if reqRedirect.Path.ReplaceFullPath != nil {
+			plugin.URI = uri + *reqRedirect.Path.ReplaceFullPath
+			plugin.AppendQueryString = true
+		}
+	case gatewayv1.PrefixMatchHTTPPathModifier:
+		plugin.RegexURI = buildPrefixMatchRegex(
+			*matches[0].Path.Value,
+			*reqRedirect.Path.ReplacePrefixMatch,
+		)
+		if reqRedirect.Hostname != nil {
+			locationPrefix := "//" + hostname
+			if reqRedirect.Scheme != nil {
+				locationPrefix = scheme + "://" + hostname
+			}
+			if reqRedirect.Port != nil {
+				locationPrefix += fmt.Sprintf(":%d", int(*reqRedirect.Port))
+			}
+			plugin.RegexURI[1] = locationPrefix + plugin.RegexURI[1]
+		}
+		plugin.AppendQueryString = true
+	}
 }
 
 func (t *Translator) fillHTTPRoutePoliciesForHTTPRoute(tctx *provider.TranslateContext, routes []*adctypes.Route, rule gatewayv1.HTTPRouteRule) {

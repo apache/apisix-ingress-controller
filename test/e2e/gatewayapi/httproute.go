@@ -1918,6 +1918,56 @@ spec:
         statusCode: 301
 `
 
+		var fullPathRedirect = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: httpbin
+  namespace: %s
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - httpbin.example
+  rules:
+  - matches:
+    - path:
+        type: Exact
+        value: /test
+    filters:
+    - type: RequestRedirect
+      requestRedirect:
+        path:
+          type: ReplaceFullPath
+          replaceFullPath: /test/
+        statusCode: 307
+`
+
+		var prefixPathRedirect = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: httpbin
+  namespace: %s
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - httpbin.example
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /old-path
+    filters:
+    - type: RequestRedirect
+      requestRedirect:
+        path:
+          type: ReplacePrefixMatch
+          replacePrefixMatch: /new-path/
+        statusCode: 302
+`
+
 		var replacePrefixMatch = `
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -2257,6 +2307,38 @@ spec:
 				Checks: []scaffold.ResponseCheckFunc{
 					scaffold.WithExpectedStatus(http.StatusMovedPermanently),
 					scaffold.WithExpectedHeader("Location", "http://httpbin.org/headers"),
+				},
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+
+			By("update HTTPRoute with a full path redirect")
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(fullPathRedirect, s.Namespace(), s.Namespace()), 3)
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/test",
+				Host:   "httpbin.example",
+				Query:  map[string]any{"source": "gateway-api"},
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusTemporaryRedirect),
+					scaffold.WithExpectedHeader("Location", "http://httpbin.example/test/?source=gateway-api"),
+				},
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+
+			By("update HTTPRoute with a prefix path redirect")
+			s.ResourceApplied("HTTPRoute", "httpbin", fmt.Sprintf(prefixPathRedirect, s.Namespace(), s.Namespace()), 4)
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/old-path/child",
+				Host:   "httpbin.example",
+				Query:  map[string]any{"source": "gateway-api"},
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusFound),
+					scaffold.WithExpectedHeader("Location", "/new-path/child?source=gateway-api"),
 				},
 				Timeout:  time.Second * 30,
 				Interval: time.Second * 2,
