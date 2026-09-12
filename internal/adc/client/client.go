@@ -246,6 +246,48 @@ func (c *Client) DeleteConfig(ctx context.Context, args Task) (StoreDelta, error
 	return c.applyStoreChanges(args, true)
 }
 
+// DeleteGatewayProxyConfig removes every resource owned by a GatewayProxy and
+// sends an empty configuration to its old data plane before forgetting the
+// connection details required to reach it.
+func (c *Client) DeleteGatewayProxyConfig(ctx context.Context, key types.NamespacedNameKind) error {
+	c.syncMu.Lock()
+	defer c.syncMu.Unlock()
+
+	c.mu.Lock()
+	config, ok := c.ConfigManager.GetConfig(key)
+	configName := key.String()
+	if ok {
+		configName = config.Name
+	}
+	if err := c.Store.Delete(configName, nil, nil); err != nil {
+		c.mu.Unlock()
+		return errors.Wrap(err, fmt.Sprintf("store delete failed for config %s", configName))
+	}
+	c.mu.Unlock()
+
+	if !ok {
+		// This also makes repeated deletion reconciles idempotent and removes any
+		// stale resource-to-config associations left by an earlier cleanup.
+		c.ConfigManager.DeleteConfig(key)
+		return nil
+	}
+
+	if err := c.sync(ctx, Task{
+		Name: key.String() + "-delete",
+		Configs: map[types.NamespacedNameKind]adctypes.Config{
+			key: config,
+		},
+		Resources: &adctypes.Resources{},
+	}); err != nil {
+		// Keep the old connection config so this reconciliation, or the periodic
+		// full sync against the now-empty Store, can retry the deletion.
+		return err
+	}
+
+	c.ConfigManager.DeleteConfig(key)
+	return nil
+}
+
 func (c *Client) Validate(ctx context.Context, task Task) error {
 	if len(task.Configs) == 0 || task.Resources == nil {
 		return nil

@@ -149,8 +149,18 @@ func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.
 func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]string) error {
 	s.Lock()
 	defer s.Unlock()
+	if len(resourceTypes) == 0 {
+		delete(s.cacheMap, name)
+		delete(s.pluginMetadataMap, name)
+		return nil
+	}
 	targetCache, ok := s.cacheMap[name]
 	if !ok {
+		for _, resourceType := range resourceTypes {
+			if resourceType == adctypes.TypePluginMetadata {
+				delete(s.pluginMetadataMap, name)
+			}
+		}
 		return nil
 	}
 	selector := &KindLabelSelector{
@@ -203,9 +213,6 @@ func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]st
 		case adctypes.TypePluginMetadata:
 			delete(s.pluginMetadataMap, name)
 		}
-	}
-	if len(resourceTypes) == 0 {
-		delete(s.cacheMap, name)
 	}
 	return nil
 }

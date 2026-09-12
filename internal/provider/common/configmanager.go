@@ -113,6 +113,15 @@ func (s *ConfigManager[K, T]) List() map[K]T {
 	return configs
 }
 
+// GetConfig returns the configuration stored directly under key.
+func (s *ConfigManager[K, T]) GetConfig(key K) (T, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	cfg, ok := s.configs[key]
+	return cfg, ok
+}
+
 func (s *ConfigManager[K, T]) UpdateConfig(key K, cfg T) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -167,4 +176,17 @@ func (s *ConfigManager[K, T]) DeleteConfig(key K) {
 	defer s.mu.Unlock()
 	delete(s.configs, key)
 	delete(s.configRefs, key)
+	for resourceKey, configKeys := range s.resourceConfigKeys {
+		kept := configKeys[:0]
+		for _, configKey := range configKeys {
+			if configKey != key {
+				kept = append(kept, configKey)
+			}
+		}
+		if len(kept) == 0 {
+			delete(s.resourceConfigKeys, resourceKey)
+			continue
+		}
+		s.resourceConfigKeys[resourceKey] = kept
+	}
 }

@@ -189,6 +189,10 @@ func (d *apisixProvider) Update(ctx context.Context, tctx *provider.TranslateCon
 
 func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 	d.log.V(1).Info("deleting object", "object", obj)
+	if gp, ok := obj.(*v1alpha1.GatewayProxy); ok {
+		return d.client.DeleteGatewayProxyConfig(ctx, utils.GatewayProxyKey(gp.Namespace, gp.Name))
+	}
+	nnk := utils.NamespacedNameKind(obj)
 
 	var resourceTypes []string
 	var labels map[string]string
@@ -216,8 +220,6 @@ func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 		resourceTypes = append(resourceTypes, adctypes.TypeConsumer)
 		labels = label.GenLabel(obj)
 	}
-	nnk := utils.NamespacedNameKind(obj)
-
 	// Full synchronization is performed on a gateway by gateway basis
 	// and it is not possible to perform scheduled synchronization
 	// on deleted gateway level resources
@@ -250,7 +252,10 @@ func (d *apisixProvider) buildConfig(tctx *provider.TranslateContext, nnk types.
 		if err != nil {
 			return nil, err
 		}
-		configs[utils.NamespacedNameKind(&gp)] = *config
+		if config == nil {
+			continue
+		}
+		configs[utils.GatewayProxyKey(gp.Namespace, gp.Name)] = *config
 	}
 	return configs, nil
 }
@@ -328,10 +333,9 @@ func (d *apisixProvider) updateConfigForGatewayProxy(tctx *provider.TranslateCon
 		return err
 	}
 
-	nnk := utils.NamespacedNameKind(gp)
+	nnk := utils.GatewayProxyKey(gp.Namespace, gp.Name)
 	if config == nil {
-		d.client.ConfigManager.DeleteConfig(nnk)
-		return nil
+		return d.client.DeleteGatewayProxyConfig(tctx, nnk)
 	}
 	referrers := tctx.GatewayProxyReferrers[utils.NamespacedName(gp)]
 	d.client.ConfigManager.SetConfigRefs(nnk, referrers)

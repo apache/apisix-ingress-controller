@@ -98,14 +98,15 @@ func (r *GatewayProxyController) Reconcile(ctx context.Context, req ctrl.Request
 		if client.IgnoreNotFound(err) == nil {
 			gp.Namespace = req.Namespace
 			gp.Name = req.Name
-			err = r.Provider.Update(ctx, tctx, &gp)
+			err = r.Provider.Delete(ctx, &gp)
 		}
 		return ctrl.Result{}, err
 	}
 
-	// if there is no provider, update with empty translate context
+	// If there is no provider, remove the configuration previously pushed by
+	// this GatewayProxy while its old connection details are still available.
 	if gp.Spec.Provider == nil || gp.Spec.Provider.ControlPlane == nil {
-		return reconcile.Result{}, r.Provider.Update(ctx, tctx, &gp)
+		return reconcile.Result{}, r.Provider.Delete(ctx, &gp)
 	}
 
 	// process endpoints for provider service
@@ -186,7 +187,7 @@ func (r *GatewayProxyController) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	if len(tctx.GatewayProxyReferrers[req.NamespacedName]) == 0 {
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, r.Provider.Delete(ctx, &gp)
 	}
 
 	r.Log.V(1).Info("references found for GatewayProxy", "gatewayproxy", req.String(), "references", tctx.GatewayProxyReferrers[req.NamespacedName])
