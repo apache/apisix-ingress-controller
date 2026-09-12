@@ -33,6 +33,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
+	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/adc/cache"
 	adcclient "github.com/apache/apisix-ingress-controller/internal/adc/client"
 	"github.com/apache/apisix-ingress-controller/internal/provider/common"
@@ -90,6 +91,50 @@ func TestDeleteNotifiesSyncOnlyWhenConfigWasRemoved(t *testing.T) {
 
 	require.NoError(t, d.Delete(context.Background(), route))
 	require.Len(t, d.syncCh, 1, "removing configuration this controller pushed must trigger a sync")
+}
+
+func TestDeleteGatewayProxyUsesCanonicalKeyWithoutTypeMeta(t *testing.T) {
+	var mu sync.Mutex
+	var received []adcclient.ADCServerRequest
+
+	withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
+		var req adcclient.ADCServerRequest
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		mu.Lock()
+		received = append(received, req)
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(adctypes.SyncResult{Status: adctypes.StatusSuccess})
+	})
+
+	d := newTestProvider(t)
+	key := utils.GatewayProxyKey("default", "gp-a")
+	config := adctypes.Config{
+		Name:        key.String(),
+		BackendType: ProviderTypeAPISIX,
+		ServerAddrs: []string{"http://apisix:9180"},
+		Token:       "old-token",
+	}
+	d.configManager.UpdateConfig(key, config)
+	require.NoError(t, d.store.Insert(config.Name, []string{adctypes.TypeService}, &adctypes.Resources{
+		Services: []*adctypes.Service{{Metadata: adctypes.Metadata{ID: "route-a"}}},
+	}, nil))
+
+	deleted := &v1alpha1.GatewayProxy{
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "gp-a"},
+	}
+	require.NoError(t, d.Delete(context.Background(), deleted))
+
+	mu.Lock()
+	defer mu.Unlock()
+	require.Len(t, received, 1)
+	assert.Equal(t, key.String(), received[0].Task.Opts.CacheKey)
+	assert.Empty(t, received[0].Task.Config.Services)
+	_, ok := d.configManager.GetConfig(key)
+	assert.False(t, ok)
+	resources, err := d.store.GetResources(config.Name)
+	require.NoError(t, err)
+	assert.Empty(t, resources.Services)
 }
 
 // TestDeleteTriggersImmediateSyncForEvictedConfigs covers the immediate-push branch of

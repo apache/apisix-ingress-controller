@@ -213,6 +213,10 @@ func (d *apisixProvider) Update(ctx context.Context, tctx *provider.TranslateCon
 
 func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 	d.log.V(1).Info("deleting object", "object", obj)
+	if gp, ok := obj.(*v1alpha1.GatewayProxy); ok {
+		return d.deleteGatewayProxyConfig(ctx, utils.GatewayProxyKey(gp.Namespace, gp.Name))
+	}
+	nnk := utils.NamespacedNameKind(obj)
 
 	var resourceTypes []string
 	var labels map[string]string
@@ -240,8 +244,6 @@ func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 		resourceTypes = append(resourceTypes, adctypes.TypeConsumer)
 		labels = label.GenLabel(obj)
 	}
-	nnk := utils.NamespacedNameKind(obj)
-
 	// Full synchronization is performed on a gateway by gateway basis
 	// and it is not possible to perform scheduled synchronization
 	// on deleted gateway level resources
@@ -438,6 +440,50 @@ func (d *apisixProvider) syncEvictedConfigsNow(
 	}
 }
 
+// deleteGatewayProxyConfig removes a GatewayProxy's local state and pushes an empty
+// resource snapshot to its data plane before forgetting the connection configuration.
+// The per-key lock keeps this cleanup ordered with periodic and event-driven syncs.
+func (d *apisixProvider) deleteGatewayProxyConfig(ctx context.Context, key types.NamespacedNameKind) error {
+	unlock := d.syncLocks.Lock(key.String())
+	defer unlock()
+
+	d.Lock()
+	config, ok := d.configManager.GetConfig(key)
+	configName := key.String()
+	if ok {
+		configName = config.Name
+	}
+	if err := d.store.Delete(configName, nil, nil); err != nil {
+		d.Unlock()
+		return fmt.Errorf("store delete failed for config %s: %w", configName, err)
+	}
+	d.Unlock()
+
+	if !ok {
+		// Repeated deletion is idempotent and also removes stale associations left by
+		// an earlier cleanup.
+		d.Lock()
+		d.configManager.DeleteConfig(key)
+		d.Unlock()
+		return nil
+	}
+
+	execErrs := d.pushConfig(ctx, adcclient.SyncInput{
+		Name:      config.Name,
+		Config:    config,
+		Resources: &adctypes.Resources{},
+	})
+	if len(execErrs.Errors) > 0 {
+		// Keep the old connection config so a later reconciliation can retry cleanup.
+		return execErrs
+	}
+
+	d.Lock()
+	d.configManager.DeleteConfig(key)
+	d.Unlock()
+	return nil
+}
+
 func (d *apisixProvider) buildConfig(tctx *provider.TranslateContext, nnk types.NamespacedNameKind) (map[types.NamespacedNameKind]adctypes.Config, error) {
 	configs := make(map[types.NamespacedNameKind]adctypes.Config, len(tctx.ResourceParentRefs[nnk]))
 	for _, gp := range tctx.GatewayProxies {
@@ -445,7 +491,10 @@ func (d *apisixProvider) buildConfig(tctx *provider.TranslateContext, nnk types.
 		if err != nil {
 			return nil, err
 		}
-		configs[utils.NamespacedNameKind(&gp)] = *config
+		if config == nil {
+			continue
+		}
+		configs[utils.GatewayProxyKey(gp.Namespace, gp.Name)] = *config
 	}
 	return configs, nil
 }
@@ -548,12 +597,9 @@ func (d *apisixProvider) updateConfigForGatewayProxy(tctx *provider.TranslateCon
 		return err
 	}
 
-	nnk := utils.NamespacedNameKind(gp)
+	nnk := utils.GatewayProxyKey(gp.Namespace, gp.Name)
 	if config == nil {
-		d.Lock()
-		d.configManager.DeleteConfig(nnk)
-		d.Unlock()
-		return nil
+		return d.deleteGatewayProxyConfig(tctx, nnk)
 	}
 
 	referrers := tctx.GatewayProxyReferrers[utils.NamespacedName(gp)]

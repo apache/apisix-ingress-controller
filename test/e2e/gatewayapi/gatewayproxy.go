@@ -18,7 +18,10 @@
 package gatewayapi
 
 import (
+	"context"
 	"fmt"
+	"net/http"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -227,6 +230,30 @@ spec:
 					scaffold.WithExpectedHeader("X-Proxy-Test", ""),
 				},
 			})
+		})
+	})
+
+	Context("GatewayProxy lifecycle cleanup", func() {
+		It("removes resources from APISIX when the GatewayProxy is deleted", func() {
+			By("Create HTTPRoute for Gateway with GatewayProxy")
+			s.ResourceApplied(types.KindHTTPRoute, "test-route", fmt.Sprintf(httpRouteForTest, s.Namespace()), 1)
+
+			Eventually(func() int {
+				return s.NewAPISIXClient().GET("/get").WithHost("example.com").Expect().Raw().StatusCode
+			}).WithTimeout(30 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+
+			By("Delete GatewayProxy")
+			Expect(s.DeleteResource(types.KindGatewayProxy, s.Namespace())).NotTo(HaveOccurred())
+
+			By("Check the old data plane resources are removed")
+			Eventually(func(g Gomega) {
+				routes, err := s.DefaultDataplaneResource().Route().List(context.Background())
+				g.Expect(err).NotTo(HaveOccurred())
+				g.Expect(routes).To(BeEmpty())
+			}).WithTimeout(30 * time.Second).ProbeEvery(time.Second).Should(Succeed())
+			Eventually(func() int {
+				return s.NewAPISIXClient().GET("/get").WithHost("example.com").Expect().Raw().StatusCode
+			}).WithTimeout(30 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
 		})
 	})
 
