@@ -2144,25 +2144,34 @@ spec:
 			err := s.CreateResourceFromString(fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixRoute")
 
-			By("check ApisixRoute status")
+			// The data plane is entirely unreachable, ADC can't even attempt a per-resource
+			// push, so there's nothing to attribute this to but the GatewayProxy: see
+			// classifySyncResult.
+			By("check GatewayProxy status")
 			s.RetryAssertion(func() string {
-				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml", "-n", s.Namespace())
+				output, _ := s.GetOutputFromString("gatewayproxy", "apisix-proxy-config", "-o", "yaml", "-n", s.Namespace())
 				return output
 			}).WithTimeout(30 * time.Second).
 				Should(
 					And(
+						ContainSubstring("type: DataPlaneAvailable"),
 						ContainSubstring(`status: "False"`),
-						ContainSubstring(`reason: SyncFailed`),
+						ContainSubstring("reason: DataPlaneInstanceUnavailable"),
 					),
 				)
 
 			s.Deployer.ScaleDataplane(1)
 
 			s.RetryAssertion(func() string {
-				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml", "-n", s.Namespace())
+				output, _ := s.GetOutputFromString("gatewayproxy", "apisix-proxy-config", "-o", "yaml", "-n", s.Namespace())
 				return output
 			}).WithTimeout(60 * time.Second).
-				Should(ContainSubstring(`status: "True"`))
+				Should(
+					And(
+						ContainSubstring("type: DataPlaneAvailable"),
+						ContainSubstring(`status: "True"`),
+					),
+				)
 
 			By("check route in APISIX")
 			s.RequestAssert(&scaffold.RequestAssert{

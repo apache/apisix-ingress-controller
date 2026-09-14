@@ -83,8 +83,8 @@ type ADCServerOpts struct {
 	CaCert   string `json:"caCert,omitempty"`
 	CacheKey string `json:"cacheKey"`
 	// BypassCache is only accepted by the /sync task of ADC >= 0.27.0. Both ADC task
-	// schemas reject unknown fields, so omitempty is what keeps every other request --
-	// /validate, and every sync that is not recovering from a rejection -- byte for byte
+	// schemas reject unknown fields, so omitempty is what keeps every other request,
+	// /validate, and every sync that is not recovering from a rejection, byte for byte
 	// what an older ADC server already accepts.
 	BypassCache bool `json:"bypassCache,omitempty"`
 }
@@ -325,7 +325,7 @@ func (e *HTTPADCExecutor) buildHTTPRequest(ctx context.Context, serverAddr strin
 }
 
 // distinctReasons joins every distinct, non-empty reason in failed, in the order first
-// seen -- several resources failing for the exact same reason (a rejected conf_version,
+// seen: several resources failing for the exact same reason (a rejected conf_version,
 // say) still reports it once.
 func distinctReasons(failed []adctypes.SyncStatus) string {
 	seen := make(map[string]bool, len(failed))
@@ -360,11 +360,11 @@ func (e *HTTPADCExecutor) handleHTTPResponse(resp *http.Response, serverAddr str
 	//   - 400: malformed request, unrelated to any backend's content rejection (see 422).
 	//   - 413: request body over the fixed 100 MB limit.
 	//   - 422: apisix-standalone, every server ended up success:false on the write itself
-	//     (rejected the content, unreachable, or a mix -- concurrent writes aren't
+	//     (rejected the content, unreachable, or a mix; concurrent writes aren't
 	//     cancelled on the first failure).
 	//   - 500: ADC Server failed before attempting the write at all (e.g. can't reach any
-	//     server to fetch the current remote state) -- never a verdict on the write.
-	// Only 200/202/422 carry a SyncResult body -- the other three shouldn't be parsed as
+	//     server to fetch the current remote state), never a verdict on the write.
+	// Only 200/202/422 carry a SyncResult body; the other three shouldn't be parsed as
 	// one: most fields are optional, so an unrelated shape can unmarshal as an empty,
 	// unremarkable "success".
 	switch resp.StatusCode {

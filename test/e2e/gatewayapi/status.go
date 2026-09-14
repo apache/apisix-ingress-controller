@@ -137,15 +137,20 @@ spec:
 			err = s.CreateResourceFromString(string(newServiceYaml))
 			Expect(err).NotTo(HaveOccurred(), "creating service")
 
-			By("check ApisixRoute status")
+			// This breaks the GatewayProxy's own admin API address, not a route's backend,
+			// so ADC can't even attempt a per-resource push: there's nothing to attribute
+			// this to but the GatewayProxy itself, for either backend type (see
+			// classifySyncResult).
+			By("check GatewayProxy status")
 			s.RetryAssertion(func() string {
-				output, _ := s.GetOutputFromString("httproute", "httpbin", "-o", "yaml")
+				output, _ := s.GetOutputFromString("gatewayproxy", "apisix-proxy-config", "-o", "yaml")
 				return output
 			}).WithTimeout(60 * time.Second).
 				Should(
 					And(
+						ContainSubstring("type: DataPlaneAvailable"),
 						ContainSubstring(`status: "False"`),
-						ContainSubstring(`reason: SyncFailed`),
+						ContainSubstring("reason: DataPlaneInstanceUnavailable"),
 					),
 				)
 

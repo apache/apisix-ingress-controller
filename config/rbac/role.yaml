@@ -53,6 +53,7 @@ rules:
   - apisixupstreams/status
   - backendtrafficpolicies/status
   - consumers/status
+  - gatewayproxies/status
   - httproutepolicies/status
   - l4routepolicies/status
   verbs:

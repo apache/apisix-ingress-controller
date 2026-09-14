@@ -134,7 +134,7 @@ func (c *Client) Validate(ctx context.Context, task Task) error {
 
 // SyncInput is one GatewayProxy's complete sync unit. AIC builds it entirely from its own
 // bookkeeping (which resources target this config, their merged translated snapshot)
-// before handing it over -- this package never reaches back into AIC's state to gather
+// before handing it over: this package never reaches back into AIC's state to gather
 // anything itself, it only translates, sends, and interprets the response.
 type SyncInput struct {
 	// Name is the cacheKey: the GatewayProxy's own identity.
