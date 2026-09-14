@@ -34,6 +34,8 @@ spec:
     controlPlane:
       endpoints:
         - ${ADMIN_ENDPOINT}   # https://127.0.0.1:7443
+      # The local quick-start endpoint uses a self-signed development certificate.
+      tlsVerify: false
       auth:
         type: AdminKey
         adminKey:
