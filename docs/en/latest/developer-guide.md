@@ -103,7 +103,7 @@ make undeploy
 To run unit tests:
 
 ```shell
-make unit-test
+make test
 ```
 
 ### e2e Tests
@@ -125,7 +125,7 @@ make build-image
 make kind-load-images
 ```
 
-Currently, we use Kind version `0.26.0` and Kubernetes version `1.26+` for running the tests.
+Currently, we use Kind version `0.26.0` and Kubernetes version `1.31+` for running the tests.
 
 ```shell
 make e2e-test

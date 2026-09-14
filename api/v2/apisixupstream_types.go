@@ -106,9 +106,12 @@ type ApisixUpstreamConfig struct {
 
 	// Scheme is the protocol used to communicate with the upstream.
 	// Default is `http`.
-	// Can be `http`, `https`, `grpc`, or `grpcs`.
+	// For L7 proxy, it can be `http`, `https`, `grpc`, or `grpcs`.
+	// For L4 proxy, it can be `tcp`, `tls`, or `udp`.
+	// The L4 values apply to stream routes only; using them for an HTTP route
+	// makes the upstream unreachable.
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Enum=http;https;grpc;grpcs;
+	// +kubebuilder:validation:Enum=http;https;grpc;grpcs;tcp;tls;udp;
 	Scheme string `json:"scheme,omitempty" yaml:"scheme,omitempty"`
 
 	// Retries defines the number of retry attempts APISIX should make when a failure occurs.

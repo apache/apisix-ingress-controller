@@ -25,9 +25,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/webhook/v1/reference"
@@ -36,20 +35,19 @@ import (
 var tcpRouteLog = logf.Log.WithName("tcproute-resource")
 
 func SetupTCPRouteWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&gatewayv1alpha2.TCPRoute{}).
-		WithValidator(NewTCPRouteCustomValidator(mgr.GetClient())).
+	return ctrl.NewWebhookManagedBy(mgr, &gatewayv1.TCPRoute{}).
+		WithCustomValidator(NewTCPRouteCustomValidator(mgr.GetClient())).
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/validate-gateway-networking-k8s-io-v1alpha2-tcproute,mutating=false,failurePolicy=fail,sideEffects=None,groups=gateway.networking.k8s.io,resources=tcproutes,verbs=create;update,versions=v1alpha2,name=vtcproute-v1alpha2.kb.io,admissionReviewVersions=v1,failurePolicy=Ignore
+// +kubebuilder:webhook:path=/validate-gateway-networking-k8s-io-v1-tcproute,mutating=false,failurePolicy=fail,sideEffects=None,groups=gateway.networking.k8s.io,resources=tcproutes,verbs=create;update,versions=v1,name=vtcproute-v1.kb.io,admissionReviewVersions=v1,failurePolicy=Ignore
 
 type TCPRouteCustomValidator struct {
 	Client  client.Client
 	checker reference.Checker
 }
 
-var _ webhook.CustomValidator = &TCPRouteCustomValidator{}
+var _ admission.Validator[runtime.Object] = &TCPRouteCustomValidator{}
 
 func NewTCPRouteCustomValidator(c client.Client) *TCPRouteCustomValidator {
 	return &TCPRouteCustomValidator{
@@ -59,7 +57,7 @@ func NewTCPRouteCustomValidator(c client.Client) *TCPRouteCustomValidator {
 }
 
 func (v *TCPRouteCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	route, ok := obj.(*gatewayv1alpha2.TCPRoute)
+	route, ok := obj.(*gatewayv1.TCPRoute)
 	if !ok {
 		return nil, fmt.Errorf("expected a TCPRoute object but got %T", obj)
 	}
@@ -77,7 +75,7 @@ func (v *TCPRouteCustomValidator) ValidateCreate(ctx context.Context, obj runtim
 }
 
 func (v *TCPRouteCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	route, ok := newObj.(*gatewayv1alpha2.TCPRoute)
+	route, ok := newObj.(*gatewayv1.TCPRoute)
 	if !ok {
 		return nil, fmt.Errorf("expected a TCPRoute object for the newObj but got %T", newObj)
 	}
@@ -98,7 +96,7 @@ func (*TCPRouteCustomValidator) ValidateDelete(context.Context, runtime.Object) 
 	return nil, nil
 }
 
-func (v *TCPRouteCustomValidator) collectWarnings(ctx context.Context, route *gatewayv1alpha2.TCPRoute) admission.Warnings {
+func (v *TCPRouteCustomValidator) collectWarnings(ctx context.Context, route *gatewayv1.TCPRoute) admission.Warnings {
 	serviceVisited := make(map[types.NamespacedName]struct{})
 	namespace := route.GetNamespace()
 
@@ -118,7 +116,7 @@ func (v *TCPRouteCustomValidator) collectWarnings(ctx context.Context, route *ga
 		})...)
 	}
 
-	addBackendRef := func(ns, name string, group *gatewayv1alpha2.Group, kind *gatewayv1alpha2.Kind) {
+	addBackendRef := func(ns, name string, group *gatewayv1.Group, kind *gatewayv1.Kind) {
 		if name == "" {
 			return
 		}

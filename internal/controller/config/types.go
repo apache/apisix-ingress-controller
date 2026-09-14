@@ -28,6 +28,14 @@ const (
 	ProviderTypeAPISIX     ProviderType = "apisix"
 )
 
+// ListenerPortMatchMode selects when a Gateway listener port is turned into a
+// server_port route var.
+//
+// It defaults to off because APISIX evaluates server_port against the port it
+// actually accepted the connection on, which need not be the port the Gateway
+// listener declares: a listener on 80 fronted by a Service that maps 80 to
+// node_listen 9080 would emit `server_port == 80` and match nothing. Enabling
+// it is only correct when the data plane listens on the declared ports.
 type ListenerPortMatchMode string
 
 const (

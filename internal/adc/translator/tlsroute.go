@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
@@ -31,7 +30,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/types"
 )
 
-func (t *Translator) TranslateTLSRoute(tctx *provider.TranslateContext, tlsRoute *gatewayv1alpha2.TLSRoute) (*TranslateResult, error) {
+func (t *Translator) TranslateTLSRoute(tctx *provider.TranslateContext, tlsRoute *gatewayv1.TLSRoute) (*TranslateResult, error) {
 	result := &TranslateResult{}
 	rules := tlsRoute.Spec.Rules
 	labels := label.GenLabel(tlsRoute)
@@ -74,7 +73,7 @@ func (t *Translator) TranslateTLSRoute(tctx *provider.TranslateContext, tlsRoute
 				kind = string(*backend.Kind)
 			}
 			if backend.Port != nil {
-				port = int32(*backend.Port)
+				port = *backend.Port
 			}
 			namespace := string(*backend.Namespace)
 			name := string(backend.Name)
@@ -155,7 +154,7 @@ func (t *Translator) TranslateTLSRoute(tctx *provider.TranslateContext, tlsRoute
 			// applies plugins from the stream_route, not from the service. With multiple SNIs
 			// each stream_route carries its own copy of the plugins.
 			streamRoute.Plugins = make(adctypes.Plugins)
-			t.AttachL4RoutePolicyPlugins(tctx.L4RoutePolicies, tlsRoute.Namespace, tlsRoute.Name, "TLSRoute", streamRoute.Plugins)
+			t.AttachL4RoutePolicyPlugins(tctx.L4RoutePolicies, tlsRoute.Namespace, tlsRoute.Name, "TLSRoute", streamRoute.Plugins, tctx.Secrets)
 			service.StreamRoutes = append(service.StreamRoutes, streamRoute)
 		}
 

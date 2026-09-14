@@ -55,13 +55,47 @@ curl "http://127.0.0.1:9180/apisix/admin/routes" -H "X-API-KEY: ${ADMIN_API_KEY}
 
 For reference, see [Admin API](https://apisix.apache.org/docs/apisix/admin-api/).
 
-## Gateway API Routes Return 404 After Upgrade
+## Check Data Plane Instance Availability
 
-After upgrading to APISIX Ingress Controller 2.1.0, Gateway API HTTPRoute or GRPCRoute resources may return `404`. This can happen when Gateway listener ports do not match the ports that APISIX actually listens on.
+When running APISIX in standalone mode with more than one instance, a route can be reachable through some instances but not others, for example if one instance is unreachable or rejects the synchronized configuration. This is not reflected on the affected route's own status, since the route itself was valid; it shows up on the `GatewayProxy` that addresses those instances.
 
-In the default `listener_port_match_mode: auto` mode, the Ingress Controller may inject a `server_port` route variable from the matched Gateway listener ports. The `server_port` variable is evaluated by APISIX against its actual listening port, such as `9080` or `9443`. If the Gateway listener uses `80` or `443` but the gateway Service maps those ports to `9080` or `9443`, the route may not match.
+Check the `DataPlaneAvailable` condition:
 
-To resolve the issue, use one of the following approaches:
+```shell
+kubectl get gatewayproxy <gateway-proxy-name> -o yaml
+```
 
-- Set [`listener_port_match_mode`](configuration-file.md) to `"off"` in the controller configuration to disable `server_port` route-var injection.
+```yaml
+status:
+  conditions:
+  - type: DataPlaneAvailable
+    status: "False"
+    reason: DataPlaneInstanceUnavailable
+    message: "1/3 gateway instance(s) failed to apply the last sync: http://apisix-2:9180: connection refused"
+```
+
+For the history of which specific instance failed and when, check the GatewayProxy's events:
+
+```shell
+kubectl describe gatewayproxy <gateway-proxy-name>
+```
+
+```text
+Events:
+  Type     Reason                        Age   From             Message
+  ----     ------                        ----  ----             -------
+  Warning  DataPlaneInstanceUnavailable  8s    apisix-provider  http://apisix-2:9180: connection refused
+```
+
+Each unreachable or rejecting instance is reported as its own `Warning` event, so instances failing for different reasons, or at different times, don't get folded into one message.
+
+## Gateway API Routes Return 404
+
+Gateway API HTTPRoute or GRPCRoute resources may return `404` when the Gateway listener ports do not match the ports that APISIX actually listens on.
+
+With [`listener_port_match_mode`](configuration-file.md) set to `"auto"` or `"explicit"`, the Ingress Controller injects a `server_port` route variable from the matched Gateway listener ports. APISIX evaluates `server_port` against the port it accepted the connection on, such as `9080` or `9443`. If the Gateway listener declares `80` or `443` but the gateway Service maps those ports to `9080` or `9443`, no route matches.
+
+This is why `listener_port_match_mode` defaults to `"off"`. If you have enabled it, use one of the following approaches:
+
+- Set [`listener_port_match_mode`](configuration-file.md) back to `"off"` to disable `server_port` route-var injection.
 - Configure APISIX to listen on the same ports declared in the Gateway listeners.

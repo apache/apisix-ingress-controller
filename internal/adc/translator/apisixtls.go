@@ -55,6 +55,7 @@ func (t *Translator) TranslateApisixTls(tctx *provider.TranslateContext, tls *ap
 	for i, host := range tls.Spec.Hosts {
 		snis[i] = string(host)
 	}
+	snis = sslutils.NormalizeHosts(snis)
 
 	// Create SSL object
 	ssl := &adctypes.SSL{

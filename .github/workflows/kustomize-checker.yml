@@ -1,0 +1,144 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: Kustomize Checker
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      manifests: ${{ steps.filter.outputs.manifests }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: ./.github/actions/paths-filter
+        id: filter
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          filters: |
+            manifests:
+              - 'config/**'
+              - 'api/**'
+              - 'Makefile'
+              # The image entrypoint decides which config file the controller
+              # reads, so it is part of what makes the manifests correct.
+              - 'Dockerfile'
+              - '.github/workflows/kustomize-checker.yml'
+
+  kustomize-checker:
+    needs: changes
+    if: |
+      (needs.changes.outputs.manifests == 'true')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go Env
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Install kind
+        run: |
+          go install sigs.k8s.io/kind@v0.27.0
+
+      - name: Build the installer
+        run: |
+          make build-installer
+          test -s dist/install.yaml
+
+      # The CRDs, the webhook configuration and the manager ClusterRole are all
+      # generated from the Go types by the `make build-installer` step above.
+      # `git add -N` is what makes a brand new CRD file visible here: it is
+      # untracked, and `git diff` alone does not report untracked files.
+      - name: Check generated manifests are up to date
+        run: |
+          git add -A -N config
+          if ! git diff --exit-code -- config/crd/bases config/webhook/manifests.yaml config/rbac/role.yaml; then
+            echo "::error::generated manifests are out of date, run 'make manifests' and commit the result"
+            exit 1
+          fi
+
+      # Every kustomization is built, not just the ones config/default pulls in,
+      # so that a broken sub-directory is caught even while it is opt-in.
+      - name: Build every kustomization
+        run: |
+          set -o pipefail
+          for dir in $(find config -name kustomization.yaml -printf '%h\n' | sort); do
+            echo "::group::kustomize build $dir"
+            ./bin/kustomize build "$dir" > /dev/null
+            echo "::endgroup::"
+          done
+          ./bin/kustomize build config/samples > dist/samples.yaml
+          test -s dist/samples.yaml
+
+      - name: Launch Kind Cluster
+        run: |
+          make kind-up
+
+      # `make deploy` is the install path README.md and the developer guide tell
+      # people to run, so exercise that rather than a hand-rolled apply. The
+      # apply validates every rendered object against the API server, the CRD
+      # schemas included. It is a client-side apply, which also keeps the CRDs
+      # honest about the 262144-byte last-applied annotation limit that a
+      # server-side apply would hide.
+      - name: Deploy to the cluster
+        run: |
+          set -o pipefail
+          make deploy
+          crds=$(kubectl get crd -o name | grep 'apisix\.apache\.org$')
+          test -n "$crds"
+          echo "$crds" | xargs kubectl wait --for=condition=Established --timeout=60s
+
+      # The samples are validated against the CRDs installed above, so a sample
+      # that misses a required field or violates a CEL rule fails here.
+      - name: Validate the samples against the installed CRDs
+        run: |
+          kubectl apply --server-side --dry-run=server -f dist/samples.yaml
+
+      # The teardown README.md documents. Deleting the cluster underneath it
+      # would not tell us whether `make undeploy` still resolves.
+      # ignore-not-found=true is the flag the target itself documents. The
+      # Namespace is the first object in the stream, so whether the namespaced
+      # objects after it still exist by the time their own delete is issued
+      # depends on how fast it finishes terminating; the flag keeps the step
+      # from turning that race into a failure.
+      - name: Undeploy from the cluster
+        run: |
+          make undeploy ignore-not-found=true
+
+      - name: Tear down Kind Cluster
+        if: always()
+        run: |
+          make kind-down

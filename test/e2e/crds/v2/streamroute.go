@@ -25,7 +25,9 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/utils/ptr"
 
+	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
@@ -99,6 +101,61 @@ spec:
 				}
 				return nil
 			}).ShouldNot(HaveOccurred(), "waiting for services to be deleted")
+		})
+	})
+
+	Context("TCP Proxy with TLS upstream", func() {
+		apisixUpstream := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: nginx
+spec:
+  ingressClassName: %s
+  scheme: tls
+`
+		apisixRoute := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: nginx-tcp-route
+spec:
+  ingressClassName: %s
+  stream:
+  - name: rule1
+    protocol: TCP
+    match:
+      ingressPort: 9100
+    backend:
+      serviceName: nginx
+      servicePort: 443
+`
+		BeforeEach(func() {
+			s.DeployNginx(framework.NginxOptions{
+				Namespace: s.Namespace(),
+				Replicas:  ptr.To(int32(1)),
+			})
+		})
+
+		It("stream tcp proxy to tls upstream", func() {
+			// The client speaks plain TCP to APISIX; scheme: tls makes APISIX
+			// establish the TLS session with the upstream on its behalf.
+			err := s.CreateResourceFromString(fmt.Sprintf(apisixUpstream, s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "creating ApisixUpstream")
+
+			err = s.CreateResourceFromString(fmt.Sprintf(apisixRoute, s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "creating ApisixRoute")
+
+			s.RequestAssert(&scaffold.RequestAssert{
+				Client: s.NewAPISIXClientWithTCPProxy(),
+				Method: "GET",
+				Path:   "/",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(200),
+					scaffold.WithExpectedHeader("X-Port", "443"),
+					scaffold.WithExpectedBodyContains("Hello, World!"),
+				},
+			})
 		})
 	})
 

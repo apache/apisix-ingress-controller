@@ -28,7 +28,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
@@ -64,13 +63,18 @@ func SetupAPIv1alpha1Indexer(mgr ctrl.Manager) error {
 		&v1alpha1.Consumer{}:             setupConsumerIndexer,
 		&v1alpha1.GatewayProxy{}:         setupGatewayProxyIndexer,
 		&v1alpha1.L4RoutePolicy{}:        setupL4RoutePolicyIndexer,
+		&v1alpha1.PluginConfig{}:         setupPluginConfigIndexer,
 	} {
-		if utils.HasAPIResource(mgr, resource) {
-			if err := setup(mgr); err != nil {
-				return err
-			}
-		} else {
+		installed, err := utils.HasAPIResource(mgr, resource)
+		if err != nil {
+			return err
+		}
+		if !installed {
 			setupLog.Info("Skipping indexer setup, API not found in cluster", "api", utils.FormatGVK(resource))
+			continue
+		}
+		if err := setup(mgr); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -87,12 +91,16 @@ func SetupAPIv2Indexer(mgr ctrl.Manager) error {
 		&apiv2.ApisixTls{}:           setupApisixTlsIndexer,
 		&apiv2.ApisixGlobalRule{}:    setupApisixGlobalRuleIndexer,
 	} {
-		if utils.HasAPIResource(mgr, resource) {
-			if err := setup(mgr); err != nil {
-				return err
-			}
-		} else {
+		installed, err := utils.HasAPIResource(mgr, resource)
+		if err != nil {
+			return err
+		}
+		if !installed {
 			setupLog.Info("Skipping indexer setup, API not found in cluster", "api", utils.FormatGVK(resource))
+			continue
+		}
+		if err := setup(mgr); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -102,20 +110,24 @@ func SetupGatewayAPIIndexer(mgr ctrl.Manager) error {
 	setupLog := ctrl.LoggerFrom(context.Background()).WithName("indexer").WithName("gatewayapi")
 
 	for resource, setup := range map[client.Object]func(ctrl.Manager) error{
-		&gatewayv1.Gateway{}:        setupGatewayIndexer,
-		&gatewayv1.HTTPRoute{}:      setupHTTPRouteIndexer,
-		&gatewayv1.GRPCRoute{}:      setupGRPCRouteIndexer,
-		&gatewayv1alpha2.TCPRoute{}: setupTCPRouteIndexer,
-		&gatewayv1alpha2.UDPRoute{}: setupUDPRouteIndexer,
-		&gatewayv1alpha2.TLSRoute{}: setupTLSRouteIndexer,
-		&gatewayv1.GatewayClass{}:   setupGatewayClassIndexer,
+		&gatewayv1.Gateway{}:      setupGatewayIndexer,
+		&gatewayv1.HTTPRoute{}:    setupHTTPRouteIndexer,
+		&gatewayv1.GRPCRoute{}:    setupGRPCRouteIndexer,
+		&gatewayv1.TCPRoute{}:     setupTCPRouteIndexer,
+		&gatewayv1.UDPRoute{}:     setupUDPRouteIndexer,
+		&gatewayv1.TLSRoute{}:     setupTLSRouteIndexer,
+		&gatewayv1.GatewayClass{}: setupGatewayClassIndexer,
 	} {
-		if utils.HasAPIResource(mgr, resource) {
-			if err := setup(mgr); err != nil {
-				return err
-			}
-		} else {
+		installed, err := utils.HasAPIResource(mgr, resource)
+		if err != nil {
+			return err
+		}
+		if !installed {
 			setupLog.Info("Skipping indexer setup, API not found in cluster", "api", utils.FormatGVK(resource))
+			continue
+		}
+		if err := setup(mgr); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -247,6 +259,7 @@ func ConsumerSecretIndexFunc(rawObj client.Object) []string {
 		key := GenIndexKey(ns, credential.SecretRef.Name)
 		secretKeys = append(secretKeys, key)
 	}
+	secretKeys = append(secretKeys, PluginSecretIndexKeys(consumer.GetNamespace(), consumer.Spec.Plugins)...)
 	return secretKeys
 }
 
@@ -307,7 +320,7 @@ func setupHTTPRouteIndexer(mgr ctrl.Manager) error {
 func setupTCPRouteIndexer(mgr ctrl.Manager) error {
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
-		&gatewayv1alpha2.TCPRoute{},
+		&gatewayv1.TCPRoute{},
 		ParentRefs,
 		TCPRouteParentRefsIndexFunc,
 	); err != nil {
@@ -316,7 +329,7 @@ func setupTCPRouteIndexer(mgr ctrl.Manager) error {
 
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
-		&gatewayv1alpha2.TCPRoute{},
+		&gatewayv1.TCPRoute{},
 		ServiceIndexRef,
 		TCPPRouteServiceIndexFunc,
 	); err != nil {
@@ -328,7 +341,7 @@ func setupTCPRouteIndexer(mgr ctrl.Manager) error {
 func setupUDPRouteIndexer(mgr ctrl.Manager) error {
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
-		&gatewayv1alpha2.UDPRoute{},
+		&gatewayv1.UDPRoute{},
 		ParentRefs,
 		UDPRouteParentRefsIndexFunc,
 	); err != nil {
@@ -337,7 +350,7 @@ func setupUDPRouteIndexer(mgr ctrl.Manager) error {
 
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
-		&gatewayv1alpha2.UDPRoute{},
+		&gatewayv1.UDPRoute{},
 		ServiceIndexRef,
 		UDPRouteServiceIndexFunc,
 	); err != nil {
@@ -507,7 +520,41 @@ func setupL4RoutePolicyIndexer(mgr ctrl.Manager) error {
 	); err != nil {
 		return err
 	}
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&v1alpha1.L4RoutePolicy{},
+		SecretIndexRef,
+		func(obj client.Object) []string {
+			return PluginSecretIndexKeys(obj.GetNamespace(), obj.(*v1alpha1.L4RoutePolicy).Spec.Plugins)
+		},
+	); err != nil {
+		return err
+	}
 	return nil
+}
+
+func setupPluginConfigIndexer(mgr ctrl.Manager) error {
+	return mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&v1alpha1.PluginConfig{},
+		SecretIndexRef,
+		func(obj client.Object) []string {
+			return PluginSecretIndexKeys(obj.GetNamespace(), obj.(*v1alpha1.PluginConfig).Spec.Plugins)
+		},
+	)
+}
+
+// PluginSecretIndexKeys returns the index keys of the Secrets referenced by
+// apisix.apache.org/v1alpha1 plugins. Such Secrets are always in the namespace of the
+// object that declares the plugins.
+func PluginSecretIndexKeys(namespace string, plugins []v1alpha1.Plugin) (keys []string) {
+	for _, plugin := range plugins {
+		if plugin.SecretRef == nil || plugin.SecretRef.Name == "" {
+			continue
+		}
+		keys = append(keys, GenIndexKey(namespace, plugin.SecretRef.Name))
+	}
+	return
 }
 
 func IngressClassIndexFunc(rawObj client.Object) []string {
@@ -591,33 +638,50 @@ func GatewaySecretIndexFunc(rawObj client.Object) (keys []string) {
 			}
 			add(namespace, string(ref.Name))
 		}
-		// frontendValidation CA references that are Secrets.
-		if listener.TLS.FrontendValidation != nil {
-			for _, ref := range listener.TLS.FrontendValidation.CACertificateRefs {
-				if string(ref.Kind) != internaltypes.KindSecret {
-					continue
-				}
-				namespace := gateway.GetNamespace()
-				if ref.Namespace != nil {
-					namespace = string(*ref.Namespace)
-				}
-				add(namespace, string(ref.Name))
+	}
+	// frontendValidation CA references that are Secrets. In Gateway API v1.6 these
+	// live at the Gateway level (spec.tls.frontend), not on individual listeners.
+	for _, validation := range gatewayFrontendValidations(gateway) {
+		for _, ref := range validation.CACertificateRefs {
+			if string(ref.Kind) != internaltypes.KindSecret {
+				continue
 			}
+			namespace := gateway.GetNamespace()
+			if ref.Namespace != nil {
+				namespace = string(*ref.Namespace)
+			}
+			add(namespace, string(ref.Name))
 		}
 	}
 	return keys
 }
 
+// gatewayFrontendValidations returns all frontend TLS client-cert validation configs
+// declared on a Gateway (the Default plus every PerPort override).
+func gatewayFrontendValidations(gateway *gatewayv1.Gateway) []*gatewayv1.FrontendTLSValidation {
+	if gateway.Spec.TLS == nil || gateway.Spec.TLS.Frontend == nil {
+		return nil
+	}
+	frontend := gateway.Spec.TLS.Frontend
+	validations := make([]*gatewayv1.FrontendTLSValidation, 0, len(frontend.PerPort)+1)
+	if frontend.Default.Validation != nil {
+		validations = append(validations, frontend.Default.Validation)
+	}
+	for i := range frontend.PerPort {
+		if frontend.PerPort[i].TLS.Validation != nil {
+			validations = append(validations, frontend.PerPort[i].TLS.Validation)
+		}
+	}
+	return validations
+}
+
 // GatewayConfigMapIndexFunc indexes Gateways by the CA ConfigMaps referenced via
-// listener TLS frontendValidation, so that ConfigMap changes can trigger reconciliation.
+// Gateway TLS frontendValidation, so that ConfigMap changes can trigger reconciliation.
 func GatewayConfigMapIndexFunc(rawObj client.Object) (keys []string) {
 	gateway := rawObj.(*gatewayv1.Gateway)
 	var m = make(map[string]struct{})
-	for _, listener := range gateway.Spec.Listeners {
-		if listener.TLS == nil || listener.TLS.FrontendValidation == nil {
-			continue
-		}
-		for _, ref := range listener.TLS.FrontendValidation.CACertificateRefs {
+	for _, validation := range gatewayFrontendValidations(gateway) {
+		for _, ref := range validation.CACertificateRefs {
 			if ref.Kind != "" && string(ref.Kind) != internaltypes.KindConfigMap {
 				continue
 			}
@@ -668,7 +732,7 @@ func HTTPRouteParentRefsIndexFunc(rawObj client.Object) []string {
 }
 
 func TCPRouteParentRefsIndexFunc(rawObj client.Object) []string {
-	tr := rawObj.(*gatewayv1alpha2.TCPRoute)
+	tr := rawObj.(*gatewayv1.TCPRoute)
 	keys := make([]string, 0, len(tr.Spec.ParentRefs))
 	for _, ref := range tr.Spec.ParentRefs {
 		ns := tr.GetNamespace()
@@ -681,7 +745,7 @@ func TCPRouteParentRefsIndexFunc(rawObj client.Object) []string {
 }
 
 func UDPRouteParentRefsIndexFunc(rawObj client.Object) []string {
-	ur := rawObj.(*gatewayv1alpha2.UDPRoute)
+	ur := rawObj.(*gatewayv1.UDPRoute)
 	keys := make([]string, 0, len(ur.Spec.ParentRefs))
 	for _, ref := range ur.Spec.ParentRefs {
 		ns := ur.GetNamespace()
@@ -712,7 +776,7 @@ func HTTPRouteServiceIndexFunc(rawObj client.Object) []string {
 }
 
 func TCPPRouteServiceIndexFunc(rawObj client.Object) []string {
-	tr := rawObj.(*gatewayv1alpha2.TCPRoute)
+	tr := rawObj.(*gatewayv1.TCPRoute)
 	keys := make([]string, 0, len(tr.Spec.Rules))
 	for _, rule := range tr.Spec.Rules {
 		for _, backend := range rule.BackendRefs {
@@ -730,7 +794,7 @@ func TCPPRouteServiceIndexFunc(rawObj client.Object) []string {
 }
 
 func UDPRouteServiceIndexFunc(rawObj client.Object) []string {
-	ur := rawObj.(*gatewayv1alpha2.UDPRoute)
+	ur := rawObj.(*gatewayv1.UDPRoute)
 	keys := make([]string, 0, len(ur.Spec.Rules))
 	for _, rule := range ur.Spec.Rules {
 		for _, backend := range rule.BackendRefs {

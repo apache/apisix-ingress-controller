@@ -29,5 +29,13 @@ type RouteParentRefContext struct {
 	Listener     *gatewayv1.Listener
 	Listeners    []gatewayv1.Listener
 
+	// ExplicitListenerMatch reports whether this parentRef attached to its
+	// Gateway through an explicit sectionName or port that resolved to one of
+	// the listeners above. It is computed here, where each parentRef's Gateway
+	// and matched listeners are known, so the server_port injection decision
+	// never matches a sectionName/port against a listener from a different
+	// parentRef's Gateway.
+	ExplicitListenerMatch bool
+
 	Conditions []metav1.Condition
 }

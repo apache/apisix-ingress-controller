@@ -6,4 +6,11 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: apisixpluginconfig-sample
 spec:
-  # TODO(user): Add fields here
+  ingressClassName: apisix
+  plugins:
+    - name: response-rewrite
+      enable: true
+      config:
+        headers:
+          set:
+            X-Sample: apisix-ingress-controller

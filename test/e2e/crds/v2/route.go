@@ -170,7 +170,6 @@ spec:
 				Expect(bodyStr).Should(ContainSubstring("apisix_ingress_adc_sync_duration_seconds"))
 				Expect(bodyStr).Should(ContainSubstring("apisix_ingress_adc_sync_total"))
 				Expect(bodyStr).Should(ContainSubstring("apisix_ingress_status_update_queue_length"))
-				Expect(bodyStr).Should(ContainSubstring("apisix_ingress_file_io_duration_seconds"))
 			}
 			It("Basic", func() {
 				test(apisixRouteSpec)
@@ -180,6 +179,40 @@ spec:
 			})
 			It("Basic: with named service port and granularity service", func() {
 				test(apisixRouteSpecWithNameServiceAndGranularity)
+			})
+			It("Basic: with an uppercase host", func() {
+				const apisixRouteSpecWithUppercaseHost = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: default
+  namespace: %s
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - HTTPBIN.Example.com
+      paths:
+      - /get
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+`
+				By("apply ApisixRoute")
+				var apisixRoute apiv2.ApisixRoute
+				applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+					&apisixRoute, fmt.Sprintf(apisixRouteSpecWithUppercaseHost, s.Namespace(), s.Namespace()))
+
+				// APISIX matches hosts against nginx's $host, which is always lowercase,
+				// so the host has to be stored lowercase to be reachable at all.
+				request := func(host string) int {
+					return s.NewAPISIXClient().GET("/get").WithHost(host).Expect().Raw().StatusCode
+				}
+				By("verify the route is reachable regardless of the Host header case")
+				Eventually(request).WithArguments("HTTPBIN.Example.com").WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+				Expect(request("httpbin.example.com")).Should(Equal(http.StatusOK))
 			})
 		})
 
@@ -2111,25 +2144,34 @@ spec:
 			err := s.CreateResourceFromString(fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixRoute")
 
-			By("check ApisixRoute status")
+			// The data plane is entirely unreachable, ADC can't even attempt a per-resource
+			// push, so there's nothing to attribute this to but the GatewayProxy: see
+			// classifySyncResult.
+			By("check GatewayProxy status")
 			s.RetryAssertion(func() string {
-				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml", "-n", s.Namespace())
+				output, _ := s.GetOutputFromString("gatewayproxy", "apisix-proxy-config", "-o", "yaml", "-n", s.Namespace())
 				return output
 			}).WithTimeout(30 * time.Second).
 				Should(
 					And(
+						ContainSubstring("type: DataPlaneAvailable"),
 						ContainSubstring(`status: "False"`),
-						ContainSubstring(`reason: SyncFailed`),
+						ContainSubstring("reason: DataPlaneInstanceUnavailable"),
 					),
 				)
 
 			s.Deployer.ScaleDataplane(1)
 
 			s.RetryAssertion(func() string {
-				output, _ := s.GetOutputFromString("ar", "default", "-o", "yaml", "-n", s.Namespace())
+				output, _ := s.GetOutputFromString("gatewayproxy", "apisix-proxy-config", "-o", "yaml", "-n", s.Namespace())
 				return output
 			}).WithTimeout(60 * time.Second).
-				Should(ContainSubstring(`status: "True"`))
+				Should(
+					And(
+						ContainSubstring("type: DataPlaneAvailable"),
+						ContainSubstring(`status: "True"`),
+					),
+				)
 
 			By("check route in APISIX")
 			s.RequestAssert(&scaffold.RequestAssert{
@@ -2324,9 +2366,11 @@ spec:
 				&apiv2.ApisixRoute{}, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("check upstreams")
-			upstreams, err := s.DefaultDataplaneResource().Upstream().List(context.Background())
-			Expect(err).ShouldNot(HaveOccurred())
-			Expect(upstreams).Should(HaveLen(4))
+			Eventually(func(g Gomega) {
+				upstreams, err := s.DefaultDataplaneResource().Upstream().List(context.Background())
+				g.Expect(err).ShouldNot(HaveOccurred())
+				g.Expect(upstreams).Should(HaveLen(4))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 
 			By("verify ApisixRoute works")
 			s.RequestAssert(&scaffold.RequestAssert{

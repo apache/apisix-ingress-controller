@@ -18,6 +18,10 @@
 version: "2"
 run:
   allow-parallel-runners: true
+  # Pin the analysis target Go version: the go.mod directive is 1.26 (required by
+  # k8s.io 0.36 / gateway-api 1.6), but the released golangci-lint binary is built
+  # with an older Go and refuses to target a newer one.
+  go: "1.24"
 linters:
   default: none
   enable:
@@ -57,6 +61,19 @@ linters:
           - staticcheck
         text: "ST1001:"
         path: test/.*
+      # kubebuilder-generated scaffold: controller-runtime v0.24 deprecated
+      # scheme.Builder, but the generated group-version files still rely on it.
+      - linters:
+          - staticcheck
+        text: "SA1019:.*scheme.Builder"
+        path: api/.*/groupversion_info.go
+      # controller-runtime v0.24 deprecated WithCustomValidator in favour of the
+      # generic WithValidator, but that path decodes via the generic type and
+      # panics for our runtime.Object-typed CustomValidators; keep the working API.
+      - linters:
+          - staticcheck
+        text: "WithCustomValidator is deprecated"
+        path: internal/webhook/.*
     paths:
       - third_party$
       - builtin$

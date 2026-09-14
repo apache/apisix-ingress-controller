@@ -63,7 +63,10 @@ func (t *Translator) TranslateConsumerV1alpha1(tctx *provider.TranslateContext, 
 		} else {
 			authConfig := make(map[string]any)
 			if err := json.Unmarshal(credentialSpec.Config.Raw, &authConfig); err != nil {
-				t.Log.Error(err, "failed to unmarshal credential config", "credential", credentialSpec)
+				t.Log.Error(err, "failed to unmarshal credential config",
+					"consumer", consumerV.Namespace+"/"+consumerV.Name,
+					"credential", credentialSpec.Name,
+					"type", credentialSpec.Type)
 				continue
 			}
 			credential.Config = authConfig
@@ -74,15 +77,14 @@ func (t *Translator) TranslateConsumerV1alpha1(tctx *provider.TranslateContext, 
 	consumer.Labels = label.GenLabelWithObjectLabels(consumerV)
 	plugins := adctypes.Plugins{}
 	for _, plugin := range consumerV.Spec.Plugins {
-		pluginName := plugin.Name
-		pluginConfig := make(map[string]any)
-		if len(plugin.Config.Raw) > 0 {
-			if err := json.Unmarshal(plugin.Config.Raw, &pluginConfig); err != nil {
-				t.Log.Error(err, "failed to unmarshal plugin config", "plugin", plugin)
-				continue
-			}
+		pluginConfig, err := renderPluginConfig(plugin, consumerV.Namespace, tctx.Secrets)
+		if err != nil {
+			t.Log.Error(err, "failed to render plugin config",
+				"consumer", consumerV.Namespace+"/"+consumerV.Name,
+				"plugin", plugin.Name)
+			continue
 		}
-		plugins[pluginName] = pluginConfig
+		plugins[plugin.Name] = pluginConfig
 	}
 	consumer.Plugins = plugins
 	result.Consumers = append(result.Consumers, consumer)

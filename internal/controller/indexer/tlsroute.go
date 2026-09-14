@@ -22,7 +22,7 @@ import (
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
@@ -30,7 +30,7 @@ import (
 func setupTLSRouteIndexer(mgr ctrl.Manager) error {
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
-		&gatewayv1alpha2.TLSRoute{},
+		&gatewayv1.TLSRoute{},
 		ParentRefs,
 		TLSRouteParentRefsIndexFunc,
 	); err != nil {
@@ -39,7 +39,7 @@ func setupTLSRouteIndexer(mgr ctrl.Manager) error {
 
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
-		&gatewayv1alpha2.TLSRoute{},
+		&gatewayv1.TLSRoute{},
 		ServiceIndexRef,
 		TLSPRouteServiceIndexFunc,
 	); err != nil {
@@ -49,7 +49,7 @@ func setupTLSRouteIndexer(mgr ctrl.Manager) error {
 }
 
 func TLSRouteParentRefsIndexFunc(rawObj client.Object) []string {
-	tr := rawObj.(*gatewayv1alpha2.TLSRoute)
+	tr := rawObj.(*gatewayv1.TLSRoute)
 	keys := make([]string, 0, len(tr.Spec.ParentRefs))
 	for _, ref := range tr.Spec.ParentRefs {
 		ns := tr.GetNamespace()
@@ -62,7 +62,7 @@ func TLSRouteParentRefsIndexFunc(rawObj client.Object) []string {
 }
 
 func TLSPRouteServiceIndexFunc(rawObj client.Object) []string {
-	tr := rawObj.(*gatewayv1alpha2.TLSRoute)
+	tr := rawObj.(*gatewayv1.TLSRoute)
 	keys := make([]string, 0, len(tr.Spec.Rules))
 	for _, rule := range tr.Spec.Rules {
 		for _, backend := range rule.BackendRefs {

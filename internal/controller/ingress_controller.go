@@ -27,6 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -192,6 +193,20 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// process plugin config annotation
 	if err := r.processPluginConfig(tctx, ingress); err != nil {
 		r.Log.Error(err, "failed to process PluginConfig annotation", "ingress", ingress.Name)
+		// The referenced ApisixPluginConfig is gone, so the Ingress can no longer be
+		// translated. Retract what an earlier reconcile published: the store is what
+		// every sync pushes, so leaving it in place keeps the data plane applying the
+		// deleted plugin configuration.
+		if internaltypes.IsDependencyMissing(err) {
+			if derr := r.Provider.Delete(ctx, ingress); derr != nil {
+				r.Log.Error(derr, "failed to delete ingress", "ingress", utils.NamespacedName(ingress))
+				return ctrl.Result{}, derr
+			}
+			// Requeueing would retry forever with backoff for a reference that does
+			// not come back on its own; the ApisixPluginConfig watch reconciles the
+			// Ingress again when it does.
+			return ctrl.Result{}, nil
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -628,6 +643,9 @@ func (r *IngressReconciler) processPluginConfig(tctx *provider.TranslateContext,
 
 	if err := r.Get(tctx, pcNN, &pc); err != nil {
 		r.Log.Error(err, "failed to get ApisixPluginConfig", "pluginconfig", pcNN)
+		if k8serrors.IsNotFound(err) {
+			return internaltypes.DependencyMissingError{Err: err}
+		}
 		return err
 	}
 
@@ -707,35 +725,24 @@ func (r *IngressReconciler) updateStatus(ctx context.Context, tctx *provider.Tra
 		// 2. if the IngressStatusAddress is not configured, try to use the PublishService
 		publishService := gatewayProxy.Spec.PublishService
 		if publishService != "" {
-			// parse the namespace/name format
-			namespace, name, err := SplitMetaNamespaceKey(publishService)
+			// a bare name resolves against the GatewayProxy's namespace, where
+			// the publish Service lives, matching the Gateway API path
+			svc, err := resolvePublishService(ctx, r.Client, publishService, gatewayProxy.GetNamespace())
 			if err != nil {
-				return fmt.Errorf("invalid ingress-publish-service format: %s, expected format: namespace/name", publishService)
+				return err
 			}
-			// if the namespace is not specified, use the ingress namespace
-			if namespace == "" {
-				namespace = ingress.Namespace
-			}
-
-			svc := &corev1.Service{}
-			if err := r.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, svc); err != nil {
-				return fmt.Errorf("failed to get publish service %s: %w", publishService, err)
-			}
+			namespace, name := svc.Namespace, svc.Name
 
 			switch svc.Spec.Type {
 			case corev1.ServiceTypeLoadBalancer:
-				// get the LoadBalancer IP and Hostname of the service
-				for _, ip := range svc.Status.LoadBalancer.Ingress {
-					if ip.IP != "" {
-						loadBalancerStatus.Ingress = append(loadBalancerStatus.Ingress, networkingv1.IngressLoadBalancerIngress{
-							IP: ip.IP,
-						})
+				for _, addr := range serviceLoadBalancerAddresses(svc) {
+					lbIngress := networkingv1.IngressLoadBalancerIngress{}
+					if net.ParseIP(addr) != nil {
+						lbIngress.IP = addr
+					} else {
+						lbIngress.Hostname = addr
 					}
-					if ip.Hostname != "" {
-						loadBalancerStatus.Ingress = append(loadBalancerStatus.Ingress, networkingv1.IngressLoadBalancerIngress{
-							Hostname: ip.Hostname,
-						})
-					}
+					loadBalancerStatus.Ingress = append(loadBalancerStatus.Ingress, lbIngress)
 				}
 			case corev1.ServiceTypeClusterIP:
 				// For ClusterIP services, propagate load balancer status from any other

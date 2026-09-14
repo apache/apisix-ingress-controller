@@ -20,7 +20,7 @@ package v1alpha1
 import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // HTTPRoutePolicySpec defines the desired state of HTTPRoutePolicy.
@@ -28,7 +28,7 @@ type HTTPRoutePolicySpec struct {
 	// TargetRef identifies an API object (i.e. HTTPRoute, Ingress) to apply HTTPRoutePolicy to.
 	// +kubebuilder:validation:MinItems=1
 	// +kubebuilder:validation:MaxItems=16
-	TargetRefs []gatewayv1alpha2.LocalPolicyTargetReferenceWithSectionName `json:"targetRefs"`
+	TargetRefs []gatewayv1.LocalPolicyTargetReferenceWithSectionName `json:"targetRefs"`
 	// Priority sets the priority for route. when multiple routes have the same URI path,
 	// a higher value sets a higher priority in route matching.
 	Priority *int64 `json:"priority,omitempty" yaml:"priority,omitempty"`

@@ -19,7 +19,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // L4RoutePolicySpec defines the desired state of L4RoutePolicy.
@@ -31,7 +31,7 @@ type L4RoutePolicySpec struct {
 	// +kubebuilder:validation:MaxItems=16
 	// +kubebuilder:validation:XValidation:rule="self.all(r, r.kind == 'TCPRoute' || r.kind == 'UDPRoute' || r.kind == 'TLSRoute')",message="targetRefs kind must be TCPRoute, UDPRoute, or TLSRoute"
 	// +kubebuilder:validation:XValidation:rule="self.all(r, r.group == 'gateway.networking.k8s.io')",message="targetRefs group must be gateway.networking.k8s.io"
-	TargetRefs []gatewayv1alpha2.LocalPolicyTargetReferenceWithSectionName `json:"targetRefs"`
+	TargetRefs []gatewayv1.LocalPolicyTargetReferenceWithSectionName `json:"targetRefs"`
 
 	// Plugins is the list of APISIX stream plugins to attach to the targeted L4 routes.
 	// Plugin names should be valid APISIX stream plugin names (e.g., limit-conn, ip-restriction).

@@ -115,6 +115,91 @@ spec:
 			Eventually(request).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(Equal(http.StatusNotFound))
 		})
 
+		It("Test ApisixRoute stops serving when its ApisixPluginConfig is deleted", func() {
+			const pluginConfigSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixPluginConfig
+metadata:
+  name: shared-plugin-config
+spec:
+  ingressClassName: %s
+  plugins:
+  - name: response-rewrite
+    enable: true
+    config:
+      headers:
+        X-Revocation-Test: "must-disappear"
+`
+
+			const routeSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: referencing-route
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      paths:
+      - /*
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+    plugin_config_name: shared-plugin-config
+`
+
+			applyPluginConfig := func() {
+				var pluginConfig apiv2.ApisixPluginConfig
+				applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "shared-plugin-config"},
+					&pluginConfig, fmt.Sprintf(pluginConfigSpec, s.Namespace()))
+			}
+
+			By("apply ApisixPluginConfig and a route that references it")
+			applyPluginConfig()
+			var apisixRoute apiv2.ApisixRoute
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "referencing-route"},
+				&apisixRoute, fmt.Sprintf(routeSpec, s.Namespace()))
+
+			By("the plugin takes effect")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedHeader("X-Revocation-Test", "must-disappear"),
+				},
+			})
+
+			By("delete only the ApisixPluginConfig, leaving the route in place")
+			Expect(s.DeleteResource("ApisixPluginConfig", "shared-plugin-config")).
+				ShouldNot(HaveOccurred(), "deleting ApisixPluginConfig")
+
+			By("the route stops being served")
+			// Without the retraction the route keeps forwarding and keeps applying the
+			// deleted plugin, so the header would still come back with a 200.
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Check:    scaffold.WithExpectedStatus(http.StatusNotFound),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+
+			By("recreating the ApisixPluginConfig under the same name restores the route")
+			applyPluginConfig()
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedHeader("X-Revocation-Test", "must-disappear"),
+				},
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+		})
+
 		It("Test ApisixPluginConfig update", func() {
 			const apisixPluginConfigSpecV1 = `
 apiVersion: apisix.apache.org/v2

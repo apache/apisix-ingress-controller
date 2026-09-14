@@ -96,7 +96,7 @@ spec:
 
 ❶ The controller name should be customized if you are running multiple distinct instances of the APISIX Ingress Controller in the same cluster (not a single instance with multiple replicas). Each ingress controller instance must use a unique controllerName in its [configuration file](configuration-file.md), and the corresponding GatewayClass should reference that value.
 
-❷ The `port` in the Gateway listener is used for routing matching based on [`listener_port_match_mode`](configuration-file.md) (`auto`, `explicit`, or `off`). The controller cannot dynamically open new ports on the data plane, so ensure APISIX is configured to listen on the port.
+❷ The `port` in the Gateway listener is used for routing matching based on [`listener_port_match_mode`](configuration-file.md) (`off` by default; `auto` or `explicit` opt in). The controller cannot dynamically open new ports on the data plane, so ensure APISIX is configured to listen on the port.
 
 ❸ API group of the referenced resource.
 
@@ -1118,6 +1118,85 @@ spec:
 
 </Tabs>
 
+## Configure Plugin Secrets
+
+To keep sensitive plugin configuration in a Secret instead of in the resource, reference the
+Secret from the plugin. Each Secret key is a dot separated path into the plugin configuration,
+so `session.secret` sets the `secret` field of the `session` object. Values are merged as
+strings and take precedence over the same path in `config`, so keep numeric and boolean fields
+in `config`. The Secret must be in the same namespace as the resource that references it.
+
+<Tabs
+groupId="k8s-api"
+defaultValue="gateway"
+values={[
+{label: 'Gateway API', value: 'gateway'},
+{label: 'APISIX CRD', value: 'apisix-crd'}
+]}>
+
+<TabItem value="gateway">
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  namespace: ingress-apisix
+  name: oidc-credentials
+stringData:
+  client_id: "my-client"
+  client_secret: "s3cr3t"
+  session.secret: "8f2a6c1d9e4b7a30"
+---
+apiVersion: apisix.apache.org/v1alpha1
+kind: PluginConfig
+metadata:
+  namespace: ingress-apisix
+  name: oidc
+spec:
+  plugins:
+  - name: openid-connect
+    secretRef:
+      name: oidc-credentials
+    config:
+      discovery: https://idp.example.com/.well-known/openid-configuration
+      scope: openid profile
+```
+
+</TabItem>
+
+<TabItem value="apisix-crd">
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  namespace: ingress-apisix
+  name: oidc-credentials
+stringData:
+  client_id: "my-client"
+  client_secret: "s3cr3t"
+  session.secret: "8f2a6c1d9e4b7a30"
+---
+apiVersion: apisix.apache.org/v2
+kind: ApisixPluginConfig
+metadata:
+  namespace: ingress-apisix
+  name: oidc
+spec:
+  ingressClassName: apisix
+  plugins:
+  - name: openid-connect
+    enable: true
+    secretRef: oidc-credentials
+    config:
+      discovery: https://idp.example.com/.well-known/openid-configuration
+      scope: openid profile
+```
+
+</TabItem>
+
+</Tabs>
+
 ## Configure Gateway Access Information
 
 These configurations allow Ingress Controller users to access the gateway.
@@ -1196,7 +1275,8 @@ spec:
   publishService: apisix-gateway
 ```
 
-When using `publishService`, the controller will use the endpoint of this Service to update the status information of the Ingress resource. The format can be either `namespace/svc-name` or simply `svc-name` if the default namespace is correctly set.
+When using `publishService`, the controller will use the endpoint of this Service to update the status information of the Ingress resource.
+The format can be either `namespace/svc-name` or simply `svc-name`, in which case the name resolves against the namespace of the GatewayProxy.
 
 - If the Service is of `LoadBalancer` type, the controller uses its external IP or hostname.
 - If the Service is of `ClusterIP` type, the controller propagates the hostname from any Ingress resources that reference that Service.

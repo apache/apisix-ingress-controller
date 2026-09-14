@@ -1,0 +1,285 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# commit to be tagged for new release
+commit = "HEAD"
+
+# project_name is used to refer to the project in the notes
+project_name = "apisix-ingress-controller"
+
+# github_repo is the github project, only github is currently supported
+github_repo = "apache/apisix-ingress-controller"
+
+# match_deps is a pattern to determine which dependencies should be included
+# as part of this release. The changelog will also include changes for these
+# dependencies based on the change in the dependency's version.
+match_deps = "^github.com/(apache/[a-zA-Z0-9-]+)$"
+
+# previous release of this project for determining changes
+previous = "2.1.0"
+
+# pre_release is whether to include a disclaimer about being a pre-release
+pre_release = false
+
+# preface is the description of the release which precedes the author list
+# and changelog. This description could include highlights as well as any
+# description of changes. Use markdown formatting.
+preface = """\
+
+## Highlights
+
+* **Gateway API 1.6.0** support [#2804](https://github.com/apache/apisix-ingress-controller/pull/2804). `TCPRoute`, `UDPRoute`, `TLSRoute` and `ReferenceGrant` are now read through `gateway.networking.k8s.io/v1` [#2839](https://github.com/apache/apisix-ingress-controller/pull/2839).
+* **Downstream mTLS** on `Gateway` listeners, configured at `spec.tls.frontend` [#2792](https://github.com/apache/apisix-ingress-controller/pull/2792).
+* **`L4RoutePolicy`**, a new CRD that attaches stream plugins to L4 routes [#2791](https://github.com/apache/apisix-ingress-controller/pull/2791).
+* **L4 upstream schemes** `tcp`, `tls` and `udp` for stream backends [#2830](https://github.com/apache/apisix-ingress-controller/pull/2830).
+* **Security fixes**: a malformed plugin config no longer publishes a plugin that enforces nothing [#2814](https://github.com/apache/apisix-ingress-controller/pull/2814), credentials are kept out of the logs, a cross-namespace `Consumer` `secretRef` is gated by a `ReferenceGrant`, and the `Consumer` webhook no longer reveals whether a `Secret` exists in another namespace.
+
+---
+
+## Upgrade Notes
+
+**Kubernetes 1.31+ is the supported version for this release**, up from 1.26.0, as declared
+by `MIN_K8S_VERSION`, `README.md` and the installation guide.
+
+This is a support boundary rather than a hard gate: on an older cluster the controller
+logs a warning and keeps running. Below 1.31 you are outside what the project tests and
+supports.
+
+**Install the Gateway API CRDs with server-side apply.** The v1.6.0 CRDs exceed the
+annotation size limit of client-side apply:
+
+```shell
+kubectl apply --server-side --force-conflicts -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.0/experimental-install.yaml
+```
+
+**`listener_port_match_mode` now covers L4 routes too**
+[#2818](https://github.com/apache/apisix-ingress-controller/pull/2818). `TCPRoute` and
+`UDPRoute` join `HTTPRoute` and `GRPCRoute` under the `server_port` route-var injection
+this option gates:
+
+| mode | when `server_port` is injected |
+| ---- | ------------------------------ |
+| `off` | never; one portless `StreamRoute` per rule matches every connection on the stream listener |
+| `explicit` | a parentRef pins `sectionName` or `port` |
+| `auto` | that, or the route attaches to more than one listener port |
+
+Once injected, the `Gateway` listener port must equal the port APISIX actually accepts
+the connection on, or nothing matches:
+
+```yaml
+listeners:
+  - name: tcp
+    protocol: TCP
+    port: 9100        # must equal an APISIX stream_proxy.tcp port
+```
+
+---
+
+## Breaking Changes
+
+### A cross-namespace `Consumer` `secretRef` now requires a `ReferenceGrant`
+
+[#2805](https://github.com/apache/apisix-ingress-controller/pull/2805). Without a grant
+the `Consumer` stops reconciling and its credential is no longer programmed. Create the
+grant in the `Secret`'s namespace before upgrading:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: consumer-to-secret
+  namespace: secret-ns          # where the Secret lives
+spec:
+  from:
+    - group: apisix.apache.org
+      kind: Consumer
+      namespace: consumer-ns    # where the Consumer lives
+  to:
+    - group: ""
+      kind: Secret
+      name: consumer-credentials   # omit to grant every Secret in this namespace
+```
+
+### The L4 route webhook paths moved from `v1alpha2` to `v1`
+
+[#2839](https://github.com/apache/apisix-ingress-controller/pull/2839).
+`/validate-gateway-networking-k8s-io-v1alpha2-tcproute` becomes `...-v1-tcproute`, and
+the same for `udproute`. The shipped manifests are updated; a hand-maintained
+`ValidatingWebhookConfiguration` is not. This also fixes L4 routing on the Gateway API
+standard channel, which no longer serves `v1alpha2` and where the `TCPRoute`, `UDPRoute`
+and `TLSRoute` reconcilers were therefore skipped entirely.
+
+### A malformed plugin `config` is rejected instead of applied empty
+
+[#2814](https://github.com/apache/apisix-ingress-controller/pull/2814). A `config`
+that does not unmarshal into an object used to be logged, discarded and the plugin
+published with an empty config, so an `ip-restriction` with a malformed `whitelist`
+became `ip-restriction: {}` and enforced nothing while the resource reconciled
+green. Such a resource now fails to sync and says so. This covers `ApisixRoute`
+plugins and stream-route plugins, referenced `ApisixPluginConfig`,
+`ApisixGlobalRule`, the Ingress plugin-config annotation and `ApisixConsumer`, so
+a config that has been quietly ignored until now surfaces on upgrade.
+
+### `apisix.apache.org/enable-csrf` without `csrf-key` is rejected
+
+[#2813](https://github.com/apache/apisix-ingress-controller/pull/2813). The webhook now
+fails the `Ingress` instead of silently dropping the `csrf` plugin, so `kubectl apply`
+returns an error on manifests that used to be accepted. Set `apisix.apache.org/csrf-key`.
+
+---
+
+## Features
+
+### Downstream mTLS on `Gateway` listeners
+
+[#2792](https://github.com/apache/apisix-ingress-controller/pull/2792). Clients must
+present a certificate signed by one of the referenced CAs. The CA is read from the
+`ca.crt` key of a `ConfigMap` (Gateway API Core support) or a `Secret` (extension).
+Gateway API 1.6 declares this at the `Gateway` level, not on the listener:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: apisix
+spec:
+  gatewayClassName: apisix
+  tls:
+    frontend:
+      default:
+        validation:
+          caCertificateRefs:
+            - kind: ConfigMap   # or Secret
+              group: ""
+              name: client-ca
+  listeners:
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: example.com
+      tls:
+        certificateRefs:
+          - kind: Secret
+            group: ""
+            name: server-cert
+```
+
+`spec.tls.frontend.perPort` overrides the default for a single listener port. A CA in
+another namespace must be authorized by a `ReferenceGrant`.
+
+### `L4RoutePolicy`
+
+[#2791](https://github.com/apache/apisix-ingress-controller/pull/2791). Attaches stream
+plugins to a `TCPRoute`, `UDPRoute` or `TLSRoute`:
+
+```yaml
+apiVersion: apisix.apache.org/v1alpha1
+kind: L4RoutePolicy
+metadata:
+  name: limit-tcp
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: TCPRoute
+      name: tcp-app
+  plugins:
+    - name: limit-conn
+      config:
+        conn: 100
+        burst: 50
+        default_conn_delay: 0.1
+        key: remote_addr
+```
+
+### L4 upstream schemes
+
+[#2830](https://github.com/apache/apisix-ingress-controller/pull/2830). The `scheme`
+field of `BackendTrafficPolicy` and `ApisixUpstream` accepts `tcp`, `tls` and `udp` next
+to the existing L7 values. They apply to stream routes only; setting one on an HTTP route
+makes the upstream unreachable.
+
+```yaml
+apiVersion: apisix.apache.org/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: tls-backend
+spec:
+  targetRefs:
+    - group: ""
+      kind: Service
+      name: secure-tcp
+  scheme: tls
+```
+
+### Gateway API 1.6.0
+
+[#2804](https://github.com/apache/apisix-ingress-controller/pull/2804). The conformance
+run moves to v1.6.0 and adds the `TLSRouteModeTerminate` extended feature. See the
+Upgrade Notes above for what this asks of the cluster.
+
+---
+
+## Security Fixes
+
+* fix: redact credentials and AdminKey from controller logs [#2808](https://github.com/apache/apisix-ingress-controller/pull/2808)
+* fix: enforce ReferenceGrant on cross-namespace Consumer SecretRef [#2805](https://github.com/apache/apisix-ingress-controller/pull/2805)
+* fix: suppress cross-namespace Secret existence oracle in Consumer webhook [#2806](https://github.com/apache/apisix-ingress-controller/pull/2806)
+
+---
+
+## Bug Fixes
+
+* fix: set the Gateway status reasons Gateway API 1.6 requires and make the conformance report honest [#2843](https://github.com/apache/apisix-ingress-controller/pull/2843)
+* fix: reject invalid plugin config instead of applying an empty one [#2814](https://github.com/apache/apisix-ingress-controller/pull/2814)
+* fix: read L4 routes and ReferenceGrant as v1 instead of the older versions [#2839](https://github.com/apache/apisix-ingress-controller/pull/2839)
+* fix: make the kustomize manifests deployable and consistent [#2835](https://github.com/apache/apisix-ingress-controller/pull/2835)
+* fix: normalize hosts and SNIs so uppercase hostnames stay routable [#2837](https://github.com/apache/apisix-ingress-controller/pull/2837)
+* fix: honor TCPRoute/UDPRoute sectionName and listener port for StreamRoute matching [#2818](https://github.com/apache/apisix-ingress-controller/pull/2818)
+* fix: honor BackendTrafficPolicy targetRefs.sectionName for Service ports [#2796](https://github.com/apache/apisix-ingress-controller/pull/2796)
+* fix: preserve ApisixUpstream health check type [#2828](https://github.com/apache/apisix-ingress-controller/pull/2828)
+* fix(httproute): read appProtocol for ExternalName services [#2798](https://github.com/apache/apisix-ingress-controller/pull/2798)
+* fix: fail loud when enable-csrf is set but csrf-key annotation is missing [#2813](https://github.com/apache/apisix-ingress-controller/pull/2813)
+* fix: accept whitespace-separated hmac-auth signed_headers and document the format [#2824](https://github.com/apache/apisix-ingress-controller/pull/2824)
+* fix: parse hmac-auth signed_headers from Secret as a header list [#2809](https://github.com/apache/apisix-ingress-controller/pull/2809)
+* fix: never treat an unreachable API server as a missing API resource [#2817](https://github.com/apache/apisix-ingress-controller/pull/2817)
+* fix: rebuild the ADC baseline on leader acquisition [#2785](https://github.com/apache/apisix-ingress-controller/pull/2785)
+* fix: cap condition message to Kubernetes 32768-byte limit [#2816](https://github.com/apache/apisix-ingress-controller/pull/2816)
+* fix: trim whitespace in comma-separated annotation values [#2815](https://github.com/apache/apisix-ingress-controller/pull/2815)
+* fix: allow webhook NetworkPolicy traffic on pod port 9443 [#2812](https://github.com/apache/apisix-ingress-controller/pull/2812)
+* fix: Ingress with ImplementationSpecific path panics when annotations are empty [#2780](https://github.com/apache/apisix-ingress-controller/pull/2780)
+
+---
+
+## Chores
+
+* chore(deps): upgrade dependencies flagged by security advisories [#2844](https://github.com/apache/apisix-ingress-controller/pull/2844)
+* chore: add AGENTS.md and SECURITY.md pointing at the project security threat model [#2775](https://github.com/apache/apisix-ingress-controller/pull/2775)
+* ci: fix workflow failures by upgrading actions to comply with Apache allowlist [#2772](https://github.com/apache/apisix-ingress-controller/pull/2772)
+* test(e2e): prewarm environment pool to hide per-spec deploy latency [#2790](https://github.com/apache/apisix-ingress-controller/pull/2790)
+* test(e2e): remove fixed-sleep flakiness across e2e specs [#2788](https://github.com/apache/apisix-ingress-controller/pull/2788)
+* test: stop the status e2e tests demanding their old node ports back [#2845](https://github.com/apache/apisix-ingress-controller/pull/2845)
+* test: fix the broken TCPRoute e2e listener port and de-flake two stream/ingress specs [#2836](https://github.com/apache/apisix-ingress-controller/pull/2836)
+
+---
+
+## Documentation
+
+* docs: update docs for 2.1.0 ingress controller release [#2776](https://github.com/apache/apisix-ingress-controller/pull/2776)
+* docs: update listener port info per 2.1.0 updates [#2786](https://github.com/apache/apisix-ingress-controller/pull/2786)
+* docs: fix incorrect unit test command in developer guide [#2797](https://github.com/apache/apisix-ingress-controller/pull/2797)
+* docs: improve Kubernetes Gateway API page SEO [#2823](https://github.com/apache/apisix-ingress-controller/pull/2823)
+
+"""

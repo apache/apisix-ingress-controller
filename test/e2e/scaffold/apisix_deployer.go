@@ -48,6 +48,9 @@ type APISIXDeployOptions struct {
 	Replicas       *int
 }
 
+// See IngressDeployOpts.ControllerImage.
+func (APISIXDeployOptions) Image() string { return framework.DataplaneImage }
+
 type APISIXDeployer struct {
 	*Scaffold
 	adminTunnel *k8s.Tunnel
@@ -481,6 +484,12 @@ func (s *APISIXDeployer) GetAdminServiceName() string {
 	return s.dataplaneService.Name
 }
 func (s *APISIXDeployer) DefaultDataplaneResource() DataplaneResource {
+	// adc's plain CLI has no --backend value for apisix-standalone (see
+	// standaloneDataplaneResource), so it reads the Admin API directly instead of
+	// shelling out to `adc dump`.
+	if framework.ProviderType == framework.ProviderTypeAPISIXStandalone {
+		return newStandaloneDataplaneResource(s.AdminAPIClient(), s.AdminKey())
+	}
 	return newADCDataplaneResource(
 		framework.ProviderType,
 		fmt.Sprintf("http://%s", s.adminTunnel.Endpoint()),

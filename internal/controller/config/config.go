@@ -57,7 +57,7 @@ func NewDefaultConfig() *Config {
 			InitSyncDelay: types.TimeDuration{Duration: 20 * time.Minute},
 		},
 		Webhook:               NewWebhookConfig(),
-		ListenerPortMatchMode: ListenerPortMatchModeAuto,
+		ListenerPortMatchMode: ListenerPortMatchModeOff,
 	}
 }
 

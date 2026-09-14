@@ -254,7 +254,7 @@ _Appears in:_
 | --- | --- |
 | `targetRefs` _[BackendPolicyTargetReferenceWithSectionName](#backendpolicytargetreferencewithsectionname) array_ | TargetRef identifies an API object to apply policy to. Currently, Backends (i.e. Service, ServiceImport, or any implementation-specific backendRef) are the only valid API target references. |
 | `loadbalancer` _[LoadBalancer](#loadbalancer)_ | LoadBalancer represents the load balancer configuration for Kubernetes Service. The default strategy is round robin. |
-| `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. Can be `http`, `https`, `grpc`, or `grpcs`. |
+| `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. For L7 proxy, it can be `http`, `https`, `grpc`, or `grpcs`. For L4 proxy, it can be `tcp`, `tls`, or `udp`. The L4 values apply to stream routes only; using them for an HTTP route makes the upstream unreachable. |
 | `retries` _integer_ | Retries specify the number of times the gateway should retry sending requests when errors such as timeouts or 502 errors occur. |
 | `timeout` _[Timeout](#timeout)_ | Timeout sets the read, send, and connect timeouts to the upstream. |
 | `passHost` _string_ | PassHost configures how the host header should be determined when a request is forwarded to the upstream. Default is `pass`. Can be `pass`, `node` or `rewrite`:<br /> • `pass`: preserve the original Host header<br /> • `node`: use the upstream node’s host<br /> • `rewrite`: set to a custom host via `upstreamHost` |
@@ -300,6 +300,23 @@ ControlPlaneAuth defines the authentication configuration for control plane.
 _Appears in:_
 - [ControlPlaneProvider](#controlplaneprovider)
 
+#### ControlPlaneCaCert
+
+
+ControlPlaneCaCert defines the CA certificate used to verify the control plane.<br /><br />
+Only an inline value is supported today. A valueFrom source can be added
+later without breaking existing resources.
+
+
+
+| Field | Description |
+| --- | --- |
+| `value` _string_ | Value sets the PEM-encoded CA certificate (or bundle) explicitly. |
+
+
+_Appears in:_
+- [ControlPlaneProvider](#controlplaneprovider)
+
 #### ControlPlaneProvider
 
 
@@ -313,6 +330,7 @@ ControlPlaneProvider defines configuration for control plane provider.
 | `endpoints` _string array_ | Endpoints specifies the list of control plane endpoints. |
 | `service` _[ProviderService](#providerservice)_ |  |
 | `tlsVerify` _boolean_ | TlsVerify specifies whether to verify the TLS certificate of the control plane. Defaults to true. Setting it to false disables certificate verification and exposes the AdminKey to man-in-the-middle attacks over https endpoints. |
+| `caCert` _[ControlPlaneCaCert](#controlplanecacert)_ | CaCert specifies the CA certificate used to verify the control plane's TLS certificate, in place of the system trust store. Set it when the control plane uses a self-signed or private CA certificate. It has no effect when tlsVerify is false. |
 | `auth` _[ControlPlaneAuth](#controlplaneauth)_ | Auth specifies the authentication configuration. |
 
 
@@ -388,6 +406,8 @@ GatewayProxySpec defines the desired state of GatewayProxy.
 
 _Appears in:_
 - [GatewayProxy](#gatewayproxy)
+
+
 
 #### GatewayRef
 
@@ -549,6 +569,7 @@ _Appears in:_
 | --- | --- |
 | `name` _string_ | Name is the name of the plugin. |
 | `config` _[JSON](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#json-v1-apiextensions-k8s-io)_ | Config is plugin configuration details. |
+| `secretRef` _[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core)_ | SecretRef references a Secret in the same namespace holding sensitive parts of the plugin configuration, so they do not have to be written in `config`. Each Secret key is a dot separated path into the configuration, so the key `session.secret` sets the `secret` field of the `session` object. Values are merged as strings and take precedence over the same path in `config`. |
 
 
 _Appears in:_
@@ -896,7 +917,7 @@ ApisixConsumerHMACAuth defines configuration for the HMAC authentication.
 
 | Field | Description |
 | --- | --- |
-| `secretRef` _[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core)_ | SecretRef references a Kubernetes Secret containing the HMAC credentials. |
+| `secretRef` _[LocalObjectReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#localobjectreference-v1-core)_ | SecretRef references a Kubernetes Secret containing the HMAC credentials. Unlike Value, the Secret stores signed_headers as a single string listing the header names separated by commas or whitespace, for example "X-Date, Host". |
 | `value` _[ApisixConsumerHMACAuthValue](#apisixconsumerhmacauthvalue)_ | Value specifies HMAC authentication credentials. |
 
 
@@ -1489,7 +1510,7 @@ ApisixUpstreamConfig defines configuration for upstream services.
 | Field | Description |
 | --- | --- |
 | `loadbalancer` _[LoadBalancer](#loadbalancer)_ | LoadBalancer specifies the load balancer configuration for Kubernetes Service. |
-| `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. Can be `http`, `https`, `grpc`, or `grpcs`. |
+| `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. For L7 proxy, it can be `http`, `https`, `grpc`, or `grpcs`. For L4 proxy, it can be `tcp`, `tls`, or `udp`. The L4 values apply to stream routes only; using them for an HTTP route makes the upstream unreachable. |
 | `retries` _integer_ | Retries defines the number of retry attempts APISIX should make when a failure occurs. Failures include timeouts, network errors, or 5xx status codes. |
 | `timeout` _[UpstreamTimeout](#upstreamtimeout)_ | Timeout specifies the connection, send, and read timeouts for upstream requests. |
 | `healthCheck` _[HealthCheck](#healthcheck)_ | HealthCheck defines the active and passive health check configuration for the upstream. |
@@ -1549,7 +1570,7 @@ definitions and custom configuration.
 | `ingressClassName` _string_ | IngressClassName is the name of an IngressClass cluster resource. Controller implementations use this field to determine whether they should process this ApisixUpstream resource. |
 | `externalNodes` _[ApisixUpstreamExternalNode](#apisixupstreamexternalnode) array_ | ExternalNodes defines a static list of backend nodes. These can be external hosts outside the cluster or cluster-internal Services specified by their DNS name. When this field is set, the upstream will route traffic directly to these nodes without DNS resolution or service discovery. |
 | `loadbalancer` _[LoadBalancer](#loadbalancer)_ | LoadBalancer specifies the load balancer configuration for Kubernetes Service. |
-| `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. Can be `http`, `https`, `grpc`, or `grpcs`. |
+| `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. For L7 proxy, it can be `http`, `https`, `grpc`, or `grpcs`. For L4 proxy, it can be `tcp`, `tls`, or `udp`. The L4 values apply to stream routes only; using them for an HTTP route makes the upstream unreachable. |
 | `retries` _integer_ | Retries defines the number of retry attempts APISIX should make when a failure occurs. Failures include timeouts, network errors, or 5xx status codes. |
 | `timeout` _[UpstreamTimeout](#upstreamtimeout)_ | Timeout specifies the connection, send, and read timeouts for upstream requests. |
 | `healthCheck` _[HealthCheck](#healthcheck)_ | HealthCheck defines the active and passive health check configuration for the upstream. |
@@ -1719,7 +1740,7 @@ them if they are set on the port level.
 | Field | Description |
 | --- | --- |
 | `loadbalancer` _[LoadBalancer](#loadbalancer)_ | LoadBalancer specifies the load balancer configuration for Kubernetes Service. |
-| `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. Can be `http`, `https`, `grpc`, or `grpcs`. |
+| `scheme` _string_ | Scheme is the protocol used to communicate with the upstream. Default is `http`. For L7 proxy, it can be `http`, `https`, `grpc`, or `grpcs`. For L4 proxy, it can be `tcp`, `tls`, or `udp`. The L4 values apply to stream routes only; using them for an HTTP route makes the upstream unreachable. |
 | `retries` _integer_ | Retries defines the number of retry attempts APISIX should make when a failure occurs. Failures include timeouts, network errors, or 5xx status codes. |
 | `timeout` _[UpstreamTimeout](#upstreamtimeout)_ | Timeout specifies the connection, send, and read timeouts for upstream requests. |
 | `healthCheck` _[HealthCheck](#healthcheck)_ | HealthCheck defines the active and passive health check configuration for the upstream. |
@@ -1759,4 +1780,3 @@ _Appears in:_
 - [ApisixUpstreamConfig](#apisixupstreamconfig)
 - [ApisixUpstreamSpec](#apisixupstreamspec)
 - [PortLevelSettings](#portlevelsettings)
-

@@ -79,7 +79,7 @@ func (r *ApisixGlobalRuleReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, err
 	}
 
-	r.Log.V(1).Info("reconciling ApisixGlobalRule", "object", globalRule)
+	r.Log.V(1).Info("reconciling ApisixGlobalRule", "object", utils.NamespacedName(&globalRule))
 
 	// create a translate context
 	tctx := provider.NewDefaultTranslateContext(ctx)

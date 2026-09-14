@@ -1,10 +1,12 @@
 ---
-title: Gateway API
+title: Kubernetes Gateway API Support
 keywords:
   - APISIX Ingress
   - Apache APISIX
   - Kubernetes Ingress
-  - Gateway API
+  - Kubernetes Gateway API
+  - K8s Gateway API
+description: Learn which Kubernetes Gateway API resources, API versions, and fields are supported by the APISIX Ingress Controller.
 ---
 <!--
 #
@@ -25,9 +27,9 @@ keywords:
 #
 -->
 
-Gateway API is dedicated to achieving expressive and scalable Kubernetes service networking through various custom resources.
+Kubernetes Gateway API provides portable, role-oriented resources for managing L4 and L7 traffic in Kubernetes. APISIX Ingress Controller watches supported Gateway API resources and translates them into Apache APISIX configuration.
 
-By supporting Gateway API, the APISIX Ingress controller can realize richer functions, including Gateway management, multi-cluster support, and other features. It is also possible to manage running instances of the APISIX gateway through Gateway API resource management.
+This page summarizes the resources, API versions, and fields that APISIX Ingress Controller supports. To create a route with Gateway API, follow [Configure Routes](../getting-started/configure-routes.md).
 
 ## Concepts
 
@@ -41,7 +43,7 @@ By supporting Gateway API, the APISIX Ingress controller can realize richer func
 - **UDPRoute**: Configures routing for UDP traffic.
 - **BackendTLSPolicy**: Specifies how a Gateway should validate TLS connections to its backends, including trusted certificate authorities and verification modes.
 
-## Gateway API Support Level
+## Supported Kubernetes Gateway API Resources
 
 | Resource         | Core Support Level  | Extended Support Level | Implementation-Specific Support Level | API Version |
 | ---------------- | ------------------- | ---------------------- | ------------------------------------- | ----------- |
@@ -49,17 +51,21 @@ By supporting Gateway API, the APISIX Ingress controller can realize richer func
 | Gateway          | Partially supported | Partially supported    | Not supported                         | v1          |
 | HTTPRoute        | Supported           | Partially supported    | Not supported                         | v1          |
 | GRPCRoute        | Supported           | Supported              | Not supported                         | v1          |
-| ReferenceGrant   | Supported           | Not supported          | Not supported                         | v1beta1     |
-| TLSRoute         | Supported           | Supported              | Not supported                         | v1alpha2    |
-| TCPRoute         | Supported           | Supported              | Not supported                         | v1alpha2    |
-| UDPRoute         | Supported           | Supported              | Not supported                         | v1alpha2    |
+| ReferenceGrant   | Supported           | Not supported          | Not supported                         | v1          |
+| TLSRoute         | Supported           | Supported              | Not supported                         | v1          |
+| TCPRoute         | Supported           | Supported              | Not supported                         | v1          |
+| UDPRoute         | Supported           | Supported              | Not supported                         | v1          |
 | BackendTLSPolicy | Not supported       | Not supported          | Not supported                         | v1alpha3    |
+
+TLSRoute, TCPRoute, and UDPRoute are read as `v1`, which Gateway API promoted them to in 1.6. Gateway API 1.6 or later is therefore required for L4 routing: the `v1alpha2` versions of these resources are deprecated everywhere and are not even served by the standard channel CRDs. ReferenceGrant is read as `v1` for the same reason, although its `v1beta1` version is not deprecated and remains the storage version.
+
+Existing manifests that still declare an older version keep working as long as the installed CRDs serve it, because the API server converts them before they reach the controller. They should still be updated to `v1`.
 
 ## Examples
 
-For configuration examples, see the Gateway API tabs in [Configuration Examples](../reference/example.md).
+For configuration examples, see the Gateway API tabs in [Configuration Examples](../reference/example.md). For APISIX-specific extensions to Gateway API, see [APISIX Ingress Controller Resources](./resources.md#gateway-api-extensions).
 
-For a complete list of configuration options, refer to the [Gateway API Reference](https://gateway-api.sigs.k8s.io/reference/1.3/spec/). Be aware that some fields are not supported, or partially supported.
+For a complete list of configuration options, refer to the [Gateway API Reference](https://gateway-api.sigs.k8s.io/reference/1.6/spec/). Be aware that some fields are not supported, or partially supported.
 
 ## Unsupported / Partially Supported Fields
 
@@ -78,9 +84,21 @@ The fields below are specified in the Gateway API specification but are either p
 
 | Fields                                               | Status               | Notes                                                                                          |
 |------------------------------------------------------|----------------------|------------------------------------------------------------------------------------------------|
-| `spec.listeners[].port`               | Partially supported | Controls `server_port` route-var injection; behaviour is configured via [`listener_port_match_mode`](../reference/configuration-file.md) (`auto` / `explicit` / `off`). The controller cannot dynamically open data plane ports, so APISIX must already listen on the specified port. |
+| `spec.listeners[].port`               | Partially supported | Controls `server_port` route-var injection; off by default and enabled via [`listener_port_match_mode`](../reference/configuration-file.md) (`auto` / `explicit`). The controller cannot dynamically open data plane ports, so APISIX must already listen on the specified port. |
 | `spec.listeners[].tls.certificateRefs[].group` | Partially supported | Only `""` is supported; other group values cause validation failure. |
 | `spec.listeners[].tls.certificateRefs[].kind`        | Partially supported  | Only `Secret` is supported.                                                                    |
 | `spec.listeners[].tls.mode`                          | Partially supported  | `Terminate` is implemented; `Passthrough` is effectively unsupported for Gateway listeners.    |
 | `spec.listeners[].tls.frontendValidation`            | Partially supported  | Enables downstream (client) mTLS. `caCertificateRefs` may reference a `ConfigMap` (Gateway API Core support) or a `Secret` (implementation-specific) holding the CA certificate under the `ca.crt` key; clients are then required to present a certificate signed by one of the referenced CAs. |
 | `spec.addresses`                                     | Not supported        | Controller does not read or act on `spec.addresses`.                                           |
+
+## Listener protocol and the request scheme
+
+A route answers only the schemes its listeners accept. When every listener a route attached to is `HTTPS`, the route is pinned to the `https` scheme, so a plaintext request for the same hostname and path does not match it. When they are all `HTTP`, it is pinned to `http`. A route attached to both is pinned to neither, because it is meant to serve both.
+
+The predicate is evaluated against the connection APISIX accepted, so it holds regardless of the port mapping in front of the data plane. That is what distinguishes it from [`listener_port_match_mode`](../reference/configuration-file.md#listener-port-matching), which pins a route to a listener port and can only isolate protocols when the Gateway's declared ports are the ports APISIX listens on.
+
+`TLS`, `TCP` and `UDP` listeners carry the L4 route kinds, which have no request scheme. A route is left unpinned if any of its listeners uses one of these.
+
+The one deployment this does not fit is TLS terminated in front of APISIX, where the connection APISIX accepts is plaintext even though the client used HTTPS. Declare those listeners as `HTTP`, since the Gateway is not terminating TLS in that topology and the listener's `certificateRefs` would go unused.
+
+This narrows which requests reach a route but does not amount to full Listener Isolation, an Extended Gateway API feature that also covers hostname overlap between listeners on the same port. `GatewayHTTPListenerIsolation` is not claimed.

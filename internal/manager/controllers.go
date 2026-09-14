@@ -29,7 +29,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
@@ -72,6 +71,7 @@ import (
 // CustomResourceDefinition
 // +kubebuilder:rbac:groups=apisix.apache.org,resources=pluginconfigs,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apisix.apache.org,resources=gatewayproxies,verbs=get;list;watch
+// +kubebuilder:rbac:groups=apisix.apache.org,resources=gatewayproxies/status,verbs=get;update
 // +kubebuilder:rbac:groups=apisix.apache.org,resources=consumers,verbs=get;list;watch
 // +kubebuilder:rbac:groups=apisix.apache.org,resources=consumers/status,verbs=get;update
 // +kubebuilder:rbac:groups=apisix.apache.org,resources=backendtrafficpolicies,verbs=get;list;watch
@@ -178,7 +178,7 @@ func setupGatewayAPIControllers(ctx context.Context, mgr manager.Manager, pro pr
 			Updater:  updater,
 			Readier:  readier,
 		},
-		&gatewayv1alpha2.TCPRoute{}: &controller.TCPRouteReconciler{
+		&gatewayv1.TCPRoute{}: &controller.TCPRouteReconciler{
 			Client:   mgr.GetClient(),
 			Scheme:   mgr.GetScheme(),
 			Log:      ctrl.LoggerFrom(ctx).WithName("controllers").WithName(types.KindTCPRoute),
@@ -186,7 +186,7 @@ func setupGatewayAPIControllers(ctx context.Context, mgr manager.Manager, pro pr
 			Updater:  updater,
 			Readier:  readier,
 		},
-		&gatewayv1alpha2.UDPRoute{}: &controller.UDPRouteReconciler{
+		&gatewayv1.UDPRoute{}: &controller.UDPRouteReconciler{
 			Client:   mgr.GetClient(),
 			Scheme:   mgr.GetScheme(),
 			Log:      ctrl.LoggerFrom(ctx).WithName("controllers").WithName(types.KindUDPRoute),
@@ -194,7 +194,7 @@ func setupGatewayAPIControllers(ctx context.Context, mgr manager.Manager, pro pr
 			Updater:  updater,
 			Readier:  readier,
 		},
-		&gatewayv1alpha2.TLSRoute{}: &controller.TLSRouteReconciler{
+		&gatewayv1.TLSRoute{}: &controller.TLSRouteReconciler{
 			Client:   mgr.GetClient(),
 			Scheme:   mgr.GetScheme(),
 			Log:      ctrl.LoggerFrom(ctx).WithName("controllers").WithName(types.KindTLSRoute),
@@ -211,11 +211,15 @@ func setupGatewayAPIControllers(ctx context.Context, mgr manager.Manager, pro pr
 			Readier:  readier,
 		},
 	} {
-		if utils.HasAPIResource(mgr, resource) {
-			runnables = append(runnables, controller)
-		} else {
-			setupLog.Info("Skipping indexer setup, API not found in cluster", "api", utils.FormatGVK(resource))
+		installed, err := utils.HasAPIResource(mgr, resource)
+		if err != nil {
+			return nil, err
 		}
+		if !installed {
+			setupLog.Info("Skipping controller setup, API not found in cluster", "api", utils.FormatGVK(resource))
+			continue
+		}
+		runnables = append(runnables, controller)
 	}
 	return runnables, nil
 }
@@ -288,69 +292,88 @@ func setupAPIv2Controllers(ctx context.Context, mgr manager.Manager, pro provide
 			Updater: updater,
 		},
 	} {
-		if utils.HasAPIResource(mgr, resource) {
-			runnables = append(runnables, controller)
-		} else {
-			setupLog.Info("Skipping indexer setup, API not found in cluster", "api", utils.FormatGVK(resource))
+		installed, err := utils.HasAPIResource(mgr, resource)
+		if err != nil {
+			return nil, err
 		}
+		if !installed {
+			setupLog.Info("Skipping controller setup, API not found in cluster", "api", utils.FormatGVK(resource))
+			continue
+		}
+		runnables = append(runnables, controller)
 	}
 	return runnables, nil
 }
 
-func registerReadiness(mgr manager.Manager, readier readiness.ReadinessManager) {
+func registerReadiness(mgr manager.Manager, readier readiness.ReadinessManager) error {
 	log := ctrl.LoggerFrom(context.Background()).WithName("readiness")
 
-	registerAPIv2ForReadiness(mgr, log, readier)
-	if !config.ControllerConfig.DisableGatewayAPI {
-		registerGatewayAPIForReadiness(mgr, log, readier)
+	if err := registerAPIv2ForReadiness(mgr, log, readier); err != nil {
+		return err
 	}
-	registerAPIv1alpha1ForReadiness(mgr, log, readier)
+	if !config.ControllerConfig.DisableGatewayAPI {
+		if err := registerGatewayAPIForReadiness(mgr, log, readier); err != nil {
+			return err
+		}
+	}
+	return registerAPIv1alpha1ForReadiness(mgr, log, readier)
 }
 
 func registerGatewayAPIForReadiness(
 	mgr manager.Manager,
 	log logr.Logger,
 	readier readiness.ReadinessManager,
-) {
-	var installed []schema.GroupVersionKind
-	for _, resource := range []client.Object{
+) error {
+	resources := []client.Object{
 		&gatewayv1.HTTPRoute{},
 		&gatewayv1.GRPCRoute{},
-		&gatewayv1alpha2.TCPRoute{},
-		&gatewayv1alpha2.UDPRoute{},
-		&gatewayv1alpha2.TLSRoute{},
-	} {
+		&gatewayv1.TCPRoute{},
+		&gatewayv1.UDPRoute{},
+		&gatewayv1.TLSRoute{},
+	}
+	installed := make([]schema.GroupVersionKind, 0, len(resources))
+	for _, resource := range resources {
 		gvk := types.GvkOf(resource)
-		if utils.HasAPIResource(mgr, resource) {
-			installed = append(installed, gvk)
-		} else {
-			log.Info("Skipping readiness registration, API not found", "gvk", gvk)
+		has, err := utils.HasAPIResource(mgr, resource)
+		if err != nil {
+			return err
 		}
+		if !has {
+			log.Info("Skipping readiness registration, API not found", "gvk", gvk)
+			continue
+		}
+		installed = append(installed, gvk)
 	}
 	if len(installed) == 0 {
-		return
+		return nil
 	}
 
 	readier.RegisterGVK(readiness.GVKConfig{GVKs: installed})
+	return nil
 }
 
 func registerAPIv2ForReadiness(
 	mgr manager.Manager,
 	log logr.Logger,
 	readier readiness.ReadinessManager,
-) {
-	var installed []schema.GroupVersionKind
-	for _, resource := range apiV2ReadinessResources() {
+) error {
+	resources := apiV2ReadinessResources()
+	installed := make([]schema.GroupVersionKind, 0, len(resources))
+	for _, resource := range resources {
 		gvk := types.GvkOf(resource)
-		if utils.HasAPIResource(mgr, resource) {
-			installed = append(installed, gvk)
-		} else {
-			log.Info("Skipping readiness registration, API not found", "gvk", gvk)
+		has, err := utils.HasAPIResource(mgr, resource)
+		if err != nil {
+			return err
 		}
+		if !has {
+			log.Info("Skipping readiness registration, API not found", "gvk", gvk)
+			continue
+		}
+		installed = append(installed, gvk)
 	}
 
 	if len(installed) == 0 {
-		return
+		return nil
 	}
 
 	readier.RegisterGVK(readiness.GVKConfig{
@@ -361,6 +384,7 @@ func registerAPIv2ForReadiness(
 			return ingressClass != nil
 		}),
 	})
+	return nil
 }
 
 func apiV2ReadinessResources() []client.Object {
@@ -377,20 +401,25 @@ func registerAPIv1alpha1ForReadiness(
 	mgr manager.Manager,
 	log logr.Logger,
 	readier readiness.ReadinessManager,
-) {
-	var installed []schema.GroupVersionKind
-	for _, resource := range []client.Object{
+) error {
+	resources := []client.Object{
 		&v1alpha1.Consumer{},
-	} {
+	}
+	installed := make([]schema.GroupVersionKind, 0, len(resources))
+	for _, resource := range resources {
 		gvk := types.GvkOf(resource)
-		if utils.HasAPIResource(mgr, resource) {
-			installed = append(installed, gvk)
-		} else {
-			log.Info("Skipping readiness registration, API not found", "gvk", gvk)
+		has, err := utils.HasAPIResource(mgr, resource)
+		if err != nil {
+			return err
 		}
+		if !has {
+			log.Info("Skipping readiness registration, API not found", "gvk", gvk)
+			continue
+		}
+		installed = append(installed, gvk)
 	}
 	if len(installed) == 0 {
-		return
+		return nil
 	}
 
 	readier.RegisterGVK(readiness.GVKConfig{
@@ -403,4 +432,5 @@ func registerAPIv1alpha1ForReadiness(
 			return controller.MatchConsumerGatewayRef(context.Background(), mgr.GetClient(), log, consumer)
 		}),
 	})
+	return nil
 }

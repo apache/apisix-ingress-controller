@@ -115,7 +115,7 @@ func (r *ApisixRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			}
 
 			if err := r.Provider.Delete(ctx, &ar); err != nil {
-				r.Log.Error(err, "failed to delete apisixroute", "apisixroute", ar)
+				r.Log.Error(err, "failed to delete apisixroute", "apisixroute", utils.NamespacedName(&ar))
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{}, nil
@@ -134,7 +134,7 @@ func (r *ApisixRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			"ingressClassName", ar.Spec.IngressClassName,
 			"error", err.Error())
 		if err := r.Provider.Delete(ctx, &ar); err != nil {
-			r.Log.Error(err, "failed to delete apisixroute", "apisixroute", ar)
+			r.Log.Error(err, "failed to delete apisixroute", "apisixroute", utils.NamespacedName(&ar))
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
@@ -146,6 +146,21 @@ func (r *ApisixRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 	if err = r.processApisixRoute(tctx, &ar); err != nil {
+		// A reference the route needs is gone, so the route can no longer be
+		// translated. Retract what an earlier reconcile published: the store is what
+		// every sync pushes, so leaving it in place keeps the data plane serving the
+		// last good configuration while the status says the spec is invalid.
+		if types.IsDependencyMissing(err) {
+			if derr := r.Provider.Delete(ctx, &ar); derr != nil {
+				r.Log.Error(derr, "failed to delete apisixroute", "apisixroute", utils.NamespacedName(&ar))
+				return ctrl.Result{}, derr
+			}
+			// err is the local variable the deferred updateStatus reads, so the
+			// status still reports the reason. Returning it as well would requeue
+			// forever with backoff: the reference does not come back on its own, and
+			// the ApisixPluginConfig watch reconciles the route again when it does.
+			return ctrl.Result{}, nil
+		}
 		return ctrl.Result{}, err
 	}
 	if err = r.Provider.Update(ctx, tctx, &ar); err != nil {
@@ -153,7 +168,7 @@ func (r *ApisixRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 			Reason:  string(apiv2.ConditionReasonSyncFailed),
 			Message: err.Error(),
 		}
-		r.Log.Error(err, "failed to process", "apisixroute", ar)
+		r.Log.Error(err, "failed to process", "apisixroute", utils.NamespacedName(&ar))
 		return ctrl.Result{}, err
 	}
 
@@ -274,10 +289,15 @@ func (r *ApisixRouteReconciler) validatePluginConfig(tctx *provider.TranslateCon
 		pcNN = utils.NamespacedName(&pc)
 	)
 	if err := r.Get(tctx, pcNN, &pc); err != nil {
-		return types.ReasonError{
-			Reason:  string(apiv2.ConditionReasonInvalidSpec),
-			Message: fmt.Sprintf("failed to get ApisixPluginConfig: %s", pcNN),
+		if !k8serrors.IsNotFound(err) {
+			// A read failure is transient: retry it rather than reporting the
+			// reference as invalid and retracting the route.
+			return err
 		}
+		return types.DependencyMissingError{Err: types.ReasonError{
+			Reason:  string(apiv2.ConditionReasonInvalidSpec),
+			Message: fmt.Sprintf("ApisixPluginConfig not found: %s", pcNN),
+		}}
 	}
 
 	// Check if ApisixPluginConfig has IngressClassName and if it matches

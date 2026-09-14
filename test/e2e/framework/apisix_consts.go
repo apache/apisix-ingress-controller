@@ -29,6 +29,10 @@ import (
 var (
 	ProviderType      = cmp.Or(os.Getenv("PROVIDER_TYPE"), "apisix")
 	DisableGatewayAPI = os.Getenv("DISABLE_GATEWAY_API") == "true"
+
+	IngressImage   = cmp.Or(os.Getenv("INGRESS_IMAGE"), "apache/apisix-ingress-controller:dev")
+	ADCImage       = cmp.Or(os.Getenv("ADC_IMAGE"), "ghcr.io/api7/adc:dev")
+	DataplaneImage = cmp.Or(os.Getenv("DATAPLANE_IMAGE"), "apache/apisix:dev")
 )
 
 const (

@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net"
 	"reflect"
+	"time"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -36,8 +37,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
@@ -47,6 +46,10 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 	pkgutils "github.com/apache/apisix-ingress-controller/pkg/utils"
 )
+
+// publishServiceRetryInterval polls an unresolvable publishService, since
+// Service events are not watched.
+const publishServiceRetryInterval = time.Minute
 
 // GatewayReconciler reconciles a Gateway object.
 type GatewayReconciler struct { //nolint:revive
@@ -100,26 +103,38 @@ func (r *GatewayReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		)
 
 	if GetEnableReferenceGrant() {
-		bdr.Watches(&v1beta1.ReferenceGrant{},
+		bdr.Watches(&gatewayv1.ReferenceGrant{},
 			handler.EnqueueRequestsFromMapFunc(r.listReferenceGrantsForGateway),
 			builder.WithPredicates(referenceGrantPredicates(KindGateway)),
 		)
 	}
-	if pkgutils.HasAPIResource(mgr, &gatewayv1alpha2.TCPRoute{}) {
+	hasTCPRoute, err := pkgutils.HasAPIResource(mgr, &gatewayv1.TCPRoute{})
+	if err != nil {
+		return err
+	}
+	if hasTCPRoute {
 		bdr.Watches(
-			&gatewayv1alpha2.TCPRoute{},
+			&gatewayv1.TCPRoute{},
 			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForStatusParentRefs),
 		)
 	}
-	if pkgutils.HasAPIResource(mgr, &gatewayv1alpha2.TLSRoute{}) {
+	hasTLSRoute, err := pkgutils.HasAPIResource(mgr, &gatewayv1.TLSRoute{})
+	if err != nil {
+		return err
+	}
+	if hasTLSRoute {
 		bdr.Watches(
-			&gatewayv1alpha2.TLSRoute{},
+			&gatewayv1.TLSRoute{},
 			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForStatusParentRefs),
 		)
 	}
-	if pkgutils.HasAPIResource(mgr, &gatewayv1alpha2.UDPRoute{}) {
+	hasUDPRoute, err := pkgutils.HasAPIResource(mgr, &gatewayv1.UDPRoute{})
+	if err != nil {
+		return err
+	}
+	if hasUDPRoute {
 		bdr.Watches(
-			&gatewayv1alpha2.UDPRoute{},
+			&gatewayv1.UDPRoute{},
 			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForStatusParentRefs),
 		)
 	}
@@ -151,14 +166,17 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	conditionProgrammedStatus, conditionProgrammedMsg := true, "Programmed"
+	conditionProgrammedReason := gatewayv1.GatewayReasonProgrammed
 
 	r.Log.Info("gateway has been accepted", "gateway", gateway.GetName())
 	type conditionStatus struct {
 		status bool
+		reason gatewayv1.GatewayConditionReason
 		msg    string
 	}
 	acceptStatus := conditionStatus{
 		status: true,
+		reason: gatewayv1.GatewayReasonAccepted,
 		msg:    acceptedMessage("gateway"),
 	}
 
@@ -169,25 +187,53 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if err := r.processInfrastructure(tctx, gateway); err != nil {
 		acceptStatus = conditionStatus{
 			status: false,
+			reason: gatewayv1.GatewayReasonInvalidParameters,
 			msg:    err.Error(),
 		}
 	}
 
-	var addrs []gatewayv1.GatewayStatusAddress
+	var (
+		addrs             []gatewayv1.GatewayStatusAddress
+		addrResolveFailed bool
+		addrResolveErr    error
+		addrRetryAfter    time.Duration
+	)
 
 	rk := utils.NamespacedNameKind(gateway)
 
 	gatewayProxy, ok := tctx.GatewayProxies[rk]
 	if !ok {
+		// InvalidParameters is only the right answer when the Gateway actually
+		// names a parametersRef that cannot be resolved. A Gateway that names
+		// none is simply not configured yet.
+		reason := gatewayv1.GatewayReasonPending
+		if gateway.Spec.Infrastructure != nil && gateway.Spec.Infrastructure.ParametersRef != nil {
+			reason = gatewayv1.GatewayReasonInvalidParameters
+		}
 		acceptStatus = conditionStatus{
 			status: false,
+			reason: reason,
 			msg:    "gateway proxy not found",
 		}
 	} else {
-		for _, addr := range gatewayProxy.Spec.StatusAddress {
-			if addr == "" {
-				continue
+		statusAddresses, err := r.resolveStatusAddresses(ctx, &gatewayProxy)
+		if err != nil {
+			addrResolveFailed = true
+			if internaltypes.IsSomeReasonError(err, gatewayv1.GatewayReasonAddressNotAssigned) {
+				// a config problem, not a controller failure: report it on the
+				// Programmed condition instead of the reconcile error metric
+				r.Log.Info("cannot resolve gateway status addresses",
+					"gateway", req.NamespacedName, "reason", err.Error())
+				conditionProgrammedStatus = false
+				conditionProgrammedMsg = err.Error()
+				conditionProgrammedReason = gatewayv1.GatewayReasonAddressNotAssigned
+				addrRetryAfter = publishServiceRetryInterval
+			} else {
+				r.Log.Error(err, "failed to resolve gateway status addresses", "gateway", req.NamespacedName)
+				addrResolveErr = err
 			}
+		}
+		for _, addr := range statusAddresses {
 			addrType := gatewayv1.IPAddressType
 			if net.ParseIP(addr) == nil {
 				addrType = gatewayv1.HostnameAddressType
@@ -213,13 +259,26 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if err := r.Provider.Update(ctx, tctx, gateway); err != nil {
 		acceptStatus = conditionStatus{
 			status: false,
+			reason: gatewayv1.GatewayReasonAccepted,
 			msg:    err.Error(),
 		}
 	}
 
-	accepted := SetGatewayConditionAccepted(gateway, acceptStatus.status, acceptStatus.msg)
-	programmed := SetGatewayConditionProgrammed(gateway, conditionProgrammedStatus, conditionProgrammedMsg)
-	addressesChanged := !reflect.DeepEqual(gateway.Status.Addresses, addrs)
+	// A listener the Gateway cannot serve is the most specific thing to report,
+	// so it wins over whatever else was found: the Gateway says
+	// ListenersNotValid, and the status separates a Gateway that still serves
+	// some listeners from one that serves none.
+	if status, invalid := gatewayAcceptanceFromListeners(listenerStatuses); invalid {
+		acceptStatus = conditionStatus{
+			status: status,
+			reason: gatewayv1.GatewayReasonListenersNotValid,
+			msg:    "one or more listeners are not accepted",
+		}
+	}
+
+	accepted := SetGatewayConditionAccepted(gateway, acceptStatus.status, acceptStatus.reason, acceptStatus.msg)
+	programmed := SetGatewayConditionProgrammed(gateway, conditionProgrammedStatus, conditionProgrammedReason, conditionProgrammedMsg)
+	addressesChanged := !addrResolveFailed && !reflect.DeepEqual(gateway.Status.Addresses, addrs)
 	if accepted || programmed || addressesChanged || len(listenerStatuses) > 0 {
 		if addressesChanged {
 			gateway.Status.Addresses = addrs
@@ -243,10 +302,41 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			}),
 		})
 
-		return ctrl.Result{}, nil
+		return ctrl.Result{RequeueAfter: addrRetryAfter}, addrResolveErr
 	}
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: addrRetryAfter}, addrResolveErr
+}
+
+// resolveStatusAddresses returns the addresses to publish in
+// Gateway.status.addresses: the statically configured statusAddress if set,
+// otherwise the external addresses of the Service named by publishService.
+// A bare Service name resolves against the GatewayProxy's namespace.
+func (r *GatewayReconciler) resolveStatusAddresses(
+	ctx context.Context,
+	gatewayProxy *v1alpha1.GatewayProxy,
+) ([]string, error) {
+	if len(gatewayProxy.Spec.StatusAddress) > 0 {
+		return utils.Filter(gatewayProxy.Spec.StatusAddress, func(addr string) bool {
+			return addr != ""
+		}), nil
+	}
+
+	if gatewayProxy.Spec.PublishService == "" {
+		return nil, nil
+	}
+
+	// a bare name is resolved against the GatewayProxy's namespace
+	svc, err := resolvePublishService(ctx, r.Client, gatewayProxy.Spec.PublishService, gatewayProxy.GetNamespace())
+	if err != nil {
+		return nil, err
+	}
+	if svc.Spec.Type != corev1.ServiceTypeLoadBalancer {
+		r.Log.Info("publish service is not a LoadBalancer; no address to publish",
+			"service", gatewayProxy.Spec.PublishService, "type", svc.Spec.Type)
+		return nil, nil
+	}
+	return serviceLoadBalancerAddresses(svc), nil
 }
 
 func (r *GatewayReconciler) matchesGatewayClass(obj client.Object) bool {
@@ -432,12 +522,12 @@ func (r *GatewayReconciler) listGatewaysForConfigMap(ctx context.Context, obj cl
 }
 
 func (r *GatewayReconciler) listReferenceGrantsForGateway(ctx context.Context, obj client.Object) (requests []reconcile.Request) {
-	grant, ok := obj.(*v1beta1.ReferenceGrant)
+	grant, ok := obj.(*gatewayv1.ReferenceGrant)
 	if !ok {
 		r.Log.Error(
 			errors.New("unexpected object type"),
 			"ReferenceGrant watch predicate received unexpected object type",
-			"expected", FullTypeName(new(v1beta1.ReferenceGrant)), "found", FullTypeName(obj),
+			"expected", FullTypeName(new(gatewayv1.ReferenceGrant)), "found", FullTypeName(obj),
 		)
 		return nil
 	}
@@ -449,10 +539,10 @@ func (r *GatewayReconciler) listReferenceGrantsForGateway(ctx context.Context, o
 	}
 
 	for _, gateway := range gatewayList.Items {
-		gw := v1beta1.ReferenceGrantFrom{
+		gw := gatewayv1.ReferenceGrantFrom{
 			Group:     gatewayv1.GroupName,
 			Kind:      KindGateway,
-			Namespace: v1beta1.Namespace(gateway.GetNamespace()),
+			Namespace: gatewayv1.Namespace(gateway.GetNamespace()),
 		}
 		for _, from := range grant.Spec.From {
 			if from == gw {
@@ -478,13 +568,36 @@ func (r *GatewayReconciler) processListenerConfig(tctx *provider.TranslateContex
 		if listener.TLS == nil {
 			continue
 		}
-		secret := corev1.Secret{}
 		for _, ref := range listener.TLS.CertificateRefs {
 			ns := gateway.GetNamespace()
 			if ref.Namespace != nil {
 				ns = string(*ref.Namespace)
 			}
 			if ref.Kind != nil && *ref.Kind == KindSecret {
+				// Declared per ref: a listener may carry several certificateRefs, and
+				// each tctx.Secrets entry must point to its own Secret rather than all
+				// aliasing one shared variable that ends up holding the last one loaded.
+				secret := corev1.Secret{}
+				// A cross-namespace certificateRef must be authorized by a ReferenceGrant,
+				// or the data plane would program a certificate the target namespace never
+				// permitted. The listener status already reports RefNotPermitted for this.
+				if !checkReferenceGrant(context.Background(), r.Client,
+					gatewayv1.ReferenceGrantFrom{
+						Group:     gatewayv1.GroupName,
+						Kind:      KindGateway,
+						Namespace: gatewayv1.Namespace(gateway.Namespace),
+					},
+					gatewayv1.ObjectReference{
+						Group:     corev1.GroupName,
+						Kind:      KindSecret,
+						Name:      ref.Name,
+						Namespace: ref.Namespace,
+					},
+				) {
+					r.Log.V(1).Info("skipping cross-namespace certificateRef not permitted by any ReferenceGrant",
+						"listener", listener.Name, "secret", client.ObjectKey{Namespace: ns, Name: string(ref.Name)})
+					continue
+				}
 				if err := r.Get(context.Background(), client.ObjectKey{
 					Namespace: ns,
 					Name:      string(ref.Name),
@@ -499,8 +612,10 @@ func (r *GatewayReconciler) processListenerConfig(tctx *provider.TranslateContex
 			}
 		}
 		// frontendValidation references CA ConfigMaps or Secrets used for downstream mTLS.
-		if listener.TLS.FrontendValidation != nil {
-			for _, ref := range listener.TLS.FrontendValidation.CACertificateRefs {
+		// In Gateway API v1.6 it is declared at the Gateway level (spec.tls.frontend);
+		// resolve the config that applies to this HTTPS listener by its port.
+		if validation := internaltypes.FrontendTLSValidationForListener(gateway, listener); validation != nil {
+			for _, ref := range validation.CACertificateRefs {
 				ns := gateway.GetNamespace()
 				if ref.Namespace != nil {
 					ns = string(*ref.Namespace)
@@ -509,6 +624,26 @@ func (r *GatewayReconciler) processListenerConfig(tctx *provider.TranslateContex
 				kind := KindConfigMap
 				if ref.Kind != "" {
 					kind = string(ref.Kind)
+				}
+				// A cross-namespace CA ref must be authorized by a ReferenceGrant, or the
+				// data plane would enable downstream mTLS with a CA the target namespace
+				// never permitted. The listener status already reports RefNotPermitted.
+				if !checkReferenceGrant(context.Background(), r.Client,
+					gatewayv1.ReferenceGrantFrom{
+						Group:     gatewayv1.GroupName,
+						Kind:      KindGateway,
+						Namespace: gatewayv1.Namespace(gateway.Namespace),
+					},
+					gatewayv1.ObjectReference{
+						Group:     corev1.GroupName,
+						Kind:      gatewayv1.Kind(kind),
+						Name:      ref.Name,
+						Namespace: ref.Namespace,
+					},
+				) {
+					r.Log.V(1).Info("skipping cross-namespace caCertificateRef not permitted by any ReferenceGrant",
+						"listener", listener.Name, "ref", nn)
+					continue
 				}
 				switch kind {
 				case KindConfigMap:

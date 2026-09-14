@@ -35,8 +35,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
@@ -68,8 +66,15 @@ type TCPRouteReconciler struct { //nolint:revive
 func (r *TCPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	bdr := ctrl.NewControllerManagedBy(mgr).
-		For(&gatewayv1alpha2.TCPRoute{}).
-		WithEventFilter(predicate.GenerationChangedPredicate{}).
+		For(&gatewayv1.TCPRoute{}).
+		// A Secret carries no generation, so GenerationChangedPredicate would drop its
+		// updates and a plugin would keep the Secret data read at the last spec change.
+		WithEventFilter(
+			predicate.Or(
+				predicate.GenerationChangedPredicate{},
+				predicate.NewPredicateFuncs(TypePredicate[*corev1.Secret]()),
+			),
+		).
 		Watches(&discoveryv1.EndpointSlice{},
 			handler.EnqueueRequestsFromMapFunc(r.listTCPRoutesByServiceRef),
 		).
@@ -101,15 +106,22 @@ func (r *TCPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// L4RoutePolicy is an optional CRD. Only watch it when installed so the
 	// controller still starts if the CRD has not been applied yet (e.g. upgrades).
-	r.supportsL4RoutePolicy = pkgutils.HasAPIResource(mgr, &v1alpha1.L4RoutePolicy{})
+	supportsL4RoutePolicy, err := pkgutils.HasAPIResource(mgr, &v1alpha1.L4RoutePolicy{})
+	if err != nil {
+		return err
+	}
+	r.supportsL4RoutePolicy = supportsL4RoutePolicy
 	if r.supportsL4RoutePolicy {
 		bdr.Watches(&v1alpha1.L4RoutePolicy{},
 			handler.EnqueueRequestsFromMapFunc(r.listTCPRoutesForL4RoutePolicy),
-		)
+		).
+			Watches(&corev1.Secret{},
+				handler.EnqueueRequestsFromMapFunc(r.listTCPRoutesForSecret),
+			)
 	}
 
 	if GetEnableReferenceGrant() {
-		bdr.Watches(&v1beta1.ReferenceGrant{},
+		bdr.Watches(&gatewayv1.ReferenceGrant{},
 			handler.EnqueueRequestsFromMapFunc(r.listTCPRoutesForReferenceGrant),
 			builder.WithPredicates(referenceGrantPredicates(KindTCPRoute)),
 		)
@@ -125,7 +137,7 @@ func (r *TCPRouteReconciler) listTCPRoutesForBackendTrafficPolicy(ctx context.Co
 		return nil
 	}
 
-	tcprouteList := []gatewayv1alpha2.TCPRoute{}
+	tcprouteList := []gatewayv1.TCPRoute{}
 	for _, targetRef := range policy.Spec.TargetRefs {
 		service := &corev1.Service{}
 		if err := r.Get(ctx, client.ObjectKey{
@@ -137,7 +149,7 @@ func (r *TCPRouteReconciler) listTCPRoutesForBackendTrafficPolicy(ctx context.Co
 			}
 			continue
 		}
-		tcprList := &gatewayv1alpha2.TCPRouteList{}
+		tcprList := &gatewayv1.TCPRouteList{}
 		if err := r.List(ctx, tcprList, client.MatchingFields{
 			indexer.ServiceIndexRef: indexer.GenIndexKey(policy.Namespace, string(targetRef.Name)),
 		}); err != nil {
@@ -171,7 +183,7 @@ func (r *TCPRouteReconciler) listTCPRoutesForGateway(ctx context.Context, obj cl
 	if !ok {
 		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to Gateway")
 	}
-	tcprList := &gatewayv1alpha2.TCPRouteList{}
+	tcprList := &gatewayv1.TCPRouteList{}
 	if err := r.List(ctx, tcprList, client.MatchingFields{
 		indexer.ParentRefs: indexer.GenIndexKey(gateway.Namespace, gateway.Name),
 	}); err != nil {
@@ -215,7 +227,7 @@ func (r *TCPRouteReconciler) listTCPRoutesForGatewayProxy(ctx context.Context, o
 
 	// for each gateway, find all TCPRoute resources that reference it
 	for _, gateway := range gatewayList.Items {
-		tcpRouteList := &gatewayv1alpha2.TCPRouteList{}
+		tcpRouteList := &gatewayv1.TCPRouteList{}
 		if err := r.List(ctx, tcpRouteList, client.MatchingFields{
 			indexer.ParentRefs: indexer.GenIndexKey(gateway.Namespace, gateway.Name),
 		}); err != nil {
@@ -237,8 +249,8 @@ func (r *TCPRouteReconciler) listTCPRoutesForGatewayProxy(ctx context.Context, o
 }
 
 func (r *TCPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	defer r.Readier.Done(&gatewayv1alpha2.TCPRoute{}, req.NamespacedName)
-	tr := new(gatewayv1alpha2.TCPRoute)
+	defer r.Readier.Done(&gatewayv1.TCPRoute{}, req.NamespacedName)
+	tr := new(gatewayv1.TCPRoute)
 	if err := r.Get(ctx, req.NamespacedName, tr); err != nil {
 		if client.IgnoreNotFound(err) == nil {
 			tr.Namespace = req.Namespace
@@ -246,7 +258,7 @@ func (r *TCPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 			tr.TypeMeta = metav1.TypeMeta{
 				Kind:       KindTCPRoute,
-				APIVersion: gatewayv1alpha2.GroupVersion.String(),
+				APIVersion: gatewayv1.GroupVersion.String(),
 			}
 
 			if err := r.Provider.Delete(ctx, tr); err != nil {
@@ -271,12 +283,28 @@ func (r *TCPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		msg:    "Route is accepted",
 	}
 
-	gateways, err := ParseRouteParentRefs(ctx, r.Client, r.Log, tr, tr.Spec.ParentRefs)
+	gateways, unresolvedParents, err := ParseRouteParentRefs(ctx, r.Client, r.Log, tr, tr.Spec.ParentRefs)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	if len(gateways) == 0 {
+		if unresolvedParents {
+			// See the HTTPRoute reconciler: an unresolvable parentRef leaves ownership
+			// unknown rather than disproven, so the data plane must be left alone.
+			return ctrl.Result{}, nil
+		}
+		// See the HTTPRoute reconciler: a route that no longer references a
+		// Gateway managed by this controller must have its previously pushed
+		// configuration removed, or the data plane keeps serving it.
+		tr.TypeMeta = metav1.TypeMeta{
+			Kind:       KindTCPRoute,
+			APIVersion: gatewayv1.GroupVersion.String(),
+		}
+		if err := r.Provider.Delete(ctx, tr); err != nil {
+			r.Log.Error(err, "failed to delete tcproute", "tcproute", tr)
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, nil
 	}
 
@@ -289,6 +317,14 @@ func (r *TCPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			acceptStatus.status = false
 			acceptStatus.msg = err.Error()
 		}
+		// Populate the matched listeners so the translator can derive the
+		// StreamRoute server_port from the listener the route attaches to.
+		if len(gateway.Listeners) > 0 {
+			tctx.Listeners = appendListeners(tctx.Listeners, gateway.Listeners...)
+		} else if gateway.Listener != nil {
+			tctx.Listeners = appendListeners(tctx.Listeners, *gateway.Listener)
+		}
+		tctx.HasExplicitListenerMatch = tctx.HasExplicitListenerMatch || gateway.ExplicitListenerMatch
 	}
 
 	var backendRefErr error
@@ -327,9 +363,9 @@ func (r *TCPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	r.Updater.Update(status.Update{
 		NamespacedName: utils.NamespacedName(tr),
-		Resource:       &gatewayv1alpha2.TCPRoute{},
+		Resource:       &gatewayv1.TCPRoute{},
 		Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
-			t, ok := obj.(*gatewayv1alpha2.TCPRoute)
+			t, ok := obj.(*gatewayv1.TCPRoute)
 			if !ok {
 				err := fmt.Errorf("unsupported object type %T", obj)
 				panic(err)
@@ -345,11 +381,26 @@ func (r *TCPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		if err := r.Provider.Update(ctx, tctx, routeToUpdate); err != nil {
 			return ctrl.Result{}, err
 		}
+		return ctrl.Result{}, nil
+	}
+
+	// The route still resolves to one of our Gateways but no parent accepts it any
+	// more, so retract what an earlier reconcile published. The store is what every
+	// sync pushes, so leaving the entry keeps the data plane serving the route.
+	// Provider.Delete derives the resource labels from the object Kind, which is not
+	// set on every object read through the client.
+	tr.TypeMeta = metav1.TypeMeta{
+		Kind:       KindTCPRoute,
+		APIVersion: gatewayv1.GroupVersion.String(),
+	}
+	if err := r.Provider.Delete(ctx, tr); err != nil {
+		r.Log.Error(err, "failed to delete tcproute", "tcproute", utils.NamespacedName(tr))
+		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
 }
 
-func (r *TCPRouteReconciler) processTCPRoute(tctx *provider.TranslateContext, tcpRoute *gatewayv1alpha2.TCPRoute) error {
+func (r *TCPRouteReconciler) processTCPRoute(tctx *provider.TranslateContext, tcpRoute *gatewayv1.TCPRoute) error {
 	var terror error
 	for _, rule := range tcpRoute.Spec.Rules {
 		for _, backend := range rule.BackendRefs {
@@ -407,10 +458,10 @@ func (r *TCPRouteReconciler) processTCPRouteBackendRefs(tctx *provider.Translate
 		if trNN.Namespace != targetNN.Namespace {
 			if permitted := checkReferenceGrant(tctx,
 				r.Client,
-				v1beta1.ReferenceGrantFrom{
+				gatewayv1.ReferenceGrantFrom{
 					Group:     gatewayv1.GroupName,
 					Kind:      KindTCPRoute,
-					Namespace: v1beta1.Namespace(trNN.Namespace),
+					Namespace: gatewayv1.Namespace(trNN.Namespace),
 				},
 				gatewayv1.ObjectReference{
 					Group:     corev1.GroupName,
@@ -420,7 +471,7 @@ func (r *TCPRouteReconciler) processTCPRouteBackendRefs(tctx *provider.Translate
 				},
 			); !permitted {
 				terr = types.ReasonError{
-					Reason:  string(v1beta1.RouteReasonRefNotPermitted),
+					Reason:  string(gatewayv1.RouteReasonRefNotPermitted),
 					Message: fmt.Sprintf("%s is in a different namespace than the TCPRoute %s and no ReferenceGrant allowing reference is configured", targetNN, trNN),
 				}
 				continue
@@ -434,7 +485,7 @@ func (r *TCPRouteReconciler) processTCPRouteBackendRefs(tctx *provider.Translate
 
 		portExists := false
 		for _, port := range service.Spec.Ports {
-			if port.Port == int32(*backend.Port) {
+			if port.Port == *backend.Port {
 				portExists = true
 				break
 			}
@@ -463,23 +514,23 @@ func (r *TCPRouteReconciler) processTCPRouteBackendRefs(tctx *provider.Translate
 }
 
 func (r *TCPRouteReconciler) listTCPRoutesForReferenceGrant(ctx context.Context, obj client.Object) (requests []reconcile.Request) {
-	grant, ok := obj.(*v1beta1.ReferenceGrant)
+	grant, ok := obj.(*gatewayv1.ReferenceGrant)
 	if !ok {
 		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to ReferenceGrant")
 		return nil
 	}
 
-	var tcpRouteList gatewayv1alpha2.TCPRouteList
+	var tcpRouteList gatewayv1.TCPRouteList
 	if err := r.List(ctx, &tcpRouteList); err != nil {
 		r.Log.Error(err, "failed to list tcproutes for reference ReferenceGrant", "ReferenceGrant", k8stypes.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()})
 		return nil
 	}
 
 	for _, tcpRoute := range tcpRouteList.Items {
-		tr := v1beta1.ReferenceGrantFrom{
+		tr := gatewayv1.ReferenceGrantFrom{
 			Group:     gatewayv1.GroupName,
 			Kind:      KindTCPRoute,
-			Namespace: v1beta1.Namespace(tcpRoute.GetNamespace()),
+			Namespace: gatewayv1.Namespace(tcpRoute.GetNamespace()),
 		}
 		for _, from := range grant.Spec.From {
 			if from == tr {
@@ -504,7 +555,7 @@ func (r *TCPRouteReconciler) listTCPRoutesByServiceRef(ctx context.Context, obj 
 	namespace := endpointSlice.GetNamespace()
 	serviceName := endpointSlice.Labels[discoveryv1.LabelServiceName]
 
-	trList := &gatewayv1alpha2.TCPRouteList{}
+	trList := &gatewayv1.TCPRouteList{}
 	if err := r.List(ctx, trList, client.MatchingFields{
 		indexer.ServiceIndexRef: indexer.GenIndexKey(namespace, serviceName),
 	}); err != nil {
@@ -546,4 +597,13 @@ func (r *TCPRouteReconciler) listTCPRoutesForL4RoutePolicy(ctx context.Context, 
 		requests = append(requests, reconcile.Request{NamespacedName: nn})
 	}
 	return requests
+}
+
+// listTCPRoutesForSecret maps a Secret to the TCPRoutes whose L4RoutePolicy plugins reference it.
+func (r *TCPRouteReconciler) listTCPRoutesForSecret(ctx context.Context, obj client.Object) []reconcile.Request {
+	var requests []reconcile.Request
+	for _, policy := range listL4RoutePoliciesForSecret(ctx, r.Client, r.Log, obj) {
+		requests = append(requests, r.listTCPRoutesForL4RoutePolicy(ctx, &policy)...)
+	}
+	return pkgutils.DedupComparable(requests)
 }

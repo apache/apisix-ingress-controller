@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
@@ -31,7 +30,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/types"
 )
 
-func (t *Translator) TranslateUDPRoute(tctx *provider.TranslateContext, udpRoute *gatewayv1alpha2.UDPRoute) (*TranslateResult, error) {
+func (t *Translator) TranslateUDPRoute(tctx *provider.TranslateContext, udpRoute *gatewayv1.UDPRoute) (*TranslateResult, error) {
 	result := &TranslateResult{}
 	rules := udpRoute.Spec.Rules
 	labels := label.GenLabel(udpRoute)
@@ -70,7 +69,7 @@ func (t *Translator) TranslateUDPRoute(tctx *provider.TranslateContext, udpRoute
 				kind = string(*backend.Kind)
 			}
 			if backend.Port != nil {
-				port = int32(*backend.Port)
+				port = *backend.Port
 			}
 			namespace := string(*backend.Namespace)
 			name := string(backend.Name)
@@ -139,17 +138,8 @@ func (t *Translator) TranslateUDPRoute(tctx *provider.TranslateContext, udpRoute
 				}
 			}
 		}
-		streamRoute := adctypes.NewDefaultStreamRoute()
-		streamRouteName := adctypes.ComposeStreamRouteName(udpRoute.Namespace, udpRoute.Name, fmt.Sprintf("%d", ruleIndex), "UDP")
-		streamRoute.Name = streamRouteName
-		streamRoute.ID = id.GenID(streamRouteName)
-		streamRoute.Labels = labels
-		// TODO: support remote_addr, server_addr, sni, server_port
-		// Attach L4RoutePolicy plugins at the stream_route level: the APISIX stream proxy
-		// applies plugins from the stream_route, not from the service.
-		streamRoute.Plugins = make(adctypes.Plugins)
-		t.AttachL4RoutePolicyPlugins(tctx.L4RoutePolicies, udpRoute.Namespace, udpRoute.Name, "UDPRoute", streamRoute.Plugins)
-		service.StreamRoutes = append(service.StreamRoutes, streamRoute)
+		// TODO: support remote_addr, server_addr, sni
+		service.StreamRoutes = t.buildL4StreamRoutes(tctx, udpRoute.Namespace, udpRoute.Name, ruleIndex, "UDP", "UDPRoute", labels)
 
 		result.Services = append(result.Services, service)
 	}

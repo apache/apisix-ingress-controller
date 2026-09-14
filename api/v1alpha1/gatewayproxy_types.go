@@ -139,9 +139,27 @@ type ControlPlaneProvider struct {
 	// +kubebuilder:default=true
 	TlsVerify *bool `json:"tlsVerify,omitempty"`
 
+	// CaCert specifies the CA certificate used to verify the control plane's TLS
+	// certificate, in place of the system trust store.
+	// Set it when the control plane uses a self-signed or private CA certificate.
+	// It has no effect when tlsVerify is false.
+	// +optional
+	CaCert *ControlPlaneCaCert `json:"caCert,omitempty"`
+
 	// Auth specifies the authentication configuration.
 	// +kubebuilder:validation:Required
 	Auth ControlPlaneAuth `json:"auth"`
+}
+
+// ControlPlaneCaCert defines the CA certificate used to verify the control plane.
+//
+// Only an inline value is supported today. A valueFrom source can be added
+// later without breaking existing resources.
+type ControlPlaneCaCert struct {
+	// Value sets the PEM-encoded CA certificate (or bundle) explicitly.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:XValidation:rule="self.contains('-----BEGIN CERTIFICATE-----')",message="value must be a PEM-encoded certificate"
+	Value string `json:"value"`
 }
 
 type ProviderService struct {
@@ -155,6 +173,7 @@ type ProviderService struct {
 }
 
 // +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 // GatewayProxy defines configuration for the gateway proxy instances used to route traffic to services.
 type GatewayProxy struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -163,6 +182,19 @@ type GatewayProxy struct {
 	// GatewayProxySpec defines configuration of gateway proxy instances,
 	// including networking settings, global plugins, and plugin metadata.
 	Spec GatewayProxySpec `json:"spec,omitempty"`
+
+	// Status defines the current state of Gateway Proxy.
+	//
+	// +kubebuilder:default={conditions: {{type: "DataPlaneAvailable", status: "Unknown", reason:"Pending", message:"Waiting for controller", lastTransitionTime: "1970-01-01T00:00:00Z"}}}
+	// +optional
+	Status GatewayProxyStatus `json:"status,omitempty"`
+}
+
+// GatewayProxyStatus defines the observed state of GatewayProxy.
+type GatewayProxyStatus struct {
+	// Conditions describe the current state of the data plane instances this GatewayProxy addresses.
+	// +optional
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // +kubebuilder:object:root=true

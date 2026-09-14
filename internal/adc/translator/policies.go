@@ -18,13 +18,10 @@
 package translator
 
 import (
-	"encoding/json"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
@@ -104,7 +101,7 @@ func backendRefMatchesSectionName(ref gatewayv1.BackendRef, namespace, sectionNa
 		return false
 	}
 	for _, port := range svc.Spec.Ports {
-		if port.Port == int32(*ref.Port) {
+		if port.Port == *ref.Port {
 			return port.Name == sectionName
 		}
 	}
@@ -231,6 +228,7 @@ func (t *Translator) AttachL4RoutePolicyPlugins(
 	policies map[types.NamespacedName]*v1alpha1.L4RoutePolicy,
 	routeNamespace, routeName, routeKind string,
 	plugins adctypes.Plugins,
+	secrets map[types.NamespacedName]*corev1.Secret,
 ) {
 	if len(policies) == 0 {
 		return
@@ -240,7 +238,7 @@ func (t *Translator) AttachL4RoutePolicyPlugins(
 			continue
 		}
 		for _, ref := range policy.Spec.TargetRefs {
-			if string(ref.Group) != gatewayv1alpha2.GroupName {
+			if string(ref.Group) != gatewayv1.GroupName {
 				continue
 			}
 			if string(ref.Kind) != routeKind {
@@ -254,25 +252,18 @@ func (t *Translator) AttachL4RoutePolicyPlugins(
 			if ref.SectionName != nil && *ref.SectionName != "" {
 				continue
 			}
-			t.mergeL4PolicyPlugins(policy, plugins)
+			t.mergeL4PolicyPlugins(policy, plugins, secrets)
 			return
 		}
 	}
 }
 
-func (t *Translator) mergeL4PolicyPlugins(policy *v1alpha1.L4RoutePolicy, plugins adctypes.Plugins) {
+func (t *Translator) mergeL4PolicyPlugins(policy *v1alpha1.L4RoutePolicy, plugins adctypes.Plugins, secrets map[types.NamespacedName]*corev1.Secret) {
 	for _, plugin := range policy.Spec.Plugins {
-		cfg := make(map[string]any)
-		if len(plugin.Config.Raw) > 0 {
-			if err := json.Unmarshal(plugin.Config.Raw, &cfg); err != nil {
-				t.Log.Error(err, "failed to unmarshal L4RoutePolicy plugin config", "plugin", plugin.Name, "policy", policy.Name)
-				continue
-			}
-		}
-		// A literal `config: null` unmarshals to a nil map, which serializes back to
-		// null and is rejected by most APISIX plugins; normalize it to an empty object.
-		if cfg == nil {
-			cfg = map[string]any{}
+		cfg, err := renderPluginConfig(plugin, policy.Namespace, secrets)
+		if err != nil {
+			t.Log.Error(err, "failed to render L4RoutePolicy plugin config", "plugin", plugin.Name, "policy", policy.Name)
+			continue
 		}
 		plugins[plugin.Name] = cfg
 	}

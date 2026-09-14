@@ -27,7 +27,6 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 )
@@ -38,7 +37,7 @@ func buildTCPRouteValidator(t *testing.T, objects ...runtime.Object) *TCPRouteCu
 	scheme := runtime.NewScheme()
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
 	require.NoError(t, gatewayv1.Install(scheme))
-	require.NoError(t, gatewayv1alpha2.Install(scheme))
+	require.NoError(t, gatewayv1.Install(scheme))
 
 	managed := []runtime.Object{
 		&gatewayv1.GatewayClass{
@@ -61,19 +60,19 @@ func buildTCPRouteValidator(t *testing.T, objects ...runtime.Object) *TCPRouteCu
 }
 
 func TestTCPRouteCustomValidator_WarnsForMissingReferences(t *testing.T) {
-	route := &gatewayv1alpha2.TCPRoute{
+	route := &gatewayv1.TCPRoute{
 		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
-		Spec: gatewayv1alpha2.TCPRouteSpec{
-			CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
-				ParentRefs: []gatewayv1alpha2.ParentReference{{
-					Name: gatewayv1alpha2.ObjectName("test-gateway"),
+		Spec: gatewayv1.TCPRouteSpec{
+			CommonRouteSpec: gatewayv1.CommonRouteSpec{
+				ParentRefs: []gatewayv1.ParentReference{{
+					Name: gatewayv1.ObjectName("test-gateway"),
 				}},
 			},
-			Rules: []gatewayv1alpha2.TCPRouteRule{{
-				BackendRefs: []gatewayv1alpha2.BackendRef{
+			Rules: []gatewayv1.TCPRouteRule{{
+				BackendRefs: []gatewayv1.BackendRef{
 					{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-							Name: gatewayv1alpha2.ObjectName("missing-svc"),
+						BackendObjectReference: gatewayv1.BackendObjectReference{
+							Name: gatewayv1.ObjectName("missing-svc"),
 						},
 					},
 				},
@@ -96,19 +95,19 @@ func TestTCPRouteCustomValidator_NoWarningsWhenResourcesExist(t *testing.T) {
 
 	validator := buildTCPRouteValidator(t, objs...)
 
-	route := &gatewayv1alpha2.TCPRoute{
+	route := &gatewayv1.TCPRoute{
 		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
-		Spec: gatewayv1alpha2.TCPRouteSpec{
-			CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
-				ParentRefs: []gatewayv1alpha2.ParentReference{{
-					Name: gatewayv1alpha2.ObjectName("test-gateway"),
+		Spec: gatewayv1.TCPRouteSpec{
+			CommonRouteSpec: gatewayv1.CommonRouteSpec{
+				ParentRefs: []gatewayv1.ParentReference{{
+					Name: gatewayv1.ObjectName("test-gateway"),
 				}},
 			},
-			Rules: []gatewayv1alpha2.TCPRouteRule{{
-				BackendRefs: []gatewayv1alpha2.BackendRef{
+			Rules: []gatewayv1.TCPRouteRule{{
+				BackendRefs: []gatewayv1.BackendRef{
 					{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-							Name: gatewayv1alpha2.ObjectName("backend"),
+						BackendObjectReference: gatewayv1.BackendObjectReference{
+							Name: gatewayv1.ObjectName("backend"),
 						},
 					},
 				},

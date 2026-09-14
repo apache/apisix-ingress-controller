@@ -23,5 +23,7 @@ spec:
           matchLabels:
             webhook: enabled # Only from namespaces with this label
       ports:
-        - port: 443
+        # Match the webhook-server containerPort; NetworkPolicy evaluates the
+        # pod's destination port (post-Service DNAT), not the Service port.
+        - port: 9443
           protocol: TCP

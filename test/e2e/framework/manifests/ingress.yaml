@@ -119,6 +119,7 @@ rules:
   - apisixupstreams/status
   - backendtrafficpolicies/status
   - consumers/status
+  - gatewayproxies/status
   - httproutepolicies/status
   - l4routepolicies/status
   verbs:
@@ -238,7 +239,7 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: {{ .Namespace }}-apisix-ingress-leader-election-role
+  name: apisix-ingress-leader-election-role
 subjects:
 - kind: ServiceAccount
   name: apisix-ingress-controller-manager
@@ -295,6 +296,11 @@ data:
                                             # will wait between tries of actions with the controller.
       disable: false                        # Whether to disable leader election.
     exec_adc_timeout: {{ env "E2E_EXEC_ADC_TIMEOUT" | default "5s" }}
+    # Opt in to server_port route vars. The shipped default is "off", because a
+    # Gateway listener port is not the port APISIX accepts the connection on. The
+    # listeners under test declare APISIX's own node_listen ports, so here the
+    # predicate is meaningful and the port-based routing specs can exercise it.
+    listener_port_match_mode: {{ .ListenerPortMatchMode | default "auto" }}
     provider:
       type: {{ .ProviderType | default "apisix" }}
       sync_period: {{ .ProviderSyncPeriod | default "0s" }}
@@ -352,7 +358,7 @@ spec:
       securityContext:
         fsGroup: 2000   
       containers:
-      - image: apache/apisix-ingress-controller:dev
+      - image: {{ .ControllerImage }}
         env:
         - name: POD_NAMESPACE
           valueFrom:
@@ -395,7 +401,7 @@ spec:
             port: 8081
           initialDelaySeconds: 5
           periodSeconds: 10       
-      - image: ghcr.io/api7/adc:dev
+      - image: {{ .ADCImage }}
         env:
         - name: ADC_RUNNING_MODE
           value: ingress

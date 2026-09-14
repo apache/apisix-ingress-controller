@@ -3,15 +3,18 @@ kind: Service
 metadata:
   labels:
     control-plane: controller-manager
-    app.kubernetes.io/name: apisix-ingress
+    app.kubernetes.io/name: apisix-ingress-controller
     app.kubernetes.io/managed-by: kustomize
   name: controller-manager-metrics-service
   namespace: system
 spec:
+  # The metrics endpoint is served over plain HTTP without authentication. Set
+  # `secure_metrics` in config/manager/config.yaml to put it behind the authn/authz
+  # filter backed by the metrics_auth_role in config/rbac.
   ports:
-  - name: https
-    port: 8443
+  - name: metrics
+    port: 8080
     protocol: TCP
-    targetPort: 8443
+    targetPort: metrics
   selector:
     control-plane: controller-manager

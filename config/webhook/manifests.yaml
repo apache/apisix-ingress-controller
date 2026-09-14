@@ -210,14 +210,14 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-gateway-networking-k8s-io-v1alpha2-tcproute
+      path: /validate-gateway-networking-k8s-io-v1-tcproute
   failurePolicy: Ignore
-  name: vtcproute-v1alpha2.kb.io
+  name: vtcproute-v1.kb.io
   rules:
   - apiGroups:
     - gateway.networking.k8s.io
     apiVersions:
-    - v1alpha2
+    - v1
     operations:
     - CREATE
     - UPDATE
@@ -230,14 +230,14 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /validate-gateway-networking-k8s-io-v1alpha2-udproute
+      path: /validate-gateway-networking-k8s-io-v1-udproute
   failurePolicy: Ignore
-  name: vudproute-v1alpha2.kb.io
+  name: vudproute-v1.kb.io
   rules:
   - apiGroups:
     - gateway.networking.k8s.io
     apiVersions:
-    - v1alpha2
+    - v1
     operations:
     - CREATE
     - UPDATE

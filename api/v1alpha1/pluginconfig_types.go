@@ -18,6 +18,7 @@
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -57,6 +58,13 @@ type Plugin struct {
 	Name string `json:"name" yaml:"name"`
 	// Config is plugin configuration details.
 	Config apiextensionsv1.JSON `json:"config,omitempty" yaml:"config,omitempty"`
+	// SecretRef references a Secret in the same namespace holding sensitive parts of
+	// the plugin configuration, so they do not have to be written in `config`.
+	// Each Secret key is a dot separated path into the configuration, so the key
+	// `session.secret` sets the `secret` field of the `session` object. Values are
+	// merged as strings and take precedence over the same path in `config`.
+	// +optional
+	SecretRef *corev1.LocalObjectReference `json:"secretRef,omitempty" yaml:"secretRef,omitempty"`
 }
 
 func init() {

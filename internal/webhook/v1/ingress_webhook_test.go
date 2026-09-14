@@ -113,3 +113,48 @@ func TestIngressCustomValidator_NoWarningsWhenReferencesExist(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 }
+
+func csrfIngress(anno map[string]string) *networkingv1.Ingress {
+	return &networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{Name: "test-ingress", Namespace: "default", Annotations: anno},
+		Spec:       networkingv1.IngressSpec{},
+	}
+}
+
+func TestIngressCustomValidator_RejectsEnableCsrfWithoutKey(t *testing.T) {
+	validator := buildIngressValidator(t)
+
+	// missing csrf-key
+	_, err := validator.ValidateCreate(context.Background(), csrfIngress(map[string]string{
+		"k8s.apisix.apache.org/enable-csrf": "true",
+	}))
+	require.Error(t, err)
+
+	// empty csrf-key
+	_, err = validator.ValidateCreate(context.Background(), csrfIngress(map[string]string{
+		"k8s.apisix.apache.org/enable-csrf": "true",
+		"k8s.apisix.apache.org/csrf-key":    "",
+	}))
+	require.Error(t, err)
+
+	// the same invalid update must also be rejected, not only create
+	old := csrfIngress(nil)
+	_, err = validator.ValidateUpdate(context.Background(), old, csrfIngress(map[string]string{
+		"k8s.apisix.apache.org/enable-csrf": "true",
+	}))
+	require.Error(t, err)
+}
+
+func TestIngressCustomValidator_AllowsEnableCsrfWithKey(t *testing.T) {
+	validator := buildIngressValidator(t)
+
+	_, err := validator.ValidateCreate(context.Background(), csrfIngress(map[string]string{
+		"k8s.apisix.apache.org/enable-csrf": "true",
+		"k8s.apisix.apache.org/csrf-key":    "my-secret-key",
+	}))
+	require.NoError(t, err)
+
+	// csrf not enabled: key absence is fine
+	_, err = validator.ValidateCreate(context.Background(), csrfIngress(nil))
+	require.NoError(t, err)
+}

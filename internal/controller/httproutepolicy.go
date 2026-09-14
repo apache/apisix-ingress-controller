@@ -28,7 +28,6 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	"sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
@@ -81,7 +80,7 @@ func (r *HTTPRouteReconciler) processHTTPRoutePolicies(tctx *provider.TranslateC
 		)
 		if _, conflict := conflicts[namespacedName]; conflict {
 			condition.Status = metav1.ConditionFalse
-			condition.Reason = string(v1alpha2.PolicyReasonConflicted)
+			condition.Reason = string(gatewayv1.PolicyReasonConflicted)
 			condition.Message = "HTTPRoutePolicy conflict with others target to the HTTPRoute"
 		} else {
 			tctx.HTTPRoutePolicies = append(tctx.HTTPRoutePolicies, policy)
@@ -153,7 +152,7 @@ func (r *IngressReconciler) processHTTPRoutePolicies(tctx *provider.TranslateCon
 	)
 	if conflict := checkPoliciesConflict(list.Items); conflict {
 		condition.Status = metav1.ConditionFalse
-		condition.Reason = string(v1alpha2.PolicyReasonConflicted)
+		condition.Reason = string(gatewayv1.PolicyReasonConflicted)
 		condition.Message = "HTTPRoutePolicy conflict with others target to the Ingress"
 	} else {
 		tctx.HTTPRoutePolicies = list.Items
@@ -221,11 +220,11 @@ func (r *IngressReconciler) updateHTTPRoutePolicyStatusOnDeleting(ctx context.Co
 
 func setAncestorsForHTTPRoutePolicyStatus(parentRefs []gatewayv1.ParentReference, policy *v1alpha1.HTTPRoutePolicy, condition metav1.Condition) bool {
 	return SetAncestors(&policy.Status, parentRefs, metav1.Condition{
-		Type:               cmp.Or(condition.Type, string(v1alpha2.PolicyConditionAccepted)),
+		Type:               cmp.Or(condition.Type, string(gatewayv1.PolicyConditionAccepted)),
 		Status:             cmp.Or(condition.Status, metav1.ConditionTrue),
 		ObservedGeneration: policy.GetGeneration(),
 		LastTransitionTime: metav1.Now(),
-		Reason:             cmp.Or(condition.Reason, string(v1alpha2.PolicyReasonAccepted)),
+		Reason:             cmp.Or(condition.Reason, string(gatewayv1.PolicyReasonAccepted)),
 		Message:            condition.Message,
 	})
 }
@@ -264,7 +263,7 @@ func findPoliciesWhichTargetRefTheRule(ruleName *gatewayv1.SectionName, kind str
 // updateDeleteAncestors removes ancestor references from HTTPRoutePolicy statuses that are no longer present in the provided parentRefs.
 func updateDeleteAncestors(updater status.Updater, policy v1alpha1.HTTPRoutePolicy, parentRefs []gatewayv1.ParentReference) {
 	length := len(policy.Status.Ancestors)
-	policy.Status.Ancestors = slices.DeleteFunc(policy.Status.Ancestors, func(ancestor v1alpha2.PolicyAncestorStatus) bool {
+	policy.Status.Ancestors = slices.DeleteFunc(policy.Status.Ancestors, func(ancestor gatewayv1.PolicyAncestorStatus) bool {
 		return !slices.ContainsFunc(parentRefs, func(ref gatewayv1.ParentReference) bool {
 			return parentRefValueEqual(ancestor.AncestorRef, ref)
 		})

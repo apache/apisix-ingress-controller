@@ -6,4 +6,9 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: apisixglobalrule-sample
 spec:
-  # TODO(user): Add fields here
+  ingressClassName: apisix
+  plugins:
+    - name: prometheus
+      enable: true
+      config:
+        prefer_name: true

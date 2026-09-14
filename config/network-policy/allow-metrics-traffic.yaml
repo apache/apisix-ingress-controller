@@ -1,0 +1,31 @@
+# This NetworkPolicy allows ingress traffic to the metrics endpoint of the
+# controller-manager from namespaces labeled 'metrics: enabled'. Without it the
+# webhook policy in this directory, which only allows 9443, would also cut off
+# metrics scraping, since NetworkPolicies for a pod are additive and a pod
+# selected by any Ingress policy denies everything else.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  labels:
+    app.kubernetes.io/name: apisix-ingress-controller
+    app.kubernetes.io/managed-by: kustomize
+  name: allow-metrics-traffic
+  namespace: system
+spec:
+  podSelector:
+    matchLabels:
+      control-plane: controller-manager
+      app.kubernetes.io/name: apisix-ingress-controller
+  policyTypes:
+    - Ingress
+  ingress:
+    # This allows ingress traffic from any namespace with the label metrics: enabled
+    - from:
+      - namespaceSelector:
+          matchLabels:
+            metrics: enabled # Only from namespaces with this label
+      ports:
+        # Match the metrics containerPort; NetworkPolicy evaluates the pod's
+        # destination port (post-Service DNAT), not the Service port.
+        - port: 8080
+          protocol: TCP

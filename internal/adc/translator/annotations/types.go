@@ -131,7 +131,13 @@ func (e *extractor) GetStringsAnnotation(name string) []string {
 	if value == "" {
 		return nil
 	}
-	return strings.Split(value, ",")
+	var result []string
+	for _, item := range strings.Split(value, ",") {
+		if item = strings.TrimSpace(item); item != "" {
+			result = append(result, item)
+		}
+	}
+	return result
 }
 
 func (e *extractor) GetBoolAnnotation(name string) bool {

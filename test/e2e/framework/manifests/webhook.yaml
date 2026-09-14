@@ -230,12 +230,12 @@ webhooks:
         - ingressclasses
   failurePolicy: Fail
   sideEffects: None
-- name: vtcproute-v1alpha2.kb.io
+- name: vtcproute-v1.kb.io
   clientConfig:
     service:
       name: webhook-service
       namespace: {{ .Namespace }}
-      path: /validate-gateway-networking-k8s-io-v1alpha2-tcproute
+      path: /validate-gateway-networking-k8s-io-v1-tcproute
     caBundle: {{ .CABundle }}
   admissionReviewVersions:
     - v1
@@ -246,17 +246,17 @@ webhooks:
       apiGroups:
         - gateway.networking.k8s.io
       apiVersions:
-        - v1alpha2
+        - v1
       resources:
         - tcproutes
   failurePolicy: Fail
   sideEffects: None
-- name: vudproute-v1alpha2.kb.io
+- name: vudproute-v1.kb.io
   clientConfig:
     service:
       name: webhook-service
       namespace: {{ .Namespace }}
-      path: /validate-gateway-networking-k8s-io-v1alpha2-udproute
+      path: /validate-gateway-networking-k8s-io-v1-udproute
     caBundle: {{ .CABundle }}
   admissionReviewVersions:
     - v1
@@ -267,7 +267,7 @@ webhooks:
       apiGroups:
         - gateway.networking.k8s.io
       apiVersions:
-        - v1alpha2
+        - v1
       resources:
         - udproutes
   failurePolicy: Fail

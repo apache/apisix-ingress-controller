@@ -38,7 +38,7 @@ This tutorial series walks you through how to quickly get started with APISIX on
 ## Prerequisites
 
 * Install [Docker](https://docs.docker.com/get-docker/) as a dependency of [kind](https://kind.sigs.k8s.io).
-* Install [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) to start a local Kubernetes cluster, or use any existing Kubernetes cluster (version 1.26+).
+* Install [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) to start a local Kubernetes cluster, or use any existing Kubernetes cluster (version 1.31+).
 * Install [Helm](https://helm.sh/docs/intro/install/) (version 3.8+).
 * Install [kubectl](https://kubernetes.io/docs/tasks/tools/) to run commands against Kubernetes clusters.
 

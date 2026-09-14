@@ -22,53 +22,130 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 )
 
-func TestTranslateGatewayProxyToConfig_TlsVerifyDefault(t *testing.T) {
-	newProxy := func(tlsVerify *bool) *v1alpha1.GatewayProxy {
-		return &v1alpha1.GatewayProxy{
-			ObjectMeta: metav1.ObjectMeta{Name: "gp", Namespace: "default"},
-			Spec: v1alpha1.GatewayProxySpec{
-				Provider: &v1alpha1.GatewayProxyProvider{
-					Type: v1alpha1.ProviderTypeControlPlane,
-					ControlPlane: &v1alpha1.ControlPlaneProvider{
-						Endpoints: []string{"https://127.0.0.1:7443"},
-						TlsVerify: tlsVerify,
-						Auth: v1alpha1.ControlPlaneAuth{
-							Type:     v1alpha1.AuthTypeAdminKey,
-							AdminKey: &v1alpha1.AdminKeyAuth{Value: "secret"},
+func newGatewayProxy(tlsVerify *bool, caCert string) *v1alpha1.GatewayProxy {
+	// an empty string stands for the field being unset
+	var caCertRef *v1alpha1.ControlPlaneCaCert
+	if caCert != "" {
+		caCertRef = &v1alpha1.ControlPlaneCaCert{Value: caCert}
+	}
+	return &v1alpha1.GatewayProxy{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "default",
+			Name:      "gp",
+		},
+		Spec: v1alpha1.GatewayProxySpec{
+			Provider: &v1alpha1.GatewayProxyProvider{
+				Type: v1alpha1.ProviderTypeControlPlane,
+				ControlPlane: &v1alpha1.ControlPlaneProvider{
+					Endpoints: []string{"https://cp.example.com:9180"},
+					TlsVerify: tlsVerify,
+					CaCert:    caCertRef,
+					Auth: v1alpha1.ControlPlaneAuth{
+						Type: v1alpha1.AuthTypeAdminKey,
+						AdminKey: &v1alpha1.AdminKeyAuth{
+							Value: "admin-key",
 						},
 					},
 				},
 			},
-		}
+		},
 	}
+}
 
-	tr := false
-	tt := true
+func TestTranslateGatewayProxyToConfig_TlsVerifyDefault(t *testing.T) {
 	cases := []struct {
 		name      string
 		tlsVerify *bool
 		want      bool
 	}{
 		{"unset defaults to verify", nil, true},
-		{"explicit false opts out", &tr, false},
-		{"explicit true verifies", &tt, true},
+		{"explicit false opts out", ptr.To(false), false},
+		{"explicit true verifies", ptr.To(true), true},
 	}
 
 	translator := NewTranslator(logr.Discard(), "")
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			tctx := provider.NewDefaultTranslateContext(context.Background())
-			cfg, err := translator.TranslateGatewayProxyToConfig(tctx, newProxy(c.tlsVerify), false)
+			cfg, err := translator.TranslateGatewayProxyToConfig(tctx, newGatewayProxy(c.tlsVerify, ""), false)
 			require.NoError(t, err)
 			require.NotNil(t, cfg)
 			require.Equal(t, c.want, cfg.TlsVerify)
 		})
 	}
+}
+
+func TestTranslateGatewayProxyToConfigCaCert(t *testing.T) {
+	t.Run("carries the CA certificate into the config", func(t *testing.T) {
+		tr := &Translator{Log: logr.Discard()}
+		tctx := provider.NewDefaultTranslateContext(context.Background())
+
+		cfg, err := tr.TranslateGatewayProxyToConfig(tctx, newGatewayProxy(ptr.To(true), testCACert), false)
+		require.NoError(t, err)
+		require.NotNil(t, cfg)
+		assert.True(t, cfg.TlsVerify)
+		assert.Equal(t, testCACert, cfg.CaCert)
+	})
+
+	t.Run("leaves the CA certificate empty when unset", func(t *testing.T) {
+		tr := &Translator{Log: logr.Discard()}
+		tctx := provider.NewDefaultTranslateContext(context.Background())
+
+		cfg, err := tr.TranslateGatewayProxyToConfig(tctx, newGatewayProxy(ptr.To(true), ""), false)
+		require.NoError(t, err)
+		require.NotNil(t, cfg)
+		assert.Empty(t, cfg.CaCert)
+	})
+
+	// every certificate is parsed: x509.CertPool silently skips the blocks it
+	// cannot decode, which would let a broken one through to the ADC server.
+	for name, caCert := range map[string]string{
+		"not PEM at all":                  "not-a-certificate",
+		"a header with no certificate":    "-----BEGIN CERTIFICATE-----",
+		"an unparseable body":             "-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----",
+		"a key rather than a certificate": "-----BEGIN RSA PRIVATE KEY-----\nAAAA\n-----END RSA PRIVATE KEY-----",
+		"one good and one broken certificate": testCACert +
+			"\n-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----",
+	} {
+		t.Run("rejects a CA certificate that is "+name, func(t *testing.T) {
+			tr := &Translator{Log: logr.Discard()}
+			tctx := provider.NewDefaultTranslateContext(context.Background())
+
+			cfg, err := tr.TranslateGatewayProxyToConfig(tctx, newGatewayProxy(ptr.To(true), caCert), false)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), "invalid caCert")
+			assert.Nil(t, cfg)
+		})
+	}
+
+	t.Run("accepts a bundle of several certificates", func(t *testing.T) {
+		tr := &Translator{Log: logr.Discard()}
+		tctx := provider.NewDefaultTranslateContext(context.Background())
+
+		bundle := testCACert + "\n" + testCACert
+		cfg, err := tr.TranslateGatewayProxyToConfig(tctx, newGatewayProxy(ptr.To(true), bundle), false)
+		require.NoError(t, err)
+		require.NotNil(t, cfg)
+		assert.Equal(t, bundle, cfg.CaCert)
+	})
+
+	t.Run("still carries the CA certificate when verification is off", func(t *testing.T) {
+		tr := &Translator{Log: logr.Discard()}
+		tctx := provider.NewDefaultTranslateContext(context.Background())
+
+		cfg, err := tr.TranslateGatewayProxyToConfig(tctx, newGatewayProxy(ptr.To(false), testCACert), false)
+		require.NoError(t, err)
+		require.NotNil(t, cfg)
+		assert.False(t, cfg.TlsVerify)
+		assert.Equal(t, testCACert, cfg.CaCert)
+	})
 }

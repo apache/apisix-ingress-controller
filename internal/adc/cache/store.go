@@ -230,7 +230,7 @@ func (s *Store) GetResources(name string) (*adctypes.Resources, error) {
 		}
 		globalrule = adctypes.GlobalRule(merged)
 	}
-	s.log.V(1).Info("GetResources fetched global rule items", "items", globalRuleItems, "gobalrule", globalrule)
+	s.log.V(1).Info("GetResources fetched global rule items", "itemCount", len(globalRuleItems), "pluginCount", len(globalrule))
 	if meta, ok := s.pluginMetadataMap[name]; ok {
 		metadata = meta.DeepCopy()
 	}

@@ -25,9 +25,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/webhook/v1/reference"
@@ -36,20 +35,19 @@ import (
 var udpRouteLog = logf.Log.WithName("udproute-resource")
 
 func SetupUDPRouteWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&gatewayv1alpha2.UDPRoute{}).
-		WithValidator(NewUDPRouteCustomValidator(mgr.GetClient())).
+	return ctrl.NewWebhookManagedBy(mgr, &gatewayv1.UDPRoute{}).
+		WithCustomValidator(NewUDPRouteCustomValidator(mgr.GetClient())).
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/validate-gateway-networking-k8s-io-v1alpha2-udproute,mutating=false,failurePolicy=fail,sideEffects=None,groups=gateway.networking.k8s.io,resources=udproutes,verbs=create;update,versions=v1alpha2,name=vudproute-v1alpha2.kb.io,admissionReviewVersions=v1,failurePolicy=Ignore
+// +kubebuilder:webhook:path=/validate-gateway-networking-k8s-io-v1-udproute,mutating=false,failurePolicy=fail,sideEffects=None,groups=gateway.networking.k8s.io,resources=udproutes,verbs=create;update,versions=v1,name=vudproute-v1.kb.io,admissionReviewVersions=v1,failurePolicy=Ignore
 
 type UDPRouteCustomValidator struct {
 	Client  client.Client
 	checker reference.Checker
 }
 
-var _ webhook.CustomValidator = &UDPRouteCustomValidator{}
+var _ admission.Validator[runtime.Object] = &UDPRouteCustomValidator{}
 
 func NewUDPRouteCustomValidator(c client.Client) *UDPRouteCustomValidator {
 	return &UDPRouteCustomValidator{
@@ -59,7 +57,7 @@ func NewUDPRouteCustomValidator(c client.Client) *UDPRouteCustomValidator {
 }
 
 func (v *UDPRouteCustomValidator) ValidateCreate(ctx context.Context, obj runtime.Object) (admission.Warnings, error) {
-	route, ok := obj.(*gatewayv1alpha2.UDPRoute)
+	route, ok := obj.(*gatewayv1.UDPRoute)
 	if !ok {
 		return nil, fmt.Errorf("expected a UDPRoute object but got %T", obj)
 	}
@@ -77,7 +75,7 @@ func (v *UDPRouteCustomValidator) ValidateCreate(ctx context.Context, obj runtim
 }
 
 func (v *UDPRouteCustomValidator) ValidateUpdate(ctx context.Context, oldObj, newObj runtime.Object) (admission.Warnings, error) {
-	route, ok := newObj.(*gatewayv1alpha2.UDPRoute)
+	route, ok := newObj.(*gatewayv1.UDPRoute)
 	if !ok {
 		return nil, fmt.Errorf("expected a UDPRoute object for the newObj but got %T", newObj)
 	}
@@ -98,7 +96,7 @@ func (*UDPRouteCustomValidator) ValidateDelete(context.Context, runtime.Object) 
 	return nil, nil
 }
 
-func (v *UDPRouteCustomValidator) collectWarnings(ctx context.Context, route *gatewayv1alpha2.UDPRoute) admission.Warnings {
+func (v *UDPRouteCustomValidator) collectWarnings(ctx context.Context, route *gatewayv1.UDPRoute) admission.Warnings {
 	serviceVisited := make(map[types.NamespacedName]struct{})
 	namespace := route.GetNamespace()
 
@@ -118,7 +116,7 @@ func (v *UDPRouteCustomValidator) collectWarnings(ctx context.Context, route *ga
 		})...)
 	}
 
-	addBackendRef := func(ns, name string, group *gatewayv1alpha2.Group, kind *gatewayv1alpha2.Kind) {
+	addBackendRef := func(ns, name string, group *gatewayv1.Group, kind *gatewayv1.Kind) {
 		if name == "" {
 			return
 		}

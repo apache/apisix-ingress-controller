@@ -82,8 +82,10 @@ spec:
                     description: HMACAuth configures the HMAC authentication details.
                     properties:
                       secretRef:
-                        description: SecretRef references a Kubernetes Secret containing
-                          the HMAC credentials.
+                        description: |-
+                          SecretRef references a Kubernetes Secret containing the HMAC credentials.
+                          Unlike Value, the Secret stores signed_headers as a single string listing the
+                          header names separated by commas or whitespace, for example "X-Date, Host".
                         properties:
                           name:
                             default: ""

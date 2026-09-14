@@ -56,7 +56,9 @@ type GatewayClassReconciler struct { //nolint:revive
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *GatewayClassReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	r.EventRecorder = mgr.GetEventRecorderFor("gatewayclass-controller")
+	// GetEventRecorderFor returns the legacy record.EventRecorder; the suggested
+	// GetEventRecorder uses the new events API with an incompatible interface.
+	r.EventRecorder = mgr.GetEventRecorderFor("gatewayclass-controller") //nolint:staticcheck
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&gatewayv1.GatewayClass{}).
 		WithEventFilter(predicate.NewPredicateFuncs(r.GatewayClassFilter)).

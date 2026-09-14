@@ -35,8 +35,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
-	"sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
@@ -68,8 +66,15 @@ type TLSRouteReconciler struct { //nolint:revive
 func (r *TLSRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	bdr := ctrl.NewControllerManagedBy(mgr).
-		For(&gatewayv1alpha2.TLSRoute{}).
-		WithEventFilter(predicate.GenerationChangedPredicate{}).
+		For(&gatewayv1.TLSRoute{}).
+		// A Secret carries no generation, so GenerationChangedPredicate would drop its
+		// updates and a plugin would keep the Secret data read at the last spec change.
+		WithEventFilter(
+			predicate.Or(
+				predicate.GenerationChangedPredicate{},
+				predicate.NewPredicateFuncs(TypePredicate[*corev1.Secret]()),
+			),
+		).
 		Watches(&discoveryv1.EndpointSlice{},
 			handler.EnqueueRequestsFromMapFunc(r.listTLSRoutesByServiceRef),
 		).
@@ -101,15 +106,22 @@ func (r *TLSRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	// L4RoutePolicy is an optional CRD. Only watch it when installed so the
 	// controller still starts if the CRD has not been applied yet (e.g. upgrades).
-	r.supportsL4RoutePolicy = pkgutils.HasAPIResource(mgr, &v1alpha1.L4RoutePolicy{})
+	supportsL4RoutePolicy, err := pkgutils.HasAPIResource(mgr, &v1alpha1.L4RoutePolicy{})
+	if err != nil {
+		return err
+	}
+	r.supportsL4RoutePolicy = supportsL4RoutePolicy
 	if r.supportsL4RoutePolicy {
 		bdr.Watches(&v1alpha1.L4RoutePolicy{},
 			handler.EnqueueRequestsFromMapFunc(r.listTLSRoutesForL4RoutePolicy),
-		)
+		).
+			Watches(&corev1.Secret{},
+				handler.EnqueueRequestsFromMapFunc(r.listTLSRoutesForSecret),
+			)
 	}
 
 	if GetEnableReferenceGrant() {
-		bdr.Watches(&v1beta1.ReferenceGrant{},
+		bdr.Watches(&gatewayv1.ReferenceGrant{},
 			handler.EnqueueRequestsFromMapFunc(r.listTLSRoutesForReferenceGrant),
 			builder.WithPredicates(referenceGrantPredicates(types.KindTLSRoute)),
 		)
@@ -125,7 +137,7 @@ func (r *TLSRouteReconciler) listTLSRoutesForBackendTrafficPolicy(ctx context.Co
 		return nil
 	}
 
-	tlsrouteList := []gatewayv1alpha2.TLSRoute{}
+	tlsrouteList := []gatewayv1.TLSRoute{}
 	for _, targetRef := range policy.Spec.TargetRefs {
 		service := &corev1.Service{}
 		if err := r.Get(ctx, client.ObjectKey{
@@ -137,7 +149,7 @@ func (r *TLSRouteReconciler) listTLSRoutesForBackendTrafficPolicy(ctx context.Co
 			}
 			continue
 		}
-		trList := &gatewayv1alpha2.TLSRouteList{}
+		trList := &gatewayv1.TLSRouteList{}
 		if err := r.List(ctx, trList, client.MatchingFields{
 			indexer.ServiceIndexRef: indexer.GenIndexKey(policy.Namespace, string(targetRef.Name)),
 		}); err != nil {
@@ -171,7 +183,7 @@ func (r *TLSRouteReconciler) listTLSRoutesForGateway(ctx context.Context, obj cl
 	if !ok {
 		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to Gateway")
 	}
-	trList := &gatewayv1alpha2.TLSRouteList{}
+	trList := &gatewayv1.TLSRouteList{}
 	if err := r.List(ctx, trList, client.MatchingFields{
 		indexer.ParentRefs: indexer.GenIndexKey(gateway.Namespace, gateway.Name),
 	}); err != nil {
@@ -215,7 +227,7 @@ func (r *TLSRouteReconciler) listTLSRoutesForGatewayProxy(ctx context.Context, o
 
 	// for each gateway, find all TLSRoute resources that reference it
 	for _, gateway := range gatewayList.Items {
-		tlsRouteList := &gatewayv1alpha2.TLSRouteList{}
+		tlsRouteList := &gatewayv1.TLSRouteList{}
 		if err := r.List(ctx, tlsRouteList, client.MatchingFields{
 			indexer.ParentRefs: indexer.GenIndexKey(gateway.Namespace, gateway.Name),
 		}); err != nil {
@@ -237,8 +249,8 @@ func (r *TLSRouteReconciler) listTLSRoutesForGatewayProxy(ctx context.Context, o
 }
 
 func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	defer r.Readier.Done(&gatewayv1alpha2.TLSRoute{}, req.NamespacedName)
-	tr := new(gatewayv1alpha2.TLSRoute)
+	defer r.Readier.Done(&gatewayv1.TLSRoute{}, req.NamespacedName)
+	tr := new(gatewayv1.TLSRoute)
 	if err := r.Get(ctx, req.NamespacedName, tr); err != nil {
 		if client.IgnoreNotFound(err) == nil {
 			tr.Namespace = req.Namespace
@@ -246,7 +258,7 @@ func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 			tr.TypeMeta = metav1.TypeMeta{
 				Kind:       types.KindTLSRoute,
-				APIVersion: gatewayv1alpha2.GroupVersion.String(),
+				APIVersion: gatewayv1.GroupVersion.String(),
 			}
 
 			if err := r.Provider.Delete(ctx, tr); err != nil {
@@ -271,12 +283,28 @@ func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		msg:    "Route is accepted",
 	}
 
-	gateways, err := ParseRouteParentRefs(ctx, r.Client, r.Log, tr, tr.Spec.ParentRefs)
+	gateways, unresolvedParents, err := ParseRouteParentRefs(ctx, r.Client, r.Log, tr, tr.Spec.ParentRefs)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	if len(gateways) == 0 {
+		if unresolvedParents {
+			// See the HTTPRoute reconciler: an unresolvable parentRef leaves ownership
+			// unknown rather than disproven, so the data plane must be left alone.
+			return ctrl.Result{}, nil
+		}
+		// See the HTTPRoute reconciler: a route that no longer references a
+		// Gateway managed by this controller must have its previously pushed
+		// configuration removed, or the data plane keeps serving it.
+		tr.TypeMeta = metav1.TypeMeta{
+			Kind:       types.KindTLSRoute,
+			APIVersion: gatewayv1.GroupVersion.String(),
+		}
+		if err := r.Provider.Delete(ctx, tr); err != nil {
+			r.Log.Error(err, "failed to delete tlsroute", "tlsroute", tr)
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, nil
 	}
 
@@ -327,9 +355,9 @@ func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 
 	r.Updater.Update(status.Update{
 		NamespacedName: utils.NamespacedName(tr),
-		Resource:       &gatewayv1alpha2.TLSRoute{},
+		Resource:       &gatewayv1.TLSRoute{},
 		Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
-			t, ok := obj.(*gatewayv1alpha2.TLSRoute)
+			t, ok := obj.(*gatewayv1.TLSRoute)
 			if !ok {
 				err := fmt.Errorf("unsupported object type %T", obj)
 				panic(err)
@@ -345,11 +373,26 @@ func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		if err := r.Provider.Update(ctx, tctx, routeToUpdate); err != nil {
 			return ctrl.Result{}, err
 		}
+		return ctrl.Result{}, nil
+	}
+
+	// The route still resolves to one of our Gateways but no parent accepts it any
+	// more, so retract what an earlier reconcile published. The store is what every
+	// sync pushes, so leaving the entry keeps the data plane serving the route.
+	// Provider.Delete derives the resource labels from the object Kind, which is not
+	// set on every object read through the client.
+	tr.TypeMeta = metav1.TypeMeta{
+		Kind:       types.KindTLSRoute,
+		APIVersion: gatewayv1.GroupVersion.String(),
+	}
+	if err := r.Provider.Delete(ctx, tr); err != nil {
+		r.Log.Error(err, "failed to delete tlsroute", "tlsroute", utils.NamespacedName(tr))
+		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
 }
 
-func (r *TLSRouteReconciler) processTLSRoute(tctx *provider.TranslateContext, tlsRoute *gatewayv1alpha2.TLSRoute) error {
+func (r *TLSRouteReconciler) processTLSRoute(tctx *provider.TranslateContext, tlsRoute *gatewayv1.TLSRoute) error {
 	var terror error
 	for _, rule := range tlsRoute.Spec.Rules {
 		for _, backend := range rule.BackendRefs {
@@ -407,10 +450,10 @@ func (r *TLSRouteReconciler) processTLSRouteBackendRefs(tctx *provider.Translate
 		if trNN.Namespace != targetNN.Namespace {
 			if permitted := checkReferenceGrant(tctx,
 				r.Client,
-				v1beta1.ReferenceGrantFrom{
+				gatewayv1.ReferenceGrantFrom{
 					Group:     gatewayv1.GroupName,
 					Kind:      types.KindTLSRoute,
-					Namespace: v1beta1.Namespace(trNN.Namespace),
+					Namespace: gatewayv1.Namespace(trNN.Namespace),
 				},
 				gatewayv1.ObjectReference{
 					Group:     corev1.GroupName,
@@ -420,7 +463,7 @@ func (r *TLSRouteReconciler) processTLSRouteBackendRefs(tctx *provider.Translate
 				},
 			); !permitted {
 				terr = types.ReasonError{
-					Reason:  string(v1beta1.RouteReasonRefNotPermitted),
+					Reason:  string(gatewayv1.RouteReasonRefNotPermitted),
 					Message: fmt.Sprintf("%s is in a different namespace than the TLSRoute %s and no ReferenceGrant allowing reference is configured", targetNN, trNN),
 				}
 				continue
@@ -434,7 +477,7 @@ func (r *TLSRouteReconciler) processTLSRouteBackendRefs(tctx *provider.Translate
 
 		portExists := false
 		for _, port := range service.Spec.Ports {
-			if port.Port == int32(*backend.Port) {
+			if port.Port == *backend.Port {
 				portExists = true
 				break
 			}
@@ -463,23 +506,23 @@ func (r *TLSRouteReconciler) processTLSRouteBackendRefs(tctx *provider.Translate
 }
 
 func (r *TLSRouteReconciler) listTLSRoutesForReferenceGrant(ctx context.Context, obj client.Object) (requests []reconcile.Request) {
-	grant, ok := obj.(*v1beta1.ReferenceGrant)
+	grant, ok := obj.(*gatewayv1.ReferenceGrant)
 	if !ok {
 		r.Log.Error(fmt.Errorf("unexpected object type"), "failed to convert object to ReferenceGrant")
 		return nil
 	}
 
-	var tlsRouteList gatewayv1alpha2.TLSRouteList
+	var tlsRouteList gatewayv1.TLSRouteList
 	if err := r.List(ctx, &tlsRouteList); err != nil {
 		r.Log.Error(err, "failed to list tlsroutes for reference ReferenceGrant", "ReferenceGrant", k8stypes.NamespacedName{Namespace: obj.GetNamespace(), Name: obj.GetName()})
 		return nil
 	}
 
 	for _, tlsRoute := range tlsRouteList.Items {
-		tr := v1beta1.ReferenceGrantFrom{
+		tr := gatewayv1.ReferenceGrantFrom{
 			Group:     gatewayv1.GroupName,
 			Kind:      types.KindTLSRoute,
-			Namespace: v1beta1.Namespace(tlsRoute.GetNamespace()),
+			Namespace: gatewayv1.Namespace(tlsRoute.GetNamespace()),
 		}
 		for _, from := range grant.Spec.From {
 			if from == tr {
@@ -504,7 +547,7 @@ func (r *TLSRouteReconciler) listTLSRoutesByServiceRef(ctx context.Context, obj 
 	namespace := endpointSlice.GetNamespace()
 	serviceName := endpointSlice.Labels[discoveryv1.LabelServiceName]
 
-	trList := &gatewayv1alpha2.TLSRouteList{}
+	trList := &gatewayv1.TLSRouteList{}
 	if err := r.List(ctx, trList, client.MatchingFields{
 		indexer.ServiceIndexRef: indexer.GenIndexKey(namespace, serviceName),
 	}); err != nil {
@@ -546,4 +589,13 @@ func (r *TLSRouteReconciler) listTLSRoutesForL4RoutePolicy(ctx context.Context, 
 		requests = append(requests, reconcile.Request{NamespacedName: nn})
 	}
 	return requests
+}
+
+// listTLSRoutesForSecret maps a Secret to the TLSRoutes whose L4RoutePolicy plugins reference it.
+func (r *TLSRouteReconciler) listTLSRoutesForSecret(ctx context.Context, obj client.Object) []reconcile.Request {
+	var requests []reconcile.Request
+	for _, policy := range listL4RoutePoliciesForSecret(ctx, r.Client, r.Log, obj) {
+		requests = append(requests, r.listTLSRoutesForL4RoutePolicy(ctx, &policy)...)
+	}
+	return pkgutils.DedupComparable(requests)
 }

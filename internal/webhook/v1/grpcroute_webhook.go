@@ -25,7 +25,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
@@ -36,9 +35,8 @@ import (
 var grpcRouteLog = logf.Log.WithName("grpcroute-resource")
 
 func SetupGRPCRouteWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&gatewayv1.GRPCRoute{}).
-		WithValidator(NewGRPCRouteCustomValidator(mgr.GetClient())).
+	return ctrl.NewWebhookManagedBy(mgr, &gatewayv1.GRPCRoute{}).
+		WithCustomValidator(NewGRPCRouteCustomValidator(mgr.GetClient())).
 		Complete()
 }
 
@@ -49,7 +47,7 @@ type GRPCRouteCustomValidator struct {
 	checker reference.Checker
 }
 
-var _ webhook.CustomValidator = &GRPCRouteCustomValidator{}
+var _ admission.Validator[runtime.Object] = &GRPCRouteCustomValidator{}
 
 func NewGRPCRouteCustomValidator(c client.Client) *GRPCRouteCustomValidator {
 	return &GRPCRouteCustomValidator{

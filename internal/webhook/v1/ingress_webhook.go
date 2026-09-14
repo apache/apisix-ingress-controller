@@ -25,9 +25,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
+	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations"
 	"github.com/apache/apisix-ingress-controller/internal/controller"
 	"github.com/apache/apisix-ingress-controller/internal/webhook/v1/reference"
 	sslvalidator "github.com/apache/apisix-ingress-controller/internal/webhook/v1/ssl"
@@ -37,8 +37,8 @@ var ingresslog = logf.Log.WithName("ingress-resource")
 
 // SetupIngressWebhookWithManager registers the webhook for Ingress in the manager.
 func SetupIngressWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).For(&networkingv1.Ingress{}).
-		WithValidator(NewIngressCustomValidator(mgr.GetClient())).
+	return ctrl.NewWebhookManagedBy(mgr, &networkingv1.Ingress{}).
+		WithCustomValidator(NewIngressCustomValidator(mgr.GetClient())).
 		Complete()
 }
 
@@ -56,7 +56,7 @@ type IngressCustomValidator struct {
 	checker reference.Checker
 }
 
-var _ webhook.CustomValidator = &IngressCustomValidator{}
+var _ admission.Validator[runtime.Object] = &IngressCustomValidator{}
 
 func NewIngressCustomValidator(c client.Client) *IngressCustomValidator {
 	return &IngressCustomValidator{
@@ -74,6 +74,10 @@ func (v *IngressCustomValidator) ValidateCreate(ctx context.Context, obj runtime
 	ingresslog.Info("Validation for Ingress upon creation", "name", ingress.GetName(), "namespace", ingress.GetNamespace())
 	if !controller.MatchesIngressClass(v.Client, ingresslog, ingress) {
 		return nil, nil
+	}
+
+	if err := validateAnnotations(ingress); err != nil {
+		return nil, err
 	}
 
 	detector := sslvalidator.NewConflictDetector(v.Client)
@@ -97,6 +101,10 @@ func (v *IngressCustomValidator) ValidateUpdate(ctx context.Context, oldObj, new
 		return nil, nil
 	}
 
+	if err := validateAnnotations(ingress); err != nil {
+		return nil, err
+	}
+
 	detector := sslvalidator.NewConflictDetector(v.Client)
 	conflicts := detector.DetectConflicts(ctx, ingress)
 	if len(conflicts) > 0 {
@@ -105,6 +113,20 @@ func (v *IngressCustomValidator) ValidateUpdate(ctx context.Context, oldObj, new
 
 	warnings := v.collectReferenceWarnings(ctx, ingress)
 	return warnings, nil
+}
+
+// validateAnnotations rejects annotation combinations that would otherwise be
+// silently dropped, leaving the route without a requested security plugin.
+// enable-csrf with no csrf-key is refused here so kubectl apply fails loudly
+// instead of programming a route the operator believes is protected.
+func validateAnnotations(ingress *networkingv1.Ingress) error {
+	e := annotations.NewExtractor(ingress.Annotations)
+	if e.GetBoolAnnotation(annotations.AnnotationsEnableCsrf) &&
+		e.GetStringAnnotation(annotations.AnnotationsCsrfKey) == "" {
+		return fmt.Errorf("annotation %q is enabled but %q is missing or empty",
+			annotations.AnnotationsEnableCsrf, annotations.AnnotationsCsrfKey)
+	}
+	return nil
 }
 
 // ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type Ingress.

@@ -54,9 +54,14 @@ type GatewayProxyController struct {
 }
 
 func (r *GatewayProxyController) SetupWithManager(mrg ctrl.Manager) error {
-	if config.ControllerConfig.DisableGatewayAPI || !pkgutils.HasAPIResource(mrg, &gatewayv1.Gateway{}) {
-		r.disableGatewayAPI = true
+	hasGatewayAPI := false
+	if !config.ControllerConfig.DisableGatewayAPI {
+		var err error
+		if hasGatewayAPI, err = pkgutils.HasAPIResource(mrg, &gatewayv1.Gateway{}); err != nil {
+			return err
+		}
 	}
+	r.disableGatewayAPI = !hasGatewayAPI
 	builder := ctrl.NewControllerManagedBy(mrg).
 		For(&v1alpha1.GatewayProxy{}).
 		WithEventFilter(

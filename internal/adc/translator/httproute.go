@@ -36,6 +36,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/id"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
+	sslutils "github.com/apache/apisix-ingress-controller/internal/ssl"
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
 
@@ -45,7 +46,7 @@ func (t *Translator) fillPluginsFromHTTPRouteFilters(
 	filters []gatewayv1.HTTPRouteFilter,
 	matches []gatewayv1.HTTPRouteMatch,
 	tctx *provider.TranslateContext,
-) {
+) error {
 	for _, filter := range filters {
 		switch filter.Type {
 		case gatewayv1.HTTPRouteFilterRequestHeaderModifier:
@@ -59,38 +60,42 @@ func (t *Translator) fillPluginsFromHTTPRouteFilters(
 		case gatewayv1.HTTPRouteFilterResponseHeaderModifier:
 			t.fillPluginFromHTTPResponseHeaderFilter(plugins, filter.ResponseHeaderModifier)
 		case gatewayv1.HTTPRouteFilterExtensionRef:
-			t.fillPluginFromExtensionRef(plugins, namespace, filter.ExtensionRef, tctx)
+			if err := t.fillPluginFromExtensionRef(plugins, namespace, filter.ExtensionRef, tctx); err != nil {
+				return err
+			}
 		case gatewayv1.HTTPRouteFilterCORS:
 			t.fillPluginFromHTTPCORSFilter(plugins, filter.CORS)
 		}
 	}
+	return nil
 }
 
-func (t *Translator) fillPluginFromExtensionRef(plugins adctypes.Plugins, namespace string, extensionRef *gatewayv1.LocalObjectReference, tctx *provider.TranslateContext) {
+func (t *Translator) fillPluginFromExtensionRef(plugins adctypes.Plugins, namespace string, extensionRef *gatewayv1.LocalObjectReference, tctx *provider.TranslateContext) error {
 	if extensionRef == nil {
-		return
+		return nil
 	}
-	if extensionRef.Kind == internaltypes.KindPluginConfig {
-		pluginconfig := tctx.PluginConfigs[types.NamespacedName{
-			Namespace: namespace,
-			Name:      string(extensionRef.Name),
-		}]
-		if pluginconfig == nil {
-			return
-		}
-		for _, plugin := range pluginconfig.Spec.Plugins {
-			pluginName := plugin.Name
-			pluginconfig := make(map[string]any)
-			if len(plugin.Config.Raw) > 0 {
-				if err := json.Unmarshal(plugin.Config.Raw, &pluginconfig); err != nil {
-					t.Log.Error(err, "plugin config unmarshal failed", "plugin", plugin.Name)
-					continue
-				}
-			}
-			plugins[pluginName] = pluginconfig
-		}
-		t.Log.V(1).Info("fill plugin from extension ref", "plugins", plugins)
+	if extensionRef.Kind != internaltypes.KindPluginConfig {
+		return nil
 	}
+	pluginconfig := tctx.PluginConfigs[types.NamespacedName{
+		Namespace: namespace,
+		Name:      string(extensionRef.Name),
+	}]
+	if pluginconfig == nil {
+		return nil
+	}
+	names := make([]string, 0, len(pluginconfig.Spec.Plugins))
+	for _, plugin := range pluginconfig.Spec.Plugins {
+		config, err := renderPluginConfig(plugin, namespace, tctx.Secrets)
+		if err != nil {
+			return err
+		}
+		plugins[plugin.Name] = config
+		names = append(names, plugin.Name)
+	}
+	// The rendered configuration may hold Secret data, so log the plugin names only.
+	t.Log.V(1).Info("fill plugin from extension ref", "pluginConfig", string(extensionRef.Name), "plugins", names)
+	return nil
 }
 
 func (t *Translator) fillPluginFromURLRewriteFilter(plugins adctypes.Plugins, urlRewrite *gatewayv1.HTTPURLRewriteFilter, matches []gatewayv1.HTTPRouteMatch) {
@@ -191,7 +196,9 @@ func (t *Translator) fillPluginFromHTTPCORSFilter(plugins adctypes.Plugins, cors
 		}
 		plugin.ExposeHeaders = strings.Join(exposeHeaders, ",")
 	}
-	plugin.AllowCredential = bool(cors.AllowCredentials)
+	if cors.AllowCredentials != nil {
+		plugin.AllowCredential = *cors.AllowCredentials
+	}
 }
 
 func (t *Translator) fillPluginFromHTTPRequestHeaderFilter(plugins adctypes.Plugins, reqHeaderModifier *gatewayv1.HTTPHeaderFilter) {
@@ -421,6 +428,12 @@ func (t *Translator) translateBackendRef(tctx *provider.TranslateContext, ref ga
 		port := 80
 		if ref.Port != nil {
 			port = int(*ref.Port)
+			for _, p := range service.Spec.Ports {
+				if int(p.Port) == port {
+					protocol = ptr.Deref(p.AppProtocol, "")
+					break
+				}
+			}
 		}
 		return adctypes.UpstreamNodes{
 			{
@@ -525,6 +538,18 @@ func calculateHTTPRoutePriority(match *gatewayv1.HTTPRouteMatch, ruleIndex int, 
 	return priority
 }
 
+// ruleProducesResponse reports whether the rule answers requests on its own,
+// without a backend — currently a RequestRedirect filter. Such a rule is valid
+// with no backendRefs and must not be turned into a fault-injection 500.
+func ruleProducesResponse(rule gatewayv1.HTTPRouteRule) bool {
+	for _, f := range rule.Filters {
+		if f.Type == gatewayv1.HTTPRouteFilterRequestRedirect {
+			return true
+		}
+	}
+	return false
+}
+
 // translateBackendsToUpstreams processes the BackendRefs of an HTTPRouteRule,
 // builds upstreams, assigns them to the service (single upstream or traffic-split
 // plugin for multiple), and injects fault-injection on backend errors.
@@ -570,7 +595,7 @@ func (t *Translator) translateBackendsToUpstreams(
 			kind = string(*backend.Kind)
 		}
 		if backend.Port != nil {
-			port = int32(*backend.Port)
+			port = *backend.Port
 		}
 		namespace := string(*backend.Namespace)
 		name := string(backend.Name)
@@ -639,7 +664,15 @@ func (t *Translator) translateBackendsToUpstreams(
 		}
 	}
 
-	if backendErr != nil && (service.Upstream == nil || len(service.Upstream.Nodes) == 0) {
+	// A rule whose backendRefs are omitted/empty, or whose backendRefs all fail
+	// to resolve, must explicitly respond with 500 (Gateway API). Exceptions:
+	//   - a rule that produces its own response (e.g. a RequestRedirect filter)
+	//     is valid without backendRefs; the filter answers, so it must not be
+	//     turned into a 500.
+	//   - a backend that resolves but currently has no ready endpoints is left to
+	//     the upstream's own "no healthy nodes" handling (503).
+	noUsableBackend := backendErr != nil || (len(rule.BackendRefs) == 0 && !ruleProducesResponse(rule))
+	if noUsableBackend && (service.Upstream == nil || len(service.Upstream.Nodes) == 0) {
 		if service.Plugins == nil {
 			service.Plugins = make(map[string]any)
 		}
@@ -661,6 +694,7 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 	for _, hostname := range httpRoute.Spec.Hostnames {
 		hosts = append(hosts, string(hostname))
 	}
+	hosts = sslutils.NormalizeHosts(hosts)
 
 	rules := httpRoute.Spec.Rules
 
@@ -676,7 +710,9 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 
 		enableWebsocket, _ := t.translateBackendsToUpstreams(tctx, rule, httpRoute, service)
 
-		t.fillPluginsFromHTTPRouteFilters(service.Plugins, httpRoute.GetNamespace(), rule.Filters, rule.Matches, tctx)
+		if err := t.fillPluginsFromHTTPRouteFilters(service.Plugins, httpRoute.GetNamespace(), rule.Filters, rule.Matches, tctx); err != nil {
+			return nil, err
+		}
 
 		matches := rule.Matches
 		if len(matches) == 0 {
@@ -712,17 +748,26 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 			routes = append(routes, route)
 		}
 
-		// Collect unique listener ports for port-based routing
-		listenerPorts := make(map[int32]struct{})
-		for _, listener := range tctx.Listeners {
-			listenerPorts[int32(listener.Port)] = struct{}{}
-		}
+		// A route answers only the schemes its listeners accept: one attached only to
+		// HTTPS listeners must not answer plaintext requests for the same host and
+		// path, and one attached only to HTTP listeners must not answer TLS ones.
+		// Nothing else enforces that: hostname matching cannot tell the two apart, and
+		// server_port only can when the Gateway's declared ports equal the ports
+		// APISIX listens on.
+		t.pinRoutesToListenerScheme(tctx.Listeners, routes)
+
+		// Hostname-less listener ports decide whether a server_port var is needed;
+		// hostname listeners are isolated by host, not port.
+		listenerPorts := collectServerPortMatchPorts(tctx.Listeners)
 
 		// Add server_port matching only when a route explicitly targets a listener
-		// or when multiple listener ports need to be disambiguated.
-		if t.shouldInjectServerPortVars(tctx.RouteParentRefs, listenerPorts) {
+		// or when multiple listener ports need to be disambiguated. When it is added,
+		// match on every targeted listener port so a route attached to both a
+		// hostname-less and a hostname listener is not dropped on the hostname port.
+		if t.shouldInjectServerPortVars(tctx.HasExplicitListenerMatch, listenerPorts) {
+			matchPorts := allListenerPorts(tctx.Listeners)
 			for _, route := range routes {
-				addServerPortVars(route, listenerPorts)
+				addServerPortVars(route, matchPorts)
 			}
 		}
 

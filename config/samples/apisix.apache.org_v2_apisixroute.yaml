@@ -6,4 +6,14 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: apisixroute-sample
 spec:
-  # TODO(user): Add fields here
+  ingressClassName: apisix
+  http:
+    - name: rule-sample
+      match:
+        hosts:
+          - httpbin.example.com
+        paths:
+          - /get
+      backends:
+        - serviceName: httpbin
+          servicePort: 80

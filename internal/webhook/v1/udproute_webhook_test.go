@@ -27,7 +27,6 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 )
@@ -38,7 +37,7 @@ func buildUDPRouteValidator(t *testing.T, objects ...runtime.Object) *UDPRouteCu
 	scheme := runtime.NewScheme()
 	require.NoError(t, clientgoscheme.AddToScheme(scheme))
 	require.NoError(t, gatewayv1.Install(scheme))
-	require.NoError(t, gatewayv1alpha2.Install(scheme))
+	require.NoError(t, gatewayv1.Install(scheme))
 
 	managed := []runtime.Object{
 		&gatewayv1.GatewayClass{
@@ -61,19 +60,19 @@ func buildUDPRouteValidator(t *testing.T, objects ...runtime.Object) *UDPRouteCu
 }
 
 func TestUDPRouteCustomValidator_WarnsForMissingReferences(t *testing.T) {
-	route := &gatewayv1alpha2.UDPRoute{
+	route := &gatewayv1.UDPRoute{
 		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
-		Spec: gatewayv1alpha2.UDPRouteSpec{
-			CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
-				ParentRefs: []gatewayv1alpha2.ParentReference{{
-					Name: gatewayv1alpha2.ObjectName("test-gateway"),
+		Spec: gatewayv1.UDPRouteSpec{
+			CommonRouteSpec: gatewayv1.CommonRouteSpec{
+				ParentRefs: []gatewayv1.ParentReference{{
+					Name: gatewayv1.ObjectName("test-gateway"),
 				}},
 			},
-			Rules: []gatewayv1alpha2.UDPRouteRule{{
-				BackendRefs: []gatewayv1alpha2.BackendRef{
+			Rules: []gatewayv1.UDPRouteRule{{
+				BackendRefs: []gatewayv1.BackendRef{
 					{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-							Name: gatewayv1alpha2.ObjectName("missing-svc"),
+						BackendObjectReference: gatewayv1.BackendObjectReference{
+							Name: gatewayv1.ObjectName("missing-svc"),
 						},
 					},
 				},
@@ -96,19 +95,19 @@ func TestUDPRouteCustomValidator_NoWarningsWhenResourcesExist(t *testing.T) {
 
 	validator := buildUDPRouteValidator(t, objs...)
 
-	route := &gatewayv1alpha2.UDPRoute{
+	route := &gatewayv1.UDPRoute{
 		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
-		Spec: gatewayv1alpha2.UDPRouteSpec{
-			CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
-				ParentRefs: []gatewayv1alpha2.ParentReference{{
-					Name: gatewayv1alpha2.ObjectName("test-gateway"),
+		Spec: gatewayv1.UDPRouteSpec{
+			CommonRouteSpec: gatewayv1.CommonRouteSpec{
+				ParentRefs: []gatewayv1.ParentReference{{
+					Name: gatewayv1.ObjectName("test-gateway"),
 				}},
 			},
-			Rules: []gatewayv1alpha2.UDPRouteRule{{
-				BackendRefs: []gatewayv1alpha2.BackendRef{
+			Rules: []gatewayv1.UDPRouteRule{{
+				BackendRefs: []gatewayv1.BackendRef{
 					{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-							Name: gatewayv1alpha2.ObjectName("backend"),
+						BackendObjectReference: gatewayv1.BackendObjectReference{
+							Name: gatewayv1.ObjectName("backend"),
 						},
 					},
 				},
@@ -128,19 +127,19 @@ func TestUDPRouteCustomValidator_ValidateUpdate(t *testing.T) {
 
 	validator := buildUDPRouteValidator(t, objs...)
 
-	oldRoute := &gatewayv1alpha2.UDPRoute{
+	oldRoute := &gatewayv1.UDPRoute{
 		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
-		Spec: gatewayv1alpha2.UDPRouteSpec{
-			CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
-				ParentRefs: []gatewayv1alpha2.ParentReference{{
-					Name: gatewayv1alpha2.ObjectName("test-gateway"),
+		Spec: gatewayv1.UDPRouteSpec{
+			CommonRouteSpec: gatewayv1.CommonRouteSpec{
+				ParentRefs: []gatewayv1.ParentReference{{
+					Name: gatewayv1.ObjectName("test-gateway"),
 				}},
 			},
-			Rules: []gatewayv1alpha2.UDPRouteRule{{
-				BackendRefs: []gatewayv1alpha2.BackendRef{
+			Rules: []gatewayv1.UDPRouteRule{{
+				BackendRefs: []gatewayv1.BackendRef{
 					{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-							Name: gatewayv1alpha2.ObjectName("backend"),
+						BackendObjectReference: gatewayv1.BackendObjectReference{
+							Name: gatewayv1.ObjectName("backend"),
 						},
 					},
 				},
@@ -148,19 +147,19 @@ func TestUDPRouteCustomValidator_ValidateUpdate(t *testing.T) {
 		},
 	}
 
-	newRoute := &gatewayv1alpha2.UDPRoute{
+	newRoute := &gatewayv1.UDPRoute{
 		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
-		Spec: gatewayv1alpha2.UDPRouteSpec{
-			CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
-				ParentRefs: []gatewayv1alpha2.ParentReference{{
-					Name: gatewayv1alpha2.ObjectName("test-gateway"),
+		Spec: gatewayv1.UDPRouteSpec{
+			CommonRouteSpec: gatewayv1.CommonRouteSpec{
+				ParentRefs: []gatewayv1.ParentReference{{
+					Name: gatewayv1.ObjectName("test-gateway"),
 				}},
 			},
-			Rules: []gatewayv1alpha2.UDPRouteRule{{
-				BackendRefs: []gatewayv1alpha2.BackendRef{
+			Rules: []gatewayv1.UDPRouteRule{{
+				BackendRefs: []gatewayv1.BackendRef{
 					{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-							Name: gatewayv1alpha2.ObjectName("backend"),
+						BackendObjectReference: gatewayv1.BackendObjectReference{
+							Name: gatewayv1.ObjectName("backend"),
 						},
 					},
 				},
@@ -176,12 +175,12 @@ func TestUDPRouteCustomValidator_ValidateUpdate(t *testing.T) {
 func TestUDPRouteCustomValidator_ValidateDelete(t *testing.T) {
 	validator := buildUDPRouteValidator(t)
 
-	route := &gatewayv1alpha2.UDPRoute{
+	route := &gatewayv1.UDPRoute{
 		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
-		Spec: gatewayv1alpha2.UDPRouteSpec{
-			CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
-				ParentRefs: []gatewayv1alpha2.ParentReference{{
-					Name: gatewayv1alpha2.ObjectName("test-gateway"),
+		Spec: gatewayv1.UDPRouteSpec{
+			CommonRouteSpec: gatewayv1.CommonRouteSpec{
+				ParentRefs: []gatewayv1.ParentReference{{
+					Name: gatewayv1.ObjectName("test-gateway"),
 				}},
 			},
 		},
@@ -193,26 +192,26 @@ func TestUDPRouteCustomValidator_ValidateDelete(t *testing.T) {
 }
 
 func TestUDPRouteCustomValidator_CrossNamespaceBackendRefs(t *testing.T) {
-	otherNamespace := gatewayv1alpha2.Namespace("other")
+	otherNamespace := gatewayv1.Namespace("other")
 	objs := []runtime.Object{
 		&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: "backend", Namespace: "other"}},
 	}
 
 	validator := buildUDPRouteValidator(t, objs...)
 
-	route := &gatewayv1alpha2.UDPRoute{
+	route := &gatewayv1.UDPRoute{
 		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
-		Spec: gatewayv1alpha2.UDPRouteSpec{
-			CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
-				ParentRefs: []gatewayv1alpha2.ParentReference{{
-					Name: gatewayv1alpha2.ObjectName("test-gateway"),
+		Spec: gatewayv1.UDPRouteSpec{
+			CommonRouteSpec: gatewayv1.CommonRouteSpec{
+				ParentRefs: []gatewayv1.ParentReference{{
+					Name: gatewayv1.ObjectName("test-gateway"),
 				}},
 			},
-			Rules: []gatewayv1alpha2.UDPRouteRule{{
-				BackendRefs: []gatewayv1alpha2.BackendRef{
+			Rules: []gatewayv1.UDPRouteRule{{
+				BackendRefs: []gatewayv1.BackendRef{
 					{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-							Name:      gatewayv1alpha2.ObjectName("backend"),
+						BackendObjectReference: gatewayv1.BackendObjectReference{
+							Name:      gatewayv1.ObjectName("backend"),
 							Namespace: &otherNamespace,
 						},
 					},
@@ -235,29 +234,29 @@ func TestUDPRouteCustomValidator_MultipleBackendRefs(t *testing.T) {
 
 	validator := buildUDPRouteValidator(t, objs...)
 
-	route := &gatewayv1alpha2.UDPRoute{
+	route := &gatewayv1.UDPRoute{
 		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
-		Spec: gatewayv1alpha2.UDPRouteSpec{
-			CommonRouteSpec: gatewayv1alpha2.CommonRouteSpec{
-				ParentRefs: []gatewayv1alpha2.ParentReference{{
-					Name: gatewayv1alpha2.ObjectName("test-gateway"),
+		Spec: gatewayv1.UDPRouteSpec{
+			CommonRouteSpec: gatewayv1.CommonRouteSpec{
+				ParentRefs: []gatewayv1.ParentReference{{
+					Name: gatewayv1.ObjectName("test-gateway"),
 				}},
 			},
-			Rules: []gatewayv1alpha2.UDPRouteRule{{
-				BackendRefs: []gatewayv1alpha2.BackendRef{
+			Rules: []gatewayv1.UDPRouteRule{{
+				BackendRefs: []gatewayv1.BackendRef{
 					{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-							Name: gatewayv1alpha2.ObjectName("backend-1"),
+						BackendObjectReference: gatewayv1.BackendObjectReference{
+							Name: gatewayv1.ObjectName("backend-1"),
 						},
 					},
 					{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-							Name: gatewayv1alpha2.ObjectName("backend-2"),
+						BackendObjectReference: gatewayv1.BackendObjectReference{
+							Name: gatewayv1.ObjectName("backend-2"),
 						},
 					},
 					{
-						BackendObjectReference: gatewayv1alpha2.BackendObjectReference{
-							Name: gatewayv1alpha2.ObjectName("missing-backend"),
+						BackendObjectReference: gatewayv1.BackendObjectReference{
+							Name: gatewayv1.ObjectName("missing-backend"),
 						},
 					},
 				},
