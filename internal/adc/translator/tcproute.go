@@ -67,7 +67,7 @@ func listenerPortSet(tctx *provider.TranslateContext) map[int32]struct{} {
 // the match to work, so injection is opt-in (explicit sectionName/port targeting,
 // or more than one listener port). When it is not injected we keep the previous
 // single portless StreamRoute, preserving backward compatibility.
-func (t *Translator) buildL4StreamRoutes(tctx *provider.TranslateContext, namespace, name string, ruleIndex int, typ, routeKind string, labels map[string]string) []*adctypes.StreamRoute {
+func (t *Translator) buildL4StreamRoutes(tctx *provider.TranslateContext, namespace, name string, ruleIndex int, typ, routeKind string, labels map[string]string) ([]*adctypes.StreamRoute, error) {
 	var ports []int32
 	if portSet := listenerPortSet(tctx); t.shouldInjectServerPortVars(tctx.HasExplicitListenerMatch, portSet) {
 		ports = make([]int32, 0, len(portSet))
@@ -98,10 +98,12 @@ func (t *Translator) buildL4StreamRoutes(tctx *provider.TranslateContext, namesp
 		// Attach L4RoutePolicy plugins at the stream_route level: the APISIX stream proxy
 		// applies plugins from the stream_route, not from the service.
 		streamRoute.Plugins = make(adctypes.Plugins)
-		t.AttachL4RoutePolicyPlugins(tctx.L4RoutePolicies, namespace, name, routeKind, streamRoute.Plugins, tctx.Secrets)
+		if err := t.AttachL4RoutePolicyPlugins(tctx.L4RoutePolicies, namespace, name, routeKind, streamRoute.Plugins, tctx.Secrets); err != nil {
+			return nil, err
+		}
 		streamRoutes = append(streamRoutes, streamRoute)
 	}
-	return streamRoutes
+	return streamRoutes, nil
 }
 
 func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute *gatewayv1.TCPRoute) (*TranslateResult, error) {
@@ -212,7 +214,11 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 			}
 		}
 		// TODO: support remote_addr, server_addr, sni
-		service.StreamRoutes = t.buildL4StreamRoutes(tctx, tcpRoute.Namespace, tcpRoute.Name, ruleIndex, "TCP", "TCPRoute", labels)
+		streamRoutes, err := t.buildL4StreamRoutes(tctx, tcpRoute.Namespace, tcpRoute.Name, ruleIndex, "TCP", "TCPRoute", labels)
+		if err != nil {
+			return nil, err
+		}
+		service.StreamRoutes = streamRoutes
 
 		result.Services = append(result.Services, service)
 	}

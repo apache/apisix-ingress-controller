@@ -139,7 +139,11 @@ func (t *Translator) TranslateUDPRoute(tctx *provider.TranslateContext, udpRoute
 			}
 		}
 		// TODO: support remote_addr, server_addr, sni
-		service.StreamRoutes = t.buildL4StreamRoutes(tctx, udpRoute.Namespace, udpRoute.Name, ruleIndex, "UDP", "UDPRoute", labels)
+		streamRoutes, err := t.buildL4StreamRoutes(tctx, udpRoute.Namespace, udpRoute.Name, ruleIndex, "UDP", "UDPRoute", labels)
+		if err != nil {
+			return nil, err
+		}
+		service.StreamRoutes = streamRoutes
 
 		result.Services = append(result.Services, service)
 	}
