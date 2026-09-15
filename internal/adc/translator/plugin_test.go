@@ -115,8 +115,9 @@ func TestFillPluginFromExtensionRef_ResolvesSecretRef(t *testing.T) {
 
 	plugins := adctypes.Plugins{}
 	require.NoError(t, translator.fillPluginFromExtensionRef(plugins, "default", &gatewayv1.LocalObjectReference{
-		Kind: internaltypes.KindPluginConfig,
-		Name: "oidc",
+		Group: gatewayv1.Group(v1alpha1.GroupVersion.Group),
+		Kind:  internaltypes.KindPluginConfig,
+		Name:  "oidc",
 	}, tctx))
 
 	assert.Equal(t, map[string]any{
@@ -140,8 +141,9 @@ func TestFillPluginFromExtensionRef_MissingSecretFailsTranslation(t *testing.T) 
 
 	// The route must not be programmed without the plugin its filter asks for.
 	err := translator.fillPluginFromExtensionRef(adctypes.Plugins{}, "default", &gatewayv1.LocalObjectReference{
-		Kind: internaltypes.KindPluginConfig,
-		Name: "oidc",
+		Group: gatewayv1.Group(v1alpha1.GroupVersion.Group),
+		Kind:  internaltypes.KindPluginConfig,
+		Name:  "oidc",
 	}, tctx)
 	assert.ErrorContains(t, err, "default/oidc-credentials")
 }
@@ -168,8 +170,9 @@ func TestFillPluginFromExtensionRef_DoesNotLogSecretValues(t *testing.T) {
 	}
 
 	require.NoError(t, translator.fillPluginFromExtensionRef(adctypes.Plugins{}, "default", &gatewayv1.LocalObjectReference{
-		Kind: internaltypes.KindPluginConfig,
-		Name: "oidc",
+		Group: gatewayv1.Group(v1alpha1.GroupVersion.Group),
+		Kind:  internaltypes.KindPluginConfig,
+		Name:  "oidc",
 	}, tctx))
 
 	assert.Contains(t, logged.String(), "openid-connect")
