@@ -79,6 +79,8 @@ const defaultIngressClassAnnotation = "ingressclass.kubernetes.io/is-default-cla
 
 var (
 	ErrNoMatchingListenerHostname = errors.New("no matching hostnames in listener")
+	errNoDefaultIngressClass      = errors.New("no default ingress class found")
+	errIngressClassNotControlled  = errors.New("ingress class is not controlled by us")
 )
 
 var (
@@ -1796,7 +1798,7 @@ func FindMatchingIngressClassByName(ctx context.Context, c client.Client, log lo
 				return &ic, nil
 			}
 		}
-		return nil, errors.New("no default ingress class found")
+		return nil, errNoDefaultIngressClass
 	}
 
 	// Check if the specified ingress class is controlled by us
@@ -1809,7 +1811,13 @@ func FindMatchingIngressClassByName(ctx context.Context, c client.Client, log lo
 		return &ingressClass, nil
 	}
 
-	return nil, errors.New("ingress class is not controlled by us")
+	return nil, errIngressClassNotControlled
+}
+
+func isIngressClassSelectionAbsent(err error) bool {
+	return k8serrors.IsNotFound(err) ||
+		errors.Is(err, errNoDefaultIngressClass) ||
+		errors.Is(err, errIngressClassNotControlled)
 }
 
 // distinctRequests distinct the requests
