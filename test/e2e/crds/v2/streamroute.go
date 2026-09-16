@@ -104,6 +104,89 @@ spec:
 		})
 	})
 
+	// A stream route the data plane rejects must not stop the other stream routes under
+	// the same GatewayProxy from being applied. limit-conn requires conn to be greater
+	// than 0, which every backend checks.
+	Context("Bad resource isolation", func() {
+		streamRoutes := `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: valid-tcp-route
+spec:
+  ingressClassName: %s
+  stream:
+  - name: rule1
+    protocol: TCP
+    match:
+      ingressPort: 9100
+    backend:
+      serviceName: httpbin-service-e2e-test
+      servicePort: 80
+---
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: rejected-tcp-route
+spec:
+  ingressClassName: %s
+  stream:
+  - name: rule1
+    protocol: TCP
+    match:
+      ingressPort: 9110
+    backend:
+      serviceName: httpbin-service-e2e-test
+      servicePort: 80
+    plugins:
+    - name: limit-conn
+      enable: true
+      config:
+        conn: %d
+        burst: 1
+        default_conn_delay: 1
+        key: remote_addr
+`
+		It("isolates a rejected stream route", func() {
+			By("apply a valid and a rejected stream route")
+			err := s.CreateResourceFromString(fmt.Sprintf(streamRoutes, s.Namespace(), s.Namespace(), 0))
+			Expect(err).NotTo(HaveOccurred(), "creating ApisixRoutes")
+
+			By("the valid stream route proxies")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Client: s.NewAPISIXClientWithTCPProxy(),
+				Method: "GET",
+				Path:   "/ip",
+				Check:  scaffold.WithExpectedStatus(200),
+			})
+
+			By("the rejected ApisixRoute reports why it is not served")
+			s.RetryAssertion(func() string {
+				output, _ := s.GetOutputFromString("ar", "rejected-tcp-route", "-o", "yaml", "-n", s.Namespace())
+				return output
+			}).Should(And(
+				ContainSubstring(`status: "False"`),
+				ContainSubstring(`reason: SyncFailed`),
+			))
+
+			By("fix the rejected stream route")
+			err = s.CreateResourceFromString(fmt.Sprintf(streamRoutes, s.Namespace(), s.Namespace(), 1))
+			Expect(err).NotTo(HaveOccurred(), "updating ApisixRoutes")
+
+			By("both stream routes are accepted")
+			s.RetryAssertion(func() string {
+				output, _ := s.GetOutputFromString("ar", "rejected-tcp-route", "-o", "yaml", "-n", s.Namespace())
+				return output
+			}).Should(ContainSubstring(`reason: Accepted`))
+			s.RequestAssert(&scaffold.RequestAssert{
+				Client: s.NewAPISIXClientWithTCPProxy(),
+				Method: "GET",
+				Path:   "/ip",
+				Check:  scaffold.WithExpectedStatus(200),
+			})
+		})
+	})
+
 	Context("TCP Proxy with TLS upstream", func() {
 		apisixUpstream := `
 apiVersion: apisix.apache.org/v2

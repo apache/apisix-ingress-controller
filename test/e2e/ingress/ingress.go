@@ -1600,4 +1600,116 @@ spec:
 		})
 
 	})
+
+	// An Ingress has no status conditions to carry a rejection, so it is reported as an
+	// event instead.
+	Context("Bad resource isolation", func() {
+		var gatewayProxy = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  name: apisix-proxy-config
+  namespace: %s
+spec:
+  provider:
+    type: ControlPlane
+    controlPlane:
+      endpoints:
+      - %s
+      auth:
+        type: AdminKey
+        adminKey:
+          value: "%s"
+`
+		var ingressClass = `
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: %s
+spec:
+  controller: "%s"
+  parameters:
+    apiGroup: "apisix.apache.org"
+    kind: "GatewayProxy"
+    name: "apisix-proxy-config"
+    namespace: "%s"
+    scope: "Namespace"
+`
+		// retries has no lower bound in the CRD and the data plane requires it to be at
+		// least 0, so this reaches the data plane and is rejected on schema grounds.
+		var rejectedIngress = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: httpbin-service-e2e-test
+  namespace: %s
+spec:
+  ingressClassName: %s
+  retries: -1
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rejected
+spec:
+  ingressClassName: %s
+  rules:
+  - host: rejected-ingress.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
+
+		var fixedUpstream = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: httpbin-service-e2e-test
+  namespace: %s
+spec:
+  ingressClassName: %s
+  retries: 1
+`
+
+		It("a rejected Ingress is reported as an event", func() {
+			By("create GatewayProxy")
+			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(gatewayProxy, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey()), s.Namespace())
+			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			By("create IngressClass")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClass, s.Namespace(), s.GetControllerName(), s.Namespace()), "")
+			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
+
+			By("create an Ingress whose upstream configuration the data plane rejects")
+			err = s.CreateResourceFromString(fmt.Sprintf(rejectedIngress, s.Namespace(), s.Namespace(), s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "creating ApisixUpstream and Ingress")
+
+			By("the rejected Ingress reports an event")
+			s.RetryAssertion(func() string {
+				output, _ := s.GetOutputFromString("events", "--field-selector", "involvedObject.name=rejected", "-n", s.Namespace())
+				return output
+			}).Should(And(
+				ContainSubstring("Warning"),
+				ContainSubstring("SyncFailed"),
+			))
+
+			By("fix the upstream configuration")
+			err = s.CreateResourceFromString(fmt.Sprintf(fixedUpstream, s.Namespace(), s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "updating ApisixUpstream")
+
+			By("the Ingress is served")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "rejected-ingress.example.com",
+				Check:  scaffold.WithExpectedStatus(200),
+			})
+		})
+	})
 })
