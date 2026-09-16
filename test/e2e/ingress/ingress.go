@@ -1635,26 +1635,30 @@ spec:
     namespace: "%s"
     scope: "Namespace"
 `
-		// A timeout below a second is truncated to 0 on its way out, and the data plane
-		// requires every timeout to be greater than 0, so this reaches it and is rejected
-		// on schema grounds.
-		var rejectedIngress = `
+		// The Ingress picks up its plugins from an ApisixPluginConfig named in an
+		// annotation; limit-count refuses a count that is not greater than 0.
+		var rejectedPluginConfig = `
 apiVersion: apisix.apache.org/v2
-kind: ApisixUpstream
+kind: ApisixPluginConfig
 metadata:
-  name: httpbin-service-e2e-test
-  namespace: %s
+  name: rejected-plugins
 spec:
   ingressClassName: %s
-  timeout:
-    connect: 500ms
-    read: 1s
-    send: 1s
----
+  plugins:
+  - name: limit-count
+    enable: true
+    config:
+      count: 0
+      time_window: 60
+      rejected_code: 503
+      key: remote_addr
+`
+		var ingressTemplate = `
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: rejected
+%s
 spec:
   ingressClassName: %s
   rules:
@@ -1669,20 +1673,8 @@ spec:
             port:
               number: 80
 `
-
-		var fixedUpstream = `
-apiVersion: apisix.apache.org/v2
-kind: ApisixUpstream
-metadata:
-  name: httpbin-service-e2e-test
-  namespace: %s
-spec:
-  ingressClassName: %s
-  timeout:
-    connect: 1s
-    read: 1s
-    send: 1s
-`
+		const withRejectedPlugins = `  annotations:
+    k8s.apisix.apache.org/plugin-config-name: rejected-plugins`
 
 		It("a rejected Ingress is reported as an event", func() {
 			By("create GatewayProxy")
@@ -1693,9 +1685,11 @@ spec:
 			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClass, s.Namespace(), s.GetControllerName(), s.Namespace()), "")
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 
-			By("create an Ingress whose upstream configuration the data plane rejects")
-			err = s.CreateResourceFromString(fmt.Sprintf(rejectedIngress, s.Namespace(), s.Namespace(), s.Namespace()))
-			Expect(err).NotTo(HaveOccurred(), "creating ApisixUpstream and Ingress")
+			By("create an Ingress whose plugins the data plane rejects")
+			err = s.CreateResourceFromString(fmt.Sprintf(rejectedPluginConfig, s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "creating ApisixPluginConfig")
+			err = s.CreateResourceFromString(fmt.Sprintf(ingressTemplate, withRejectedPlugins, s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "creating Ingress")
 
 			By("the rejected Ingress reports an event")
 			s.RetryAssertion(func() string {
@@ -1706,9 +1700,9 @@ spec:
 				ContainSubstring("SyncFailed"),
 			))
 
-			By("fix the upstream configuration")
-			err = s.CreateResourceFromString(fmt.Sprintf(fixedUpstream, s.Namespace(), s.Namespace()))
-			Expect(err).NotTo(HaveOccurred(), "updating ApisixUpstream")
+			By("stop using the rejected plugins")
+			err = s.CreateResourceFromString(fmt.Sprintf(ingressTemplate, "", s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "updating Ingress")
 
 			By("the Ingress is served")
 			s.RequestAssert(&scaffold.RequestAssert{

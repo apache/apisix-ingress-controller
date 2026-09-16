@@ -51,6 +51,11 @@ var _ = Describe("Test bad resource isolation", Label("apisix.apache.org", "v2",
         rejected_code: 503
         key: remote_addr
 `
+	// A consistent-hash load balancer needs a key to hash on. The data plane checks that
+	// in code rather than in its schema, so the configuration gets past ADC's schema
+	// check and is rejected only by the data plane itself.
+	const rejectedHashKey = ""
+	const acceptedHashKey = "    key: remote_addr"
 	const acceptedPlugin = `
     plugins:
     - name: limit-count
@@ -200,9 +205,6 @@ spec:
 	})
 
 	It("isolates a route whose upstream configuration is rejected", func() {
-		// A timeout below a second is truncated to 0 on its way out, and the data plane
-		// requires every timeout to be greater than 0, so this reaches it and is rejected
-		// on schema grounds.
 		const upstream = `
 apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
@@ -211,14 +213,14 @@ metadata:
   namespace: %s
 spec:
   ingressClassName: %s
-  timeout:
-    connect: %s
-    read: 1s
-    send: 1s
+  loadbalancer:
+    type: chash
+    hashOn: vars
+%s
 `
 		By("apply a valid and a rejected ApisixRoute, the rejected one using a rejected upstream configuration")
 		apply(fmt.Sprintf(routes, s.Namespace(), s.Namespace(), s.Namespace(), s.Namespace(), ""))
-		apply(fmt.Sprintf(upstream, s.Namespace(), s.Namespace(), "500ms"))
+		apply(fmt.Sprintf(upstream, s.Namespace(), s.Namespace(), rejectedHashKey))
 
 		By("the rejected ApisixRoute reports why it is not served")
 		expectStatus("ar", "rejected",
@@ -227,7 +229,7 @@ spec:
 		)
 
 		By("fix the upstream configuration")
-		apply(fmt.Sprintf(upstream, s.Namespace(), s.Namespace(), "1s"))
+		apply(fmt.Sprintf(upstream, s.Namespace(), s.Namespace(), acceptedHashKey))
 
 		By("both ApisixRoutes are served")
 		expectServed("valid.example.com")
@@ -245,10 +247,10 @@ metadata:
   namespace: %s
 spec:
   ingressClassName: %s
-  timeout:
-    connect: %s
-    read: 1s
-    send: 1s
+  loadbalancer:
+    type: chash
+    hashOn: vars
+%s
   externalNodes:
   - type: Service
     name: httpbin-service-e2e-test
@@ -283,14 +285,14 @@ spec:
     - name: external
 `
 		By("apply an ApisixRoute whose second rule references a rejected ApisixUpstream")
-		apply(fmt.Sprintf(namedUpstream, s.Namespace(), s.Namespace(), "500ms", s.Namespace(), s.Namespace()))
+		apply(fmt.Sprintf(namedUpstream, s.Namespace(), s.Namespace(), rejectedHashKey, s.Namespace(), s.Namespace()))
 
 		By("the valid rule is served and the ApisixRoute reports the dropped one")
 		expectServed("valid.example.com")
 		expectStatus("ar", "named-upstream", ContainSubstring(`type: PartiallyInvalid`))
 
 		By("fix the ApisixUpstream")
-		apply(fmt.Sprintf(namedUpstream, s.Namespace(), s.Namespace(), "1s", s.Namespace(), s.Namespace()))
+		apply(fmt.Sprintf(namedUpstream, s.Namespace(), s.Namespace(), acceptedHashKey, s.Namespace(), s.Namespace()))
 
 		By("both rules are served")
 		expectServed("valid.example.com")

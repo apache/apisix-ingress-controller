@@ -613,3 +613,16 @@ func TestUpdateStatusFromSyncResultsReportsAServiceWithoutRoutesLeftAsFullyDropp
 	assert.NotContains(t, findCondition(conditions, string(apiv2.ConditionTypeAccepted)).Message, "ns_route_0-1: ",
 		"a resource with nothing left reports the data plane's reasons on their own")
 }
+
+func TestUpdateStatusFromSyncResultsLeavesPluginsProgrammedOffAGatewayProxyWithoutPlugins(t *testing.T) {
+	d, updater := newStatusTestProvider()
+	d.updateStatusFromSyncResults(context.Background(),
+		map[string]types.ADCExecutionErrors{testConfigName: {}},
+		map[string]uint64{testConfigName: d.store.Revision()})
+
+	gatewayProxy := &apiv1alpha1.GatewayProxy{}
+	gatewayProxy.Status.Conditions = []metav1.Condition{{Type: GatewayProxyConditionPluginsProgrammed, Status: metav1.ConditionTrue}}
+	conditions := conditionsOf(t, updater, "gp", gatewayProxy)
+	assert.Nil(t, findCondition(conditions, GatewayProxyConditionPluginsProgrammed))
+	require.NotNil(t, findCondition(conditions, GatewayProxyConditionDataPlaneAvailable))
+}

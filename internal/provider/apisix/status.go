@@ -143,10 +143,14 @@ func (d *apisixProvider) updateStatusFromSyncResults(ctx context.Context, result
 			}
 		}
 		slices.Sort(msgs)
-		if len(msgs) > 0 {
+		switch {
+		case len(msgs) > 0:
 			d.updateStatus(gatewayProxy, setConditions(newGatewayProxyCondition(GatewayProxyConditionPluginsProgrammed, false, GatewayProxyReasonPluginsInvalid, strings.Join(msgs, "; "))))
-		} else {
+		case len(d.store.OwnedEntities(configName, gatewayProxy)) > 0:
 			d.updateStatus(gatewayProxy, setConditions(newGatewayProxyCondition(GatewayProxyConditionPluginsProgrammed, true, GatewayProxyReasonPluginsProgrammed, "")))
+		default:
+			// A GatewayProxy that declares no plugins has nothing for this condition to report on.
+			d.updateStatus(gatewayProxy, conditionChange{remove: []string{GatewayProxyConditionPluginsProgrammed}})
 		}
 	}
 

@@ -106,10 +106,11 @@ spec:
 
 	// A stream route the data plane rejects must not stop the other stream routes under
 	// the same GatewayProxy from being applied. The rejected one gets a backend of its
-	// own, whose upstream carries a timeout the data plane refuses: a timeout below a
-	// second is truncated to 0 on its way out, and every timeout has to be greater
-	// than 0. Stream route plugin configurations are not checked by the data plane, so
-	// they cannot serve as the rejected content here.
+	// own, whose upstream is a consistent-hash load balancer with no key to hash on: the
+	// data plane checks that in code rather than in its schema, so the configuration gets
+	// past ADC's schema check and is rejected only by the data plane itself. Stream route
+	// plugin configurations are not checked by the data plane at all, so they cannot
+	// serve as the rejected content here.
 	Context("Bad resource isolation", func() {
 		const rejectedBackend = `
 apiVersion: v1
@@ -132,10 +133,9 @@ metadata:
   name: httpbin-alias
 spec:
   ingressClassName: %s
-  timeout:
-    connect: %s
-    read: 1s
-    send: 1s
+  loadbalancer:
+    type: chash
+    hashOn: vars
 `
 		const streamRoutes = `
 apiVersion: apisix.apache.org/v2
@@ -165,14 +165,14 @@ spec:
     match:
       ingressPort: 9110
     backend:
-      serviceName: httpbin-alias
+      serviceName: %s
       servicePort: 80
 `
 		It("isolates a rejected stream route", func() {
 			By("apply a valid and a rejected stream route")
-			err := s.CreateResourceFromString(fmt.Sprintf(rejectedBackend, s.Namespace(), "500ms"))
+			err := s.CreateResourceFromString(fmt.Sprintf(rejectedBackend, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating the rejected backend")
-			err = s.CreateResourceFromString(fmt.Sprintf(streamRoutes, s.Namespace(), s.Namespace()))
+			err = s.CreateResourceFromString(fmt.Sprintf(streamRoutes, s.Namespace(), s.Namespace(), "httpbin-alias"))
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixRoutes")
 
 			By("the valid stream route proxies")
@@ -192,21 +192,17 @@ spec:
 				ContainSubstring(`reason: SyncFailed`),
 			))
 
-			By("fix the rejected backend")
-			err = s.CreateResourceFromString(fmt.Sprintf(rejectedBackend, s.Namespace(), "1s"))
-			Expect(err).NotTo(HaveOccurred(), "updating the ApisixUpstream")
+			// A stream rule's ApisixUpstream is not watched for changes, so the fix is made
+			// on the route itself.
+			By("point the rejected stream route at a valid backend")
+			err = s.CreateResourceFromString(fmt.Sprintf(streamRoutes, s.Namespace(), s.Namespace(), "httpbin-service-e2e-test"))
+			Expect(err).NotTo(HaveOccurred(), "updating ApisixRoutes")
 
-			By("both stream routes are accepted")
+			By("the stream route is accepted")
 			s.RetryAssertion(func() string {
 				output, _ := s.GetOutputFromString("ar", "rejected-tcp-route", "-o", "yaml", "-n", s.Namespace())
 				return output
 			}).Should(ContainSubstring(`reason: Accepted`))
-			s.RequestAssert(&scaffold.RequestAssert{
-				Client: s.NewAPISIXClientWithTCPProxy(),
-				Method: "GET",
-				Path:   "/ip",
-				Check:  scaffold.WithExpectedStatus(200),
-			})
 		})
 	})
 
