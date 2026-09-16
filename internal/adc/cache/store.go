@@ -18,6 +18,7 @@
 package cache
 
 import (
+	"cmp"
 	"encoding/json"
 	"maps"
 	"slices"
@@ -65,6 +66,10 @@ type Entity struct {
 	// username, or the id for the other types.
 	Name  string
 	Owner types.NamespacedNameKind
+	// Children are the routes and stream routes a service holds. A service whose
+	// children are all dropped serves nothing, even though the service itself was never
+	// rejected.
+	Children []Entity
 }
 
 func NewStore(log logr.Logger) *Store {
@@ -138,6 +143,17 @@ func canonicalJSON(v any) string {
 func serviceID(service *adctypes.Service) string    { return service.ID }
 func consumerID(consumer *adctypes.Consumer) string { return consumer.Username }
 func sslID(ssl *adctypes.SSL) string                { return ssl.ID }
+
+func childrenOf(service *adctypes.Service, owner types.NamespacedNameKind) []Entity {
+	children := make([]Entity, 0, len(service.Routes)+len(service.StreamRoutes))
+	for _, route := range service.Routes {
+		children = append(children, Entity{Type: adctypes.TypeRoute, ID: route.ID, Name: cmp.Or(route.Name, route.ID), Owner: owner})
+	}
+	for _, streamRoute := range service.StreamRoutes {
+		children = append(children, Entity{Type: adctypes.TypeStreamRoute, ID: streamRoute.ID, Name: cmp.Or(streamRoute.Name, streamRoute.ID), Owner: owner})
+	}
+	return children
+}
 
 func ownerFromLabels(labels map[string]string) types.NamespacedNameKind {
 	return types.NamespacedNameKind{
@@ -471,11 +487,21 @@ func (s *Store) OwnedEntities(name string, owner types.NamespacedNameKind) []Ent
 	if !ok {
 		return nil
 	}
-	var entities []Entity
+	entities := make([]Entity, 0, len(s.owners[name]))
 	for key, o := range s.owners[name] {
-		if o == owner {
-			entities = append(entities, Entity{Type: key.resourceType, ID: key.id, Name: key.id, Owner: owner})
+		if o != owner {
+			continue
 		}
+		entity := Entity{Type: key.resourceType, ID: key.id, Name: key.id, Owner: owner}
+		if key.resourceType == adctypes.TypeService {
+			if service, err := targetCache.GetService(key.id); err == nil {
+				if service.Name != "" {
+					entity.Name = service.Name
+				}
+				entity.Children = childrenOf(service, owner)
+			}
+		}
+		entities = append(entities, entity)
 	}
 	rows, _ := targetCache.ListGlobalRules(&OwnerSelector{Owner: owner})
 	for _, row := range rows {

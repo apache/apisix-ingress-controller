@@ -134,10 +134,11 @@ spec:
 
 		By("the valid ApisixRoute is served and the rejected one reports why it is not")
 		expectServed("valid.example.com")
+		// The rejected route is the only one this ApisixRoute has, so none of it is served.
 		expectStatus("ar", "rejected",
 			ContainSubstring(`status: "False"`),
 			ContainSubstring(`reason: SyncFailed`),
-			ContainSubstring(`failed to check the configuration of plugin limit-count`),
+			ContainSubstring(`limit-count`),
 		)
 
 		By("fix the rejected ApisixRoute")
@@ -186,7 +187,7 @@ spec:
 		expectServed("valid.example.com")
 		expectStatus("ar", "partial",
 			ContainSubstring(`type: PartiallyInvalid`),
-			ContainSubstring(`failed to check the configuration of plugin limit-count`),
+			ContainSubstring(`limit-count`),
 		)
 
 		By("fix the rejected rule")
@@ -199,8 +200,9 @@ spec:
 	})
 
 	It("isolates a route whose upstream configuration is rejected", func() {
-		// retries has no lower bound in the CRD and the data plane requires it to be at
-		// least 0, so this reaches the data plane and is rejected on schema grounds.
+		// A timeout below a second is truncated to 0 on its way out, and the data plane
+		// requires every timeout to be greater than 0, so this reaches it and is rejected
+		// on schema grounds.
 		const upstream = `
 apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
@@ -209,11 +211,14 @@ metadata:
   namespace: %s
 spec:
   ingressClassName: %s
-  retries: %d
+  timeout:
+    connect: %s
+    read: 1s
+    send: 1s
 `
 		By("apply a valid and a rejected ApisixRoute, the rejected one using a rejected upstream configuration")
 		apply(fmt.Sprintf(routes, s.Namespace(), s.Namespace(), s.Namespace(), s.Namespace(), ""))
-		apply(fmt.Sprintf(upstream, s.Namespace(), s.Namespace(), -1))
+		apply(fmt.Sprintf(upstream, s.Namespace(), s.Namespace(), "500ms"))
 
 		By("the rejected ApisixRoute reports why it is not served")
 		expectStatus("ar", "rejected",
@@ -222,7 +227,7 @@ spec:
 		)
 
 		By("fix the upstream configuration")
-		apply(fmt.Sprintf(upstream, s.Namespace(), s.Namespace(), 1))
+		apply(fmt.Sprintf(upstream, s.Namespace(), s.Namespace(), "1s"))
 
 		By("both ApisixRoutes are served")
 		expectServed("valid.example.com")
@@ -240,7 +245,10 @@ metadata:
   namespace: %s
 spec:
   ingressClassName: %s
-  retries: %d
+  timeout:
+    connect: %s
+    read: 1s
+    send: 1s
   externalNodes:
   - type: Service
     name: httpbin-service-e2e-test
@@ -275,14 +283,14 @@ spec:
     - name: external
 `
 		By("apply an ApisixRoute whose second rule references a rejected ApisixUpstream")
-		apply(fmt.Sprintf(namedUpstream, s.Namespace(), s.Namespace(), -1, s.Namespace(), s.Namespace()))
+		apply(fmt.Sprintf(namedUpstream, s.Namespace(), s.Namespace(), "500ms", s.Namespace(), s.Namespace()))
 
 		By("the valid rule is served and the ApisixRoute reports the dropped one")
 		expectServed("valid.example.com")
 		expectStatus("ar", "named-upstream", ContainSubstring(`type: PartiallyInvalid`))
 
 		By("fix the ApisixUpstream")
-		apply(fmt.Sprintf(namedUpstream, s.Namespace(), s.Namespace(), 1, s.Namespace(), s.Namespace()))
+		apply(fmt.Sprintf(namedUpstream, s.Namespace(), s.Namespace(), "1s", s.Namespace(), s.Namespace()))
 
 		By("both rules are served")
 		expectServed("valid.example.com")

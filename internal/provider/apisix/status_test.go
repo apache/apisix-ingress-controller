@@ -576,5 +576,40 @@ func TestUpdateStatusFromSyncResultsFiresAnEventForADroppedIngress(t *testing.T)
 	require.Len(t, recorder.Events, 1)
 	e := <-recorder.Events
 	assert.Contains(t, e, "Warning")
-	assert.Contains(t, e, "ns_ing_0")
+	assert.Contains(t, e, "rejected svc")
+}
+
+// TestUpdateStatusFromSyncResultsReportsAServiceWithoutRoutesLeftAsFullyDropped covers a
+// resource whose routes are all dropped: the service itself was never rejected, but it
+// serves nothing, so the resource is not partially served.
+func TestUpdateStatusFromSyncResultsReportsAServiceWithoutRoutesLeftAsFullyDropped(t *testing.T) {
+	route := types.NamespacedNameKind{Kind: types.KindApisixRoute, Namespace: "ns", Name: "route"}
+	d, updater := newStatusTestProvider()
+	require.NoError(t, d.store.Insert(testConfigName, []string{adctypes.TypeService}, &adctypes.Resources{
+		Services: []*adctypes.Service{{
+			Metadata: adctypes.Metadata{ID: "svc", Name: "ns_route_0"},
+			Routes: []*adctypes.Route{
+				{Metadata: adctypes.Metadata{ID: "r1", Name: "ns_route_0-0"}},
+				{Metadata: adctypes.Metadata{ID: "r2", Name: "ns_route_0-1"}},
+			},
+		}},
+	}, labelsOf(route)))
+	sync := func(events ...adctypes.StatusEvent) []metav1.Condition {
+		updater.updates = nil
+		d.updateStatusFromSyncResults(context.Background(),
+			map[string]types.ADCExecutionErrors{testConfigName: rejected(events...)},
+			map[string]uint64{testConfigName: d.store.Revision()})
+		return conditionsOf(t, updater, "route", &apiv2.ApisixRoute{})
+	}
+
+	conditions := sync(adctypes.StatusEvent{ResourceType: adctypes.TypeRoute, ResourceID: "r1", ParentID: "svc"})
+	assert.Equal(t, metav1.ConditionTrue, findCondition(conditions, string(apiv2.ConditionTypeAccepted)).Status)
+	require.NotNil(t, findCondition(conditions, conditionTypePartiallyInvalid), "the other route is still served")
+
+	conditions = sync(adctypes.StatusEvent{ResourceType: adctypes.TypeRoute, ResourceID: "r2", ParentID: "svc"})
+	assert.Equal(t, metav1.ConditionFalse, findCondition(conditions, string(apiv2.ConditionTypeAccepted)).Status)
+	assert.Equal(t, string(apiv2.ConditionReasonSyncFailed), findCondition(conditions, string(apiv2.ConditionTypeAccepted)).Reason)
+	assert.Nil(t, findCondition(conditions, conditionTypePartiallyInvalid))
+	assert.NotContains(t, findCondition(conditions, string(apiv2.ConditionTypeAccepted)).Message, "ns_route_0-1: ",
+		"a resource with nothing left reports the data plane's reasons on their own")
 }

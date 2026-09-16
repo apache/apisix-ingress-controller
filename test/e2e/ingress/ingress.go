@@ -1635,8 +1635,9 @@ spec:
     namespace: "%s"
     scope: "Namespace"
 `
-		// retries has no lower bound in the CRD and the data plane requires it to be at
-		// least 0, so this reaches the data plane and is rejected on schema grounds.
+		// A timeout below a second is truncated to 0 on its way out, and the data plane
+		// requires every timeout to be greater than 0, so this reaches it and is rejected
+		// on schema grounds.
 		var rejectedIngress = `
 apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
@@ -1645,7 +1646,10 @@ metadata:
   namespace: %s
 spec:
   ingressClassName: %s
-  retries: -1
+  timeout:
+    connect: 500ms
+    read: 1s
+    send: 1s
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -1674,7 +1678,10 @@ metadata:
   namespace: %s
 spec:
   ingressClassName: %s
-  retries: 1
+  timeout:
+    connect: 1s
+    read: 1s
+    send: 1s
 `
 
 		It("a rejected Ingress is reported as an event", func() {

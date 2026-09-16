@@ -105,10 +105,39 @@ spec:
 	})
 
 	// A stream route the data plane rejects must not stop the other stream routes under
-	// the same GatewayProxy from being applied. limit-conn requires conn to be greater
-	// than 0, which every backend checks.
+	// the same GatewayProxy from being applied. The rejected one gets a backend of its
+	// own, whose upstream carries a timeout the data plane refuses: a timeout below a
+	// second is truncated to 0 on its way out, and every timeout has to be greater
+	// than 0. Stream route plugin configurations are not checked by the data plane, so
+	// they cannot serve as the rejected content here.
 	Context("Bad resource isolation", func() {
-		streamRoutes := `
+		const rejectedBackend = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpbin-alias
+spec:
+  selector:
+    app: httpbin-deployment-e2e-test
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  type: ClusterIP
+---
+apiVersion: apisix.apache.org/v2
+kind: ApisixUpstream
+metadata:
+  name: httpbin-alias
+spec:
+  ingressClassName: %s
+  timeout:
+    connect: %s
+    read: 1s
+    send: 1s
+`
+		const streamRoutes = `
 apiVersion: apisix.apache.org/v2
 kind: ApisixRoute
 metadata:
@@ -136,20 +165,14 @@ spec:
     match:
       ingressPort: 9110
     backend:
-      serviceName: httpbin-service-e2e-test
+      serviceName: httpbin-alias
       servicePort: 80
-    plugins:
-    - name: limit-conn
-      enable: true
-      config:
-        conn: %d
-        burst: 1
-        default_conn_delay: 1
-        key: remote_addr
 `
 		It("isolates a rejected stream route", func() {
 			By("apply a valid and a rejected stream route")
-			err := s.CreateResourceFromString(fmt.Sprintf(streamRoutes, s.Namespace(), s.Namespace(), 0))
+			err := s.CreateResourceFromString(fmt.Sprintf(rejectedBackend, s.Namespace(), "500ms"))
+			Expect(err).NotTo(HaveOccurred(), "creating the rejected backend")
+			err = s.CreateResourceFromString(fmt.Sprintf(streamRoutes, s.Namespace(), s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixRoutes")
 
 			By("the valid stream route proxies")
@@ -169,9 +192,9 @@ spec:
 				ContainSubstring(`reason: SyncFailed`),
 			))
 
-			By("fix the rejected stream route")
-			err = s.CreateResourceFromString(fmt.Sprintf(streamRoutes, s.Namespace(), s.Namespace(), 1))
-			Expect(err).NotTo(HaveOccurred(), "updating ApisixRoutes")
+			By("fix the rejected backend")
+			err = s.CreateResourceFromString(fmt.Sprintf(rejectedBackend, s.Namespace(), "1s"))
+			Expect(err).NotTo(HaveOccurred(), "updating the ApisixUpstream")
 
 			By("both stream routes are accepted")
 			s.RetryAssertion(func() string {

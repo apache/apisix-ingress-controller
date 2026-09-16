@@ -36,6 +36,7 @@ import (
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	apiv1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
+	"github.com/apache/apisix-ingress-controller/internal/adc/cache"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	cutils "github.com/apache/apisix-ingress-controller/internal/controller/utils"
 	"github.com/apache/apisix-ingress-controller/internal/types"
@@ -164,28 +165,49 @@ func groupByOwner(entries map[wireKey]exclusion) map[types.NamespacedNameKind][]
 }
 
 // resourceDropIn describes what the given skip table entries drop from owner in the
-// cacheKey configName: all of it only when every top-level entity owner produced there is
-// excluded as a whole.
+// cacheKey configName. All of it is dropped when every top-level entity owner produced
+// there is gone: excluded itself, or, for a service, left with none of its routes.
 func (d *apisixProvider) resourceDropIn(configName string, owner types.NamespacedNameKind, keys []wireKey, entries map[wireKey]exclusion) resourceDrop {
-	droppedWhole := map[wireKey]struct{}{}
-	msgs := make([]string, 0, len(keys))
+	dropped := make(map[wireKey]struct{}, len(keys))
+	reasons := make([]string, 0, len(keys))
+	located := make([]string, 0, len(keys))
 	for _, key := range keys {
-		if key.parentID == "" {
-			droppedWhole[key] = struct{}{}
-		}
-		msgs = append(msgs, fmt.Sprintf("%s: %s", entries[key].name, entries[key].reason))
+		dropped[key] = struct{}{}
+		reasons = append(reasons, entries[key].reason)
+		located = append(located, fmt.Sprintf("%s: %s", entries[key].name, entries[key].reason))
 	}
-	slices.Sort(msgs)
+	slices.Sort(reasons)
+	slices.Sort(located)
+
+	isDropped := func(entity cache.Entity) bool {
+		if _, ok := dropped[wireKey{resourceType: entity.Type, id: entity.ID}]; ok {
+			return true
+		}
+		if len(entity.Children) == 0 {
+			return false
+		}
+		for _, child := range entity.Children {
+			if _, ok := dropped[wireKey{resourceType: child.Type, parentID: entity.ID, id: child.ID}]; !ok {
+				return false
+			}
+		}
+		return true
+	}
 
 	owned := d.store.OwnedEntities(configName, owner)
 	partial := len(owned) == 0
 	for _, entity := range owned {
-		if _, ok := droppedWhole[wireKey{entity.Type, "", entity.ID}]; !ok {
+		if !isDropped(entity) {
 			partial = true
 			break
 		}
 	}
-	return resourceDrop{partial: partial, msgs: msgs}
+	// A resource with nothing left reports the data plane's reasons on their own, the
+	// way it did before any of it could be dropped piecemeal.
+	if !partial {
+		return resourceDrop{msgs: reasons}
+	}
+	return resourceDrop{partial: true, msgs: located}
 }
 
 // classifySyncResult splits one config's result into what belongs on the GatewayProxy
