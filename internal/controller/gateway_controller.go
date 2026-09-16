@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
@@ -137,6 +138,10 @@ func (r *GatewayReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			&gatewayv1.UDPRoute{},
 			handler.EnqueueRequestsFromMapFunc(r.listGatewaysForStatusParentRefs),
 		)
+	}
+
+	if rejections, ok := r.Provider.(provider.ListenerCertificateRejections); ok {
+		bdr.WatchesRawSource(source.Channel(rejections.GatewayEvents(), &handler.EnqueueRequestForObject{}))
 	}
 
 	return bdr.Complete(r)
@@ -250,7 +255,11 @@ func (r *GatewayReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// deduplicate in case statusAddress contains repeated values
 	addrs = deduplicateGatewayStatusAddresses(addrs)
 
-	listenerStatuses, err := getListenerStatus(ctx, r.Client, gateway)
+	var rejectedCertificates map[string]string
+	if rejections, ok := r.Provider.(provider.ListenerCertificateRejections); ok {
+		rejectedCertificates = rejections.RejectedCertificates(req.NamespacedName)
+	}
+	listenerStatuses, err := getListenerStatus(ctx, r.Client, gateway, rejectedCertificates)
 	if err != nil {
 		r.Log.Error(err, "failed to get listener status", "gateway", req.NamespacedName)
 		return ctrl.Result{}, err

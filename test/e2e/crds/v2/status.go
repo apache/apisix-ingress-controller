@@ -140,6 +140,196 @@ spec:
 			})
 		})
 
+		It("a rejected ApisixRoute does not block other resources and is retried once fixed", func() {
+			if os.Getenv("PROVIDER_TYPE") == framework.ProviderTypeAPISIXStandalone {
+				Skip("apisix standalone does not validate unknown plugins")
+			}
+			const routeYaml = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: %s
+  namespace: %s
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - %s
+      paths:
+      - /*
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+    plugins:
+    - name: %s
+      enable: true
+`
+			By("apply a rejected and a valid ApisixRoute")
+			err := s.CreateResourceFromString(fmt.Sprintf(routeYaml, "bad", s.Namespace(), s.Namespace(), "bad.example.com", "non-existent-plugin"))
+			Expect(err).NotTo(HaveOccurred(), "creating the rejected ApisixRoute")
+			err = s.CreateResourceFromString(fmt.Sprintf(routeYaml, "good", s.Namespace(), s.Namespace(), "good.example.com", "cors"))
+			Expect(err).NotTo(HaveOccurred(), "creating the valid ApisixRoute")
+
+			By("the rejected ApisixRoute reports why it is not served")
+			s.RetryAssertion(func() string {
+				output, _ := s.GetOutputFromString("ar", "bad", "-o", "yaml", "-n", s.Namespace())
+				return output
+			}).Should(And(
+				ContainSubstring(`status: "False"`),
+				ContainSubstring(`reason: SyncFailed`),
+				ContainSubstring(`unknown plugin [non-existent-plugin]`),
+			))
+
+			By("the valid ApisixRoute is served regardless")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "good.example.com",
+				Check:  scaffold.WithExpectedStatus(200),
+			})
+
+			By("fix the rejected ApisixRoute")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "bad"}, &apiv2.ApisixRoute{},
+				fmt.Sprintf(routeYaml, "bad", s.Namespace(), s.Namespace(), "bad.example.com", "cors"))
+
+			By("the fixed ApisixRoute is served")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "bad.example.com",
+				Check:  scaffold.WithExpectedStatus(200),
+			})
+		})
+
+		It("a rejected rule is dropped while the rest of the ApisixRoute is served", func() {
+			if os.Getenv("PROVIDER_TYPE") == framework.ProviderTypeAPISIXStandalone {
+				Skip("apisix standalone does not validate unknown plugins")
+			}
+			const partialRouteYaml = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: partial
+  namespace: %s
+spec:
+  ingressClassName: %s
+  http:
+  - name: valid
+    match:
+      hosts:
+      - valid.example.com
+      paths:
+      - /*
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+  - name: rejected
+    match:
+      hosts:
+      - rejected.example.com
+      paths:
+      - /*
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+    plugins:
+    - name: non-existent-plugin
+      enable: true
+`
+			err := s.CreateResourceFromString(fmt.Sprintf(partialRouteYaml, s.Namespace(), s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "creating ApisixRoute")
+
+			By("the ApisixRoute reports the dropped rule")
+			s.RetryAssertion(func() string {
+				output, _ := s.GetOutputFromString("ar", "partial", "-o", "yaml", "-n", s.Namespace())
+				return output
+			}).Should(And(
+				ContainSubstring(`type: PartiallyInvalid`),
+				ContainSubstring(`unknown plugin [non-existent-plugin]`),
+			))
+
+			By("the valid rule is served")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "valid.example.com",
+				Check:  scaffold.WithExpectedStatus(200),
+			})
+		})
+
+		It("a rejected ApisixGlobalRule does not block routes", func() {
+			if os.Getenv("PROVIDER_TYPE") == framework.ProviderTypeAPISIXStandalone {
+				Skip("apisix standalone does not validate unknown plugins")
+			}
+			const globalRuleYaml = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixGlobalRule
+metadata:
+  name: rejected
+  namespace: %s
+spec:
+  ingressClassName: %s
+  plugins:
+  - name: non-existent-plugin
+    enable: true
+`
+			err := s.CreateResourceFromString(fmt.Sprintf(globalRuleYaml, s.Namespace(), s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "creating ApisixGlobalRule")
+			err = s.CreateResourceFromString(fmt.Sprintf(ar, s.Namespace(), s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "creating ApisixRoute")
+
+			By("the ApisixGlobalRule reports why it is not served")
+			s.RetryAssertion(func() string {
+				output, _ := s.GetOutputFromString("apisixglobalrule", "rejected", "-o", "yaml", "-n", s.Namespace())
+				return output
+			}).Should(And(
+				ContainSubstring(`status: "False"`),
+				ContainSubstring(`reason: SyncFailed`),
+			))
+
+			By("the ApisixRoute is served regardless")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				Check:  scaffold.WithExpectedStatus(200),
+			})
+		})
+
+		It("a rejected GatewayProxy plugin is reported on the GatewayProxy and does not block routes", func() {
+			if os.Getenv("PROVIDER_TYPE") == framework.ProviderTypeAPISIXStandalone {
+				Skip("apisix standalone does not validate unknown plugins")
+			}
+			By("add a rejected plugin to the GatewayProxy")
+			err := s.CreateResourceFromString(s.GetGatewayProxySpec() + `  plugins:
+  - name: non-existent-plugin
+    enabled: true
+`)
+			Expect(err).NotTo(HaveOccurred(), "updating GatewayProxy")
+			err = s.CreateResourceFromString(fmt.Sprintf(ar, s.Namespace(), s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "creating ApisixRoute")
+
+			By("the GatewayProxy reports the rejected plugin")
+			s.RetryAssertion(func() string {
+				output, _ := s.GetOutputFromString("gatewayproxy", "apisix-proxy-config", "-o", "yaml", "-n", s.Namespace())
+				return output
+			}).Should(And(
+				ContainSubstring(`type: PluginsProgrammed`),
+				ContainSubstring(`reason: Invalid`),
+				ContainSubstring(`unknown plugin [non-existent-plugin]`),
+			))
+
+			By("the ApisixRoute is served regardless")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin",
+				Check:  scaffold.WithExpectedStatus(200),
+			})
+		})
+
 		It("dataplane unavailable", func() {
 			By("apply ApisixRoute")
 			arYaml := fmt.Sprintf(ar, s.Namespace(), s.Namespace())
