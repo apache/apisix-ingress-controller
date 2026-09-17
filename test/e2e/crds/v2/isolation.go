@@ -252,7 +252,7 @@ spec:
     hashOn: vars
 %s
   externalNodes:
-  - type: Service
+  - type: Domain
     name: httpbin-service-e2e-test
 ---
 apiVersion: apisix.apache.org/v2
