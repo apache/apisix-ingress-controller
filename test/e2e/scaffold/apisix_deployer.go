@@ -43,6 +43,11 @@ type APISIXDeployOptions struct {
 	ServiceType      string
 	ServiceHTTPPort  int
 	ServiceHTTPSPort int
+	// ServiceHTTPSTargetPort is the container port the HTTPS service port
+	// forwards to: APISIX's HTTP ssl listen (9443) by default, or its stream
+	// tls_passthrough listen (9120). See the manifest for why the two cannot
+	// share a port.
+	ServiceHTTPSTargetPort int
 
 	ConfigProvider string
 	Replicas       *int
@@ -178,11 +183,12 @@ func (s *APISIXDeployer) AfterEach() {
 
 func (s *APISIXDeployer) DeployDataplane(deployOpts DeployDataplaneOptions) {
 	opts := APISIXDeployOptions{
-		Namespace:        s.namespace,
-		AdminKey:         s.runtimeOpts.APISIXAdminAPIKey,
-		ServiceHTTPPort:  9080,
-		ServiceHTTPSPort: 9443,
-		Replicas:         ptr.To(1),
+		Namespace:              s.namespace,
+		AdminKey:               s.runtimeOpts.APISIXAdminAPIKey,
+		ServiceHTTPPort:        9080,
+		ServiceHTTPSPort:       9443,
+		ServiceHTTPSTargetPort: 9443,
+		Replicas:               ptr.To(1),
 	}
 
 	if deployOpts.Namespace != "" {
@@ -196,6 +202,9 @@ func (s *APISIXDeployer) DeployDataplane(deployOpts DeployDataplaneOptions) {
 	}
 	if deployOpts.ServiceHTTPSPort != 0 {
 		opts.ServiceHTTPSPort = deployOpts.ServiceHTTPSPort
+	}
+	if deployOpts.ServiceHTTPSTargetPort != 0 {
+		opts.ServiceHTTPSTargetPort = deployOpts.ServiceHTTPSTargetPort
 	}
 	if deployOpts.AdminKey != "" {
 		opts.AdminKey = deployOpts.AdminKey
@@ -407,10 +416,11 @@ func (s *APISIXDeployer) CreateAdditionalGatewayWithOptions(namePrefix string, o
 
 	// Deploy dataplane for this additional gateway
 	o := APISIXDeployOptions{
-		Namespace:        additionalNS,
-		AdminKey:         adminKey,
-		ServiceHTTPPort:  9080,
-		ServiceHTTPSPort: 9443,
+		Namespace:              additionalNS,
+		AdminKey:               adminKey,
+		ServiceHTTPPort:        9080,
+		ServiceHTTPSPort:       9443,
+		ServiceHTTPSTargetPort: 9443,
 	}
 	if opts.Namespace != "" {
 		o.Namespace = opts.Namespace

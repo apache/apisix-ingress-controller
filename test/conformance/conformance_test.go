@@ -30,17 +30,6 @@ var skippedTestsForSSL = []string{
 	tests.HTTPRouteRedirectPortAndScheme.ShortName,
 }
 
-// APISIX terminates TLS on its stream proxy and matches stream routes by SNI,
-// which implements TLSRoute in Terminate mode (declared via the
-// TLSRouteModeTerminate feature) but never forwards the encrypted stream
-// untouched. Every test below pins its listener to mode: Passthrough.
-var skippedTestsForTLSPassthrough = []string{
-	tests.TLSRouteSimpleSameNamespace.ShortName,
-	tests.TLSRouteHostnameIntersection.ShortName,
-	tests.TLSRouteInvalidBackendRefNonexistent.ShortName,
-	tests.TLSRouteInvalidBackendRefUnknownKind.ShortName,
-}
-
 // Known gaps tracked for follow-up. These are genuine feature gaps rather than
 // architectural limits, so they are expected to shrink over time.
 var skippedTestsForKnownGaps = []string{
@@ -70,7 +59,6 @@ func TestGatewayAPIConformance(t *testing.T) {
 	opts.CleanupBaseResources = true
 	opts.GatewayClassName = gatewayClassName
 	opts.SkipTests = append(opts.SkipTests, skippedTestsForSSL...)
-	opts.SkipTests = append(opts.SkipTests, skippedTestsForTLSPassthrough...)
 	opts.SkipTests = append(opts.SkipTests, skippedTestsForKnownGaps...)
 	// Implementation is left to the flags DefaultOptions already applied.
 	// Assigning it here would override them and pin the report to a stale version.

@@ -54,6 +54,26 @@ func listenerPortSet(tctx *provider.TranslateContext) map[int32]struct{} {
 	return portSet
 }
 
+// l4StreamRoutePorts returns the listener ports to emit one StreamRoute for
+// each, or the single sentinel 0 meaning one StreamRoute with no server_port
+// match at all. See buildL4StreamRoutes for why the injection is opt-in.
+func (t *Translator) l4StreamRoutePorts(tctx *provider.TranslateContext) []int32 {
+	var ports []int32
+	if portSet := listenerPortSet(tctx); t.shouldInjectServerPortVars(tctx.HasExplicitListenerMatch, portSet) {
+		ports = make([]int32, 0, len(portSet))
+		for port := range portSet {
+			ports = append(ports, port)
+		}
+		sort.Slice(ports, func(i, j int) bool { return ports[i] < ports[j] })
+	}
+	if len(ports) == 0 {
+		// No server_port isolation: a single StreamRoute that matches all
+		// connections on the stream listener, as before.
+		return []int32{0}
+	}
+	return ports
+}
+
 // buildL4StreamRoutes builds the StreamRoutes for one L4 route rule.
 //
 // A StreamRoute without a server_port match matches every connection on any
@@ -68,19 +88,7 @@ func listenerPortSet(tctx *provider.TranslateContext) map[int32]struct{} {
 // or more than one listener port). When it is not injected we keep the previous
 // single portless StreamRoute, preserving backward compatibility.
 func (t *Translator) buildL4StreamRoutes(tctx *provider.TranslateContext, namespace, name string, ruleIndex int, typ, routeKind string, labels map[string]string) []*adctypes.StreamRoute {
-	var ports []int32
-	if portSet := listenerPortSet(tctx); t.shouldInjectServerPortVars(tctx.HasExplicitListenerMatch, portSet) {
-		ports = make([]int32, 0, len(portSet))
-		for port := range portSet {
-			ports = append(ports, port)
-		}
-		sort.Slice(ports, func(i, j int) bool { return ports[i] < ports[j] })
-	}
-	if len(ports) == 0 {
-		// No server_port isolation: a single StreamRoute that matches all
-		// connections on the stream listener, as before.
-		ports = []int32{0}
-	}
+	ports := t.l4StreamRoutePorts(tctx)
 	streamRoutes := make([]*adctypes.StreamRoute, 0, len(ports))
 	for _, port := range ports {
 		streamRoute := adctypes.NewDefaultStreamRoute()

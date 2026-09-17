@@ -251,13 +251,20 @@ func TestTranslateTLSRouteWithL4RoutePolicy(t *testing.T) {
 			require.NoError(t, err)
 			require.Len(t, result.Services, 1)
 
-			// Verify stream routes are created per SNI hostname
-			if len(tt.hostnames) > 0 {
-				assert.Len(t, result.Services[0].StreamRoutes, len(tt.hostnames))
+			// One stream route carries every hostname: the singular sni for a
+			// single one, the plural snis beyond that. APISIX rejects both at once.
+			require.Len(t, result.Services[0].StreamRoutes, 1)
+			switch len(tt.hostnames) {
+			case 1:
+				assert.Equal(t, tt.hostnames[0], result.Services[0].StreamRoutes[0].SNI)
+				assert.Empty(t, result.Services[0].StreamRoutes[0].SNIs)
+			default:
+				assert.Equal(t, tt.hostnames, result.Services[0].StreamRoutes[0].SNIs)
+				assert.Empty(t, result.Services[0].StreamRoutes[0].SNI)
 			}
 
 			// Plugins are attached at the stream_route level so the APISIX stream proxy
-			// applies them; with multiple SNIs each stream_route carries its own copy.
+			// applies them.
 			require.NotEmpty(t, result.Services[0].StreamRoutes)
 			plugins := result.Services[0].StreamRoutes[0].Plugins
 			if tt.wantNoPlugins {
