@@ -50,7 +50,7 @@ func (t *Translator) TranslateGatewayProxyToConfig(tctx *provider.TranslateConte
 	cp := provider.ControlPlane
 
 	cfg := types.Config{
-		Name:        utils.NamespacedNameKind(gatewayProxy).String(),
+		Name:        utils.GatewayProxyKey(gatewayProxy.Namespace, gatewayProxy.Name).String(),
 		BackendType: cp.Mode,
 	}
 

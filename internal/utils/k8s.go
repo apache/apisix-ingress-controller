@@ -46,6 +46,17 @@ func NamespacedNameKind(obj client.Object) types.NamespacedNameKind {
 	}
 }
 
+// GatewayProxyKey returns the stable key used for a GatewayProxy's ADC config.
+// It deliberately does not derive Kind from TypeMeta because delete events may
+// be represented by a minimal object without a GroupVersionKind.
+func GatewayProxyKey(namespace, name string) types.NamespacedNameKind {
+	return types.NamespacedNameKind{
+		Namespace: namespace,
+		Name:      name,
+		Kind:      types.KindGatewayProxy,
+	}
+}
+
 func ValidateRemoteAddrs(remoteAddrs []string) error {
 	for _, addr := range remoteAddrs {
 		if ip := net.ParseIP(addr); ip == nil {
