@@ -293,8 +293,13 @@ spec:
 			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(foreignIngressClass, foreignClassName), "")
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 
-			By("change the consumer IngressClass")
-			err = s.CreateResourceFromString(fmt.Sprintf(keyAuth, foreignClassName))
+			By("change only the consumer IngressClassName")
+			var consumer apiv2.ApisixConsumer
+			err = s.K8sClient.Get(context.Background(),
+				types.NamespacedName{Namespace: s.Namespace(), Name: "test-consumer"}, &consumer)
+			Expect(err).NotTo(HaveOccurred(), "getting ApisixConsumer")
+			consumer.Spec.IngressClassName = foreignClassName
+			err = s.K8sClient.Update(context.Background(), &consumer)
 			Expect(err).NotTo(HaveOccurred(), "updating ApisixConsumer")
 
 			expectConsumerRemoved()

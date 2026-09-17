@@ -166,6 +166,24 @@ func TestApisixConsumerReconcile_IngressClassLookupErrorDoesNotDelete(t *testing
 	assert.Zero(t, p.updated)
 }
 
+func TestApisixConsumerReconcile_MissingIngressClassDeletesProviderState(t *testing.T) {
+	key := types.NamespacedName{Namespace: testConsumerNamespace, Name: "consumer"}
+	consumer := &apiv2.ApisixConsumer{
+		ObjectMeta: metav1.ObjectMeta{Namespace: key.Namespace, Name: key.Name},
+		Spec:       apiv2.ApisixConsumerSpec{IngressClassName: "missing"},
+	}
+	cli := fake.NewClientBuilder().WithScheme(apisixConsumerScheme(t)).WithObjects(consumer).Build()
+	p := &recordingProvider{}
+	r := newApisixConsumerReconciler(t, cli, p)
+
+	result, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: key})
+
+	require.NoError(t, err)
+	assert.Equal(t, ctrl.Result{}, result)
+	assert.Equal(t, []types.NamespacedName{key}, p.deleted)
+	assert.Zero(t, p.updated)
+}
+
 // A deleted ApisixConsumer must be removed from the provider and then reported
 // as reconciled. Returning the NotFound error instead makes controller-runtime
 // treat the reconcile as failed and requeue it indefinitely with exponential
