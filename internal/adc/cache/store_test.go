@@ -31,6 +31,8 @@ import (
 
 const configName = "GatewayProxy/ns/gp"
 
+var gatewayProxy = types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "gp"}
+
 func ownerNamed(kind, name string) types.NamespacedNameKind {
 	return types.NamespacedNameKind{Kind: kind, Namespace: "ns", Name: name}
 }
@@ -47,11 +49,14 @@ func TestLookupFindsTheOwnerOfEveryTopLevelType(t *testing.T) {
 	route := ownerNamed(types.KindApisixRoute, "route")
 	tls := ownerNamed(types.KindApisixTls, "tls")
 	consumer := ownerNamed(types.KindConsumer, "consumer")
+	globalRule := ownerNamed(types.KindApisixGlobalRule, "global")
 
 	s := NewStore(logr.Discard())
 	require.NoError(t, s.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{Services: []*adctypes.Service{service("svc", route)}}, labelsOf(route)))
 	require.NoError(t, s.Insert(configName, []string{adctypes.TypeSSL}, &adctypes.Resources{SSLs: []*adctypes.SSL{{Metadata: adctypes.Metadata{ID: "ssl"}}}}, labelsOf(tls)))
 	require.NoError(t, s.Insert(configName, []string{adctypes.TypeConsumer}, &adctypes.Resources{Consumers: []*adctypes.Consumer{{Username: "alice"}}}, labelsOf(consumer)))
+	require.NoError(t, s.SetGlobalRules(configName, globalRule, adctypes.GlobalRule{"prometheus": map[string]any{}}))
+	require.NoError(t, s.SetPluginMetadata(configName, adctypes.PluginMetadata{"http-logger": map[string]any{}}))
 
 	cases := []struct {
 		resourceType, id, name string
@@ -60,6 +65,8 @@ func TestLookupFindsTheOwnerOfEveryTopLevelType(t *testing.T) {
 		{adctypes.TypeService, "svc", "name-svc", route},
 		{adctypes.TypeSSL, "ssl", "ssl", tls},
 		{adctypes.TypeConsumer, "alice", "alice", consumer},
+		{adctypes.TypeGlobalRule, "prometheus", "prometheus", globalRule},
+		{adctypes.TypePluginMetadata, "http-logger", "http-logger", gatewayProxy},
 	}
 	for _, tc := range cases {
 		t.Run(tc.resourceType, func(t *testing.T) {
@@ -72,18 +79,70 @@ func TestLookupFindsTheOwnerOfEveryTopLevelType(t *testing.T) {
 
 	_, ok := s.Lookup(configName, adctypes.TypeService, "missing")
 	assert.False(t, ok)
+	_, ok = s.Lookup(configName, adctypes.TypePluginMetadata, "missing")
+	assert.False(t, ok)
 	_, ok = s.Lookup("GatewayProxy/ns/other", adctypes.TypeService, "svc")
 	assert.False(t, ok)
 }
 
-// TestLookupHasNoOpinionOnGlobalRuleOrPluginMetadataYet documents the current boundary:
-// their storage carries no owner yet, so Lookup can't answer for them.
-func TestLookupHasNoOpinionOnGlobalRuleOrPluginMetadataYet(t *testing.T) {
+// TestLookupFindsARouteByItsOwnLabels covers the one nested type Lookup already
+// answers for: a route's own owner, which the service holding it doesn't always share
+// (e.g. a traffic-split service combining rules from several ApisixRoutes).
+func TestLookupFindsARouteByItsOwnLabels(t *testing.T) {
+	svcOwner := ownerNamed(types.KindApisixRoute, "service-writer")
+	routeOwner := ownerNamed(types.KindApisixRoute, "route-writer")
 	s := NewStore(logr.Discard())
-	require.NoError(t, s.Insert(configName, []string{adctypes.TypeGlobalRule}, &adctypes.Resources{GlobalRules: adctypes.GlobalRule{"prometheus": map[string]any{}}}, labelsOf(ownerNamed(types.KindApisixGlobalRule, "global"))))
+	withRoute := service("svc", svcOwner)
+	withRoute.Routes = []*adctypes.Route{{Metadata: adctypes.Metadata{ID: "r1", Labels: labelsOf(routeOwner)}}}
+	require.NoError(t, s.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{Services: []*adctypes.Service{withRoute}}, labelsOf(svcOwner)))
 
-	_, ok := s.Lookup(configName, adctypes.TypeGlobalRule, "prometheus")
+	entity, ok := s.Lookup(configName, adctypes.TypeRoute, "r1")
+	require.True(t, ok)
+	assert.Equal(t, routeOwner, entity.Owner, "the route's own owner, not the service's")
+
+	_, ok = s.Lookup(configName, adctypes.TypeRoute, "missing")
 	assert.False(t, ok)
+}
+
+func TestSetGlobalRulesReplacesOnlyThatOwnersPlugins(t *testing.T) {
+	globalRule := ownerNamed(types.KindApisixGlobalRule, "global")
+	s := NewStore(logr.Discard())
+	require.NoError(t, s.SetGlobalRules(configName, gatewayProxy, adctypes.GlobalRule{"cors": map[string]any{"a": "b"}}))
+	require.NoError(t, s.SetGlobalRules(configName, globalRule, adctypes.GlobalRule{"prometheus": map[string]any{}, "old": map[string]any{}}))
+	require.NoError(t, s.SetGlobalRules(configName, globalRule, adctypes.GlobalRule{"prometheus": map[string]any{}}))
+
+	resources, err := s.GetResources(configName)
+	require.NoError(t, err)
+	assert.Equal(t, adctypes.GlobalRule{"cors": map[string]any{"a": "b"}, "prometheus": map[string]any{}}, resources.GlobalRules)
+
+	require.NoError(t, s.SetGlobalRules(configName, globalRule, nil))
+	resources, err = s.GetResources(configName)
+	require.NoError(t, err)
+	assert.Equal(t, adctypes.GlobalRule{"cors": map[string]any{"a": "b"}}, resources.GlobalRules)
+}
+
+func TestSetGlobalRulesOfTheSameNameOverwritesAndAttributesToTheLastWriter(t *testing.T) {
+	globalRule := ownerNamed(types.KindApisixGlobalRule, "global")
+	s := NewStore(logr.Discard())
+	require.NoError(t, s.SetGlobalRules(configName, gatewayProxy, adctypes.GlobalRule{"prometheus": map[string]any{"from": "gp"}}))
+	require.NoError(t, s.SetGlobalRules(configName, globalRule, adctypes.GlobalRule{"prometheus": map[string]any{"from": "agr"}}))
+
+	resources, err := s.GetResources(configName)
+	require.NoError(t, err)
+	entity, ok := s.Lookup(configName, adctypes.TypeGlobalRule, "prometheus")
+	require.True(t, ok)
+	assert.Equal(t, map[string]any{"from": "agr"}, resources.GlobalRules["prometheus"])
+	assert.Equal(t, globalRule, entity.Owner, "what is pushed and who it is attributed to always agree")
+}
+
+func TestSetPluginMetadataReplacesEverything(t *testing.T) {
+	s := NewStore(logr.Discard())
+	require.NoError(t, s.SetPluginMetadata(configName, adctypes.PluginMetadata{"old": map[string]any{}}))
+	require.NoError(t, s.SetPluginMetadata(configName, adctypes.PluginMetadata{"new": map[string]any{}}))
+
+	resources, err := s.GetResources(configName)
+	require.NoError(t, err)
+	assert.Equal(t, adctypes.PluginMetadata{"new": map[string]any{}}, resources.PluginMetadata)
 }
 
 func TestInsertForgetsTheOwnerOfReplacedResources(t *testing.T) {
@@ -137,4 +196,20 @@ func TestOwnedEntities(t *testing.T) {
 	assert.Len(t, svcEntity.Children, 2, "the service's route and stream route")
 
 	assert.Empty(t, s.OwnedEntities(configName, ownerNamed(types.KindApisixRoute, "nobody")))
+}
+
+func TestOwnedEntitiesIncludesGlobalRulesAndPluginMetadataOfTheGatewayProxy(t *testing.T) {
+	globalRule := ownerNamed(types.KindApisixGlobalRule, "global")
+	s := NewStore(logr.Discard())
+	require.NoError(t, s.SetGlobalRules(configName, gatewayProxy, adctypes.GlobalRule{"cors": map[string]any{}}))
+	require.NoError(t, s.SetGlobalRules(configName, globalRule, adctypes.GlobalRule{"prometheus": map[string]any{}}))
+	require.NoError(t, s.SetPluginMetadata(configName, adctypes.PluginMetadata{"http-logger": map[string]any{}}))
+
+	gpEntities := s.OwnedEntities(configName, gatewayProxy)
+	assert.Len(t, gpEntities, 2, "the GatewayProxy's own global rule and the cacheKey's plugin metadata")
+
+	agrEntities := s.OwnedEntities(configName, globalRule)
+	require.Len(t, agrEntities, 1)
+	assert.Equal(t, adctypes.TypeGlobalRule, agrEntities[0].Type)
+	assert.Equal(t, "prometheus", agrEntities[0].ID)
 }

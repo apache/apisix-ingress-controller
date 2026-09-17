@@ -23,10 +23,12 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
+	"github.com/apache/apisix-ingress-controller/internal/types"
 )
 
 const (
 	KindLabelIndex = "label"
+	OwnerIndex     = "owner"
 )
 
 /*
@@ -93,4 +95,26 @@ func (emi *LabelIndexer) FromArgs(args ...any) ([]byte, error) {
 	}
 
 	return emi.genKey(labelValues), nil
+}
+
+// ownerIndexer indexes a GlobalRuleRow by its Owner.
+type ownerIndexer struct{}
+
+func (ownerIndexer) FromObject(obj any) (bool, []byte, error) {
+	row, ok := obj.(*GlobalRuleRow)
+	if !ok {
+		return false, nil, fmt.Errorf("unexpected object type %T", obj)
+	}
+	return true, []byte(row.Owner.String() + "\x00"), nil
+}
+
+func (ownerIndexer) FromArgs(args ...any) ([]byte, error) {
+	if len(args) != 1 {
+		return nil, fmt.Errorf("expected 1 argument, got %d", len(args))
+	}
+	owner, ok := args[0].(types.NamespacedNameKind)
+	if !ok {
+		return nil, fmt.Errorf("argument is not a NamespacedNameKind")
+	}
+	return []byte(owner.String() + "\x00"), nil
 }

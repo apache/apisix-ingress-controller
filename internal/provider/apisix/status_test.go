@@ -271,18 +271,14 @@ func TestClassifySyncResultEndpointFailuresGoToGatewayProxy(t *testing.T) {
 func TestClassifySyncResultAttributesFailedStatusesToTheirResource(t *testing.T) {
 	d := &apisixProvider{log: logr.Discard(), store: cache.NewStore(logr.Discard())}
 	const configName = "GatewayProxy/ns/gp"
+	owner := map[string]string{
+		label.LabelKind:      "ApisixRoute",
+		label.LabelName:      "route1",
+		label.LabelNamespace: "ns1",
+	}
 	if err := d.store.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{
-		Services: []*adctypes.Service{{
-			Metadata: adctypes.Metadata{
-				ID: "svc1",
-				Labels: map[string]string{
-					label.LabelKind:      "ApisixRoute",
-					label.LabelName:      "route1",
-					label.LabelNamespace: "ns1",
-				},
-			},
-		}},
-	}, nil); err != nil {
+		Services: []*adctypes.Service{{Metadata: adctypes.Metadata{ID: "svc1"}}},
+	}, owner); err != nil {
 		t.Fatalf("seeding the store: %v", err)
 	}
 
@@ -319,18 +315,14 @@ func TestClassifySyncResultReportsEndpointStatusesEvenOnAFullyAttributedAddrErr(
 	// endpoint failure too.
 	d := &apisixProvider{log: logr.Discard(), store: cache.NewStore(logr.Discard())}
 	const configName = "GatewayProxy/ns/gp"
+	owner := map[string]string{
+		label.LabelKind:      "ApisixRoute",
+		label.LabelName:      "route1",
+		label.LabelNamespace: "ns1",
+	}
 	if err := d.store.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{
-		Services: []*adctypes.Service{{
-			Metadata: adctypes.Metadata{
-				ID: "svc1",
-				Labels: map[string]string{
-					label.LabelKind:      "ApisixRoute",
-					label.LabelName:      "route1",
-					label.LabelNamespace: "ns1",
-				},
-			},
-		}},
-	}, nil); err != nil {
+		Services: []*adctypes.Service{{Metadata: adctypes.Metadata{ID: "svc1"}}},
+	}, owner); err != nil {
 		t.Fatalf("seeding the store: %v", err)
 	}
 
@@ -367,7 +359,7 @@ func TestClassifySyncResultReportsEndpointStatusesEvenOnAFullyAttributedAddrErr(
 func TestClassifySyncResultFallsBackToGatewayProxyWhenAFailedStatusHasNoResourceAttribution(t *testing.T) {
 	// apisix-standalone: FailedStatuses can be non-empty yet carry no Event to resolve a
 	// resource from at all, the whole addrErr is then a GatewayProxy-level signal.
-	d := &apisixProvider{log: logr.Discard()}
+	d := &apisixProvider{log: logr.Discard(), store: cache.NewStore(logr.Discard())}
 	execErrs := types.ADCExecutionErrors{Errors: []types.ADCExecutionError{{
 		Name: "GatewayProxy/ns/gp",
 		FailedErrors: []types.ADCExecutionServerAddrError{{
