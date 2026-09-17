@@ -1,0 +1,140 @@
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+package cache
+
+import (
+	"testing"
+
+	"github.com/go-logr/logr"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
+	"github.com/apache/apisix-ingress-controller/internal/controller/label"
+	"github.com/apache/apisix-ingress-controller/internal/types"
+)
+
+const configName = "GatewayProxy/ns/gp"
+
+func ownerNamed(kind, name string) types.NamespacedNameKind {
+	return types.NamespacedNameKind{Kind: kind, Namespace: "ns", Name: name}
+}
+
+func labelsOf(owner types.NamespacedNameKind) map[string]string {
+	return map[string]string{label.LabelKind: owner.Kind, label.LabelNamespace: owner.Namespace, label.LabelName: owner.Name}
+}
+
+func service(id string, owner types.NamespacedNameKind) *adctypes.Service {
+	return &adctypes.Service{Metadata: adctypes.Metadata{ID: id, Name: "name-" + id, Labels: labelsOf(owner)}}
+}
+
+func TestLookupFindsTheOwnerOfEveryTopLevelType(t *testing.T) {
+	route := ownerNamed(types.KindApisixRoute, "route")
+	tls := ownerNamed(types.KindApisixTls, "tls")
+	consumer := ownerNamed(types.KindConsumer, "consumer")
+
+	s := NewStore(logr.Discard())
+	require.NoError(t, s.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{Services: []*adctypes.Service{service("svc", route)}}, labelsOf(route)))
+	require.NoError(t, s.Insert(configName, []string{adctypes.TypeSSL}, &adctypes.Resources{SSLs: []*adctypes.SSL{{Metadata: adctypes.Metadata{ID: "ssl"}}}}, labelsOf(tls)))
+	require.NoError(t, s.Insert(configName, []string{adctypes.TypeConsumer}, &adctypes.Resources{Consumers: []*adctypes.Consumer{{Username: "alice"}}}, labelsOf(consumer)))
+
+	cases := []struct {
+		resourceType, id, name string
+		owner                  types.NamespacedNameKind
+	}{
+		{adctypes.TypeService, "svc", "name-svc", route},
+		{adctypes.TypeSSL, "ssl", "ssl", tls},
+		{adctypes.TypeConsumer, "alice", "alice", consumer},
+	}
+	for _, tc := range cases {
+		t.Run(tc.resourceType, func(t *testing.T) {
+			entity, ok := s.Lookup(configName, tc.resourceType, tc.id)
+			require.True(t, ok)
+			assert.Equal(t, tc.owner, entity.Owner)
+			assert.Equal(t, tc.name, entity.Name)
+		})
+	}
+
+	_, ok := s.Lookup(configName, adctypes.TypeService, "missing")
+	assert.False(t, ok)
+	_, ok = s.Lookup("GatewayProxy/ns/other", adctypes.TypeService, "svc")
+	assert.False(t, ok)
+}
+
+// TestLookupHasNoOpinionOnGlobalRuleOrPluginMetadataYet documents the current boundary:
+// their storage carries no owner yet, so Lookup can't answer for them.
+func TestLookupHasNoOpinionOnGlobalRuleOrPluginMetadataYet(t *testing.T) {
+	s := NewStore(logr.Discard())
+	require.NoError(t, s.Insert(configName, []string{adctypes.TypeGlobalRule}, &adctypes.Resources{GlobalRules: adctypes.GlobalRule{"prometheus": map[string]any{}}}, labelsOf(ownerNamed(types.KindApisixGlobalRule, "global"))))
+
+	_, ok := s.Lookup(configName, adctypes.TypeGlobalRule, "prometheus")
+	assert.False(t, ok)
+}
+
+func TestInsertForgetsTheOwnerOfReplacedResources(t *testing.T) {
+	route := ownerNamed(types.KindApisixRoute, "route")
+	s := NewStore(logr.Discard())
+	require.NoError(t, s.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{Services: []*adctypes.Service{service("old", route)}}, labelsOf(route)))
+	require.NoError(t, s.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{Services: []*adctypes.Service{service("new", route)}}, labelsOf(route)))
+
+	_, ok := s.Lookup(configName, adctypes.TypeService, "old")
+	assert.False(t, ok)
+	_, ok = s.Lookup(configName, adctypes.TypeService, "new")
+	assert.True(t, ok)
+
+	require.NoError(t, s.Delete(configName, []string{adctypes.TypeService}, labelsOf(route)))
+	_, ok = s.Lookup(configName, adctypes.TypeService, "new")
+	assert.False(t, ok)
+}
+
+func TestDeleteWithoutResourceTypesForgetsEveryOwnerToo(t *testing.T) {
+	route := ownerNamed(types.KindApisixRoute, "route")
+	s := NewStore(logr.Discard())
+	require.NoError(t, s.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{Services: []*adctypes.Service{service("svc", route)}}, labelsOf(route)))
+
+	require.NoError(t, s.Delete(configName, nil, nil))
+	_, ok := s.Lookup(configName, adctypes.TypeService, "svc")
+	assert.False(t, ok)
+}
+
+func TestOwnedEntities(t *testing.T) {
+	route := ownerNamed(types.KindApisixRoute, "route")
+	other := ownerNamed(types.KindApisixRoute, "other")
+	s := NewStore(logr.Discard())
+
+	withChildren := service("svc", route)
+	withChildren.Routes = []*adctypes.Route{{Metadata: adctypes.Metadata{ID: "r1", Name: "r1"}}}
+	withChildren.StreamRoutes = []*adctypes.StreamRoute{{Metadata: adctypes.Metadata{ID: "sr1"}}}
+	require.NoError(t, s.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{Services: []*adctypes.Service{withChildren}}, labelsOf(route)))
+	require.NoError(t, s.Insert(configName, []string{adctypes.TypeSSL}, &adctypes.Resources{SSLs: []*adctypes.SSL{{Metadata: adctypes.Metadata{ID: "ssl"}}}}, labelsOf(route)))
+	require.NoError(t, s.Insert(configName, []string{adctypes.TypeConsumer}, &adctypes.Resources{Consumers: []*adctypes.Consumer{{Username: "alice"}}}, labelsOf(other)))
+
+	got := s.OwnedEntities(configName, route)
+	assert.Len(t, got, 2, "only what route itself owns, not other's consumer")
+
+	var svcEntity Entity
+	for _, e := range got {
+		if e.Type == adctypes.TypeService {
+			svcEntity = e
+		}
+	}
+	require.Equal(t, "svc", svcEntity.ID)
+	assert.Len(t, svcEntity.Children, 2, "the service's route and stream route")
+
+	assert.Empty(t, s.OwnedEntities(configName, ownerNamed(types.KindApisixRoute, "nobody")))
+}
