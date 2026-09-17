@@ -44,6 +44,14 @@ The APISIX Ingress Controller continuously tracks matching EndpointSlice objects
 
 Ingress is a Kubernetes resource that manages external access to services within a cluster, typically HTTP and HTTPS traffic. It provides a way to define rules for routing external traffic to internal services.
 
+#### Wildcard hostnames
+
+A wildcard `spec.rules[].host` such as `*.example.com` is passed to APISIX unchanged and matched as a suffix, so it matches any number of leading labels: both `foo.example.com` and `bar.foo.example.com`.
+
+This is the same behavior as nginx, whose `server_name` documentation states that `*.example.org` matches `www.sub.example.org` as well, and therefore the same behavior as ingress-nginx. It is broader than the [Kubernetes Ingress documentation](https://kubernetes.io/docs/concepts/services-networking/ingress/#hostname-wildcards) describes, which covers a single DNS label.
+
+If a route must match exactly one label, match the hostname explicitly rather than relying on the wildcard. Note that Gateway API defines wildcard hostnames as a multi-label suffix match, so an `HTTPRoute` with `*.example.com` behaves the same way by specification.
+
 ## Gateway API
 
 Gateway API is an official Kubernetes project focused on L4 and L7 routing in Kubernetes. This project represents the next generation of Kubernetes Ingress, Load Balancing, and Service Mesh APIs.
