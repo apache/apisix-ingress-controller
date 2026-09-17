@@ -19,9 +19,11 @@ package translator
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/go-logr/logr"
+	"github.com/go-logr/logr/funcr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -83,6 +85,23 @@ func assertExtensionRefResponse(t *testing.T, plugins map[string]any) {
 	assert.Equal(t, 500, abort["http_status"])
 }
 
+func newExtensionRefTestLogger() (logr.Logger, *strings.Builder) {
+	var logged strings.Builder
+	logger := funcr.New(func(prefix, args string) {
+		logged.WriteString(prefix)
+		logged.WriteString(args)
+	}, funcr.Options{Verbosity: 10})
+	return logger, &logged
+}
+
+func assertExtensionRefDiagnostic(t *testing.T, logged string, routeKind string) {
+	t.Helper()
+	assert.Contains(t, logged, "failed to fill plugins from "+routeKind+" filters")
+	assert.Contains(t, logged, `"namespace"="default"`)
+	assert.Contains(t, logged, `"name"="route"`)
+	assert.Contains(t, logged, `"ruleIndex"=0`)
+}
+
 func TestTranslateHTTPRouteUnresolvedExtensionRefIsScopedToRule(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -137,6 +156,7 @@ func TestTranslateHTTPRouteUnresolvedExtensionRefIsScopedToRule(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tctx := newExtensionRefTranslateContext()
+			logger, logged := newExtensionRefTestLogger()
 			if tt.pluginConfig != nil {
 				tctx.PluginConfigs[types.NamespacedName{
 					Namespace: tt.pluginConfig.Namespace,
@@ -158,18 +178,21 @@ func TestTranslateHTTPRouteUnresolvedExtensionRefIsScopedToRule(t *testing.T) {
 				}},
 			}
 
-			result, err := NewTranslator(logr.Discard(), "").TranslateHTTPRoute(tctx, route)
+			result, err := NewTranslator(logger, "").TranslateHTTPRoute(tctx, route)
 			require.NoError(t, err)
 			require.Len(t, result.Services, 2)
 			assertExtensionRefResponse(t, result.Services[0].Plugins)
 			_, unaffectedRuleHasFault := result.Services[1].Plugins["fault-injection"]
 			assert.False(t, unaffectedRuleHasFault)
+			assertExtensionRefDiagnostic(t, logged.String(), "HTTPRoute")
+			assert.NotContains(t, logged.String(), "10.0.0.0/8")
 		})
 	}
 }
 
 func TestTranslateGRPCRouteUnresolvedExtensionRefIsScopedToRule(t *testing.T) {
 	tctx := newExtensionRefTranslateContext()
+	logger, logged := newExtensionRefTestLogger()
 	ref := gatewayv1.LocalObjectReference{
 		Group: "example.com",
 		Kind:  internaltypes.KindPluginConfig,
@@ -192,10 +215,11 @@ func TestTranslateGRPCRouteUnresolvedExtensionRefIsScopedToRule(t *testing.T) {
 		}},
 	}
 
-	result, err := NewTranslator(logr.Discard(), "").TranslateGRPCRoute(tctx, route)
+	result, err := NewTranslator(logger, "").TranslateGRPCRoute(tctx, route)
 	require.NoError(t, err)
 	require.Len(t, result.Services, 2)
 	assertExtensionRefResponse(t, result.Services[0].Plugins)
 	_, unaffectedRuleHasFault := result.Services[1].Plugins["fault-injection"]
 	assert.False(t, unaffectedRuleHasFault)
+	assertExtensionRefDiagnostic(t, logged.String(), "GRPCRoute")
 }

@@ -723,6 +723,11 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 		enableWebsocket, _ := t.translateBackendsToUpstreams(tctx, rule, httpRoute, service)
 
 		if err := t.fillPluginsFromHTTPRouteFilters(service.Plugins, httpRoute.GetNamespace(), rule.Filters, rule.Matches, tctx); err != nil {
+			t.Log.Error(err, "failed to fill plugins from HTTPRoute filters",
+				"namespace", httpRoute.GetNamespace(),
+				"name", httpRoute.GetName(),
+				"ruleIndex", ruleIndex,
+			)
 			setExtensionRefErrorResponse(service)
 		}
 
