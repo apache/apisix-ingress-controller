@@ -199,12 +199,13 @@ spec:
 			}
 			return false, nil
 		}
-		expectConsumerRemoved := func() {
+		expectKeyRejected := func() {
 			By("verify the consumer key is no longer accepted")
 			Eventually(request).WithArguments("/get", Headers{
 				"apikey": "test-key",
 			}).WithTimeout(30 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusUnauthorized))
-
+		}
+		expectConsumerAbsent := func() {
 			By("verify the consumer is removed from APISIX")
 			Eventually(consumerExists).WithTimeout(30 * time.Second).ProbeEvery(time.Second).Should(BeFalse())
 		}
@@ -302,7 +303,8 @@ spec:
 			err = s.K8sClient.Update(context.Background(), &consumer)
 			Expect(err).NotTo(HaveOccurred(), "updating ApisixConsumer")
 
-			expectConsumerRemoved()
+			expectKeyRejected()
+			expectConsumerAbsent()
 		})
 
 		It("removes the consumer after its IngressClass is deleted", func() {
@@ -319,7 +321,11 @@ spec:
 			err = s.DeleteResource("IngressClass", consumerClassName)
 			Expect(err).NotTo(HaveOccurred(), "deleting IngressClass")
 
-			expectConsumerRemoved()
+			By("verify the consumer key is no longer accepted")
+			Eventually(request).WithArguments("/get", Headers{
+				"apikey": "test-key",
+			}).WithTimeout(30 * time.Second).ProbeEvery(time.Second).ShouldNot(Equal(http.StatusOK))
+			expectConsumerAbsent()
 		})
 	})
 
