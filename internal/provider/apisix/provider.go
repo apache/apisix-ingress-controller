@@ -309,6 +309,8 @@ func (d *apisixProvider) applyResourceState(
 			}
 		}
 		switch plugins {
+		case pluginsNone:
+			// Most resource kinds carry no global_rules or plugin_metadata at all.
 		case pluginsFromGatewayProxy:
 			if err := d.store.SetGlobalRules(cfg.Name, gatewayProxy, resources.GlobalRules); err != nil {
 				return fmt.Errorf("store global rules failed for config %s: %w", cfg.Name, err)
