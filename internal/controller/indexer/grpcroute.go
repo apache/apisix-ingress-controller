@@ -97,7 +97,7 @@ func GRPCRouteExtensionIndexFunc(rawObj client.Object) []string {
 			if filter.Type != gatewayv1.GRPCRouteFilterExtensionRef || filter.ExtensionRef == nil {
 				continue
 			}
-			if filter.ExtensionRef.Kind == internaltypes.KindPluginConfig {
+			if internaltypes.IsPluginConfigExtensionRef(filter.ExtensionRef) {
 				keys = append(keys, GenIndexKey(gr.GetNamespace(), string(filter.ExtensionRef.Name)))
 			}
 		}

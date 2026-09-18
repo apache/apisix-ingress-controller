@@ -26,15 +26,19 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	networkingv1 "k8s.io/api/networking/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
+	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/manager/readiness"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 )
@@ -65,6 +69,23 @@ func (p *recordingProvider) Start(context.Context) error { return nil }
 
 func (p *recordingProvider) NeedLeaderElection() bool { return true }
 
+type ingressClassErrorClient struct {
+	client.Client
+	err error
+}
+
+func (c *ingressClassErrorClient) Get(
+	ctx context.Context,
+	key client.ObjectKey,
+	obj client.Object,
+	opts ...client.GetOption,
+) error {
+	if _, ok := obj.(*networkingv1.IngressClass); ok {
+		return c.err
+	}
+	return c.Client.Get(ctx, key, obj, opts...)
+}
+
 func newApisixConsumerReconciler(t *testing.T, cli client.Client, p provider.Provider) *ApisixConsumerReconciler {
 	t.Helper()
 
@@ -86,7 +107,81 @@ func apisixConsumerScheme(t *testing.T) *runtime.Scheme {
 	t.Helper()
 	scheme := runtime.NewScheme()
 	require.NoError(t, apiv2.AddToScheme(scheme))
+	require.NoError(t, networkingv1.AddToScheme(scheme))
 	return scheme
+}
+
+func TestApisixConsumerReconcile_IngressClassHandoffDeletesProviderState(t *testing.T) {
+	key := types.NamespacedName{Namespace: testConsumerNamespace, Name: "consumer"}
+	consumer := &apiv2.ApisixConsumer{
+		ObjectMeta: metav1.ObjectMeta{Namespace: key.Namespace, Name: key.Name},
+		Spec:       apiv2.ApisixConsumerSpec{IngressClassName: "other"},
+	}
+	oldConsumer := consumer.DeepCopy()
+	oldConsumer.Spec.IngressClassName = "apisix"
+	managedIngressClass := &networkingv1.IngressClass{
+		ObjectMeta: metav1.ObjectMeta{Name: "apisix"},
+		Spec:       networkingv1.IngressClassSpec{Controller: config.GetControllerName()},
+	}
+	ingressClass := &networkingv1.IngressClass{
+		ObjectMeta: metav1.ObjectMeta{Name: "other"},
+		Spec:       networkingv1.IngressClassSpec{Controller: "example.com/other-controller"},
+	}
+	cli := fake.NewClientBuilder().WithScheme(apisixConsumerScheme(t)).WithObjects(consumer, managedIngressClass, ingressClass).Build()
+	p := &recordingProvider{}
+	r := newApisixConsumerReconciler(t, cli, p)
+
+	accepted := MatchesIngressClassPredicate(cli, logr.Discard()).Update(event.UpdateEvent{
+		ObjectOld: oldConsumer,
+		ObjectNew: consumer,
+	})
+	result, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: key})
+
+	assert.True(t, accepted)
+	require.NoError(t, err)
+	assert.Equal(t, ctrl.Result{}, result)
+	assert.Equal(t, []types.NamespacedName{key}, p.deleted)
+	assert.Zero(t, p.updated)
+}
+
+func TestApisixConsumerReconcile_IngressClassLookupErrorDoesNotDelete(t *testing.T) {
+	key := types.NamespacedName{Namespace: testConsumerNamespace, Name: "consumer"}
+	consumer := &apiv2.ApisixConsumer{
+		ObjectMeta: metav1.ObjectMeta{Namespace: key.Namespace, Name: key.Name},
+		Spec:       apiv2.ApisixConsumerSpec{IngressClassName: "apisix"},
+	}
+	baseClient := fake.NewClientBuilder().WithScheme(apisixConsumerScheme(t)).WithObjects(consumer).Build()
+	cli := &ingressClassErrorClient{
+		Client: baseClient,
+		err:    k8serrors.NewInternalError(errors.New("boom")),
+	}
+	p := &recordingProvider{}
+	r := newApisixConsumerReconciler(t, cli, p)
+
+	_, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: key})
+
+	require.Error(t, err)
+	assert.True(t, k8serrors.IsInternalError(err), "want an internal error, got %v", err)
+	assert.Empty(t, p.deleted)
+	assert.Zero(t, p.updated)
+}
+
+func TestApisixConsumerReconcile_MissingIngressClassDeletesProviderState(t *testing.T) {
+	key := types.NamespacedName{Namespace: testConsumerNamespace, Name: "consumer"}
+	consumer := &apiv2.ApisixConsumer{
+		ObjectMeta: metav1.ObjectMeta{Namespace: key.Namespace, Name: key.Name},
+		Spec:       apiv2.ApisixConsumerSpec{IngressClassName: "missing"},
+	}
+	cli := fake.NewClientBuilder().WithScheme(apisixConsumerScheme(t)).WithObjects(consumer).Build()
+	p := &recordingProvider{}
+	r := newApisixConsumerReconciler(t, cli, p)
+
+	result, err := r.Reconcile(context.Background(), ctrl.Request{NamespacedName: key})
+
+	require.NoError(t, err)
+	assert.Equal(t, ctrl.Result{}, result)
+	assert.Equal(t, []types.NamespacedName{key}, p.deleted)
+	assert.Zero(t, p.updated)
 }
 
 // A deleted ApisixConsumer must be removed from the provider and then reported

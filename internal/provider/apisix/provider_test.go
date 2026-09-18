@@ -22,17 +22,20 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/go-logr/logr/funcr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
+	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/adc/cache"
 	adcclient "github.com/apache/apisix-ingress-controller/internal/adc/client"
 	"github.com/apache/apisix-ingress-controller/internal/provider/common"
@@ -90,6 +93,34 @@ func TestDeleteNotifiesSyncOnlyWhenConfigWasRemoved(t *testing.T) {
 
 	require.NoError(t, d.Delete(context.Background(), route))
 	require.Len(t, d.syncCh, 1, "removing configuration this controller pushed must trigger a sync")
+}
+
+func TestDeleteLogsObjectIdentity(t *testing.T) {
+	const credential = "consumer-key-value"
+	var logged strings.Builder
+	d := newTestProvider(t)
+	d.log = funcr.New(func(prefix, args string) {
+		logged.WriteString(args)
+	}, funcr.Options{Verbosity: 10})
+
+	consumer := &apiv2.ApisixConsumer{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ApisixConsumer",
+			APIVersion: apiv2.GroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "consumer"},
+		Spec: apiv2.ApisixConsumerSpec{
+			AuthParameter: &apiv2.ApisixConsumerAuthParameter{
+				KeyAuth: &apiv2.ApisixConsumerKeyAuth{
+					Value: &apiv2.ApisixConsumerKeyAuthValue{Key: credential},
+				},
+			},
+		},
+	}
+
+	require.NoError(t, d.Delete(context.Background(), consumer))
+	assert.Contains(t, logged.String(), "ApisixConsumer/default/consumer")
+	assert.NotContains(t, logged.String(), credential)
 }
 
 // TestDeleteTriggersImmediateSyncForEvictedConfigs covers the immediate-push branch of
