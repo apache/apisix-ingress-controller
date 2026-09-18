@@ -45,16 +45,24 @@ func service(id string, owner types.NamespacedNameKind) *adctypes.Service {
 	return &adctypes.Service{Metadata: adctypes.Metadata{ID: id, Name: "name-" + id, Labels: labelsOf(owner)}}
 }
 
+func ssl(id string, owner types.NamespacedNameKind) *adctypes.SSL {
+	return &adctypes.SSL{Metadata: adctypes.Metadata{ID: id, Labels: labelsOf(owner)}}
+}
+
+func consumer(username string, owner types.NamespacedNameKind) *adctypes.Consumer {
+	return &adctypes.Consumer{Username: username, Metadata: adctypes.Metadata{Labels: labelsOf(owner)}}
+}
+
 func TestLookupFindsTheOwnerOfEveryTopLevelType(t *testing.T) {
 	route := ownerNamed(types.KindApisixRoute, "route")
 	tls := ownerNamed(types.KindApisixTls, "tls")
-	consumer := ownerNamed(types.KindConsumer, "consumer")
+	consumerOwner := ownerNamed(types.KindConsumer, "consumer")
 	globalRule := ownerNamed(types.KindApisixGlobalRule, "global")
 
 	s := NewStore(logr.Discard())
 	require.NoError(t, s.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{Services: []*adctypes.Service{service("svc", route)}}, labelsOf(route)))
-	require.NoError(t, s.Insert(configName, []string{adctypes.TypeSSL}, &adctypes.Resources{SSLs: []*adctypes.SSL{{Metadata: adctypes.Metadata{ID: "ssl"}}}}, labelsOf(tls)))
-	require.NoError(t, s.Insert(configName, []string{adctypes.TypeConsumer}, &adctypes.Resources{Consumers: []*adctypes.Consumer{{Username: "alice"}}}, labelsOf(consumer)))
+	require.NoError(t, s.Insert(configName, []string{adctypes.TypeSSL}, &adctypes.Resources{SSLs: []*adctypes.SSL{ssl("ssl", tls)}}, labelsOf(tls)))
+	require.NoError(t, s.Insert(configName, []string{adctypes.TypeConsumer}, &adctypes.Resources{Consumers: []*adctypes.Consumer{consumer("alice", consumerOwner)}}, labelsOf(consumerOwner)))
 	require.NoError(t, s.SetGlobalRules(configName, globalRule, adctypes.GlobalRule{"prometheus": map[string]any{}}))
 	require.NoError(t, s.SetPluginMetadata(configName, adctypes.PluginMetadata{"http-logger": map[string]any{}}))
 
@@ -64,7 +72,7 @@ func TestLookupFindsTheOwnerOfEveryTopLevelType(t *testing.T) {
 	}{
 		{adctypes.TypeService, "svc", "name-svc", route},
 		{adctypes.TypeSSL, "ssl", "ssl", tls},
-		{adctypes.TypeConsumer, "alice", "alice", consumer},
+		{adctypes.TypeConsumer, "alice", "alice", consumerOwner},
 		{adctypes.TypeGlobalRule, "prometheus", "prometheus", globalRule},
 		{adctypes.TypePluginMetadata, "http-logger", "http-logger", gatewayProxy},
 	}
@@ -145,6 +153,23 @@ func TestSetPluginMetadataReplacesEverything(t *testing.T) {
 	assert.Equal(t, adctypes.PluginMetadata{"new": map[string]any{}}, resources.PluginMetadata)
 }
 
+// TestLookupReadsTheEntitysOwnLabelsNotInsertsArgument covers why Lookup can't source
+// the owner from anywhere but the entity's own stored labels: those are also what
+// KindLabelSelector matches Delete and a future Insert against, so this is the only
+// choice that can never disagree with which owner a selector-based lookup would find.
+// Insert's Labels argument is deliberately wrong here to prove it plays no part.
+func TestLookupReadsTheEntitysOwnLabelsNotInsertsArgument(t *testing.T) {
+	owner := ownerNamed(types.KindApisixRoute, "owner")
+	wrong := ownerNamed(types.KindApisixRoute, "wrong")
+	s := NewStore(logr.Discard())
+
+	require.NoError(t, s.Insert(configName, []string{adctypes.TypeSSL}, &adctypes.Resources{SSLs: []*adctypes.SSL{ssl("ssl", owner)}}, labelsOf(wrong)))
+
+	entity, ok := s.Lookup(configName, adctypes.TypeSSL, "ssl")
+	require.True(t, ok)
+	assert.Equal(t, owner, entity.Owner, "the ssl's own labels, not whatever Insert was called with")
+}
+
 func TestInsertForgetsTheOwnerOfReplacedResources(t *testing.T) {
 	route := ownerNamed(types.KindApisixRoute, "route")
 	s := NewStore(logr.Discard())
@@ -184,8 +209,8 @@ func TestOwnedEntities(t *testing.T) {
 	withChildren.Routes = []*adctypes.Route{{Metadata: adctypes.Metadata{ID: "r1", Name: "r1"}}}
 	withChildren.StreamRoutes = []*adctypes.StreamRoute{{Metadata: adctypes.Metadata{ID: "sr1"}}}
 	require.NoError(t, s.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{Services: []*adctypes.Service{withChildren}}, labelsOf(route)))
-	require.NoError(t, s.Insert(configName, []string{adctypes.TypeSSL}, &adctypes.Resources{SSLs: []*adctypes.SSL{{Metadata: adctypes.Metadata{ID: "ssl"}}}}, labelsOf(route)))
-	require.NoError(t, s.Insert(configName, []string{adctypes.TypeConsumer}, &adctypes.Resources{Consumers: []*adctypes.Consumer{{Username: "alice"}}}, labelsOf(other)))
+	require.NoError(t, s.Insert(configName, []string{adctypes.TypeSSL}, &adctypes.Resources{SSLs: []*adctypes.SSL{ssl("ssl", route)}}, labelsOf(route)))
+	require.NoError(t, s.Insert(configName, []string{adctypes.TypeConsumer}, &adctypes.Resources{Consumers: []*adctypes.Consumer{consumer("alice", other)}}, labelsOf(other)))
 
 	got := s.OwnedEntities(configName, route)
 	assert.Len(t, got, 2, "only what route itself owns, not other's consumer")

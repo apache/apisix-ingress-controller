@@ -277,7 +277,7 @@ func TestClassifySyncResultAttributesFailedStatusesToTheirResource(t *testing.T)
 		label.LabelNamespace: "ns1",
 	}
 	if err := d.store.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{
-		Services: []*adctypes.Service{{Metadata: adctypes.Metadata{ID: "svc1"}}},
+		Services: []*adctypes.Service{{Metadata: adctypes.Metadata{ID: "svc1", Labels: owner}}},
 	}, owner); err != nil {
 		t.Fatalf("seeding the store: %v", err)
 	}
@@ -321,7 +321,7 @@ func TestClassifySyncResultReportsEndpointStatusesEvenOnAFullyAttributedAddrErr(
 		label.LabelNamespace: "ns1",
 	}
 	if err := d.store.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{
-		Services: []*adctypes.Service{{Metadata: adctypes.Metadata{ID: "svc1"}}},
+		Services: []*adctypes.Service{{Metadata: adctypes.Metadata{ID: "svc1", Labels: owner}}},
 	}, owner); err != nil {
 		t.Fatalf("seeding the store: %v", err)
 	}
