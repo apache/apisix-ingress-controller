@@ -31,19 +31,8 @@ import (
 type Store struct {
 	cacheMap map[string]Cache
 
-	// owners maps each service, ssl and consumer a cacheKey holds to the Kubernetes
-	// resource that produced it, recorded from Insert's labels as it is written. A
-	// global_rule row carries its own owner instead (see SetGlobalRules), and
-	// plugin_metadata always belongs to the GatewayProxy the cacheKey names.
-	owners map[string]map[entityKey]types.NamespacedNameKind
-
 	sync.Mutex
 	log logr.Logger
-}
-
-type entityKey struct {
-	resourceType string
-	id           string
 }
 
 // Entity is a top-level ADC resource a cacheKey holds: a service, ssl, consumer,
@@ -64,7 +53,6 @@ type Entity struct {
 func NewStore(log logr.Logger) *Store {
 	return &Store{
 		cacheMap: make(map[string]Cache),
-		owners:   make(map[string]map[entityKey]types.NamespacedNameKind),
 		log:      log.WithName("store"),
 	}
 }
@@ -79,17 +67,6 @@ func (s *Store) cacheFor(name string) (Cache, error) {
 	}
 	s.cacheMap[name] = db
 	return db, nil
-}
-
-func (s *Store) setOwner(name, resourceType, id string, owner types.NamespacedNameKind) {
-	if s.owners[name] == nil {
-		s.owners[name] = make(map[entityKey]types.NamespacedNameKind)
-	}
-	s.owners[name][entityKey{resourceType, id}] = owner
-}
-
-func (s *Store) removeOwner(name, resourceType, id string) {
-	delete(s.owners[name], entityKey{resourceType, id})
 }
 
 func ownerFromLabels(labels map[string]string) types.NamespacedNameKind {
@@ -123,7 +100,7 @@ func childrenOf(service *adctypes.Service, owner types.NamespacedNameKind) []Ent
 // routeOwner finds the Kubernetes resource that produced the route id, by scanning
 // every service the cacheKey holds. A route's own labels can differ from its service's
 // (a traffic-split service can combine rules several ApisixRoutes each contributed),
-// so this can't reuse the service's owner from s.owners.
+// so this can't reuse the service's own KindLabelSelector match.
 func routeOwner(targetCache Cache, id string) (types.NamespacedNameKind, bool) {
 	services, err := targetCache.ListServices()
 	if err != nil {
@@ -192,7 +169,6 @@ func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.
 		Name:      Labels[label.LabelName],
 		Namespace: Labels[label.LabelNamespace],
 	}
-	owner := ownerFromLabels(Labels)
 	for _, resourceType := range resourceTypes {
 		switch resourceType {
 		case adctypes.TypeService:
@@ -204,13 +180,11 @@ func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.
 				if err := targetCache.DeleteService(service); err != nil {
 					return err
 				}
-				s.removeOwner(name, adctypes.TypeService, service.ID)
 			}
 			for _, service := range resources.Services {
 				if err := targetCache.InsertService(service); err != nil {
 					return err
 				}
-				s.setOwner(name, adctypes.TypeService, service.ID, owner)
 			}
 		case adctypes.TypeConsumer:
 			consumers, err := targetCache.ListConsumers(selector)
@@ -221,13 +195,11 @@ func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.
 				if err := targetCache.DeleteConsumer(consumer); err != nil {
 					return err
 				}
-				s.removeOwner(name, adctypes.TypeConsumer, consumer.Username)
 			}
 			for _, consumer := range resources.Consumers {
 				if err := targetCache.InsertConsumer(consumer); err != nil {
 					return err
 				}
-				s.setOwner(name, adctypes.TypeConsumer, consumer.Username, owner)
 			}
 		case adctypes.TypeSSL:
 			ssls, err := targetCache.ListSSL(selector)
@@ -239,16 +211,14 @@ func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.
 				if err := targetCache.DeleteSSL(ssl); err != nil {
 					return err
 				}
-				s.removeOwner(name, adctypes.TypeSSL, ssl.ID)
 			}
 			for _, ssl := range resources.SSLs {
 				if err := targetCache.InsertSSL(ssl); err != nil {
 					return err
 				}
-				s.setOwner(name, adctypes.TypeSSL, ssl.ID, owner)
 			}
 		case adctypes.TypeGlobalRule:
-			if err := s.setGlobalRules(targetCache, owner, resources.GlobalRules); err != nil {
+			if err := s.setGlobalRules(targetCache, ownerFromLabels(Labels), resources.GlobalRules); err != nil {
 				return err
 			}
 		case adctypes.TypePluginMetadata:
@@ -274,7 +244,6 @@ func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]st
 		Name:      Labels[label.LabelName],
 		Namespace: Labels[label.LabelNamespace],
 	}
-	owner := ownerFromLabels(Labels)
 	for _, resourceType := range resourceTypes {
 		switch resourceType {
 		case adctypes.TypeService:
@@ -286,7 +255,6 @@ func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]st
 				if err := targetCache.DeleteService(service); err != nil {
 					s.log.Error(err, "failed to delete service", "service", service.ID)
 				}
-				s.removeOwner(name, adctypes.TypeService, service.ID)
 			}
 		case adctypes.TypeSSL:
 			ssls, err := targetCache.ListSSL(selector)
@@ -297,7 +265,6 @@ func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]st
 				if err := targetCache.DeleteSSL(ssl); err != nil {
 					s.log.Error(err, "failed to delete ssl", "ssl", ssl.ID)
 				}
-				s.removeOwner(name, adctypes.TypeSSL, ssl.ID)
 			}
 		case adctypes.TypeConsumer:
 			consumers, err := targetCache.ListConsumers(selector)
@@ -308,11 +275,10 @@ func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]st
 				if err := targetCache.DeleteConsumer(consumer); err != nil {
 					s.log.Error(err, "failed to delete consumer", "consumer", consumer.Username)
 				}
-				s.removeOwner(name, adctypes.TypeConsumer, consumer.Username)
 			}
 		case adctypes.TypeGlobalRule:
-			if err := s.setGlobalRules(targetCache, owner, nil); err != nil {
-				s.log.Error(err, "failed to delete global rules", "owner", owner)
+			if err := s.setGlobalRules(targetCache, ownerFromLabels(Labels), nil); err != nil {
+				s.log.Error(err, "failed to delete global rules")
 			}
 		case adctypes.TypePluginMetadata:
 			if err := s.setPluginMetadata(targetCache, nil); err != nil {
@@ -322,7 +288,6 @@ func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]st
 	}
 	if len(resourceTypes) == 0 {
 		delete(s.cacheMap, name)
-		delete(s.owners, name)
 	}
 	return nil
 }
@@ -388,8 +353,11 @@ func (s *Store) SetPluginMetadata(name string, metadata adctypes.PluginMetadata)
 }
 
 // Lookup finds the top-level entity of resourceType and id the cacheKey name holds,
-// along with the Kubernetes resource that produced it. A route is not top-level, but is
-// looked up the same way pending its own nested-entity tracking.
+// along with the Kubernetes resource that produced it, read straight from the entity's
+// own stored labels (the same ones KindLabelSelector matches Insert/Delete against, so
+// there is exactly one place this can ever disagree with what a selector would find). A
+// route is not top-level, but is looked up the same way pending its own nested-entity
+// tracking.
 func (s *Store) Lookup(name, resourceType, id string) (Entity, bool) {
 	s.Lock()
 	defer s.Unlock()
@@ -397,34 +365,37 @@ func (s *Store) Lookup(name, resourceType, id string) (Entity, bool) {
 	if !ok {
 		return Entity{}, false
 	}
-	entity := Entity{Type: resourceType, ID: id, Name: id}
 	switch resourceType {
-	case adctypes.TypeService, adctypes.TypeSSL, adctypes.TypeConsumer:
-		owner, ok := s.owners[name][entityKey{resourceType, id}]
-		if !ok {
+	case adctypes.TypeService:
+		service, err := targetCache.GetService(id)
+		if err != nil {
 			return Entity{}, false
 		}
-		entity.Owner = owner
-		if resourceType == adctypes.TypeService {
-			if service, err := targetCache.GetService(id); err == nil && service.Name != "" {
-				entity.Name = service.Name
-			}
+		return Entity{Type: resourceType, ID: id, Name: cmp.Or(service.Name, id), Owner: ownerFromLabels(service.GetLabels())}, true
+	case adctypes.TypeSSL:
+		ssl, err := targetCache.GetSSL(id)
+		if err != nil {
+			return Entity{}, false
 		}
-		return entity, true
+		return Entity{Type: resourceType, ID: id, Name: id, Owner: ownerFromLabels(ssl.GetLabels())}, true
+	case adctypes.TypeConsumer:
+		consumer, err := targetCache.GetConsumer(id)
+		if err != nil {
+			return Entity{}, false
+		}
+		return Entity{Type: resourceType, ID: id, Name: id, Owner: ownerFromLabels(consumer.GetLabels())}, true
 	case adctypes.TypeRoute:
 		owner, ok := routeOwner(targetCache, id)
 		if !ok {
 			return Entity{}, false
 		}
-		entity.Owner = owner
-		return entity, true
+		return Entity{Type: resourceType, ID: id, Name: id, Owner: owner}, true
 	case adctypes.TypeGlobalRule:
 		row, err := targetCache.GetGlobalRule(id)
 		if err != nil {
 			return Entity{}, false
 		}
-		entity.Owner = row.Owner
-		return entity, true
+		return Entity{Type: resourceType, ID: id, Name: id, Owner: row.Owner}, true
 	case adctypes.TypePluginMetadata:
 		if _, err := targetCache.GetPluginMetadata(id); err != nil {
 			return Entity{}, false
@@ -433,13 +404,14 @@ func (s *Store) Lookup(name, resourceType, id string) (Entity, bool) {
 		if !ok {
 			return Entity{}, false
 		}
-		entity.Owner = gatewayProxy
-		return entity, true
+		return Entity{Type: resourceType, ID: id, Name: id, Owner: gatewayProxy}, true
 	}
 	return Entity{}, false
 }
 
-// OwnedEntities lists every top-level entity owner produced in the cacheKey name.
+// OwnedEntities lists every top-level entity owner produced in the cacheKey name, via
+// the same KindLabelSelector index Insert and Delete already use for service, ssl and
+// consumer.
 func (s *Store) OwnedEntities(name string, owner types.NamespacedNameKind) []Entity {
 	s.Lock()
 	defer s.Unlock()
@@ -447,21 +419,29 @@ func (s *Store) OwnedEntities(name string, owner types.NamespacedNameKind) []Ent
 	if !ok {
 		return nil
 	}
-	entities := make([]Entity, 0, len(s.owners[name]))
-	for key, o := range s.owners[name] {
-		if o != owner {
-			continue
+	selector := &KindLabelSelector{Kind: owner.Kind, Namespace: owner.Namespace, Name: owner.Name}
+
+	var entities []Entity
+	if services, err := targetCache.ListServices(selector); err == nil {
+		for _, service := range services {
+			entities = append(entities, Entity{
+				Type:     adctypes.TypeService,
+				ID:       service.ID,
+				Name:     cmp.Or(service.Name, service.ID),
+				Owner:    owner,
+				Children: childrenOf(service, owner),
+			})
 		}
-		entity := Entity{Type: key.resourceType, ID: key.id, Name: key.id, Owner: owner}
-		if key.resourceType == adctypes.TypeService {
-			if service, err := targetCache.GetService(key.id); err == nil {
-				if service.Name != "" {
-					entity.Name = service.Name
-				}
-				entity.Children = childrenOf(service, owner)
-			}
+	}
+	if ssls, err := targetCache.ListSSL(selector); err == nil {
+		for _, ssl := range ssls {
+			entities = append(entities, Entity{Type: adctypes.TypeSSL, ID: ssl.ID, Name: ssl.ID, Owner: owner})
 		}
-		entities = append(entities, entity)
+	}
+	if consumers, err := targetCache.ListConsumers(selector); err == nil {
+		for _, consumer := range consumers {
+			entities = append(entities, Entity{Type: adctypes.TypeConsumer, ID: consumer.Username, Name: consumer.Username, Owner: owner})
+		}
 	}
 	rows, _ := targetCache.ListGlobalRules(&OwnerSelector{Owner: owner})
 	for _, row := range rows {
