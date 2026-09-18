@@ -18,6 +18,7 @@
 package v2
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -32,6 +33,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/types"
 
+	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
@@ -144,9 +146,68 @@ spec:
       secretRef:
         name: keyauth
 `
+			foreignIngressClass = `
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: %s
+spec:
+  controller: example.com/other-ingress-controller
+`
+			managedIngressClass = `
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: %s
+spec:
+  controller: %s
+  parameters:
+    apiGroup: apisix.apache.org
+    kind: GatewayProxy
+    name: apisix-proxy-config
+    namespace: %s
+    scope: Namespace
+`
 		)
 		request := func(path string, headers Headers) int {
 			return s.NewAPISIXClient().GET(path).WithHeaders(headers).WithHost("httpbin").Expect().Raw().StatusCode
+		}
+		applyKeyAuthResources := func(consumerIngressClass string) {
+			By("apply ApisixRoute")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "default"},
+				&apiv2.ApisixRoute{}, fmt.Sprintf(defaultApisixRoute, s.Namespace()))
+
+			By("apply ApisixConsumer")
+			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-consumer"},
+				&apiv2.ApisixConsumer{}, fmt.Sprintf(keyAuth, consumerIngressClass))
+
+			By("verify the consumer key")
+			Eventually(request).WithArguments("/get", Headers{
+				"apikey": "test-key",
+			}).WithTimeout(30 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusOK))
+		}
+		consumerExists := func() (bool, error) {
+			consumers, err := s.DefaultDataplaneResource().Consumer().List(context.Background())
+			if err != nil {
+				return false, err
+			}
+			username := adctypes.ComposeConsumerName(s.Namespace(), "test-consumer")
+			for _, consumer := range consumers {
+				if consumer.Username == username {
+					return true, nil
+				}
+			}
+			return false, nil
+		}
+		expectKeyRejected := func() {
+			By("verify the consumer key is no longer accepted")
+			Eventually(request).WithArguments("/get", Headers{
+				"apikey": "test-key",
+			}).WithTimeout(30 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusUnauthorized))
+		}
+		expectConsumerAbsent := func() {
+			By("verify the consumer is removed from APISIX")
+			Eventually(consumerExists).WithTimeout(30 * time.Second).ProbeEvery(time.Second).Should(BeFalse())
 		}
 
 		It("Basic tests", func() {
@@ -223,6 +284,48 @@ spec:
 			err = s.DeleteResource("ApisixRoute", "default")
 			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixRoute")
 			Eventually(request).WithArguments("/headers", Headers{}).WithTimeout(5 * time.Second).ProbeEvery(time.Second).Should(Equal(http.StatusNotFound))
+		})
+
+		It("removes the consumer after an IngressClass handoff", func() {
+			applyKeyAuthResources(s.Namespace())
+
+			foreignClassName := s.Namespace() + "-other"
+			By("create another controller's IngressClass")
+			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(foreignIngressClass, foreignClassName), "")
+			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
+
+			By("change only the consumer IngressClassName")
+			var consumer apiv2.ApisixConsumer
+			err = s.K8sClient.Get(context.Background(),
+				types.NamespacedName{Namespace: s.Namespace(), Name: "test-consumer"}, &consumer)
+			Expect(err).NotTo(HaveOccurred(), "getting ApisixConsumer")
+			consumer.Spec.IngressClassName = foreignClassName
+			err = s.K8sClient.Update(context.Background(), &consumer)
+			Expect(err).NotTo(HaveOccurred(), "updating ApisixConsumer")
+
+			expectKeyRejected()
+			expectConsumerAbsent()
+		})
+
+		It("removes the consumer after its IngressClass is deleted", func() {
+			consumerClassName := s.Namespace() + "-consumer"
+			By("create a dedicated IngressClass for the consumer")
+			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(
+				managedIngressClass, consumerClassName, s.GetControllerName(), s.Namespace(),
+			), "")
+			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
+
+			applyKeyAuthResources(consumerClassName)
+
+			By("delete the consumer IngressClass")
+			err = s.DeleteResource("IngressClass", consumerClassName)
+			Expect(err).NotTo(HaveOccurred(), "deleting IngressClass")
+
+			By("verify the consumer key is no longer accepted")
+			Eventually(request).WithArguments("/get", Headers{
+				"apikey": "test-key",
+			}).WithTimeout(30 * time.Second).ProbeEvery(time.Second).ShouldNot(Equal(http.StatusOK))
+			expectConsumerAbsent()
 		})
 	})
 
