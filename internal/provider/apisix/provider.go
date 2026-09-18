@@ -230,7 +230,7 @@ func (d *apisixProvider) Update(ctx context.Context, tctx *provider.TranslateCon
 }
 
 func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
-	d.log.V(1).Info("deleting object", "object", obj)
+	d.log.V(1).Info("deleting object", "object", utils.NamespacedNameKind(obj))
 
 	var (
 		resourceTypes []string

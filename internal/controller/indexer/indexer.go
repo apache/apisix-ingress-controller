@@ -933,7 +933,7 @@ func HTTPRouteExtensionIndexFunc(rawObj client.Object) []string {
 			if filter.Type != gatewayv1.HTTPRouteFilterExtensionRef || filter.ExtensionRef == nil {
 				continue
 			}
-			if filter.ExtensionRef.Kind == internaltypes.KindPluginConfig {
+			if internaltypes.IsPluginConfigExtensionRef(filter.ExtensionRef) {
 				keys = append(keys, GenIndexKey(hr.GetNamespace(), string(filter.ExtensionRef.Name)))
 			}
 		}

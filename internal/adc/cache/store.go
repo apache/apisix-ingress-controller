@@ -427,38 +427,36 @@ func (s *Store) OwnedEntities(name string, owner types.NamespacedNameKind) []Ent
 		return nil
 	}
 	selector := &KindLabelSelector{Kind: owner.Kind, Namespace: owner.Namespace, Name: owner.Name}
+	services, _ := targetCache.ListServices(selector)
+	ssls, _ := targetCache.ListSSL(selector)
+	consumers, _ := targetCache.ListConsumers(selector)
+	globalRules, _ := targetCache.ListGlobalRules(&OwnerSelector{Owner: owner})
+	var pluginMetadata []*PluginMetadataRow
+	if gatewayProxy, ok := gatewayProxyOf(name); ok && gatewayProxy == owner {
+		pluginMetadata, _ = targetCache.ListPluginMetadata()
+	}
 
-	var entities []Entity
-	if services, err := targetCache.ListServices(selector); err == nil {
-		for _, service := range services {
-			entities = append(entities, Entity{
-				Type:     adctypes.TypeService,
-				ID:       service.ID,
-				Name:     cmp.Or(service.Name, service.ID),
-				Owner:    owner,
-				Children: childrenOf(service, owner),
-			})
-		}
+	entities := make([]Entity, 0, len(services)+len(ssls)+len(consumers)+len(globalRules)+len(pluginMetadata))
+	for _, service := range services {
+		entities = append(entities, Entity{
+			Type:     adctypes.TypeService,
+			ID:       service.ID,
+			Name:     cmp.Or(service.Name, service.ID),
+			Owner:    owner,
+			Children: childrenOf(service, owner),
+		})
 	}
-	if ssls, err := targetCache.ListSSL(selector); err == nil {
-		for _, ssl := range ssls {
-			entities = append(entities, Entity{Type: adctypes.TypeSSL, ID: ssl.ID, Name: ssl.ID, Owner: owner})
-		}
+	for _, ssl := range ssls {
+		entities = append(entities, Entity{Type: adctypes.TypeSSL, ID: ssl.ID, Name: ssl.ID, Owner: owner})
 	}
-	if consumers, err := targetCache.ListConsumers(selector); err == nil {
-		for _, consumer := range consumers {
-			entities = append(entities, Entity{Type: adctypes.TypeConsumer, ID: consumer.Username, Name: consumer.Username, Owner: owner})
-		}
+	for _, consumer := range consumers {
+		entities = append(entities, Entity{Type: adctypes.TypeConsumer, ID: consumer.Username, Name: consumer.Username, Owner: owner})
 	}
-	rows, _ := targetCache.ListGlobalRules(&OwnerSelector{Owner: owner})
-	for _, row := range rows {
+	for _, row := range globalRules {
 		entities = append(entities, Entity{Type: adctypes.TypeGlobalRule, ID: row.ID, Name: row.ID, Owner: owner})
 	}
-	if gatewayProxy, ok := gatewayProxyOf(name); ok && gatewayProxy == owner {
-		rows, _ := targetCache.ListPluginMetadata()
-		for _, row := range rows {
-			entities = append(entities, Entity{Type: adctypes.TypePluginMetadata, ID: row.ID, Name: row.ID, Owner: owner})
-		}
+	for _, row := range pluginMetadata {
+		entities = append(entities, Entity{Type: adctypes.TypePluginMetadata, ID: row.ID, Name: row.ID, Owner: owner})
 	}
 	return entities
 }
