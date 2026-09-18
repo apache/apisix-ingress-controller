@@ -89,6 +89,13 @@ func (r *ApisixConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		r.Log.V(1).Info("no matching IngressClass available",
 			"ingressClassName", ac.Spec.IngressClassName,
 			"error", err.Error())
+		if !isIngressClassSelectionAbsent(err) {
+			return ctrl.Result{}, err
+		}
+		if err := r.Provider.Delete(ctx, ac); err != nil {
+			r.Log.Error(err, "failed to delete provider", "ApisixConsumer", utils.NamespacedName(ac))
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, nil
 	}
 	defer func() { r.updateStatus(ac, err) }()

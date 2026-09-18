@@ -81,6 +81,14 @@ func NewInvalidKindError[Kind ~string](kind Kind) ReasonError {
 	}
 }
 
+// NewPluginConfigNotFoundError returns a route condition error for a missing PluginConfig.
+func NewPluginConfigNotFoundError(namespace, name string) ReasonError {
+	return ReasonError{
+		Reason:  string(gatewayv1.RouteReasonBackendNotFound),
+		Message: fmt.Sprintf("PluginConfig %s/%s not found", namespace, name),
+	}
+}
+
 type ADCExecutionErrors struct {
 	Errors []ADCExecutionError
 }

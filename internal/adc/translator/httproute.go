@@ -74,15 +74,15 @@ func (t *Translator) fillPluginFromExtensionRef(plugins adctypes.Plugins, namesp
 	if extensionRef == nil {
 		return nil
 	}
-	if extensionRef.Kind != internaltypes.KindPluginConfig {
-		return nil
+	if err := internaltypes.ValidatePluginConfigExtensionRef(extensionRef); err != nil {
+		return err
 	}
 	pluginconfig := tctx.PluginConfigs[types.NamespacedName{
 		Namespace: namespace,
 		Name:      string(extensionRef.Name),
 	}]
 	if pluginconfig == nil {
-		return nil
+		return internaltypes.NewPluginConfigNotFoundError(namespace, string(extensionRef.Name))
 	}
 	names := make([]string, 0, len(pluginconfig.Spec.Plugins))
 	for _, plugin := range pluginconfig.Spec.Plugins {
@@ -96,6 +96,18 @@ func (t *Translator) fillPluginFromExtensionRef(plugins adctypes.Plugins, namesp
 	// The rendered configuration may hold Secret data, so log the plugin names only.
 	t.Log.V(1).Info("fill plugin from extension ref", "pluginConfig", string(extensionRef.Name), "plugins", names)
 	return nil
+}
+
+func setExtensionRefErrorResponse(service *adctypes.Service) {
+	if service.Plugins == nil {
+		service.Plugins = make(adctypes.Plugins)
+	}
+	service.Plugins["fault-injection"] = map[string]any{
+		"abort": map[string]any{
+			"http_status": 500,
+			"body":        "ExtensionRef filter could not be resolved",
+		},
+	}
 }
 
 func (t *Translator) fillPluginFromURLRewriteFilter(plugins adctypes.Plugins, urlRewrite *gatewayv1.HTTPURLRewriteFilter, matches []gatewayv1.HTTPRouteMatch) {
@@ -711,7 +723,12 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 		enableWebsocket, _ := t.translateBackendsToUpstreams(tctx, rule, httpRoute, service)
 
 		if err := t.fillPluginsFromHTTPRouteFilters(service.Plugins, httpRoute.GetNamespace(), rule.Filters, rule.Matches, tctx); err != nil {
-			return nil, err
+			t.Log.Error(err, "failed to fill plugins from HTTPRoute filters",
+				"namespace", httpRoute.GetNamespace(),
+				"name", httpRoute.GetName(),
+				"ruleIndex", ruleIndex,
+			)
+			setExtensionRefErrorResponse(service)
 		}
 
 		matches := rule.Matches

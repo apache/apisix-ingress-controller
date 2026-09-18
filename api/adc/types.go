@@ -36,6 +36,12 @@ const (
 	TypeSSL            = "ssl"
 	TypeGlobalRule     = "global_rule"
 	TypePluginMetadata = "plugin_metadata"
+	// TypeStreamRoute, TypeUpstream and TypeConsumerCredential only ever name a nested
+	// entity in an ADC event: a stream route or named upstream inside a service, a
+	// credential inside a consumer.
+	TypeStreamRoute        = "stream_route"
+	TypeUpstream           = "upstream"
+	TypeConsumerCredential = "consumer_credential"
 )
 
 type Object interface {
@@ -539,6 +545,12 @@ func ComposeStreamRouteName(namespace, name string, rule string, typ string) str
 	buf.WriteString(typ)
 
 	return buf.String()
+}
+
+// ComposeGatewayListenerSSLName composes the name a Gateway listener's certificateRef at
+// refIndex is identified by; its SSL id is generated from it.
+func ComposeGatewayListenerSSLName(kind, namespace, name, listener string, refIndex int) string {
+	return fmt.Sprintf("%s_%s_%d", ComposeSSLName(kind, namespace, name), listener, refIndex)
 }
 
 func ComposeServiceNameWithRule(namespace, name string, rule string) string {

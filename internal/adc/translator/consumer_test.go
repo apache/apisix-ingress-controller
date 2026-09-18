@@ -23,6 +23,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
@@ -58,4 +59,37 @@ func TestTranslateConsumerV1alpha1_UsesMetadataLabelsWithoutOverwritingControlle
 	require.Equal(t, "payments", translated.Labels["team"])
 	require.Equal(t, consumer.Name, translated.Labels[label.LabelName])
 	require.Equal(t, "apisix-ingress-controller", translated.Labels[label.LabelManagedBy])
+}
+
+// TestTranslateConsumerV1alpha1_GivesEveryCredentialAStableID covers the id a rejected
+// credential is reported under: without one of our own, ADC derives an id AIC cannot
+// match back to the credential.
+func TestTranslateConsumerV1alpha1_GivesEveryCredentialAStableID(t *testing.T) {
+	translator := NewTranslator(logr.Discard(), "")
+	consumer := &v1alpha1.Consumer{
+		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
+		Spec: v1alpha1.ConsumerSpec{
+			Credentials: []v1alpha1.Credential{
+				{Name: "key", Type: "key-auth", Config: apiextensionsv1.JSON{Raw: []byte(`{"key":"k"}`)}},
+				{Name: "basic", Type: "basic-auth", Config: apiextensionsv1.JSON{Raw: []byte(`{"username":"u","password":"p"}`)}},
+			},
+		},
+	}
+
+	translate := func() []string {
+		result, err := translator.TranslateConsumerV1alpha1(provider.NewDefaultTranslateContext(context.Background()), consumer)
+		require.NoError(t, err)
+		require.Len(t, result.Consumers, 1)
+		var ids []string
+		for _, credential := range result.Consumers[0].Credentials {
+			require.NotEmpty(t, credential.ID)
+			ids = append(ids, credential.ID)
+		}
+		return ids
+	}
+
+	ids := translate()
+	require.Len(t, ids, 2)
+	require.NotEqual(t, ids[0], ids[1])
+	require.Equal(t, ids, translate())
 }

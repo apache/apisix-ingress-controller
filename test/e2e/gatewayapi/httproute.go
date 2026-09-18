@@ -2080,6 +2080,32 @@ spec:
     - name: httpbin-service-e2e-test
       port: 80
 `
+		var unsupportedExtensionRef = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: unsupported-extension-ref
+  namespace: %s
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - httpbin.example
+  rules:
+  - matches:
+    - path:
+        type: Exact
+        value: /get
+    filters:
+    - type: ExtensionRef
+      extensionRef:
+        group: example.com
+        kind: PluginConfig
+        name: unavailable-filter
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
 
 		var corsTestService = `
 apiVersion: v1
@@ -2415,6 +2441,40 @@ spec:
 				Path:     "/get",
 				Host:     "httpbin.example",
 				Check:    scaffold.WithExpectedBodyContains("Updated"),
+				Timeout:  time.Second * 30,
+				Interval: time.Second * 2,
+			})
+		})
+
+		It("HTTPRoute unsupported ExtensionRef", func() {
+			By("create HTTPRoute")
+			s.ResourceApplied(
+				"HTTPRoute",
+				"unsupported-extension-ref",
+				fmt.Sprintf(unsupportedExtensionRef, s.Namespace(), s.Namespace()),
+				1,
+			)
+
+			By("report the reference as unresolved")
+			framework.HTTPRouteMustHaveCondition(
+				s.GinkgoT,
+				s.K8sClient,
+				30*time.Second,
+				types.NamespacedName{},
+				types.NamespacedName{Namespace: s.Namespace(), Name: "unsupported-extension-ref"},
+				metav1.Condition{
+					Type:   string(gatewayv1.RouteConditionResolvedRefs),
+					Status: metav1.ConditionFalse,
+					Reason: string(gatewayv1.RouteReasonInvalidKind),
+				},
+			)
+
+			By("return an error response for the affected rule")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "httpbin.example",
+				Check:    scaffold.WithExpectedStatus(http.StatusInternalServerError),
 				Timeout:  time.Second * 30,
 				Interval: time.Second * 2,
 			})
