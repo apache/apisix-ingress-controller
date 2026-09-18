@@ -28,7 +28,9 @@ import (
 
 	"github.com/go-logr/logr"
 	networkingv1 "k8s.io/api/networking/v1"
+	k8stypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
@@ -54,6 +56,21 @@ const (
 	RetryMaxDelay  = 1000 * time.Second
 
 	MinSyncPeriod = 1 * time.Second
+
+	gatewayEventsBuffer = 1024
+)
+
+// pluginSource says whose global_rules and plugin_metadata a translate result carries.
+type pluginSource int
+
+const (
+	pluginsNone pluginSource = iota
+	// pluginsFromGatewayProxy is GatewayProxy.Spec.Plugins and .PluginMetadata, owned by
+	// each target config's GatewayProxy rather than the Gateway or IngressClass that was
+	// reconciled.
+	pluginsFromGatewayProxy
+	// pluginsFromResource is the reconciled resource's own global rules.
+	pluginsFromResource
 )
 
 // apisixProvider owns AIC's own view of what should be live: which Kubernetes resource
@@ -80,10 +97,21 @@ type apisixProvider struct {
 	standaloneSyncer *adcclient.StandaloneSyncer
 
 	updater status.Updater
-	// resourceFailures holds which non-GatewayProxy resources currently have a sync
-	// error recorded, so the next round that stops seeing one can clear it. GatewayProxy
+	// resourceDrops holds which non-GatewayProxy resources currently have something
+	// dropped, so the next round that stops seeing one can clear its status. GatewayProxy
 	// keeps no such history: see updateStatusFromSyncResults.
-	resourceFailures map[types.NamespacedNameKind][]string
+	resourceDrops map[types.NamespacedNameKind]resourceDrop
+
+	// skipped holds the resources ADC rejected, left out of every push until their owner
+	// is written again. See skiptable.go.
+	skipped *skipTable
+
+	// rejectedCertificates holds, per Gateway, the listener certificates the data plane
+	// rejected, for the Gateway controller to report on the listeners. gatewayEvents
+	// tells it which Gateways changed.
+	rejectedCertificatesMu sync.Mutex
+	rejectedCertificates   map[k8stypes.NamespacedName]map[string]string
+	gatewayEvents          chan event.GenericEvent
 
 	readier readiness.ReadinessManager
 
@@ -122,6 +150,8 @@ func New(log logr.Logger, updater status.Updater, readier readiness.ReadinessMan
 		updater:          updater,
 		readier:          readier,
 		syncCh:           make(chan struct{}, 1),
+		skipped:          newSkipTable(),
+		gatewayEvents:    make(chan event.GenericEvent, gatewayEventsBuffer),
 		log:              logger,
 	}, nil
 }
@@ -135,6 +165,7 @@ func (d *apisixProvider) Update(ctx context.Context, tctx *provider.TranslateCon
 	var (
 		result        *translator.TranslateResult
 		resourceTypes []string
+		plugins       pluginSource
 		err           error
 	)
 
@@ -158,7 +189,8 @@ func (d *apisixProvider) Update(ctx context.Context, tctx *provider.TranslateCon
 		resourceTypes = append(resourceTypes, adctypes.TypeService)
 	case *gatewayv1.Gateway:
 		result, err = d.translator.TranslateGateway(tctx, t.DeepCopy())
-		resourceTypes = append(resourceTypes, adctypes.TypeGlobalRule, adctypes.TypeSSL, adctypes.TypePluginMetadata)
+		resourceTypes = append(resourceTypes, adctypes.TypeSSL)
+		plugins = pluginsFromGatewayProxy
 	case *networkingv1.Ingress:
 		result, err = d.translator.TranslateIngress(tctx, t.DeepCopy())
 		resourceTypes = append(resourceTypes, adctypes.TypeService, adctypes.TypeSSL)
@@ -167,13 +199,13 @@ func (d *apisixProvider) Update(ctx context.Context, tctx *provider.TranslateCon
 		resourceTypes = append(resourceTypes, adctypes.TypeConsumer)
 	case *networkingv1.IngressClass:
 		result, err = d.translator.TranslateIngressClass(tctx, t.DeepCopy())
-		resourceTypes = append(resourceTypes, adctypes.TypeGlobalRule, adctypes.TypePluginMetadata)
+		plugins = pluginsFromGatewayProxy
 	case *apiv2.ApisixRoute:
 		result, err = d.translator.TranslateApisixRoute(tctx, t.DeepCopy())
 		resourceTypes = append(resourceTypes, adctypes.TypeService)
 	case *apiv2.ApisixGlobalRule:
 		result, err = d.translator.TranslateApisixGlobalRule(tctx, t.DeepCopy())
-		resourceTypes = append(resourceTypes, adctypes.TypeGlobalRule)
+		plugins = pluginsFromResource
 	case *apiv2.ApisixTls:
 		result, err = d.translator.TranslateApisixTls(tctx, t.DeepCopy())
 		resourceTypes = append(resourceTypes, adctypes.TypeSSL)
@@ -211,30 +243,34 @@ func (d *apisixProvider) Update(ctx context.Context, tctx *provider.TranslateCon
 	labels := label.GenLabel(obj)
 	d.log.V(1).Info("updating config", "resourceKey", rk, "configs", configs, "resourceTypes", resourceTypes)
 
-	return d.applyResourceState(rk, configs, resourceTypes, resources, labels)
+	return d.applyResourceState(rk, configs, resourceTypes, resources, labels, plugins)
 }
 
 func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 	d.log.V(1).Info("deleting object", "object", utils.NamespacedNameKind(obj))
 
-	var resourceTypes []string
-	var labels map[string]string
+	var (
+		resourceTypes []string
+		labels        map[string]string
+		plugins       pluginSource
+		// wholeConfig is set for a Gateway or IngressClass, whose deletion wipes every
+		// config it referenced.
+		wholeConfig bool
+	)
 	switch obj.(type) {
 	case *gatewayv1.HTTPRoute, *apiv2.ApisixRoute, *gatewayv1.GRPCRoute, *gatewayv1.TCPRoute, *gatewayv1.UDPRoute, *gatewayv1.TLSRoute:
 		resourceTypes = append(resourceTypes, adctypes.TypeService)
 		labels = label.GenLabel(obj)
-	case *gatewayv1.Gateway:
-		// delete all resources
+	case *gatewayv1.Gateway, *networkingv1.IngressClass:
+		wholeConfig = true
 	case *networkingv1.Ingress:
 		resourceTypes = append(resourceTypes, adctypes.TypeService, adctypes.TypeSSL)
 		labels = label.GenLabel(obj)
 	case *v1alpha1.Consumer:
 		resourceTypes = append(resourceTypes, adctypes.TypeConsumer)
 		labels = label.GenLabel(obj)
-	case *networkingv1.IngressClass:
-		// delete all resources
 	case *apiv2.ApisixGlobalRule:
-		resourceTypes = append(resourceTypes, adctypes.TypeGlobalRule)
+		plugins = pluginsFromResource
 		labels = label.GenLabel(obj)
 	case *apiv2.ApisixTls:
 		resourceTypes = append(resourceTypes, adctypes.TypeSSL)
@@ -245,21 +281,16 @@ func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 	}
 	nnk := utils.NamespacedNameKind(obj)
 
+	removed, err := d.removeResourceState(nnk, resourceTypes, labels, plugins, wholeConfig)
+	if err != nil {
+		return err
+	}
 	// Full synchronization is performed on a gateway by gateway basis
 	// and it is not possible to perform scheduled synchronization
 	// on deleted gateway level resources
-	if len(resourceTypes) == 0 {
-		removed, err := d.removeResourceState(nnk, resourceTypes, labels)
-		if err != nil {
-			return err
-		}
+	if wholeConfig {
 		d.syncEvictedConfigsNow(ctx, removed, resourceTypes, labels)
 		return nil
-	}
-
-	removed, err := d.removeResourceState(nnk, resourceTypes, labels)
-	if err != nil {
-		return err
 	}
 	// Syncing pushes the whole store to every data plane. Objects this controller never
 	// configured delete nothing, and reconciles for them are frequent, so notify only
@@ -272,24 +303,53 @@ func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 
 // applyResourceState upserts a resource's config associations and its contribution to each
 // target config's cached resource snapshot, the AIC-side bookkeeping the adc client
-// package no longer holds itself.
+// package no longer holds itself. Whatever the skip table excluded for an owner whose
+// content this changed gets another try; rewriting identical content, which reconciles
+// triggered by unrelated events do all the time, must not retry a known-bad resource.
 func (d *apisixProvider) applyResourceState(
 	rk types.NamespacedNameKind,
 	configs map[types.NamespacedNameKind]adctypes.Config,
 	resourceTypes []string,
 	resources *adctypes.Resources,
 	labels map[string]string,
+	plugins pluginSource,
 ) error {
 	d.Lock()
 	defer d.Unlock()
 
+	before := d.store.Revision()
+	owners := []types.NamespacedNameKind{rk}
+	defer func() {
+		for _, owner := range owners {
+			if d.store.OwnerChangedSince(owner, before) {
+				d.skipped.ClearOwner(owner)
+			}
+		}
+	}()
+
 	evicted := d.configManager.Update(rk, configs)
-	if err := d.evictFromStore(evicted, resourceTypes, labels); err != nil {
+	if err := d.evictFromStore(rk, evicted, resourceTypes, labels, plugins); err != nil {
 		return err
 	}
-	for _, cfg := range configs {
-		if err := d.store.Insert(cfg.Name, resourceTypes, resources, labels); err != nil {
-			return fmt.Errorf("store insert failed for config %s: %w", cfg.Name, err)
+	for gatewayProxy, cfg := range configs {
+		if len(resourceTypes) > 0 {
+			if err := d.store.Insert(cfg.Name, resourceTypes, resources, labels); err != nil {
+				return fmt.Errorf("store insert failed for config %s: %w", cfg.Name, err)
+			}
+		}
+		switch plugins {
+		case pluginsFromGatewayProxy:
+			if err := d.store.SetGlobalRules(cfg.Name, gatewayProxy, resources.GlobalRules); err != nil {
+				return fmt.Errorf("store global rules failed for config %s: %w", cfg.Name, err)
+			}
+			if err := d.store.SetPluginMetadata(cfg.Name, resources.PluginMetadata); err != nil {
+				return fmt.Errorf("store plugin metadata failed for config %s: %w", cfg.Name, err)
+			}
+			owners = append(owners, gatewayProxy)
+		case pluginsFromResource:
+			if err := d.store.SetGlobalRules(cfg.Name, rk, resources.GlobalRules); err != nil {
+				return fmt.Errorf("store global rules failed for config %s: %w", cfg.Name, err)
+			}
 		}
 	}
 	return nil
@@ -297,33 +357,52 @@ func (d *apisixProvider) applyResourceState(
 
 // removeResourceState forgets a resource's config associations and evicts its contribution
 // from each config it used to reference, returning those configs so an immediate-push
-// caller (see syncEvictedConfigsNow) knows what to push right away.
+// caller (see syncEvictedConfigsNow) knows what to push right away. wholeConfig wipes each
+// of those configs entirely instead.
 func (d *apisixProvider) removeResourceState(
 	rk types.NamespacedNameKind,
 	resourceTypes []string,
 	labels map[string]string,
+	plugins pluginSource,
+	wholeConfig bool,
 ) (map[types.NamespacedNameKind]adctypes.Config, error) {
 	d.Lock()
 	defer d.Unlock()
 
 	evicted := d.configManager.Get(rk)
 	d.configManager.Delete(rk)
-	if err := d.evictFromStore(evicted, resourceTypes, labels); err != nil {
+	if wholeConfig {
+		for _, cfg := range evicted {
+			d.store.DeleteAll(cfg.Name)
+			d.skipped.ClearCacheKey(cfg.Name)
+		}
+		return evicted, nil
+	}
+	if err := d.evictFromStore(rk, evicted, resourceTypes, labels, plugins); err != nil {
 		return nil, err
 	}
+	d.skipped.ClearOwner(rk)
 	return evicted, nil
 }
 
-// evictFromStore deletes a resource's contribution from each of the given configs' cached
-// snapshots. Callers must already hold d.Lock.
+// evictFromStore deletes rk's contribution from each of the given configs' cached
+// snapshots. global_rules and plugin_metadata sourced from a GatewayProxy belong to that
+// GatewayProxy's own config and are left in place. Callers must already hold d.Lock.
 func (d *apisixProvider) evictFromStore(
+	rk types.NamespacedNameKind,
 	configs map[types.NamespacedNameKind]adctypes.Config,
 	resourceTypes []string,
 	labels map[string]string,
+	plugins pluginSource,
 ) error {
 	for _, cfg := range configs {
 		if err := d.store.Delete(cfg.Name, resourceTypes, labels); err != nil {
 			return fmt.Errorf("store delete failed for config %s: %w", cfg.Name, err)
+		}
+		if plugins == pluginsFromResource {
+			if err := d.store.SetGlobalRules(cfg.Name, rk, nil); err != nil {
+				return fmt.Errorf("store global rules failed for config %s: %w", cfg.Name, err)
+			}
 		}
 	}
 	return nil
@@ -504,23 +583,28 @@ func (d *apisixProvider) Start(ctx context.Context) error {
 // sync pushes every GatewayProxy AIC currently knows about, config by config, each one's
 // current resource snapshot is only read once syncConfigNow actually holds that
 // cacheKey's lock, so a slow round can never push a snapshot that was already stale by
-// the time its turn came up. results collects one entry per config this round actually
+// the time its turn came up. Whatever the skip table holds for a config is left out of its
+// push. results collects one entry per config this round actually
 // reached pushConfig for, success (a zero-value types.ADCExecutionErrors) or failure. A
 // config whose build itself failed (a local error, before anything reached the data
 // plane) is left out of results entirely and its status goes untouched this round,
 // logged here rather than silently treated as either outcome; see
-// updateStatusFromSyncResults for what results feeds into.
+// updateStatusFromSyncResults for what results feeds into, and for the immediate retry a
+// round that excluded something new asks for.
 func (d *apisixProvider) sync(ctx context.Context) error {
 	configs := d.configManager.List()
 
 	results := map[string]types.ADCExecutionErrors{}
+	revisions := map[string]uint64{}
 	var errs []error
 	for _, config := range configs {
 		result, err := d.syncConfigNow(ctx, config.Name, func() (adcclient.SyncInput, error) {
-			resources, err := d.store.GetResources(config.Name)
+			resources, revision, err := d.store.GetResources(config.Name)
 			if err != nil {
 				return adcclient.SyncInput{}, fmt.Errorf("failed to get resources from store: %w", err)
 			}
+			revisions[config.Name] = revision
+			resources = exclude(resources, d.skipped.Excluded(config.Name))
 			return adcclient.SyncInput{Name: config.Name, Config: config, Resources: resources}, nil
 		})
 		if result == nil {
@@ -534,7 +618,14 @@ func (d *apisixProvider) sync(ctx context.Context) error {
 		}
 	}
 
-	d.updateStatusFromSyncResults(ctx, results)
+	if d.updateStatusFromSyncResults(ctx, results, revisions) {
+		// Excluding what ADC just rejected makes the next push different from the one
+		// that failed, and it is the push that carries every other resource's pending
+		// changes, so it goes out now rather than waiting for the retry backoff. Only a
+		// round that excluded something new asks for this, and each exclusion leaves one
+		// resource out of the next push, so this cannot repeat indefinitely.
+		d.syncNotify()
+	}
 	return errors.Join(errs...)
 }
 
@@ -561,6 +652,7 @@ func (d *apisixProvider) updateConfigForGatewayProxy(tctx *provider.TranslateCon
 		d.Lock()
 		d.configManager.DeleteConfig(nnk)
 		d.Unlock()
+		d.skipped.ClearCacheKey(nnk.String())
 		return nil
 	}
 

@@ -87,7 +87,7 @@ func TestGetListenerStatus_Conflicted(t *testing.T) {
 					func(client.Object) []string { return nil }).
 				Build()
 
-			statuses, err := getListenerStatus(context.Background(), cli, gw)
+			statuses, err := getListenerStatus(context.Background(), cli, gw, nil)
 			require.NoError(t, err)
 			require.Len(t, statuses, len(tc.listeners))
 

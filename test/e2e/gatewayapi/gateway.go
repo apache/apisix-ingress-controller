@@ -231,6 +231,99 @@ spec:
 			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 
+		// A certificate the data plane rejects is reported on the listener that carries
+		// it, and does not stop the Gateway's other listeners from being programmed.
+		It("Check a certificate the data plane rejects is reported on its listener", func() {
+			By("create GatewayProxy")
+			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())
+			err := s.CreateResourceFromString(gatewayProxy)
+			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			By("create one valid and one unparsable certificate")
+			createSecret(s, _secretName)
+			// The certificate itself is valid, so the controller accepts the reference;
+			// the private key is well-formed PEM the data plane cannot parse.
+			err = s.NewKubeTlsSecret("rejected-cert", Cert, "-----BEGIN PRIVATE KEY-----\nAAAA\n-----END PRIVATE KEY-----")
+			Expect(err).NotTo(HaveOccurred(), "creating Secret")
+
+			gatewayClassName := s.Namespace()
+			By("create GatewayClass")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(`
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: %s
+spec:
+  controllerName: "%s"
+`, gatewayClassName, s.GetControllerName()), "")
+			Expect(err).NotTo(HaveOccurred(), "creating GatewayClass")
+
+			By("create a Gateway whose second listener carries the rejected certificate")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(`
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: %s
+spec:
+  gatewayClassName: %s
+  listeners:
+    - name: accepted
+      protocol: HTTPS
+      port: 443
+      hostname: %s
+      tls:
+        certificateRefs:
+        - kind: Secret
+          group: ""
+          name: %s
+    - name: rejected
+      protocol: HTTPS
+      port: 8443
+      hostname: rejected.example.com
+      tls:
+        certificateRefs:
+        - kind: Secret
+          group: ""
+          name: rejected-cert
+  infrastructure:
+    parametersRef:
+      group: apisix.apache.org
+      kind: GatewayProxy
+      name: apisix-proxy-config
+`, s.Namespace(), gatewayClassName, _hostAPI6, _secretName), s.Namespace())
+			Expect(err).NotTo(HaveOccurred(), "creating Gateway")
+
+			By("the valid certificate is programmed")
+			Eventually(func(g Gomega) {
+				tls, err := s.DefaultDataplaneResource().SSL().List(context.Background())
+				g.Expect(err).NotTo(HaveOccurred(), "list tls error")
+				g.Expect(tls).To(HaveLen(1), "only the accepted listener's certificate is programmed")
+				g.Expect(tls[0].Snis).To(ConsistOf(_hostAPI6))
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
+
+			By("the rejected certificate is reported on its own listener")
+			s.RetryAssertion(func() (string, error) {
+				return s.GetResourceYaml("Gateway", s.Namespace())
+			}).Should(And(
+				ContainSubstring("name: rejected"),
+				ContainSubstring("reason: InvalidCertificateRef"),
+			), "checking listener condition")
+
+			By("fix the rejected certificate")
+			err = s.NewKubeTlsSecret("rejected-cert", Cert, Key)
+			Expect(err).NotTo(HaveOccurred(), "updating Secret")
+
+			By("both certificates are programmed and no listener reports a rejection")
+			Eventually(func(g Gomega) {
+				tls, err := s.DefaultDataplaneResource().SSL().List(context.Background())
+				g.Expect(err).NotTo(HaveOccurred(), "list tls error")
+				g.Expect(tls).To(HaveLen(2), "both listeners' certificates are programmed")
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
+			s.RetryAssertion(func() (string, error) {
+				return s.GetResourceYaml("Gateway", s.Namespace())
+			}).ShouldNot(ContainSubstring("reason: InvalidCertificateRef"), "checking listener condition")
+		})
+
 		It("Check downstream mTLS via frontendValidation", func() {
 			By("create GatewayProxy")
 			gatewayProxy := fmt.Sprintf(gatewayProxyYaml, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey())

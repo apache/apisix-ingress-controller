@@ -44,10 +44,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
+	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
+	"github.com/apache/apisix-ingress-controller/internal/id"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	sslutils "github.com/apache/apisix-ingress-controller/internal/ssl"
 	"github.com/apache/apisix-ingress-controller/internal/types"
@@ -984,10 +986,14 @@ func checkStatusParent(parents []gatewayv1.RouteParentStatus, routeNamespace str
 	})
 }
 
+// getListenerStatus computes every listener's status. rejectedCertificates holds, per SSL
+// id, why the data plane rejected a listener certificate that passed every check here;
+// see provider.ListenerCertificateRejections.
 func getListenerStatus(
 	ctx context.Context,
 	mrgc client.Client,
 	gateway *gatewayv1.Gateway,
+	rejectedCertificates map[string]string,
 ) ([]gatewayv1.ListenerStatus, error) {
 	statusArray := make([]gatewayv1.ListenerStatus, 0, len(gateway.Spec.Listeners))
 	tlsModeConflictPorts := portsWithConflictingTLSMode(gateway)
@@ -1174,6 +1180,20 @@ func getListenerStatus(
 			if validation := types.FrontendTLSValidationForListener(gateway, listener); validation != nil &&
 				(listener.TLS.Mode == nil || *listener.TLS.Mode == gatewayv1.TLSModeTerminate) {
 				validateListenerFrontendValidation(ctx, mrgc, gateway, validation, &conditionResolvedRefs, &conditionProgrammed, &conditionAccepted)
+			}
+
+			if conditionResolvedRefs.Status == metav1.ConditionTrue {
+				for refIndex := range listener.TLS.CertificateRefs {
+					sslID := id.GenID(adctypes.ComposeGatewayListenerSSLName(KindGateway, gateway.Namespace, gateway.Name, string(listener.Name), refIndex))
+					if reason, rejected := rejectedCertificates[sslID]; rejected {
+						conditionResolvedRefs.Status = metav1.ConditionFalse
+						conditionResolvedRefs.Reason = string(gatewayv1.ListenerReasonInvalidCertificateRef)
+						conditionResolvedRefs.Message = reason
+						conditionProgrammed.Status = metav1.ConditionFalse
+						conditionProgrammed.Reason = string(gatewayv1.ListenerReasonInvalid)
+						break
+					}
+				}
 			}
 		}
 

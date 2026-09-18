@@ -32,6 +32,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
@@ -65,6 +66,8 @@ func newTestProvider(t *testing.T) *apisixProvider {
 		syncLocks:        newKeyedMutex(),
 		standaloneSyncer: adcclient.NewStandaloneSyncer(cli, logr.Discard()),
 		syncCh:           make(chan struct{}, 1),
+		skipped:          newSkipTable(),
+		gatewayEvents:    make(chan event.GenericEvent, gatewayEventsBuffer),
 		log:              logr.Discard(),
 	}
 }
@@ -206,4 +209,165 @@ func TestSyncStillPushesHealthyConfigsWhenAnotherFails(t *testing.T) {
 	defer mu.Unlock()
 	assert.True(t, seen["bad"], "the failing config must still have been attempted")
 	assert.True(t, seen["good"], "a config failing must not stop the others from being pushed")
+}
+
+// TestApplyResourceStateAttributesGatewayProxyPluginsToTheGatewayProxy covers the one
+// reconcile that writes content of two owners: a Gateway's own listener certificates, and
+// the plugins its GatewayProxy declares.
+func TestApplyResourceStateAttributesGatewayProxyPluginsToTheGatewayProxy(t *testing.T) {
+	d := newTestProvider(t)
+	gw1 := types.NamespacedNameKind{Kind: types.KindGateway, Namespace: "ns", Name: "gw1"}
+	gw2 := types.NamespacedNameKind{Kind: types.KindGateway, Namespace: "ns", Name: "gw2"}
+	oldProxy := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "old"}
+	newProxy := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "new"}
+	configFor := func(proxy types.NamespacedNameKind) map[types.NamespacedNameKind]adctypes.Config {
+		return map[types.NamespacedNameKind]adctypes.Config{proxy: {Name: proxy.String()}}
+	}
+	resourcesOf := func(sslID string) *adctypes.Resources {
+		return &adctypes.Resources{
+			SSLs:           []*adctypes.SSL{{Metadata: adctypes.Metadata{ID: sslID, Labels: labelsOf(gw1)}}},
+			GlobalRules:    adctypes.GlobalRule{"cors": map[string]any{}},
+			PluginMetadata: adctypes.PluginMetadata{"http-logger": map[string]any{}},
+		}
+	}
+
+	require.NoError(t, d.applyResourceState(gw1, configFor(oldProxy), []string{adctypes.TypeSSL}, resourcesOf("ssl1"), labelsOf(gw1), pluginsFromGatewayProxy))
+	gw2Resources := resourcesOf("ssl2")
+	gw2Resources.SSLs[0].Labels = labelsOf(gw2)
+	require.NoError(t, d.applyResourceState(gw2, configFor(oldProxy), []string{adctypes.TypeSSL}, gw2Resources, labelsOf(gw2), pluginsFromGatewayProxy))
+
+	ssl, ok := d.store.Lookup(oldProxy.String(), adctypes.TypeSSL, "ssl1")
+	require.True(t, ok)
+	assert.Equal(t, gw1, ssl.Owner)
+	for _, resourceType := range []string{adctypes.TypeGlobalRule, adctypes.TypePluginMetadata} {
+		id := map[string]string{adctypes.TypeGlobalRule: "cors", adctypes.TypePluginMetadata: "http-logger"}[resourceType]
+		entity, ok := d.store.Lookup(oldProxy.String(), resourceType, id)
+		require.True(t, ok, resourceType)
+		assert.Equal(t, oldProxy, entity.Owner, "%s comes from the GatewayProxy, not the Gateway that was reconciled", resourceType)
+	}
+	assert.Len(t, d.store.OwnedEntities(oldProxy.String(), oldProxy), 2, "Gateways sharing a GatewayProxy write its plugins once")
+
+	require.NoError(t, d.applyResourceState(gw1, configFor(newProxy), []string{adctypes.TypeSSL}, resourcesOf("ssl1"), labelsOf(gw1), pluginsFromGatewayProxy))
+	_, ok = d.store.Lookup(oldProxy.String(), adctypes.TypeSSL, "ssl1")
+	assert.False(t, ok, "the Gateway's own certificate leaves the config it no longer references")
+	_, ok = d.store.Lookup(oldProxy.String(), adctypes.TypeGlobalRule, "cors")
+	assert.True(t, ok, "the old GatewayProxy's own plugins stay in its own config")
+}
+
+func TestApplyResourceStateRetriesSkippedResourcesOnlyWhenTheirContentChanged(t *testing.T) {
+	d := newTestProvider(t)
+	route := types.NamespacedNameKind{Kind: types.KindApisixRoute, Namespace: "ns", Name: "route"}
+	proxy := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "gp"}
+	configs := map[types.NamespacedNameKind]adctypes.Config{proxy: {Name: proxy.String()}}
+	apply := func(plugins adctypes.Plugins) {
+		require.NoError(t, d.applyResourceState(route, configs, []string{adctypes.TypeService}, &adctypes.Resources{
+			Services: []*adctypes.Service{{Metadata: adctypes.Metadata{ID: "svc", Labels: labelsOf(route)}, Plugins: plugins}},
+		}, labelsOf(route), pluginsNone))
+	}
+	key := wireKey{resourceType: adctypes.TypeService, id: "svc"}
+
+	apply(adctypes.Plugins{"bad": map[string]any{}})
+	d.skipped.MarkFailing(proxy.String(), map[wireKey]exclusion{key: {owner: route}})
+
+	apply(adctypes.Plugins{"bad": map[string]any{}})
+	assert.Contains(t, d.skipped.Excluded(proxy.String()), key, "a reconcile that rewrites the same content must not retry it")
+
+	apply(adctypes.Plugins{"fixed": map[string]any{}})
+	assert.NotContains(t, d.skipped.Excluded(proxy.String()), key, "changed content gets another try")
+}
+
+func TestRemoveResourceStateRemovesAnApisixGlobalRulesPlugins(t *testing.T) {
+	d := newTestProvider(t)
+	globalRule := types.NamespacedNameKind{Kind: types.KindApisixGlobalRule, Namespace: "ns", Name: "global"}
+	proxy := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "gp"}
+	configs := map[types.NamespacedNameKind]adctypes.Config{proxy: {Name: proxy.String()}}
+	require.NoError(t, d.store.SetGlobalRules(proxy.String(), proxy, adctypes.GlobalRule{"cors": map[string]any{}}))
+	require.NoError(t, d.applyResourceState(globalRule, configs, nil, &adctypes.Resources{
+		GlobalRules: adctypes.GlobalRule{"prometheus": map[string]any{}},
+	}, labelsOf(globalRule), pluginsFromResource))
+
+	resources, _, err := d.store.GetResources(proxy.String())
+	require.NoError(t, err)
+	assert.Len(t, resources.GlobalRules, 2)
+
+	_, err = d.removeResourceState(globalRule, nil, labelsOf(globalRule), pluginsFromResource, false)
+	require.NoError(t, err)
+	resources, _, err = d.store.GetResources(proxy.String())
+	require.NoError(t, err)
+	assert.Equal(t, adctypes.GlobalRule{"cors": map[string]any{}}, resources.GlobalRules, "only the deleted resource's own plugins go away")
+}
+
+func TestSyncLeavesSkippedResourcesOutOfThePush(t *testing.T) {
+	var mu sync.Mutex
+	var received []adcclient.ADCServerRequest
+	withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
+		var req adcclient.ADCServerRequest
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		mu.Lock()
+		received = append(received, req)
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(adctypes.SyncResult{Status: adctypes.StatusSuccess})
+	})
+
+	d := newTestProvider(t)
+	d.updater = &fakeUpdater{}
+	route := types.NamespacedNameKind{Kind: types.KindApisixRoute, Namespace: "ns", Name: "route"}
+	proxy := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "gp"}
+	config := adctypes.Config{Name: proxy.String(), BackendType: "apisix", ServerAddrs: []string{"http://apisix:9080"}}
+	require.NoError(t, d.applyResourceState(route, map[types.NamespacedNameKind]adctypes.Config{proxy: config}, []string{adctypes.TypeService}, &adctypes.Resources{
+		Services: []*adctypes.Service{
+			{Metadata: adctypes.Metadata{ID: "good", Labels: labelsOf(route)}},
+			{Metadata: adctypes.Metadata{ID: "bad", Labels: labelsOf(route)}},
+		},
+	}, labelsOf(route), pluginsNone))
+	d.skipped.MarkFailing(proxy.String(), map[wireKey]exclusion{{resourceType: adctypes.TypeService, id: "bad"}: {owner: route}})
+
+	require.NoError(t, d.sync(context.Background()))
+
+	mu.Lock()
+	defer mu.Unlock()
+	require.Len(t, received, 1)
+	require.Len(t, received[0].Task.Config.Services, 1)
+	assert.Equal(t, "good", received[0].Task.Config.Services[0].ID)
+}
+
+// TestSyncRetriesImmediatelyOnceTheRejectedResourceIsExcluded covers what happens after a
+// push is rejected: the next push leaves the rejected resource out and carries every
+// other resource's pending changes, so it must not wait for the retry backoff.
+func TestSyncRetriesImmediatelyOnceTheRejectedResourceIsExcluded(t *testing.T) {
+	route := types.NamespacedNameKind{Kind: types.KindApisixRoute, Namespace: "ns", Name: "route"}
+	proxy := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "gp"}
+	rejectService := adcResp{
+		status: http.StatusUnprocessableEntity,
+		body: adctypes.SyncResult{
+			Status: "all_failed",
+			Failed: []adctypes.SyncStatus{{
+				Reason: "unknown plugin [nope]",
+				Event:  adctypes.StatusEvent{ResourceType: adctypes.TypeService, ResourceID: "bad"},
+			}},
+		},
+	}
+	requests := scriptedADC(t, rejectService, respOK())
+
+	d := newTestProvider(t)
+	d.updater = &fakeUpdater{}
+	config := adctypes.Config{Name: proxy.String(), BackendType: "apisix", ServerAddrs: []string{"http://apisix:9180"}}
+	require.NoError(t, d.applyResourceState(route, map[types.NamespacedNameKind]adctypes.Config{proxy: config}, []string{adctypes.TypeService}, &adctypes.Resources{
+		Services: []*adctypes.Service{
+			{Metadata: adctypes.Metadata{ID: "good", Labels: labelsOf(route)}},
+			{Metadata: adctypes.Metadata{ID: "bad", Labels: labelsOf(route)}},
+		},
+	}, labelsOf(route), pluginsNone))
+
+	require.Error(t, d.sync(context.Background()))
+	require.Len(t, d.syncCh, 1, "the round that excluded the rejected resource must push again right away")
+	<-d.syncCh
+
+	require.NoError(t, d.sync(context.Background()))
+	sent := requests()
+	require.Len(t, sent, 2)
+	require.Len(t, sent[1].Task.Config.Services, 1)
+	assert.Equal(t, "good", sent[1].Task.Config.Services[0].ID)
+	assert.Empty(t, d.syncCh, "a round that excluded nothing new must not ask for another push")
 }

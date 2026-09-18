@@ -24,6 +24,7 @@ import (
 	discoveryv1 "k8s.io/api/discovery/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
@@ -38,6 +39,17 @@ type Provider interface {
 	Delete(context.Context, client.Object) error
 	Start(context.Context) error
 	NeedLeaderElection() bool
+}
+
+// ListenerCertificateRejections is implemented by a Provider that learns only after
+// syncing that the data plane rejected a Gateway listener's certificate, so the Gateway
+// controller can report it on the listener.
+type ListenerCertificateRejections interface {
+	// RejectedCertificates returns, per SSL id, why the data plane rejected a certificate
+	// of gateway's listeners.
+	RejectedCertificates(gateway k8stypes.NamespacedName) map[string]string
+	// GatewayEvents fires for a Gateway whenever RejectedCertificates changes for it.
+	GatewayEvents() <-chan event.GenericEvent
 }
 
 type TranslateContext struct {

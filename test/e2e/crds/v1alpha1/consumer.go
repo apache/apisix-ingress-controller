@@ -22,6 +22,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	gomegatypes "github.com/onsi/gomega/types"
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
@@ -619,6 +620,129 @@ spec:
 				},
 				Check: scaffold.WithExpectedStatus(401),
 			})
+		})
+	})
+
+	// A Consumer the data plane rejects must not stop the other Consumers under the same
+	// GatewayProxy from being applied, and one rejected credential must not take the
+	// Consumer's other credentials with it. What makes them rejected is checked by every
+	// backend: a known plugin configured in a way its own check_schema refuses, and a
+	// credential config of the wrong type.
+	Context("Bad resource isolation", func() {
+		var consumerWithPlugin = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: Consumer
+metadata:
+  name: consumer-rejected
+spec:
+  gatewayRef:
+    name: %s
+  credentials:
+    - type: key-auth
+      name: key-auth-sample
+      config:
+        key: rejected-key
+  plugins:
+    - name: limit-count
+      config:
+        count: %d
+        time_window: 60
+        rejected_code: 503
+        key: remote_addr
+`
+		var validConsumer = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: Consumer
+metadata:
+  name: consumer-valid
+spec:
+  gatewayRef:
+    name: %s
+  credentials:
+    - type: key-auth
+      name: key-auth-sample
+      config:
+        key: valid-key
+`
+		var consumerWithCredentials = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: Consumer
+metadata:
+  name: consumer-mixed
+spec:
+  gatewayRef:
+    name: %s
+  credentials:
+    - type: key-auth
+      name: valid-credential
+      config:
+        key: mixed-key
+    - type: key-auth
+      name: rejected-credential
+      config:
+        key: %s
+`
+		authenticates := func(key string, status int) {
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:  "GET",
+				Path:    "/get",
+				Host:    "httpbin.org",
+				Headers: map[string]string{"apikey": key},
+				Check:   scaffold.WithExpectedStatus(status),
+			})
+		}
+		consumerStatus := func(name string, matchers ...gomegatypes.GomegaMatcher) {
+			s.RetryAssertion(func() string {
+				output, _ := s.GetOutputFromString("consumer", name, "-o", "yaml", "-n", s.Namespace())
+				return output
+			}).Should(And(matchers...))
+		}
+
+		It("isolates a rejected Consumer", func() {
+			By("apply a valid and a rejected Consumer")
+			err = s.CreateResourceFromString(fmt.Sprintf(consumerWithPlugin, s.Namespace(), 0))
+			Expect(err).NotTo(HaveOccurred(), "creating the rejected Consumer")
+			err = s.CreateResourceFromString(fmt.Sprintf(validConsumer, s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "creating the valid Consumer")
+
+			By("the valid Consumer authenticates, the rejected one does not")
+			authenticates("valid-key", 200)
+			authenticates("rejected-key", 401)
+			consumerStatus("consumer-rejected",
+				ContainSubstring(`status: "False"`),
+				ContainSubstring(`reason: SyncFailed`),
+			)
+
+			By("fix the rejected Consumer")
+			err = s.CreateResourceFromString(fmt.Sprintf(consumerWithPlugin, s.Namespace(), 100))
+			Expect(err).NotTo(HaveOccurred(), "updating the Consumer")
+
+			By("both Consumers authenticate")
+			authenticates("valid-key", 200)
+			authenticates("rejected-key", 200)
+		})
+
+		It("isolates a rejected credential without taking the Consumer's other credentials", func() {
+			By("apply a Consumer with one valid and one rejected credential")
+			// key has to be a string, so the data plane refuses this credential.
+			err = s.CreateResourceFromString(fmt.Sprintf(consumerWithCredentials, s.Namespace(), "123"))
+			Expect(err).NotTo(HaveOccurred(), "creating the Consumer")
+
+			By("the valid credential authenticates and the Consumer reports the dropped one")
+			authenticates("mixed-key", 200)
+			consumerStatus("consumer-mixed",
+				ContainSubstring(`type: PartiallyInvalid`),
+				ContainSubstring(`rejected-credential`),
+			)
+
+			By("fix the rejected credential")
+			err = s.CreateResourceFromString(fmt.Sprintf(consumerWithCredentials, s.Namespace(), `"fixed-key"`))
+			Expect(err).NotTo(HaveOccurred(), "updating the Consumer")
+
+			By("both credentials authenticate")
+			authenticates("mixed-key", 200)
+			authenticates("fixed-key", 200)
+			consumerStatus("consumer-mixed", Not(ContainSubstring(`type: PartiallyInvalid`)))
 		})
 	})
 })
