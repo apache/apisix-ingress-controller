@@ -18,6 +18,7 @@
 package cache
 
 import (
+	"cmp"
 	"fmt"
 	"sync"
 
@@ -26,6 +27,7 @@ import (
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
+	"github.com/apache/apisix-ingress-controller/internal/types"
 )
 
 type Store struct {
@@ -36,12 +38,45 @@ type Store struct {
 	log logr.Logger
 }
 
+// Entity is a top-level ADC resource a cacheKey holds: a service, ssl or consumer.
+type Entity struct {
+	Type string
+	ID   string
+	// Name identifies the entity in a status message: a service's name, a consumer's
+	// username, or the id for the other types.
+	Name  string
+	Owner types.NamespacedNameKind
+	// Children are the routes and stream routes a service holds. A service whose
+	// children are all dropped serves nothing, even though the service itself was never
+	// rejected.
+	Children []Entity
+}
+
 func NewStore(log logr.Logger) *Store {
 	return &Store{
 		cacheMap:          make(map[string]Cache),
 		pluginMetadataMap: make(map[string]adctypes.PluginMetadata),
 		log:               log.WithName("store"),
 	}
+}
+
+func ownerFromLabels(labels map[string]string) types.NamespacedNameKind {
+	return types.NamespacedNameKind{
+		Kind:      labels[label.LabelKind],
+		Namespace: labels[label.LabelNamespace],
+		Name:      labels[label.LabelName],
+	}
+}
+
+func childrenOf(service *adctypes.Service, owner types.NamespacedNameKind) []Entity {
+	children := make([]Entity, 0, len(service.Routes)+len(service.StreamRoutes))
+	for _, route := range service.Routes {
+		children = append(children, Entity{Type: adctypes.TypeRoute, ID: route.ID, Name: cmp.Or(route.Name, route.ID), Owner: owner})
+	}
+	for _, streamRoute := range service.StreamRoutes {
+		children = append(children, Entity{Type: adctypes.TypeStreamRoute, ID: streamRoute.ID, Name: cmp.Or(streamRoute.Name, streamRoute.ID), Owner: owner})
+	}
+	return children
 }
 
 func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.Resources, Labels map[string]string) error {
@@ -316,4 +351,77 @@ func (s *Store) GetResourceLabel(name, resourceType string, id string) (map[stri
 		return nil, fmt.Errorf("unknown resource type: %s", resourceType)
 	}
 	return nil, nil
+}
+
+// Lookup finds the top-level entity of resourceType and id the cacheKey name holds,
+// along with the Kubernetes resource that produced it, read straight from the entity's
+// own stored labels (the same ones KindLabelSelector matches Insert/Delete against, so
+// there is exactly one place this can ever disagree with what a selector would find). It
+// covers service, ssl and consumer; global_rule and plugin_metadata still only expose
+// GetResourceLabel, until their own storage grows the same per-entity owner this does.
+func (s *Store) Lookup(name, resourceType, id string) (Entity, bool) {
+	s.Lock()
+	defer s.Unlock()
+	targetCache, ok := s.cacheMap[name]
+	if !ok {
+		return Entity{}, false
+	}
+	switch resourceType {
+	case adctypes.TypeService:
+		service, err := targetCache.GetService(id)
+		if err != nil {
+			return Entity{}, false
+		}
+		return Entity{Type: resourceType, ID: id, Name: cmp.Or(service.Name, id), Owner: ownerFromLabels(service.GetLabels())}, true
+	case adctypes.TypeSSL:
+		ssl, err := targetCache.GetSSL(id)
+		if err != nil {
+			return Entity{}, false
+		}
+		return Entity{Type: resourceType, ID: id, Name: id, Owner: ownerFromLabels(ssl.GetLabels())}, true
+	case adctypes.TypeConsumer:
+		consumer, err := targetCache.GetConsumer(id)
+		if err != nil {
+			return Entity{}, false
+		}
+		return Entity{Type: resourceType, ID: id, Name: id, Owner: ownerFromLabels(consumer.GetLabels())}, true
+	}
+	return Entity{}, false
+}
+
+// OwnedEntities lists every service, ssl and consumer owner produced in the cacheKey
+// name, via the same KindLabelSelector index Insert and Delete already use to find an
+// owner's resources. See Lookup for why global_rule and plugin_metadata are absent.
+func (s *Store) OwnedEntities(name string, owner types.NamespacedNameKind) []Entity {
+	s.Lock()
+	defer s.Unlock()
+	targetCache, ok := s.cacheMap[name]
+	if !ok {
+		return nil
+	}
+	selector := &KindLabelSelector{Kind: owner.Kind, Namespace: owner.Namespace, Name: owner.Name}
+
+	var entities []Entity
+	if services, err := targetCache.ListServices(selector); err == nil {
+		for _, service := range services {
+			entities = append(entities, Entity{
+				Type:     adctypes.TypeService,
+				ID:       service.ID,
+				Name:     cmp.Or(service.Name, service.ID),
+				Owner:    owner,
+				Children: childrenOf(service, owner),
+			})
+		}
+	}
+	if ssls, err := targetCache.ListSSL(selector); err == nil {
+		for _, ssl := range ssls {
+			entities = append(entities, Entity{Type: adctypes.TypeSSL, ID: ssl.ID, Name: ssl.ID, Owner: owner})
+		}
+	}
+	if consumers, err := targetCache.ListConsumers(selector); err == nil {
+		for _, consumer := range consumers {
+			entities = append(entities, Entity{Type: adctypes.TypeConsumer, ID: consumer.Username, Name: consumer.Username, Owner: owner})
+		}
+	}
+	return entities
 }
