@@ -60,8 +60,12 @@ func (t *Translator) TranslateGateway(tctx *provider.TranslateContext, obj *gate
 	globalRules := make(adctypes.GlobalRule)
 	pluginMetadata := make(adctypes.PluginMetadata)
 	// apply plugins from GatewayProxy to global rules
-	t.fillPluginsFromGatewayProxy(globalRules, &gatewayProxy)
-	t.fillPluginMetadataFromGatewayProxy(pluginMetadata, &gatewayProxy)
+	if err := t.fillPluginsFromGatewayProxy(globalRules, &gatewayProxy); err != nil {
+		return nil, err
+	}
+	if err := t.fillPluginMetadataFromGatewayProxy(pluginMetadata, &gatewayProxy); err != nil {
+		return nil, err
+	}
 	result.GlobalRules = globalRules
 	result.PluginMetadata = pluginMetadata
 
@@ -237,11 +241,12 @@ func (t *Translator) translateFrontendValidation(tctx *provider.TranslateContext
 }
 
 // fillPluginsFromGatewayProxy fill plugins from GatewayProxy to given plugins
-func (t *Translator) fillPluginsFromGatewayProxy(plugins adctypes.GlobalRule, gatewayProxy *v1alpha1.GatewayProxy) {
+func (t *Translator) fillPluginsFromGatewayProxy(plugins adctypes.GlobalRule, gatewayProxy *v1alpha1.GatewayProxy) error {
 	if gatewayProxy == nil {
-		return
+		return nil
 	}
 
+	translated := make(adctypes.GlobalRule)
 	for _, plugin := range gatewayProxy.Spec.Plugins {
 		// only apply enabled plugins
 		if !plugin.Enabled {
@@ -252,26 +257,39 @@ func (t *Translator) fillPluginsFromGatewayProxy(plugins adctypes.GlobalRule, ga
 		pluginConfig := map[string]any{}
 		if len(plugin.Config.Raw) > 0 {
 			if err := json.Unmarshal(plugin.Config.Raw, &pluginConfig); err != nil {
-				t.Log.Error(err, "gateway proxy plugin config unmarshal failed", "plugin", pluginName)
-				continue
+				return fmt.Errorf("failed to unmarshal config of GatewayProxy plugin %q: %w", pluginName, err)
+			}
+			if pluginConfig == nil {
+				return fmt.Errorf("config of GatewayProxy plugin %q must be a JSON object", pluginName)
 			}
 		}
+		translated[pluginName] = pluginConfig
+	}
+	for pluginName, pluginConfig := range translated {
 		plugins[pluginName] = pluginConfig
 	}
 	t.Log.V(1).Info("fill plugins for gateway proxy", "plugins", plugins)
+	return nil
 }
 
-func (t *Translator) fillPluginMetadataFromGatewayProxy(pluginMetadata adctypes.PluginMetadata, gatewayProxy *v1alpha1.GatewayProxy) {
+func (t *Translator) fillPluginMetadataFromGatewayProxy(pluginMetadata adctypes.PluginMetadata, gatewayProxy *v1alpha1.GatewayProxy) error {
 	if gatewayProxy == nil {
-		return
+		return nil
 	}
+	translated := make(adctypes.PluginMetadata)
 	for pluginName, plugin := range gatewayProxy.Spec.PluginMetadata {
 		var pluginConfig map[string]any
 		if err := json.Unmarshal(plugin.Raw, &pluginConfig); err != nil {
-			t.Log.Error(err, "gateway proxy plugin_metadata unmarshal failed", "plugin", pluginName, "config", string(plugin.Raw))
-			continue
+			return fmt.Errorf("failed to unmarshal GatewayProxy plugin metadata for %q: %w", pluginName, err)
+		}
+		if pluginConfig == nil {
+			return fmt.Errorf("GatewayProxy plugin metadata for %q must be a JSON object", pluginName)
 		}
 		t.Log.V(1).Info("fill plugin_metadata for gateway proxy", "plugin", pluginName, "config", pluginConfig)
+		translated[pluginName] = pluginConfig
+	}
+	for pluginName, pluginConfig := range translated {
 		pluginMetadata[pluginName] = pluginConfig
 	}
+	return nil
 }
