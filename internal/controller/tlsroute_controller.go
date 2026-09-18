@@ -317,6 +317,15 @@ func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			acceptStatus.status = false
 			acceptStatus.msg = err.Error()
 		}
+		// Populate the matched listeners so the translator can derive the
+		// StreamRoute server_port and its tls.mode from the listener the route
+		// attaches to.
+		if len(gateway.Listeners) > 0 {
+			tctx.Listeners = appendListeners(tctx.Listeners, gateway.Listeners...)
+		} else if gateway.Listener != nil {
+			tctx.Listeners = appendListeners(tctx.Listeners, *gateway.Listener)
+		}
+		tctx.HasExplicitListenerMatch = tctx.HasExplicitListenerMatch || gateway.ExplicitListenerMatch
 	}
 
 	var backendRefErr error
@@ -340,6 +349,17 @@ func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if r.supportsL4RoutePolicy {
 		ProcessL4RoutePolicy(r.Client, r.Log, tctx, tr.Namespace, tr.Name, types.KindTLSRoute)
 	}
+
+	// The hostnames become the SNIs the stream routes match on, so they have to be
+	// narrowed to what the listeners accept first. Every Gateway shares one physical
+	// stream listen, so a route keeping its own broader hostname does not merely
+	// over-serve: it takes that name from the route whose listener does accept it.
+	filteredTLSRoute, hostnameErr := filterTLSRouteHostnames(gateways, tr.DeepCopy())
+	if hostnameErr != nil {
+		acceptStatus.status = false
+		acceptStatus.msg = hostnameErr.Error()
+	}
+
 	tr.Status.Parents = make([]gatewayv1.RouteParentStatus, 0, len(gateways))
 	for _, gateway := range gateways {
 		parentStatus := gatewayv1.RouteParentStatus{}
@@ -368,8 +388,11 @@ func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		}),
 	})
 	UpdateStatus(r.Updater, r.Log, tctx)
-	if isRouteAccepted(gateways) {
+	if isRouteAccepted(gateways) && hostnameErr == nil {
 		routeToUpdate := tr
+		if filteredTLSRoute != nil {
+			routeToUpdate = filteredTLSRoute
+		}
 		if err := r.Provider.Update(ctx, tctx, routeToUpdate); err != nil {
 			return ctrl.Result{}, err
 		}
