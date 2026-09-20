@@ -165,13 +165,14 @@ func provisionDataplane(t *bgTestingT, env *pooledEnv, _ Options) (*corev1.Servi
 	}
 
 	deployOpts := APISIXDeployOptions{
-		Namespace:        env.namespace,
-		AdminKey:         env.adminKey,
-		ServiceName:      serviceName,
-		ServiceHTTPPort:  9080,
-		ServiceHTTPSPort: 9443,
-		ConfigProvider:   configProvider,
-		Replicas:         ptr.To(1),
+		Namespace:              env.namespace,
+		AdminKey:               env.adminKey,
+		ServiceName:            serviceName,
+		ServiceHTTPPort:        9080,
+		ServiceHTTPSPort:       9443,
+		ServiceHTTPSTargetPort: 9443,
+		ConfigProvider:         configProvider,
+		Replicas:               ptr.To(1),
 	}
 	buf := bytes.NewBuffer(nil)
 	if err := framework.APISIXStandaloneTpl.Execute(buf, &deployOpts); err != nil {

@@ -72,6 +72,10 @@ CONFORMANCE_CHANNEL ?= experimental
 CONFORMANCE_MODE ?= default
 # The data plane a release report is produced against. apisix:dev is a floating
 # tag, so a report meant to be reproducible has to name a released one.
+# The TLSRoute Passthrough tests need a data plane carrying apache/apisix#13912
+# (stream_proxy tls_passthrough), which 3.17.0 predates - a release report has
+# to wait for the first APISIX release that ships it. A dev run picks it up from
+# apisix:dev already.
 CONFORMANCE_DATAPLANE_VERSION ?= 3.17.0-debian
 # What the run deploys and what the report declares, following the checked-out
 # state: a release tag pulls the published images for that release, anything

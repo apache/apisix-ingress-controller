@@ -20,6 +20,7 @@ package scaffold
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -90,6 +91,9 @@ type Tunnels struct {
 	HTTPS Tunnel
 	TCP   Tunnel
 	TLS   Tunnel
+	// TLSPassthrough reaches the stream listen that prereads the SNI and
+	// forwards the connection without terminating it.
+	TLSPassthrough Tunnel
 }
 
 func (t *Tunnels) Close() {
@@ -108,6 +112,10 @@ func (t *Tunnels) Close() {
 	if t.TLS != nil {
 		t.safeClose(t.TLS.Close)
 		t.TLS = nil
+	}
+	if t.TLSPassthrough != nil {
+		t.safeClose(t.TLSPassthrough.Close)
+		t.TLSPassthrough = nil
 	}
 }
 
@@ -296,6 +304,45 @@ func (s *Scaffold) NewAPISIXClientWithTCPProxy() *httpexpect.Expect {
 	})
 }
 
+// tlsPassthroughPortName is the data plane Service port that forwards to the
+// APISIX stream listen configured with tls_passthrough.
+const tlsPassthroughPortName = "tls-passthrough"
+
+// NewAPISIXClientWithTLSPassthrough dials the data plane's TLS passthrough
+// stream listen with sni and verifies the served chain against caCert.
+//
+// Verifying is the point: the gateway holds no certificate for a passthrough
+// listener, so a chain that validates against the backend's own CA can only
+// have come from the backend itself.
+func (s *Scaffold) NewAPISIXClientWithTLSPassthrough(sni string, caCert []byte) *httpexpect.Expect {
+	Expect(s.apisixTunnels.TLSPassthrough).NotTo(BeNil(), "tls passthrough tunnel")
+
+	pool := x509.NewCertPool()
+	Expect(pool.AppendCertsFromPEM(caCert)).To(BeTrue(), "parsing CA certificate")
+
+	u := url.URL{
+		Scheme: apiv2.SchemeHTTPS,
+		Host:   s.apisixTunnels.TLSPassthrough.Endpoint(),
+	}
+	return httpexpect.WithConfig(httpexpect.Config{
+		BaseURL: u.String(),
+		Client: &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					RootCAs:    pool,
+					ServerName: sni,
+				},
+			},
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+		Reporter: httpexpect.NewAssertReporter(
+			httpexpect.NewAssertReporter(s.GinkgoT),
+		),
+	})
+}
+
 func (s *Scaffold) NewAPISIXClientWithTLSProxy(host string) *httpexpect.Expect {
 	u := url.URL{
 		Scheme: apiv2.SchemeHTTPS,
@@ -444,10 +491,11 @@ func (s *Scaffold) createDataplaneTunnels(
 	serviceName string,
 ) (*Tunnels, error) {
 	var (
-		httpPort  int
-		httpsPort int
-		tcpPort   int
-		tlsPort   int
+		httpPort           int
+		httpsPort          int
+		tcpPort            int
+		tlsPort            int
+		tlsPassthroughPort int
 	)
 
 	for _, port := range svc.Spec.Ports {
@@ -460,6 +508,8 @@ func (s *Scaffold) createDataplaneTunnels(
 			tcpPort = int(port.Port)
 		case apiv2.SchemeTLS:
 			tlsPort = int(port.Port)
+		case tlsPassthroughPortName:
+			tlsPassthroughPort = int(port.Port)
 		}
 	}
 
@@ -493,6 +543,17 @@ func (s *Scaffold) createDataplaneTunnels(
 		return nil, err
 	}
 	tunnels.TLS = tlsTunnel
+
+	// Absent on a gateway deployed from an older manifest revision; the specs
+	// that need it assert on the tunnel being there.
+	if tlsPassthroughPort != 0 {
+		tlsPassthroughTunnel := k8s.NewTunnel(kubectlOpts, k8s.ResourceTypeService, serviceName,
+			0, tlsPassthroughPort)
+		if err := tlsPassthroughTunnel.ForwardPortE(s.t); err != nil {
+			return nil, err
+		}
+		tunnels.TLSPassthrough = tlsPassthroughTunnel
+	}
 
 	return tunnels, nil
 }
