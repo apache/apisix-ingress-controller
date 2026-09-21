@@ -38,6 +38,7 @@ import (
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/adc/cache"
 	adcclient "github.com/apache/apisix-ingress-controller/internal/adc/client"
+	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/provider/common"
 	"github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
@@ -66,6 +67,14 @@ func newTestProvider(t *testing.T) *apisixProvider {
 		standaloneSyncer: adcclient.NewStandaloneSyncer(cli, logr.Discard()),
 		syncCh:           make(chan struct{}, 1),
 		log:              logr.Discard(),
+	}
+}
+
+func labelsOf(owner types.NamespacedNameKind) map[string]string {
+	return map[string]string{
+		label.LabelKind:      owner.Kind,
+		label.LabelNamespace: owner.Namespace,
+		label.LabelName:      owner.Name,
 	}
 }
 
@@ -206,4 +215,65 @@ func TestSyncStillPushesHealthyConfigsWhenAnotherFails(t *testing.T) {
 	defer mu.Unlock()
 	assert.True(t, seen["bad"], "the failing config must still have been attempted")
 	assert.True(t, seen["good"], "a config failing must not stop the others from being pushed")
+}
+
+func TestApplyResourceStateAttributesGatewayProxyPluginsToTheGatewayProxy(t *testing.T) {
+	d := newTestProvider(t)
+	gw1 := types.NamespacedNameKind{Kind: types.KindGateway, Namespace: "ns", Name: "gw1"}
+	gw2 := types.NamespacedNameKind{Kind: types.KindGateway, Namespace: "ns", Name: "gw2"}
+	oldProxy := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "old"}
+	newProxy := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "new"}
+	configFor := func(proxy types.NamespacedNameKind) map[types.NamespacedNameKind]adctypes.Config {
+		return map[types.NamespacedNameKind]adctypes.Config{proxy: {Name: proxy.String()}}
+	}
+	resourcesOf := func(sslID string) *adctypes.Resources {
+		return &adctypes.Resources{
+			SSLs:           []*adctypes.SSL{{Metadata: adctypes.Metadata{ID: sslID, Labels: labelsOf(gw1)}}},
+			GlobalRules:    adctypes.GlobalRule{"cors": map[string]any{}},
+			PluginMetadata: adctypes.PluginMetadata{"http-logger": map[string]any{}},
+		}
+	}
+
+	require.NoError(t, d.applyResourceState(gw1, configFor(oldProxy), []string{adctypes.TypeSSL}, resourcesOf("ssl1"), labelsOf(gw1), pluginsFromGatewayProxy))
+	gw2Resources := resourcesOf("ssl2")
+	gw2Resources.SSLs[0].Labels = labelsOf(gw2)
+	require.NoError(t, d.applyResourceState(gw2, configFor(oldProxy), []string{adctypes.TypeSSL}, gw2Resources, labelsOf(gw2), pluginsFromGatewayProxy))
+
+	ssl, ok := d.store.Lookup(oldProxy.String(), adctypes.TypeSSL, "ssl1")
+	require.True(t, ok)
+	assert.Equal(t, gw1, ssl.Owner)
+	for _, resourceType := range []string{adctypes.TypeGlobalRule, adctypes.TypePluginMetadata} {
+		id := map[string]string{adctypes.TypeGlobalRule: "cors", adctypes.TypePluginMetadata: "http-logger"}[resourceType]
+		entity, ok := d.store.Lookup(oldProxy.String(), resourceType, id)
+		require.True(t, ok, resourceType)
+		assert.Equal(t, oldProxy, entity.Owner, "%s comes from the GatewayProxy, not the Gateway that was reconciled", resourceType)
+	}
+	assert.Len(t, d.store.OwnedEntities(oldProxy.String(), oldProxy), 2, "Gateways sharing a GatewayProxy write its plugins once")
+
+	require.NoError(t, d.applyResourceState(gw1, configFor(newProxy), []string{adctypes.TypeSSL}, resourcesOf("ssl1"), labelsOf(gw1), pluginsFromGatewayProxy))
+	_, ok = d.store.Lookup(oldProxy.String(), adctypes.TypeSSL, "ssl1")
+	assert.False(t, ok, "the Gateway's own certificate leaves the config it no longer references")
+	_, ok = d.store.Lookup(oldProxy.String(), adctypes.TypeGlobalRule, "cors")
+	assert.True(t, ok, "the old GatewayProxy's own plugins stay in its own config")
+}
+
+func TestRemoveResourceStateRemovesAnApisixGlobalRulesPlugins(t *testing.T) {
+	d := newTestProvider(t)
+	globalRule := types.NamespacedNameKind{Kind: types.KindApisixGlobalRule, Namespace: "ns", Name: "global"}
+	proxy := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "gp"}
+	configs := map[types.NamespacedNameKind]adctypes.Config{proxy: {Name: proxy.String()}}
+	require.NoError(t, d.store.SetGlobalRules(proxy.String(), proxy, adctypes.GlobalRule{"cors": map[string]any{}}))
+	require.NoError(t, d.applyResourceState(globalRule, configs, nil, &adctypes.Resources{
+		GlobalRules: adctypes.GlobalRule{"prometheus": map[string]any{}},
+	}, labelsOf(globalRule), pluginsFromResource))
+
+	resources, err := d.store.GetResources(proxy.String())
+	require.NoError(t, err)
+	assert.Len(t, resources.GlobalRules, 2)
+
+	_, err = d.removeResourceState(globalRule, nil, labelsOf(globalRule), pluginsFromResource, false)
+	require.NoError(t, err)
+	resources, err = d.store.GetResources(proxy.String())
+	require.NoError(t, err)
+	assert.Equal(t, adctypes.GlobalRule{"cors": map[string]any{}}, resources.GlobalRules, "only the deleted resource's own plugins go away")
 }

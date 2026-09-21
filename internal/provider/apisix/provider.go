@@ -56,6 +56,19 @@ const (
 	MinSyncPeriod = 1 * time.Second
 )
 
+// pluginSource says whose global_rules and plugin_metadata a translate result carries.
+type pluginSource int
+
+const (
+	pluginsNone pluginSource = iota
+	// pluginsFromGatewayProxy is GatewayProxy.Spec.Plugins and .PluginMetadata, owned by
+	// each target config's GatewayProxy rather than the Gateway or IngressClass that was
+	// reconciled.
+	pluginsFromGatewayProxy
+	// pluginsFromResource is the reconciled resource's own global rules.
+	pluginsFromResource
+)
+
 // apisixProvider owns AIC's own view of what should be live: which Kubernetes resource
 // targets which GatewayProxy config (configManager) and the merged, translated resource
 // snapshot per config (store). It builds the input the adc client package needs and hands
@@ -135,6 +148,7 @@ func (d *apisixProvider) Update(ctx context.Context, tctx *provider.TranslateCon
 	var (
 		result        *translator.TranslateResult
 		resourceTypes []string
+		plugins       pluginSource
 		err           error
 	)
 
@@ -158,7 +172,8 @@ func (d *apisixProvider) Update(ctx context.Context, tctx *provider.TranslateCon
 		resourceTypes = append(resourceTypes, adctypes.TypeService)
 	case *gatewayv1.Gateway:
 		result, err = d.translator.TranslateGateway(tctx, t.DeepCopy())
-		resourceTypes = append(resourceTypes, adctypes.TypeGlobalRule, adctypes.TypeSSL, adctypes.TypePluginMetadata)
+		resourceTypes = append(resourceTypes, adctypes.TypeSSL)
+		plugins = pluginsFromGatewayProxy
 	case *networkingv1.Ingress:
 		result, err = d.translator.TranslateIngress(tctx, t.DeepCopy())
 		resourceTypes = append(resourceTypes, adctypes.TypeService, adctypes.TypeSSL)
@@ -167,13 +182,13 @@ func (d *apisixProvider) Update(ctx context.Context, tctx *provider.TranslateCon
 		resourceTypes = append(resourceTypes, adctypes.TypeConsumer)
 	case *networkingv1.IngressClass:
 		result, err = d.translator.TranslateIngressClass(tctx, t.DeepCopy())
-		resourceTypes = append(resourceTypes, adctypes.TypeGlobalRule, adctypes.TypePluginMetadata)
+		plugins = pluginsFromGatewayProxy
 	case *apiv2.ApisixRoute:
 		result, err = d.translator.TranslateApisixRoute(tctx, t.DeepCopy())
 		resourceTypes = append(resourceTypes, adctypes.TypeService)
 	case *apiv2.ApisixGlobalRule:
 		result, err = d.translator.TranslateApisixGlobalRule(tctx, t.DeepCopy())
-		resourceTypes = append(resourceTypes, adctypes.TypeGlobalRule)
+		plugins = pluginsFromResource
 	case *apiv2.ApisixTls:
 		result, err = d.translator.TranslateApisixTls(tctx, t.DeepCopy())
 		resourceTypes = append(resourceTypes, adctypes.TypeSSL)
@@ -211,30 +226,34 @@ func (d *apisixProvider) Update(ctx context.Context, tctx *provider.TranslateCon
 	labels := label.GenLabel(obj)
 	d.log.V(1).Info("updating config", "resourceKey", rk, "configs", configs, "resourceTypes", resourceTypes)
 
-	return d.applyResourceState(rk, configs, resourceTypes, resources, labels)
+	return d.applyResourceState(rk, configs, resourceTypes, resources, labels, plugins)
 }
 
 func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 	d.log.V(1).Info("deleting object", "object", utils.NamespacedNameKind(obj))
 
-	var resourceTypes []string
-	var labels map[string]string
+	var (
+		resourceTypes []string
+		labels        map[string]string
+		plugins       pluginSource
+		// wholeConfig is set for a Gateway or IngressClass, whose deletion wipes every
+		// config it referenced.
+		wholeConfig bool
+	)
 	switch obj.(type) {
 	case *gatewayv1.HTTPRoute, *apiv2.ApisixRoute, *gatewayv1.GRPCRoute, *gatewayv1.TCPRoute, *gatewayv1.UDPRoute, *gatewayv1.TLSRoute:
 		resourceTypes = append(resourceTypes, adctypes.TypeService)
 		labels = label.GenLabel(obj)
-	case *gatewayv1.Gateway:
-		// delete all resources
+	case *gatewayv1.Gateway, *networkingv1.IngressClass:
+		wholeConfig = true
 	case *networkingv1.Ingress:
 		resourceTypes = append(resourceTypes, adctypes.TypeService, adctypes.TypeSSL)
 		labels = label.GenLabel(obj)
 	case *v1alpha1.Consumer:
 		resourceTypes = append(resourceTypes, adctypes.TypeConsumer)
 		labels = label.GenLabel(obj)
-	case *networkingv1.IngressClass:
-		// delete all resources
 	case *apiv2.ApisixGlobalRule:
-		resourceTypes = append(resourceTypes, adctypes.TypeGlobalRule)
+		plugins = pluginsFromResource
 		labels = label.GenLabel(obj)
 	case *apiv2.ApisixTls:
 		resourceTypes = append(resourceTypes, adctypes.TypeSSL)
@@ -245,21 +264,16 @@ func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 	}
 	nnk := utils.NamespacedNameKind(obj)
 
+	removed, err := d.removeResourceState(nnk, resourceTypes, labels, plugins, wholeConfig)
+	if err != nil {
+		return err
+	}
 	// Full synchronization is performed on a gateway by gateway basis
 	// and it is not possible to perform scheduled synchronization
 	// on deleted gateway level resources
-	if len(resourceTypes) == 0 {
-		removed, err := d.removeResourceState(nnk, resourceTypes, labels)
-		if err != nil {
-			return err
-		}
+	if wholeConfig {
 		d.syncEvictedConfigsNow(ctx, removed, resourceTypes, labels)
 		return nil
-	}
-
-	removed, err := d.removeResourceState(nnk, resourceTypes, labels)
-	if err != nil {
-		return err
 	}
 	// Syncing pushes the whole store to every data plane. Objects this controller never
 	// configured delete nothing, and reconciles for them are frequent, so notify only
@@ -279,17 +293,35 @@ func (d *apisixProvider) applyResourceState(
 	resourceTypes []string,
 	resources *adctypes.Resources,
 	labels map[string]string,
+	plugins pluginSource,
 ) error {
 	d.Lock()
 	defer d.Unlock()
 
 	evicted := d.configManager.Update(rk, configs)
-	if err := d.evictFromStore(evicted, resourceTypes, labels); err != nil {
+	if err := d.evictFromStore(rk, evicted, resourceTypes, labels, plugins); err != nil {
 		return err
 	}
-	for _, cfg := range configs {
-		if err := d.store.Insert(cfg.Name, resourceTypes, resources, labels); err != nil {
-			return fmt.Errorf("store insert failed for config %s: %w", cfg.Name, err)
+	for gatewayProxy, cfg := range configs {
+		if len(resourceTypes) > 0 {
+			if err := d.store.Insert(cfg.Name, resourceTypes, resources, labels); err != nil {
+				return fmt.Errorf("store insert failed for config %s: %w", cfg.Name, err)
+			}
+		}
+		switch plugins {
+		case pluginsNone:
+			// Most resource kinds carry no global_rules or plugin_metadata at all.
+		case pluginsFromGatewayProxy:
+			if err := d.store.SetGlobalRules(cfg.Name, gatewayProxy, resources.GlobalRules); err != nil {
+				return fmt.Errorf("store global rules failed for config %s: %w", cfg.Name, err)
+			}
+			if err := d.store.SetPluginMetadata(cfg.Name, resources.PluginMetadata); err != nil {
+				return fmt.Errorf("store plugin metadata failed for config %s: %w", cfg.Name, err)
+			}
+		case pluginsFromResource:
+			if err := d.store.SetGlobalRules(cfg.Name, rk, resources.GlobalRules); err != nil {
+				return fmt.Errorf("store global rules failed for config %s: %w", cfg.Name, err)
+			}
 		}
 	}
 	return nil
@@ -297,33 +329,50 @@ func (d *apisixProvider) applyResourceState(
 
 // removeResourceState forgets a resource's config associations and evicts its contribution
 // from each config it used to reference, returning those configs so an immediate-push
-// caller (see syncEvictedConfigsNow) knows what to push right away.
+// caller (see syncEvictedConfigsNow) knows what to push right away. wholeConfig wipes each
+// of those configs entirely instead.
 func (d *apisixProvider) removeResourceState(
 	rk types.NamespacedNameKind,
 	resourceTypes []string,
 	labels map[string]string,
+	plugins pluginSource,
+	wholeConfig bool,
 ) (map[types.NamespacedNameKind]adctypes.Config, error) {
 	d.Lock()
 	defer d.Unlock()
 
 	evicted := d.configManager.Get(rk)
 	d.configManager.Delete(rk)
-	if err := d.evictFromStore(evicted, resourceTypes, labels); err != nil {
+	if wholeConfig {
+		for _, cfg := range evicted {
+			d.store.DeleteAll(cfg.Name)
+		}
+		return evicted, nil
+	}
+	if err := d.evictFromStore(rk, evicted, resourceTypes, labels, plugins); err != nil {
 		return nil, err
 	}
 	return evicted, nil
 }
 
-// evictFromStore deletes a resource's contribution from each of the given configs' cached
-// snapshots. Callers must already hold d.Lock.
+// evictFromStore deletes rk's contribution from each of the given configs' cached
+// snapshots. global_rules and plugin_metadata sourced from a GatewayProxy belong to that
+// GatewayProxy's own config and are left in place. Callers must already hold d.Lock.
 func (d *apisixProvider) evictFromStore(
+	rk types.NamespacedNameKind,
 	configs map[types.NamespacedNameKind]adctypes.Config,
 	resourceTypes []string,
 	labels map[string]string,
+	plugins pluginSource,
 ) error {
 	for _, cfg := range configs {
 		if err := d.store.Delete(cfg.Name, resourceTypes, labels); err != nil {
 			return fmt.Errorf("store delete failed for config %s: %w", cfg.Name, err)
+		}
+		if plugins == pluginsFromResource {
+			if err := d.store.SetGlobalRules(cfg.Name, rk, nil); err != nil {
+				return fmt.Errorf("store global rules failed for config %s: %w", cfg.Name, err)
+			}
 		}
 	}
 	return nil

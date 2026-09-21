@@ -232,6 +232,9 @@ func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.
 	return nil
 }
 
+// Delete removes the services, consumers, ssls and global_rules the resource identified
+// by Labels contributes to the cacheKey name. An empty resourceTypes deletes nothing;
+// see DeleteAll for wiping a whole cacheKey.
 func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]string) error {
 	s.Lock()
 	defer s.Unlock()
@@ -286,10 +289,14 @@ func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]st
 			}
 		}
 	}
-	if len(resourceTypes) == 0 {
-		delete(s.cacheMap, name)
-	}
 	return nil
+}
+
+// DeleteAll wipes everything the cacheKey name holds.
+func (s *Store) DeleteAll(name string) {
+	s.Lock()
+	defer s.Unlock()
+	delete(s.cacheMap, name)
 }
 
 func (s *Store) GetResources(name string) (*adctypes.Resources, error) {

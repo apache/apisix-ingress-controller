@@ -186,13 +186,17 @@ func TestInsertForgetsTheOwnerOfReplacedResources(t *testing.T) {
 	assert.False(t, ok)
 }
 
-func TestDeleteWithoutResourceTypesForgetsEveryOwnerToo(t *testing.T) {
+func TestDeleteWithoutResourceTypesDeletesNothing(t *testing.T) {
 	route := ownerNamed(types.KindApisixRoute, "route")
 	s := NewStore(logr.Discard())
 	require.NoError(t, s.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{Services: []*adctypes.Service{service("svc", route)}}, labelsOf(route)))
 
 	require.NoError(t, s.Delete(configName, nil, nil))
 	_, ok := s.Lookup(configName, adctypes.TypeService, "svc")
+	assert.True(t, ok, "an empty resourceTypes deletes nothing; see DeleteAll for wiping a whole cacheKey")
+
+	s.DeleteAll(configName)
+	_, ok = s.Lookup(configName, adctypes.TypeService, "svc")
 	assert.False(t, ok)
 }
 
