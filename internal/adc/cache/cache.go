@@ -19,7 +19,39 @@ package cache
 
 import (
 	types "github.com/apache/apisix-ingress-controller/api/adc"
+	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 )
+
+// GlobalRuleRow is one global_rules plugin, keyed by the plugin name. Owner is the
+// Kubernetes resource that declared it: a GatewayProxy or an ApisixGlobalRule.
+type GlobalRuleRow struct {
+	ID     string
+	Owner  internaltypes.NamespacedNameKind
+	Config any
+}
+
+func (r *GlobalRuleRow) DeepCopy() *GlobalRuleRow {
+	out := *r
+	out.Config = copyPluginConfig(r.ID, r.Config)
+	return &out
+}
+
+// PluginMetadataRow is one plugin_metadata entry, keyed by the plugin name. It needs no
+// owner: its only source is the GatewayProxy the cacheKey itself names.
+type PluginMetadataRow struct {
+	ID     string
+	Config any
+}
+
+func (r *PluginMetadataRow) DeepCopy() *PluginMetadataRow {
+	out := *r
+	out.Config = copyPluginConfig(r.ID, r.Config)
+	return &out
+}
+
+func copyPluginConfig(name string, config any) any {
+	return types.Plugins{name: config}.DeepCopy()[name]
+}
 
 type Cache interface {
 	Insert(obj any) error
@@ -32,7 +64,9 @@ type Cache interface {
 	// InsertConsumer adds or updates consumer to cache.
 	InsertConsumer(*types.Consumer) error
 	// InsertGlobalRule adds or updates global rule to cache.
-	InsertGlobalRule(*types.GlobalRuleItem) error
+	InsertGlobalRule(*GlobalRuleRow) error
+	// InsertPluginMetadata adds or updates plugin metadata to cache.
+	InsertPluginMetadata(*PluginMetadataRow) error
 
 	// GetSSL finds the ssl from cache according to the primary index (id).
 	GetSSL(string) (*types.SSL, error)
@@ -41,7 +75,9 @@ type Cache interface {
 	// GetConsumer finds the consumer from cache according to the primary index (username).
 	GetConsumer(string) (*types.Consumer, error)
 	// GetGlobalRule finds the global rule from cache according to the primary index (id).
-	GetGlobalRule(string) (*types.GlobalRuleItem, error)
+	GetGlobalRule(string) (*GlobalRuleRow, error)
+	// GetPluginMetadata finds the plugin metadata from cache according to the primary index (id).
+	GetPluginMetadata(string) (*PluginMetadataRow, error)
 
 	// DeleteSSL deletes the specified ssl in cache.
 	DeleteSSL(*types.SSL) error
@@ -50,7 +86,9 @@ type Cache interface {
 	// DeleteConsumer deletes the specified consumer in cache.
 	DeleteConsumer(*types.Consumer) error
 	// DeleteGlobalRule deletes the specified global rule in cache.
-	DeleteGlobalRule(*types.GlobalRuleItem) error
+	DeleteGlobalRule(*GlobalRuleRow) error
+	// DeletePluginMetadata deletes the specified plugin metadata in cache.
+	DeletePluginMetadata(*PluginMetadataRow) error
 
 	// ListSSL lists all ssl objects in cache.
 	ListSSL(...ListOption) ([]*types.SSL, error)
@@ -59,7 +97,9 @@ type Cache interface {
 	// ListConsumers lists all consumer objects in cache.
 	ListConsumers(...ListOption) ([]*types.Consumer, error)
 	// ListGlobalRules lists all global rule objects in cache.
-	ListGlobalRules(...ListOption) ([]*types.GlobalRuleItem, error)
+	ListGlobalRules(...ListOption) ([]*GlobalRuleRow, error)
+	// ListPluginMetadata lists all plugin metadata objects in cache.
+	ListPluginMetadata(...ListOption) ([]*PluginMetadataRow, error)
 }
 
 type ListOption interface {
@@ -68,11 +108,15 @@ type ListOption interface {
 
 type ListOptions struct {
 	KindLabelSelector *KindLabelSelector
+	OwnerSelector     *OwnerSelector
 }
 
 func (o *ListOptions) ApplyToList(lo *ListOptions) {
 	if o.KindLabelSelector != nil {
 		lo.KindLabelSelector = o.KindLabelSelector
+	}
+	if o.OwnerSelector != nil {
+		lo.OwnerSelector = o.OwnerSelector
 	}
 }
 
@@ -91,4 +135,13 @@ type KindLabelSelector struct {
 
 func (o *KindLabelSelector) ApplyToList(opts *ListOptions) {
 	opts.KindLabelSelector = o
+}
+
+// OwnerSelector lists only the global rules declared by Owner.
+type OwnerSelector struct {
+	Owner internaltypes.NamespacedNameKind
+}
+
+func (o *OwnerSelector) ApplyToList(opts *ListOptions) {
+	opts.OwnerSelector = o
 }

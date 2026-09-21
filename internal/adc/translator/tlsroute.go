@@ -144,20 +144,14 @@ func (t *Translator) TranslateTLSRoute(tctx *provider.TranslateContext, tlsRoute
 		}
 
 		for _, host := range hosts {
-			streamRoute := adctypes.NewDefaultStreamRoute()
-			streamRouteName := adctypes.ComposeStreamRouteName(tlsRoute.Namespace, tlsRoute.Name, fmt.Sprintf("%d", ruleIndex), "TLS")
-			streamRoute.Name = streamRouteName
-			streamRoute.ID = id.GenID(streamRouteName)
-			streamRoute.SNI = host
-			streamRoute.Labels = labels
-			// Attach L4RoutePolicy plugins at the stream_route level: the APISIX stream proxy
-			// applies plugins from the stream_route, not from the service. With multiple SNIs
-			// each stream_route carries its own copy of the plugins.
-			streamRoute.Plugins = make(adctypes.Plugins)
-			if err := t.AttachL4RoutePolicyPlugins(tctx.L4RoutePolicies, tlsRoute.Namespace, tlsRoute.Name, "TLSRoute", streamRoute.Plugins, tctx.Secrets); err != nil {
+			streamRoutes, err := t.buildL4StreamRoutes(tctx, tlsRoute.Namespace, tlsRoute.Name, ruleIndex, "TLS", "TLSRoute", labels)
+			if err != nil {
 				return nil, err
 			}
-			service.StreamRoutes = append(service.StreamRoutes, streamRoute)
+			for _, streamRoute := range streamRoutes {
+				streamRoute.SNI = host
+			}
+			service.StreamRoutes = append(service.StreamRoutes, streamRoutes...)
 		}
 
 		result.Services = append(result.Services, service)

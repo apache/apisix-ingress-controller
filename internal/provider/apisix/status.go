@@ -30,7 +30,6 @@ import (
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	apiv1alpha1 "github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
-	"github.com/apache/apisix-ingress-controller/internal/controller/label"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	cutils "github.com/apache/apisix-ingress-controller/internal/controller/utils"
 	"github.com/apache/apisix-ingress-controller/internal/types"
@@ -122,23 +121,13 @@ func (d *apisixProvider) classifySyncResult(
 
 			anyUnattributed := false
 			for _, syncStatus := range addrErr.FailedStatuses {
-				if syncStatus.Event.ResourceType == "" {
+				entity, ok := d.store.Lookup(configName, syncStatus.Event.ResourceType, syncStatus.Event.ResourceID)
+				if !ok {
 					anyUnattributed = true
 					continue
 				}
-				labels, err := d.store.GetResourceLabel(configName, syncStatus.Event.ResourceType, syncStatus.Event.ResourceID)
-				if err != nil {
-					d.log.Error(err, "failed to get resource label",
-						"configName", configName, "resourceType", syncStatus.Event.ResourceType, "id", syncStatus.Event.ResourceID)
-					continue
-				}
-				resourceKey := types.NamespacedNameKind{
-					Name:      labels[label.LabelName],
-					Namespace: labels[label.LabelNamespace],
-					Kind:      labels[label.LabelKind],
-				}
 				msg := fmt.Sprintf("ServerAddr: %s, Error: %s", addrErr.ServerAddr, syncStatus.Reason)
-				resourceFailures[resourceKey] = append(resourceFailures[resourceKey], msg)
+				resourceFailures[entity.Owner] = append(resourceFailures[entity.Owner], msg)
 			}
 			if anyUnattributed && endpointMsg == "" {
 				gatewayProxyMsgs = append(gatewayProxyMsgs, addrErr.Error())
