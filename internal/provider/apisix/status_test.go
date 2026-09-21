@@ -24,6 +24,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/require"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -228,7 +229,7 @@ func TestClassifySyncResultHardErrorGoesToGatewayProxy(t *testing.T) {
 	}}}
 
 	resourceFailures := map[types.NamespacedNameKind][]string{}
-	gatewayProxyMsgs, failedEndpoints := d.classifySyncResult("GatewayProxy/ns/gp", execErrs, resourceFailures)
+	gatewayProxyMsgs, failedEndpoints := d.classifySyncResult("GatewayProxy/ns/gp", execErrs, 0, map[wireKey]exclusion{}, resourceFailures)
 
 	if len(resourceFailures) != 0 {
 		t.Errorf("expected no resource attributed, got %v", resourceFailures)
@@ -255,7 +256,7 @@ func TestClassifySyncResultEndpointFailuresGoToGatewayProxy(t *testing.T) {
 	}}}
 
 	resourceFailures := map[types.NamespacedNameKind][]string{}
-	gatewayProxyMsgs, failedEndpoints := d.classifySyncResult("GatewayProxy/ns/gp", execErrs, resourceFailures)
+	gatewayProxyMsgs, failedEndpoints := d.classifySyncResult("GatewayProxy/ns/gp", execErrs, 0, map[wireKey]exclusion{}, resourceFailures)
 
 	if len(resourceFailures) != 0 {
 		t.Errorf("expected no resource attributed, got %v", resourceFailures)
@@ -268,6 +269,8 @@ func TestClassifySyncResultEndpointFailuresGoToGatewayProxy(t *testing.T) {
 	}
 }
 
+// ssl stands for every type that is attributed to its owner but not yet dropped from the
+// push.
 func TestClassifySyncResultAttributesFailedStatusesToTheirResource(t *testing.T) {
 	d := &apisixProvider{log: logr.Discard(), store: cache.NewStore(logr.Discard())}
 	const configName = "GatewayProxy/ns/gp"
@@ -276,8 +279,8 @@ func TestClassifySyncResultAttributesFailedStatusesToTheirResource(t *testing.T)
 		label.LabelName:      "route1",
 		label.LabelNamespace: "ns1",
 	}
-	if err := d.store.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{
-		Services: []*adctypes.Service{{Metadata: adctypes.Metadata{ID: "svc1", Labels: owner}}},
+	if err := d.store.Insert(configName, []string{adctypes.TypeSSL}, &adctypes.Resources{
+		SSLs: []*adctypes.SSL{{Metadata: adctypes.Metadata{ID: "ssl1", Labels: owner}}},
 	}, owner); err != nil {
 		t.Fatalf("seeding the store: %v", err)
 	}
@@ -288,13 +291,13 @@ func TestClassifySyncResultAttributesFailedStatusesToTheirResource(t *testing.T)
 			ServerAddr: "http://apisix:9180",
 			FailedStatuses: []adctypes.SyncStatus{{
 				Reason: "unknown plugin foo",
-				Event:  adctypes.StatusEvent{ResourceType: adctypes.TypeService, ResourceID: "svc1"},
+				Event:  adctypes.StatusEvent{ResourceType: adctypes.TypeSSL, ResourceID: "ssl1"},
 			}},
 		}},
 	}}}
 
 	resourceFailures := map[types.NamespacedNameKind][]string{}
-	gatewayProxyMsgs, _ := d.classifySyncResult(configName, execErrs, resourceFailures)
+	gatewayProxyMsgs, _ := d.classifySyncResult(configName, execErrs, 0, map[wireKey]exclusion{}, resourceFailures)
 
 	if len(gatewayProxyMsgs) != 0 {
 		t.Errorf("expected nothing attributed to the GatewayProxy, got %v", gatewayProxyMsgs)
@@ -320,8 +323,8 @@ func TestClassifySyncResultReportsEndpointStatusesEvenOnAFullyAttributedAddrErr(
 		label.LabelName:      "route1",
 		label.LabelNamespace: "ns1",
 	}
-	if err := d.store.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{
-		Services: []*adctypes.Service{{Metadata: adctypes.Metadata{ID: "svc1", Labels: owner}}},
+	if err := d.store.Insert(configName, []string{adctypes.TypeSSL}, &adctypes.Resources{
+		SSLs: []*adctypes.SSL{{Metadata: adctypes.Metadata{ID: "ssl1", Labels: owner}}},
 	}, owner); err != nil {
 		t.Fatalf("seeding the store: %v", err)
 	}
@@ -332,7 +335,7 @@ func TestClassifySyncResultReportsEndpointStatusesEvenOnAFullyAttributedAddrErr(
 			ServerAddr: "http://apisix:9180",
 			FailedStatuses: []adctypes.SyncStatus{{
 				Reason: "unknown plugin foo",
-				Event:  adctypes.StatusEvent{ResourceType: adctypes.TypeService, ResourceID: "svc1"},
+				Event:  adctypes.StatusEvent{ResourceType: adctypes.TypeSSL, ResourceID: "ssl1"},
 			}},
 			EndpointStatuses: []adctypes.EndpointStatus{
 				{Server: "http://apisix-1:9180", Success: false, Reason: "content rejected"},
@@ -342,7 +345,7 @@ func TestClassifySyncResultReportsEndpointStatusesEvenOnAFullyAttributedAddrErr(
 	}}}
 
 	resourceFailures := map[types.NamespacedNameKind][]string{}
-	gatewayProxyMsgs, failedEndpoints := d.classifySyncResult(configName, execErrs, resourceFailures)
+	gatewayProxyMsgs, failedEndpoints := d.classifySyncResult(configName, execErrs, 0, map[wireKey]exclusion{}, resourceFailures)
 
 	if len(gatewayProxyMsgs) != 1 || !strings.Contains(gatewayProxyMsgs[0], "http://apisix-2:9180: connection refused") {
 		t.Errorf("gatewayProxyMsgs = %v, want the endpoint summary", gatewayProxyMsgs)
@@ -369,7 +372,7 @@ func TestClassifySyncResultFallsBackToGatewayProxyWhenAFailedStatusHasNoResource
 	}}}
 
 	resourceFailures := map[types.NamespacedNameKind][]string{}
-	gatewayProxyMsgs, _ := d.classifySyncResult("GatewayProxy/ns/gp", execErrs, resourceFailures)
+	gatewayProxyMsgs, _ := d.classifySyncResult("GatewayProxy/ns/gp", execErrs, 0, map[wireKey]exclusion{}, resourceFailures)
 
 	if len(resourceFailures) != 0 {
 		t.Errorf("expected no resource attributed, got %v", resourceFailures)
@@ -395,7 +398,7 @@ func TestApplyResourceFailuresWritesNewFailuresAndClearsResolvedOnes(t *testing.
 		{Kind: types.KindApisixRoute, Namespace: "ns", Name: "newly-bad"}: {"new failure"},
 	}
 
-	d.applyResourceFailures(newFailures)
+	d.applyResourceFailures(context.Background(), newFailures)
 
 	byName := map[string]bool{} // name -> whether the mutator it was given marks success
 	for _, u := range updater.updates {
@@ -426,4 +429,140 @@ func TestApplyResourceFailuresWritesNewFailuresAndClearsResolvedOnes(t *testing.
 	if len(d.resourceFailures) != 2 {
 		t.Errorf("d.resourceFailures should be replaced with newFailures, got %v", d.resourceFailures)
 	}
+}
+
+func newDroppingProvider(t *testing.T) (*apisixProvider, types.NamespacedNameKind) {
+	t.Helper()
+	d := &apisixProvider{log: logr.Discard(), store: cache.NewStore(logr.Discard()), skipped: newSkipTable(), updater: &fakeUpdater{}}
+	route := types.NamespacedNameKind{Kind: types.KindApisixRoute, Namespace: "ns1", Name: "route1"}
+	labels := map[string]string{label.LabelKind: route.Kind, label.LabelNamespace: route.Namespace, label.LabelName: route.Name}
+	require.NoError(t, d.store.Insert("GatewayProxy/ns/gp", []string{adctypes.TypeService}, &adctypes.Resources{
+		Services: []*adctypes.Service{{Metadata: adctypes.Metadata{ID: "svc1", Name: "rule-0", Labels: labels}}},
+	}, labels))
+	return d, route
+}
+
+func failedEvent(event adctypes.StatusEvent, reason string) types.ADCExecutionErrors {
+	return types.ADCExecutionErrors{Errors: []types.ADCExecutionError{{
+		Name: "GatewayProxy/ns/gp",
+		FailedErrors: []types.ADCExecutionServerAddrError{{
+			ServerAddr:     "http://apisix:9180",
+			FailedStatuses: []adctypes.SyncStatus{{Reason: reason, Event: event}},
+		}},
+	}}}
+}
+
+func TestClassifySyncResultDropsARejectedServiceInsteadOfFailingTheGatewayProxy(t *testing.T) {
+	d, route := newDroppingProvider(t)
+	dropped := map[wireKey]exclusion{}
+	resourceFailures := map[types.NamespacedNameKind][]string{}
+
+	msgs, _ := d.classifySyncResult("GatewayProxy/ns/gp", failedEvent(adctypes.StatusEvent{ResourceType: adctypes.TypeService, ResourceID: "svc1"}, "unknown plugin foo"), d.store.Revision(), dropped, resourceFailures)
+
+	require.Empty(t, msgs, "a rejection that names a resource no longer fails the GatewayProxy")
+	require.Empty(t, resourceFailures)
+	got := dropped[wireKey{adctypes.TypeService, "svc1"}]
+	require.Equal(t, route, got.owner)
+	require.Equal(t, "rule-0", got.name)
+	require.Contains(t, got.reason, "unknown plugin foo")
+}
+
+func TestClassifySyncResultDropsTheServiceOfARejectedNestedResource(t *testing.T) {
+	for _, resourceType := range []string{adctypes.TypeRoute, adctypes.TypeStreamRoute, adctypes.TypeUpstream} {
+		t.Run(resourceType, func(t *testing.T) {
+			d, route := newDroppingProvider(t)
+			dropped := map[wireKey]exclusion{}
+
+			msgs, _ := d.classifySyncResult("GatewayProxy/ns/gp",
+				failedEvent(adctypes.StatusEvent{ResourceType: resourceType, ResourceID: "nested", ParentID: "svc1"}, "bad"),
+				d.store.Revision(), dropped, map[types.NamespacedNameKind][]string{})
+
+			require.Empty(t, msgs)
+			require.Equal(t, route, dropped[wireKey{adctypes.TypeService, "svc1"}].owner, "the whole service goes")
+		})
+	}
+}
+
+func TestClassifySyncResultKeepsEveryReasonOfTheSameDroppedService(t *testing.T) {
+	d, _ := newDroppingProvider(t)
+	dropped := map[wireKey]exclusion{}
+	errs := failedEvent(adctypes.StatusEvent{ResourceType: adctypes.TypeService, ResourceID: "svc1"}, "first")
+	errs.Errors[0].FailedErrors[0].FailedStatuses = append(errs.Errors[0].FailedErrors[0].FailedStatuses,
+		adctypes.SyncStatus{Reason: "second", Event: adctypes.StatusEvent{ResourceType: adctypes.TypeRoute, ResourceID: "r", ParentID: "svc1"}})
+
+	d.classifySyncResult("GatewayProxy/ns/gp", errs, d.store.Revision(), dropped, map[types.NamespacedNameKind][]string{})
+
+	reason := dropped[wireKey{adctypes.TypeService, "svc1"}].reason
+	require.Contains(t, reason, "first")
+	require.Contains(t, reason, "second")
+}
+
+func TestClassifySyncResultFallsBackToGatewayProxyForANestedEventWithoutItsParent(t *testing.T) {
+	d, _ := newDroppingProvider(t)
+	dropped := map[wireKey]exclusion{}
+
+	msgs, _ := d.classifySyncResult("GatewayProxy/ns/gp",
+		failedEvent(adctypes.StatusEvent{ResourceType: adctypes.TypeRoute, ResourceID: "r"}, "bad"),
+		d.store.Revision(), dropped, map[types.NamespacedNameKind][]string{})
+
+	require.Empty(t, dropped)
+	require.Len(t, msgs, 1, "nothing to attribute it to, so the whole sync still counts as failed")
+}
+
+func TestClassifySyncResultIgnoresFailuresAgainstReplacedContent(t *testing.T) {
+	d, route := newDroppingProvider(t)
+	built := d.store.Revision()
+	labels := map[string]string{label.LabelKind: route.Kind, label.LabelNamespace: route.Namespace, label.LabelName: route.Name}
+	require.NoError(t, d.store.Insert("GatewayProxy/ns/gp", []string{adctypes.TypeService}, &adctypes.Resources{
+		Services: []*adctypes.Service{{Metadata: adctypes.Metadata{ID: "svc1", Name: "rule-0", Labels: labels}, Hosts: []string{"fixed.example.com"}}},
+	}, labels))
+	dropped := map[wireKey]exclusion{}
+
+	msgs, _ := d.classifySyncResult("GatewayProxy/ns/gp",
+		failedEvent(adctypes.StatusEvent{ResourceType: adctypes.TypeService, ResourceID: "svc1"}, "rejected the old content"),
+		built, dropped, map[types.NamespacedNameKind][]string{})
+
+	require.Empty(t, dropped, "recording it would keep the fixed content excluded with nothing left to clear it")
+	require.Empty(t, msgs)
+}
+
+func TestUpdateStatusFromSyncResultsReportsADropUntilItsOwnerIsWrittenAgain(t *testing.T) {
+	d, route := newDroppingProvider(t)
+	updater := &fakeUpdater{}
+	d.updater = updater
+	results := map[string]types.ADCExecutionErrors{"GatewayProxy/ns/gp": failedEvent(adctypes.StatusEvent{ResourceType: adctypes.TypeService, ResourceID: "svc1"}, "unknown plugin foo")}
+	revisions := map[string]uint64{"GatewayProxy/ns/gp": d.store.Revision()}
+
+	require.True(t, d.updateStatusFromSyncResults(context.Background(), results, revisions), "the first round excluded something new")
+	require.Contains(t, d.skipped.Excluded("GatewayProxy/ns/gp"), wireKey{adctypes.TypeService, "svc1"})
+	require.Len(t, d.resourceFailures[route], 1)
+	require.Contains(t, d.resourceFailures[route][0], "rule-0: ServerAddr: http://apisix:9180, Error: unknown plugin foo")
+
+	ok := map[string]types.ADCExecutionErrors{"GatewayProxy/ns/gp": {}}
+	require.False(t, d.updateStatusFromSyncResults(context.Background(), ok, revisions), "nothing new to exclude")
+	require.Len(t, d.resourceFailures[route], 1, "still dropped: ADC no longer mentioning it says nothing about a fix")
+
+	d.skipped.ClearOwner(route)
+	require.False(t, d.updateStatusFromSyncResults(context.Background(), ok, revisions))
+	require.Empty(t, d.resourceFailures, "once its owner is written again the resource is reported accepted")
+}
+
+func TestUpdateStatusFromSyncResultsFiresAnEventForAFailingIngress(t *testing.T) {
+	recorder := record.NewFakeRecorder(4)
+	d, _ := newDroppingProvider(t)
+	ingress := types.NamespacedNameKind{Kind: types.KindIngress, Namespace: "ns1", Name: "ing"}
+	labels := map[string]string{label.LabelKind: ingress.Kind, label.LabelNamespace: ingress.Namespace, label.LabelName: ingress.Name}
+	require.NoError(t, d.store.Insert("GatewayProxy/ns/gp", []string{adctypes.TypeService}, &adctypes.Resources{
+		Services: []*adctypes.Service{{Metadata: adctypes.Metadata{ID: "ing-svc", Name: "ing-svc", Labels: labels}}},
+	}, labels))
+	d.EventRecorder = recorder
+	d.K8sClient = fakeK8sClient(t, &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Namespace: "ns1", Name: "ing"}})
+	results := map[string]types.ADCExecutionErrors{"GatewayProxy/ns/gp": failedEvent(adctypes.StatusEvent{ResourceType: adctypes.TypeService, ResourceID: "ing-svc"}, "unknown plugin foo")}
+
+	d.updateStatusFromSyncResults(context.Background(), results, map[string]uint64{"GatewayProxy/ns/gp": d.store.Revision()})
+
+	event := <-recorder.Events
+	require.Contains(t, event, "Warning")
+	require.Contains(t, event, "SyncFailed")
+	require.Contains(t, event, "unknown plugin foo")
 }

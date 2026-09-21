@@ -66,6 +66,7 @@ func newTestProvider(t *testing.T) *apisixProvider {
 		syncLocks:        newKeyedMutex(),
 		standaloneSyncer: adcclient.NewStandaloneSyncer(cli, logr.Discard()),
 		syncCh:           make(chan struct{}, 1),
+		skipped:          newSkipTable(),
 		log:              logr.Discard(),
 	}
 }
@@ -267,13 +268,133 @@ func TestRemoveResourceStateRemovesAnApisixGlobalRulesPlugins(t *testing.T) {
 		GlobalRules: adctypes.GlobalRule{"prometheus": map[string]any{}},
 	}, labelsOf(globalRule), pluginsFromResource))
 
-	resources, err := d.store.GetResources(proxy.String())
+	resources, _, err := d.store.GetResources(proxy.String())
 	require.NoError(t, err)
 	assert.Len(t, resources.GlobalRules, 2)
 
 	_, err = d.removeResourceState(globalRule, nil, labelsOf(globalRule), pluginsFromResource, false)
 	require.NoError(t, err)
-	resources, err = d.store.GetResources(proxy.String())
+	resources, _, err = d.store.GetResources(proxy.String())
 	require.NoError(t, err)
 	assert.Equal(t, adctypes.GlobalRule{"cors": map[string]any{}}, resources.GlobalRules, "only the deleted resource's own plugins go away")
+}
+
+func TestApplyResourceStateRetriesSkippedResourcesOnlyWhenTheirContentChanged(t *testing.T) {
+	d := newTestProvider(t)
+	route := types.NamespacedNameKind{Kind: types.KindApisixRoute, Namespace: "ns", Name: "route"}
+	proxy := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "gp"}
+	configs := map[types.NamespacedNameKind]adctypes.Config{proxy: {Name: proxy.String()}}
+	apply := func(plugins adctypes.Plugins) {
+		require.NoError(t, d.applyResourceState(route, configs, []string{adctypes.TypeService}, &adctypes.Resources{
+			Services: []*adctypes.Service{{Metadata: adctypes.Metadata{ID: "svc", Labels: labelsOf(route)}, Plugins: plugins}},
+		}, labelsOf(route), pluginsNone))
+	}
+	key := wireKey{adctypes.TypeService, "svc"}
+
+	apply(adctypes.Plugins{"bad": map[string]any{}})
+	d.skipped.MarkFailing(proxy.String(), map[wireKey]exclusion{key: {owner: route}})
+
+	apply(adctypes.Plugins{"bad": map[string]any{}})
+	assert.Contains(t, d.skipped.Excluded(proxy.String()), key, "a reconcile that rewrites the same content must not retry it")
+
+	apply(adctypes.Plugins{"fixed": map[string]any{}})
+	assert.NotContains(t, d.skipped.Excluded(proxy.String()), key, "changed content gets another try")
+}
+
+func TestRemoveResourceStateForgetsWhatWasSkippedForTheResource(t *testing.T) {
+	d := newTestProvider(t)
+	route := types.NamespacedNameKind{Kind: types.KindApisixRoute, Namespace: "ns", Name: "route"}
+	gateway := types.NamespacedNameKind{Kind: types.KindGateway, Namespace: "ns", Name: "gw"}
+	proxy := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "gp"}
+	configs := map[types.NamespacedNameKind]adctypes.Config{proxy: {Name: proxy.String()}}
+	key := wireKey{adctypes.TypeService, "svc"}
+	require.NoError(t, d.applyResourceState(route, configs, []string{adctypes.TypeService}, &adctypes.Resources{
+		Services: []*adctypes.Service{{Metadata: adctypes.Metadata{ID: "svc", Labels: labelsOf(route)}}},
+	}, labelsOf(route), pluginsNone))
+	require.NoError(t, d.applyResourceState(gateway, configs, nil, &adctypes.Resources{}, nil, pluginsNone))
+	d.skipped.MarkFailing(proxy.String(), map[wireKey]exclusion{key: {owner: route}})
+
+	_, err := d.removeResourceState(route, []string{adctypes.TypeService}, labelsOf(route), pluginsNone, false)
+	require.NoError(t, err)
+	assert.Empty(t, d.skipped.Excluded(proxy.String()), "a deleted resource has nothing left to exclude")
+
+	d.skipped.MarkFailing(proxy.String(), map[wireKey]exclusion{key: {owner: route}})
+	_, err = d.removeResourceState(gateway, nil, nil, pluginsNone, true)
+	require.NoError(t, err)
+	assert.Empty(t, d.skipped.Excluded(proxy.String()), "wiping a whole config drops its skip entries too")
+}
+
+func TestSyncLeavesSkippedResourcesOutOfThePush(t *testing.T) {
+	var mu sync.Mutex
+	var received []adcclient.ADCServerRequest
+	withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
+		var req adcclient.ADCServerRequest
+		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		mu.Lock()
+		received = append(received, req)
+		mu.Unlock()
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(adctypes.SyncResult{Status: adctypes.StatusSuccess})
+	})
+
+	d := newTestProvider(t)
+	d.updater = &fakeUpdater{}
+	route := types.NamespacedNameKind{Kind: types.KindApisixRoute, Namespace: "ns", Name: "route"}
+	proxy := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "gp"}
+	config := adctypes.Config{Name: proxy.String(), BackendType: "apisix", ServerAddrs: []string{"http://apisix:9080"}}
+	require.NoError(t, d.applyResourceState(route, map[types.NamespacedNameKind]adctypes.Config{proxy: config}, []string{adctypes.TypeService}, &adctypes.Resources{
+		Services: []*adctypes.Service{
+			{Metadata: adctypes.Metadata{ID: "good", Labels: labelsOf(route)}},
+			{Metadata: adctypes.Metadata{ID: "bad", Labels: labelsOf(route)}},
+		},
+	}, labelsOf(route), pluginsNone))
+	d.skipped.MarkFailing(proxy.String(), map[wireKey]exclusion{{adctypes.TypeService, "bad"}: {owner: route}})
+
+	require.NoError(t, d.sync(context.Background()))
+
+	mu.Lock()
+	defer mu.Unlock()
+	require.Len(t, received, 1)
+	require.Len(t, received[0].Task.Config.Services, 1)
+	assert.Equal(t, "good", received[0].Task.Config.Services[0].ID)
+}
+
+// TestSyncRetriesImmediatelyOnceTheRejectedResourceIsExcluded covers what happens after a
+// push is rejected: the next push leaves the rejected resource out and carries every
+// other resource's pending changes, so it must not wait for the retry backoff.
+func TestSyncRetriesImmediatelyOnceTheRejectedResourceIsExcluded(t *testing.T) {
+	route := types.NamespacedNameKind{Kind: types.KindApisixRoute, Namespace: "ns", Name: "route"}
+	proxy := types.NamespacedNameKind{Kind: types.KindGatewayProxy, Namespace: "ns", Name: "gp"}
+	rejectService := adcResp{
+		status: http.StatusUnprocessableEntity,
+		body: adctypes.SyncResult{
+			Status: "all_failed",
+			Failed: []adctypes.SyncStatus{{
+				Reason: "unknown plugin [nope]",
+				Event:  adctypes.StatusEvent{ResourceType: adctypes.TypeService, ResourceID: "bad"},
+			}},
+		},
+	}
+	requests := scriptedADC(t, rejectService, respOK())
+
+	d := newTestProvider(t)
+	d.updater = &fakeUpdater{}
+	config := adctypes.Config{Name: proxy.String(), BackendType: "apisix", ServerAddrs: []string{"http://apisix:9180"}}
+	require.NoError(t, d.applyResourceState(route, map[types.NamespacedNameKind]adctypes.Config{proxy: config}, []string{adctypes.TypeService}, &adctypes.Resources{
+		Services: []*adctypes.Service{
+			{Metadata: adctypes.Metadata{ID: "good", Labels: labelsOf(route)}},
+			{Metadata: adctypes.Metadata{ID: "bad", Labels: labelsOf(route)}},
+		},
+	}, labelsOf(route), pluginsNone))
+
+	require.Error(t, d.sync(context.Background()))
+	require.Len(t, d.syncCh, 1, "the round that excluded the rejected resource must push again right away")
+	<-d.syncCh
+
+	require.NoError(t, d.sync(context.Background()))
+	sent := requests()
+	require.Len(t, sent, 2)
+	require.Len(t, sent[1].Task.Config.Services, 1)
+	assert.Equal(t, "good", sent[1].Task.Config.Services[0].ID)
+	assert.Empty(t, d.syncCh, "a round that excluded nothing new must not ask for another push")
 }
