@@ -56,6 +56,7 @@ type IngressDeployOpts struct {
 	DisableGatewayAPI  bool
 	// Empty falls back to "auto" in the manifest; the shipped default is "off".
 	ListenerPortMatchMode string
+	NamespaceSelector     []string
 }
 
 // Methods rather than fields, so a caller that executes the template directly

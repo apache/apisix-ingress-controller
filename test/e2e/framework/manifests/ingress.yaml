@@ -308,6 +308,12 @@ data:
                                         # The default value is 0 seconds, which means the controller will not sync.
                                         # If you want to enable the sync, set it to a positive value.
       init_sync_delay: {{ .InitSyncDelay | default "20m" }}
+    {{- if .NamespaceSelector }}
+    namespace_selector:
+    {{- range .NamespaceSelector }}
+    - {{ . | quote }}
+    {{- end }}
+    {{- end }}
     webhook:
       enable: {{ .WebhookEnable | default false }}
       port: {{ .WebhookPort | default 9443 }}

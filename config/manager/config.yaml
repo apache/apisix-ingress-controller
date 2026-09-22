@@ -42,6 +42,23 @@ listener_port_match_mode: "off"         # Mode for injecting server_port route v
                                         # accepted the connection on, which is not the port the Gateway listener
                                         # declares, so only enable this when APISIX listens on the declared ports.
 
+namespace_selector: []                  # Label selectors of the namespaces whose resources are handled by the controller.
+                                        # A namespace is selected when its labels match all entries. Equality and "in"
+                                        # requirements on the same key are merged, so the example below selects namespaces
+                                        # labeled team=a or team=b that are also labeled env=prod:
+                                        #   namespace_selector:
+                                        #   - "team=a"
+                                        #   - "team=b"
+                                        #   - "env=prod"
+                                        # Only separate entries are merged. Within one entry, comma-separated requirements
+                                        # follow the Kubernetes label selector syntax, so "team=a,team=b" matches nothing.
+                                        # It applies to Ingress and apisix.apache.org/v2 resources. Gateway API resources are
+                                        # not filtered, use the allowedRoutes of the Gateway listeners instead. Resources they
+                                        # reference, such as Services, Secrets and GatewayProxies, are read from any namespace.
+                                        # When a namespace stops matching, the configuration of its resources is removed
+                                        # from the data plane.
+                                        # The default value is empty, which selects all namespaces. Empty entries are ignored.
+
 provider:
   type: "apisix"                        # Provider type.
                                         # Value can be "apisix" or "apisix-standalone".

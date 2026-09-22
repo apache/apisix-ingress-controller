@@ -70,7 +70,7 @@ type IngressReconciler struct { //nolint:revive
 func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.genericEvent = make(chan event.GenericEvent, 100)
 
-	return ctrl.NewControllerManagedBy(mgr).
+	bdr := ctrl.NewControllerManagedBy(mgr).
 		For(&networkingv1.Ingress{},
 			builder.WithPredicates(
 				MatchesIngressClassPredicate(r.Client, r.Log),
@@ -81,6 +81,7 @@ func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				predicate.GenerationChangedPredicate{},
 				predicate.AnnotationChangedPredicate{},
 				predicate.NewPredicateFuncs(TypePredicate[*corev1.Secret]()),
+				predicate.NewPredicateFuncs(TypePredicate[*corev1.Namespace]()),
 			),
 		).
 		Watches(
@@ -119,7 +120,8 @@ func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				r.genericEvent,
 				handler.EnqueueRequestsFromMapFunc(r.listIngressForGenericEvent),
 			),
-		).
+		)
+	return watchNamespaceSelector(bdr, r.Client, r.Log, func() client.ObjectList { return &networkingv1.IngressList{} }).
 		Complete(r)
 }
 
@@ -159,6 +161,9 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	ingressClass, err := FindMatchingIngressClass(tctx, r.Client, r.Log, ingress)
 	if err != nil {
+		if !isIngressClassSelectionAbsent(err) {
+			return ctrl.Result{}, err
+		}
 		if err := r.Provider.Delete(ctx, ingress); err != nil {
 			r.Log.Error(err, "failed to delete ingress resources", "ingress", ingress.Name)
 			return ctrl.Result{}, nil

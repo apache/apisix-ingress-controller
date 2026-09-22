@@ -90,6 +90,15 @@ Because the Admin API fills in default values, the submitted content may differ 
 | `apisix.*`           | Static Admin API configuration           |
 | `etcdserver.*`       | Configuration for mock-etcd (deprecated) |
 
+#### Namespace Selector
+
+`kubernetes.namespace_selector` is replaced by the top-level `namespace_selector`. Entries written for 1.x keep their meaning: every entry must match, and the values given for the same key are ORed. Each entry also accepts the full Kubernetes label selector syntax, such as `env in (prod,staging)` or `!legacy`. The command line flag `--namespace-selector` is not available, set the option in the configuration file.
+
+It behaves differently from 1.x in the following ways:
+
+- When a namespace stops matching, 2.x removes the configuration of its resources from the data plane, while 1.x left the synced routes in place. Before upgrading, check for namespaces that were unlabeled in 1.x but still have routes in service, since those routes disappear after the upgrade.
+- Only Ingress and `apisix.apache.org/v2` resources are filtered. Gateway API resources, which 1.x also filtered, are not; use the `allowedRoutes` of the Gateway listeners to limit their namespaces.
+
 #### Example: Legacy Configuration Removed in 2.0.0
 
 ```yaml

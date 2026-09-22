@@ -59,6 +59,10 @@ type Options struct {
 	SkipHooks bool
 
 	EnableWebhook bool
+
+	// NamespaceSelector is rendered into the namespace_selector of the
+	// controller configuration.
+	NamespaceSelector []string
 }
 
 type Scaffold struct {
