@@ -1673,6 +1673,33 @@ spec:
 `
 		const withRejectedPlugins = `  annotations:
     k8s.apisix.apache.org/plugin-config-name: rejected-plugins`
+		var validIngress = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: valid
+spec:
+  ingressClassName: %s
+  rules:
+  - host: valid-ingress.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
+		expectValidIngressServed := func() {
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "valid-ingress.example.com",
+				Check:  scaffold.WithExpectedStatus(200),
+			})
+		}
 
 		It("a rejected Ingress is reported as an event", func() {
 			By("create GatewayProxy")
@@ -1683,13 +1710,16 @@ spec:
 			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClass, s.Namespace(), s.GetControllerName(), s.Namespace()), "")
 			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
 
-			By("create an Ingress whose plugins the data plane rejects")
+			By("create a valid Ingress and one whose plugins the data plane rejects")
 			err = s.CreateResourceFromString(fmt.Sprintf(rejectedPluginConfig, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating ApisixPluginConfig")
+			err = s.CreateResourceFromString(fmt.Sprintf(validIngress, s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "creating valid Ingress")
 			err = s.CreateResourceFromString(fmt.Sprintf(ingressTemplate, withRejectedPlugins, s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "creating Ingress")
 
-			By("the rejected Ingress reports an event")
+			By("the valid Ingress stays served and the rejected one reports an event")
+			expectValidIngressServed()
 			s.RetryAssertion(func() string {
 				output, _ := s.GetOutputFromString("events", "--field-selector", "involvedObject.name=rejected", "-n", s.Namespace())
 				return output
@@ -1702,7 +1732,8 @@ spec:
 			err = s.CreateResourceFromString(fmt.Sprintf(ingressTemplate, "", s.Namespace()))
 			Expect(err).NotTo(HaveOccurred(), "updating Ingress")
 
-			By("the Ingress is served")
+			By("both Ingresses are served")
+			expectValidIngressServed()
 			s.RequestAssert(&scaffold.RequestAssert{
 				Method: "GET",
 				Path:   "/get",

@@ -76,8 +76,11 @@ func (d *apisixProvider) updateStatusFromSyncResults(ctx context.Context, result
 
 	for configName, execErrs := range results {
 		dropped := map[wireKey]exclusion{}
-		gatewayProxyMsgs, failedEndpoints := d.classifySyncResult(configName, execErrs, revisions[configName], dropped, resourceFailures)
-		newlyExcluded += d.skipped.MarkFailing(configName, dropped)
+		gatewayProxyMsgs, failedEndpoints := d.classifySyncResult(configName, execErrs, dropped, resourceFailures)
+		builtRevision := revisions[configName]
+		newlyExcluded += d.skipped.MarkFailing(configName, dropped, func(owner types.NamespacedNameKind) bool {
+			return d.store.ChangedSince(configName, owner, builtRevision)
+		})
 
 		var gatewayProxy types.NamespacedNameKind
 		if err := gatewayProxy.FromString(configName); err != nil {
@@ -120,13 +123,12 @@ func (d *apisixProvider) updateStatusFromSyncResults(ctx context.Context, result
 // explained this addrErr: EndpointStatuses' own message first, the raw error as a last
 // resort.
 //
-// A failure whose owner's content changed after builtRevision is ignored: it was reported
-// against content that has since been replaced, and recording it would keep the
-// replacement excluded with nothing left to clear it.
+// Whether a dropped entry is stale (reported against content that has since been
+// replaced) is decided later, by MarkFailing: doing it here instead would leave the same
+// check-then-write gap MarkFailing's own doc comment explains.
 func (d *apisixProvider) classifySyncResult(
 	configName string,
 	execErrs types.ADCExecutionErrors,
-	builtRevision uint64,
 	dropped map[wireKey]exclusion,
 	resourceFailures map[types.NamespacedNameKind][]string,
 ) (gatewayProxyMsgs []string, failedEndpoints []adctypes.EndpointStatus) {
@@ -149,9 +151,6 @@ func (d *apisixProvider) classifySyncResult(
 			for _, syncStatus := range addrErr.FailedStatuses {
 				reason := fmt.Sprintf("ServerAddr: %s, Error: %s", addrErr.ServerAddr, syncStatus.Reason)
 				if key, ex, ok := d.dropUnit(configName, syncStatus.Event); ok {
-					if d.store.ChangedSince(configName, ex.owner, builtRevision) {
-						continue
-					}
 					if previous, ok := dropped[key]; ok {
 						reason = previous.reason + "; " + reason
 					}
@@ -194,7 +193,18 @@ func (d *apisixProvider) dropUnit(configName string, ev adctypes.StatusEvent) (w
 	if !ok {
 		return wireKey{}, exclusion{}, false
 	}
-	return wireKey{adctypes.TypeService, service.ID}, exclusion{owner: service.Owner, name: service.Name}, true
+	owner, name := service.Owner, service.Name
+	// A route's own owner can differ from its service's: a traffic-split service can
+	// combine rules several ApisixRoutes each contributed. Attribute to the route
+	// itself when the store can tell them apart, so fixing the actual bad route clears
+	// the exclusion instead of leaving it stuck on whichever owner the shared service
+	// happens to carry.
+	if ev.ResourceType == adctypes.TypeRoute {
+		if route, ok := d.store.Lookup(configName, adctypes.TypeRoute, ev.ResourceID); ok && route.Owner != (types.NamespacedNameKind{}) {
+			owner = route.Owner
+		}
+	}
+	return wireKey{adctypes.TypeService, service.ID}, exclusion{owner: owner, name: name}, true
 }
 
 // applyResourceFailures writes this round's newly (or still) failing resources, and

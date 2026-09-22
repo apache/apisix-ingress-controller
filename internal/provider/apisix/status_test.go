@@ -229,7 +229,7 @@ func TestClassifySyncResultHardErrorGoesToGatewayProxy(t *testing.T) {
 	}}}
 
 	resourceFailures := map[types.NamespacedNameKind][]string{}
-	gatewayProxyMsgs, failedEndpoints := d.classifySyncResult("GatewayProxy/ns/gp", execErrs, 0, map[wireKey]exclusion{}, resourceFailures)
+	gatewayProxyMsgs, failedEndpoints := d.classifySyncResult("GatewayProxy/ns/gp", execErrs, map[wireKey]exclusion{}, resourceFailures)
 
 	if len(resourceFailures) != 0 {
 		t.Errorf("expected no resource attributed, got %v", resourceFailures)
@@ -256,7 +256,7 @@ func TestClassifySyncResultEndpointFailuresGoToGatewayProxy(t *testing.T) {
 	}}}
 
 	resourceFailures := map[types.NamespacedNameKind][]string{}
-	gatewayProxyMsgs, failedEndpoints := d.classifySyncResult("GatewayProxy/ns/gp", execErrs, 0, map[wireKey]exclusion{}, resourceFailures)
+	gatewayProxyMsgs, failedEndpoints := d.classifySyncResult("GatewayProxy/ns/gp", execErrs, map[wireKey]exclusion{}, resourceFailures)
 
 	if len(resourceFailures) != 0 {
 		t.Errorf("expected no resource attributed, got %v", resourceFailures)
@@ -297,7 +297,7 @@ func TestClassifySyncResultAttributesFailedStatusesToTheirResource(t *testing.T)
 	}}}
 
 	resourceFailures := map[types.NamespacedNameKind][]string{}
-	gatewayProxyMsgs, _ := d.classifySyncResult(configName, execErrs, 0, map[wireKey]exclusion{}, resourceFailures)
+	gatewayProxyMsgs, _ := d.classifySyncResult(configName, execErrs, map[wireKey]exclusion{}, resourceFailures)
 
 	if len(gatewayProxyMsgs) != 0 {
 		t.Errorf("expected nothing attributed to the GatewayProxy, got %v", gatewayProxyMsgs)
@@ -345,7 +345,7 @@ func TestClassifySyncResultReportsEndpointStatusesEvenOnAFullyAttributedAddrErr(
 	}}}
 
 	resourceFailures := map[types.NamespacedNameKind][]string{}
-	gatewayProxyMsgs, failedEndpoints := d.classifySyncResult(configName, execErrs, 0, map[wireKey]exclusion{}, resourceFailures)
+	gatewayProxyMsgs, failedEndpoints := d.classifySyncResult(configName, execErrs, map[wireKey]exclusion{}, resourceFailures)
 
 	if len(gatewayProxyMsgs) != 1 || !strings.Contains(gatewayProxyMsgs[0], "http://apisix-2:9180: connection refused") {
 		t.Errorf("gatewayProxyMsgs = %v, want the endpoint summary", gatewayProxyMsgs)
@@ -372,7 +372,7 @@ func TestClassifySyncResultFallsBackToGatewayProxyWhenAFailedStatusHasNoResource
 	}}}
 
 	resourceFailures := map[types.NamespacedNameKind][]string{}
-	gatewayProxyMsgs, _ := d.classifySyncResult("GatewayProxy/ns/gp", execErrs, 0, map[wireKey]exclusion{}, resourceFailures)
+	gatewayProxyMsgs, _ := d.classifySyncResult("GatewayProxy/ns/gp", execErrs, map[wireKey]exclusion{}, resourceFailures)
 
 	if len(resourceFailures) != 0 {
 		t.Errorf("expected no resource attributed, got %v", resourceFailures)
@@ -457,7 +457,7 @@ func TestClassifySyncResultDropsARejectedServiceInsteadOfFailingTheGatewayProxy(
 	dropped := map[wireKey]exclusion{}
 	resourceFailures := map[types.NamespacedNameKind][]string{}
 
-	msgs, _ := d.classifySyncResult("GatewayProxy/ns/gp", failedEvent(adctypes.StatusEvent{ResourceType: adctypes.TypeService, ResourceID: "svc1"}, "unknown plugin foo"), d.store.Revision(), dropped, resourceFailures)
+	msgs, _ := d.classifySyncResult("GatewayProxy/ns/gp", failedEvent(adctypes.StatusEvent{ResourceType: adctypes.TypeService, ResourceID: "svc1"}, "unknown plugin foo"), dropped, resourceFailures)
 
 	require.Empty(t, msgs, "a rejection that names a resource no longer fails the GatewayProxy")
 	require.Empty(t, resourceFailures)
@@ -474,8 +474,7 @@ func TestClassifySyncResultDropsTheServiceOfARejectedNestedResource(t *testing.T
 			dropped := map[wireKey]exclusion{}
 
 			msgs, _ := d.classifySyncResult("GatewayProxy/ns/gp",
-				failedEvent(adctypes.StatusEvent{ResourceType: resourceType, ResourceID: "nested", ParentID: "svc1"}, "bad"),
-				d.store.Revision(), dropped, map[types.NamespacedNameKind][]string{})
+				failedEvent(adctypes.StatusEvent{ResourceType: resourceType, ResourceID: "nested", ParentID: "svc1"}, "bad"), dropped, map[types.NamespacedNameKind][]string{})
 
 			require.Empty(t, msgs)
 			require.Equal(t, route, dropped[wireKey{adctypes.TypeService, "svc1"}].owner, "the whole service goes")
@@ -490,7 +489,7 @@ func TestClassifySyncResultKeepsEveryReasonOfTheSameDroppedService(t *testing.T)
 	errs.Errors[0].FailedErrors[0].FailedStatuses = append(errs.Errors[0].FailedErrors[0].FailedStatuses,
 		adctypes.SyncStatus{Reason: "second", Event: adctypes.StatusEvent{ResourceType: adctypes.TypeRoute, ResourceID: "r", ParentID: "svc1"}})
 
-	d.classifySyncResult("GatewayProxy/ns/gp", errs, d.store.Revision(), dropped, map[types.NamespacedNameKind][]string{})
+	d.classifySyncResult("GatewayProxy/ns/gp", errs, dropped, map[types.NamespacedNameKind][]string{})
 
 	reason := dropped[wireKey{adctypes.TypeService, "svc1"}].reason
 	require.Contains(t, reason, "first")
@@ -503,27 +502,29 @@ func TestClassifySyncResultFallsBackToGatewayProxyForANestedEventWithoutItsParen
 
 	msgs, _ := d.classifySyncResult("GatewayProxy/ns/gp",
 		failedEvent(adctypes.StatusEvent{ResourceType: adctypes.TypeRoute, ResourceID: "r"}, "bad"),
-		d.store.Revision(), dropped, map[types.NamespacedNameKind][]string{})
+		dropped, map[types.NamespacedNameKind][]string{})
 
 	require.Empty(t, dropped)
 	require.Len(t, msgs, 1, "nothing to attribute it to, so the whole sync still counts as failed")
 }
 
-func TestClassifySyncResultIgnoresFailuresAgainstReplacedContent(t *testing.T) {
+// TestUpdateStatusFromSyncResultsIgnoresAFailureAgainstContentAlreadyReplaced covers the
+// stale check that closes the gap between classifySyncResult building a drop candidate
+// and MarkFailing actually writing it: by the time this round's report is processed, the
+// content it was reported against may already be gone.
+func TestUpdateStatusFromSyncResultsIgnoresAFailureAgainstContentAlreadyReplaced(t *testing.T) {
 	d, route := newDroppingProvider(t)
 	built := d.store.Revision()
 	labels := map[string]string{label.LabelKind: route.Kind, label.LabelNamespace: route.Namespace, label.LabelName: route.Name}
 	require.NoError(t, d.store.Insert("GatewayProxy/ns/gp", []string{adctypes.TypeService}, &adctypes.Resources{
 		Services: []*adctypes.Service{{Metadata: adctypes.Metadata{ID: "svc1", Name: "rule-0", Labels: labels}, Hosts: []string{"fixed.example.com"}}},
 	}, labels))
-	dropped := map[wireKey]exclusion{}
+	results := map[string]types.ADCExecutionErrors{"GatewayProxy/ns/gp": failedEvent(adctypes.StatusEvent{ResourceType: adctypes.TypeService, ResourceID: "svc1"}, "rejected the old content")}
 
-	msgs, _ := d.classifySyncResult("GatewayProxy/ns/gp",
-		failedEvent(adctypes.StatusEvent{ResourceType: adctypes.TypeService, ResourceID: "svc1"}, "rejected the old content"),
-		built, dropped, map[types.NamespacedNameKind][]string{})
+	newlyExcluded := d.updateStatusFromSyncResults(context.Background(), results, map[string]uint64{"GatewayProxy/ns/gp": built})
 
-	require.Empty(t, dropped, "recording it would keep the fixed content excluded with nothing left to clear it")
-	require.Empty(t, msgs)
+	require.False(t, newlyExcluded, "recording it would keep the fixed content excluded with nothing left to clear it")
+	require.Empty(t, d.skipped.Excluded("GatewayProxy/ns/gp"))
 }
 
 func TestUpdateStatusFromSyncResultsReportsADropUntilItsOwnerIsWrittenAgain(t *testing.T) {
@@ -565,4 +566,47 @@ func TestUpdateStatusFromSyncResultsFiresAnEventForAFailingIngress(t *testing.T)
 	require.Contains(t, event, "Warning")
 	require.Contains(t, event, "SyncFailed")
 	require.Contains(t, event, "unknown plugin foo")
+}
+
+// TestDropUnitAttributesARouteToItsOwnOwnerNotTheServices covers the traffic-split case
+// routeOwner exists for: a service several ApisixRoutes contribute rules to, where the
+// rejected route's own owner differs from whichever owner the shared service currently
+// carries.
+func TestDropUnitAttributesARouteToItsOwnOwnerNotTheServices(t *testing.T) {
+	d := &apisixProvider{log: logr.Discard(), store: cache.NewStore(logr.Discard())}
+	serviceOwner := types.NamespacedNameKind{Kind: types.KindApisixRoute, Namespace: "ns", Name: "service-writer"}
+	routeOwner := types.NamespacedNameKind{Kind: types.KindApisixRoute, Namespace: "ns", Name: "route-writer"}
+	serviceLabels := map[string]string{label.LabelKind: serviceOwner.Kind, label.LabelNamespace: serviceOwner.Namespace, label.LabelName: serviceOwner.Name}
+	routeLabels := map[string]string{label.LabelKind: routeOwner.Kind, label.LabelNamespace: routeOwner.Namespace, label.LabelName: routeOwner.Name}
+	require.NoError(t, d.store.Insert("GatewayProxy/ns/gp", []string{adctypes.TypeService}, &adctypes.Resources{
+		Services: []*adctypes.Service{{
+			Metadata: adctypes.Metadata{ID: "svc1", Name: "shared", Labels: serviceLabels},
+			Routes:   []*adctypes.Route{{Metadata: adctypes.Metadata{ID: "r1", Labels: routeLabels}}},
+		}},
+	}, serviceLabels))
+
+	_, ex, ok := d.dropUnit("GatewayProxy/ns/gp", adctypes.StatusEvent{ResourceType: adctypes.TypeRoute, ResourceID: "r1", ParentID: "svc1"})
+
+	require.True(t, ok)
+	require.Equal(t, routeOwner, ex.owner, "the route's own owner, not whoever last wrote the shared service")
+}
+
+// TestDropUnitFallsBackToTheServicesOwnerWhenTheRouteHasNoLabelsOfItsOwn covers the
+// common case: a route that carries no labels of its own (the service it lives in was
+// never actually shared) still gets attributed correctly, via the service.
+func TestDropUnitFallsBackToTheServicesOwnerWhenTheRouteHasNoLabelsOfItsOwn(t *testing.T) {
+	d := &apisixProvider{log: logr.Discard(), store: cache.NewStore(logr.Discard())}
+	owner := types.NamespacedNameKind{Kind: types.KindApisixRoute, Namespace: "ns", Name: "route1"}
+	labels := map[string]string{label.LabelKind: owner.Kind, label.LabelNamespace: owner.Namespace, label.LabelName: owner.Name}
+	require.NoError(t, d.store.Insert("GatewayProxy/ns/gp", []string{adctypes.TypeService}, &adctypes.Resources{
+		Services: []*adctypes.Service{{
+			Metadata: adctypes.Metadata{ID: "svc1", Labels: labels},
+			Routes:   []*adctypes.Route{{Metadata: adctypes.Metadata{ID: "r1"}}},
+		}},
+	}, labels))
+
+	_, ex, ok := d.dropUnit("GatewayProxy/ns/gp", adctypes.StatusEvent{ResourceType: adctypes.TypeRoute, ResourceID: "r1", ParentID: "svc1"})
+
+	require.True(t, ok)
+	require.Equal(t, owner, ex.owner)
 }

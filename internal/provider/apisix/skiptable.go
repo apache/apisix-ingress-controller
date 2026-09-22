@@ -56,18 +56,32 @@ func newSkipTable() *skipTable {
 }
 
 // MarkFailing records failing for cacheKey, keeping entries it doesn't mention, and
-// returns how many of them were not already excluded.
-func (t *skipTable) MarkFailing(cacheKey string, failing map[wireKey]exclusion) int {
+// returns how many of them were not already excluded. stale is checked once per entry,
+// inside the same lock that performs the write, and an entry it calls stale is dropped
+// instead of recorded.
+//
+// The check has to happen in here rather than by the caller beforehand: failing was
+// built from a sync result that is already old news by the time this runs, and if the
+// owner's content changed in between (a concurrent reconcile fixed it), a caller-side
+// check-then-call has a window where the fix's own cleanup (ClearOwner) already ran and
+// found nothing to clear, and this call then inserts the exclusion anyway with nothing
+// left to ever clear it. Checking under this lock closes that window: ClearOwner takes
+// the same lock, so it can only ever run fully before or fully after this call, never in
+// the middle of it.
+func (t *skipTable) MarkFailing(cacheKey string, failing map[wireKey]exclusion, stale func(owner types.NamespacedNameKind) bool) int {
 	if len(failing) == 0 {
 		return 0
 	}
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if t.entries[cacheKey] == nil {
-		t.entries[cacheKey] = make(map[wireKey]exclusion, len(failing))
-	}
 	added := 0
 	for key, ex := range failing {
+		if stale(ex.owner) {
+			continue
+		}
+		if t.entries[cacheKey] == nil {
+			t.entries[cacheKey] = make(map[wireKey]exclusion, len(failing))
+		}
 		if _, ok := t.entries[cacheKey][key]; !ok {
 			added++
 		}

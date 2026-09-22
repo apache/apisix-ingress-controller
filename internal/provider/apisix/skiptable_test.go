@@ -30,14 +30,18 @@ func apisixRoute(name string) types.NamespacedNameKind {
 	return types.NamespacedNameKind{Kind: types.KindApisixRoute, Namespace: "ns", Name: name}
 }
 
+// neverStale is the stale callback for tests that aren't exercising MarkFailing's own
+// staleness check.
+func neverStale(types.NamespacedNameKind) bool { return false }
+
 func TestSkipTableMarkFailingKeepsEntriesNotMentionedAgain(t *testing.T) {
 	tbl := newSkipTable()
 	first := wireKey{adctypes.TypeService, "svc1"}
 	second := wireKey{adctypes.TypeService, "svc2"}
 
-	assert.Equal(t, 1, tbl.MarkFailing("gp1", map[wireKey]exclusion{first: {owner: apisixRoute("a"), reason: "first"}}))
-	assert.Equal(t, 1, tbl.MarkFailing("gp1", map[wireKey]exclusion{second: {owner: apisixRoute("b"), reason: "second"}}))
-	assert.Equal(t, 0, tbl.MarkFailing("gp1", map[wireKey]exclusion{first: {owner: apisixRoute("a"), reason: "again"}}), "an entry already there is not new")
+	assert.Equal(t, 1, tbl.MarkFailing("gp1", map[wireKey]exclusion{first: {owner: apisixRoute("a"), reason: "first"}}, neverStale))
+	assert.Equal(t, 1, tbl.MarkFailing("gp1", map[wireKey]exclusion{second: {owner: apisixRoute("b"), reason: "second"}}, neverStale))
+	assert.Equal(t, 0, tbl.MarkFailing("gp1", map[wireKey]exclusion{first: {owner: apisixRoute("a"), reason: "again"}}, neverStale), "an entry already there is not new")
 
 	got := tbl.Excluded("gp1")
 	assert.Equal(t, "again", got[first].reason)
@@ -48,7 +52,7 @@ func TestSkipTableMarkFailingKeepsEntriesNotMentionedAgain(t *testing.T) {
 func TestSkipTableExcludedAndSnapshotAreCopies(t *testing.T) {
 	tbl := newSkipTable()
 	key := wireKey{adctypes.TypeService, "svc1"}
-	tbl.MarkFailing("gp1", map[wireKey]exclusion{key: {owner: apisixRoute("a"), reason: "reason"}})
+	tbl.MarkFailing("gp1", map[wireKey]exclusion{key: {owner: apisixRoute("a"), reason: "reason"}}, neverStale)
 
 	tbl.Excluded("gp1")[key] = exclusion{reason: "mutated"}
 	tbl.Snapshot()["gp1"][key] = exclusion{reason: "mutated"}
@@ -61,8 +65,8 @@ func TestSkipTableClearOwnerRemovesOnlyThatOwnerEverywhere(t *testing.T) {
 	tbl.MarkFailing("gp1", map[wireKey]exclusion{
 		{adctypes.TypeService, "svc1"}: {owner: apisixRoute("a")},
 		{adctypes.TypeService, "svc2"}: {owner: apisixRoute("b")},
-	})
-	tbl.MarkFailing("gp2", map[wireKey]exclusion{{adctypes.TypeService, "svc1"}: {owner: apisixRoute("a")}})
+	}, neverStale)
+	tbl.MarkFailing("gp2", map[wireKey]exclusion{{adctypes.TypeService, "svc1"}: {owner: apisixRoute("a")}}, neverStale)
 
 	tbl.ClearOwner(apisixRoute("a"))
 
@@ -70,11 +74,28 @@ func TestSkipTableClearOwnerRemovesOnlyThatOwnerEverywhere(t *testing.T) {
 	assert.NotContains(t, tbl.Snapshot(), "gp2")
 }
 
+func TestSkipTableMarkFailingSkipsEntriesTheStaleCallbackRejects(t *testing.T) {
+	tbl := newSkipTable()
+	first := wireKey{adctypes.TypeService, "svc1"}
+	second := wireKey{adctypes.TypeService, "svc2"}
+	stale := func(owner types.NamespacedNameKind) bool { return owner == apisixRoute("a") }
+
+	added := tbl.MarkFailing("gp1", map[wireKey]exclusion{
+		first:  {owner: apisixRoute("a"), reason: "stale"},
+		second: {owner: apisixRoute("b"), reason: "fresh"},
+	}, stale)
+
+	assert.Equal(t, 1, added, "the stale entry is not counted")
+	got := tbl.Excluded("gp1")
+	assert.NotContains(t, got, first, "an owner the caller reports as stale is never recorded")
+	assert.Equal(t, "fresh", got[second].reason)
+}
+
 func TestSkipTableClearCacheKey(t *testing.T) {
 	tbl := newSkipTable()
 	key := wireKey{adctypes.TypeService, "svc1"}
-	tbl.MarkFailing("gp1", map[wireKey]exclusion{key: {owner: apisixRoute("a")}})
-	tbl.MarkFailing("gp2", map[wireKey]exclusion{key: {owner: apisixRoute("a")}})
+	tbl.MarkFailing("gp1", map[wireKey]exclusion{key: {owner: apisixRoute("a")}}, neverStale)
+	tbl.MarkFailing("gp2", map[wireKey]exclusion{key: {owner: apisixRoute("a")}}, neverStale)
 
 	tbl.ClearCacheKey("gp1")
 

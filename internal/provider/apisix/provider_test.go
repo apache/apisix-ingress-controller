@@ -292,7 +292,7 @@ func TestApplyResourceStateRetriesSkippedResourcesOnlyWhenTheirContentChanged(t 
 	key := wireKey{adctypes.TypeService, "svc"}
 
 	apply(adctypes.Plugins{"bad": map[string]any{}})
-	d.skipped.MarkFailing(proxy.String(), map[wireKey]exclusion{key: {owner: route}})
+	d.skipped.MarkFailing(proxy.String(), map[wireKey]exclusion{key: {owner: route}}, neverStale)
 
 	apply(adctypes.Plugins{"bad": map[string]any{}})
 	assert.Contains(t, d.skipped.Excluded(proxy.String()), key, "a reconcile that rewrites the same content must not retry it")
@@ -312,13 +312,13 @@ func TestRemoveResourceStateForgetsWhatWasSkippedForTheResource(t *testing.T) {
 		Services: []*adctypes.Service{{Metadata: adctypes.Metadata{ID: "svc", Labels: labelsOf(route)}}},
 	}, labelsOf(route), pluginsNone))
 	require.NoError(t, d.applyResourceState(gateway, configs, nil, &adctypes.Resources{}, nil, pluginsNone))
-	d.skipped.MarkFailing(proxy.String(), map[wireKey]exclusion{key: {owner: route}})
+	d.skipped.MarkFailing(proxy.String(), map[wireKey]exclusion{key: {owner: route}}, neverStale)
 
 	_, err := d.removeResourceState(route, []string{adctypes.TypeService}, labelsOf(route), pluginsNone, false)
 	require.NoError(t, err)
 	assert.Empty(t, d.skipped.Excluded(proxy.String()), "a deleted resource has nothing left to exclude")
 
-	d.skipped.MarkFailing(proxy.String(), map[wireKey]exclusion{key: {owner: route}})
+	d.skipped.MarkFailing(proxy.String(), map[wireKey]exclusion{key: {owner: route}}, neverStale)
 	_, err = d.removeResourceState(gateway, nil, nil, pluginsNone, true)
 	require.NoError(t, err)
 	assert.Empty(t, d.skipped.Excluded(proxy.String()), "wiping a whole config drops its skip entries too")
@@ -348,7 +348,7 @@ func TestSyncLeavesSkippedResourcesOutOfThePush(t *testing.T) {
 			{Metadata: adctypes.Metadata{ID: "bad", Labels: labelsOf(route)}},
 		},
 	}, labelsOf(route), pluginsNone))
-	d.skipped.MarkFailing(proxy.String(), map[wireKey]exclusion{{adctypes.TypeService, "bad"}: {owner: route}})
+	d.skipped.MarkFailing(proxy.String(), map[wireKey]exclusion{{adctypes.TypeService, "bad"}: {owner: route}}, neverStale)
 
 	require.NoError(t, d.sync(context.Background()))
 

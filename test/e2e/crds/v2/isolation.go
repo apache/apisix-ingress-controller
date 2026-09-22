@@ -156,11 +156,29 @@ spec:
 	})
 
 	It("isolates a route whose upstream configuration is rejected", func() {
-		const upstream = `
+		// The rejected route needs a backend of its own: routes reuses
+		// httpbin-service-e2e-test for both routes, and an ApisixUpstream named after that
+		// service would apply to the valid route too.
+		const aliasBackend = `
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpbin-alias
+  namespace: %s
+spec:
+  selector:
+    app: httpbin-deployment-e2e-test
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 80
+  type: ClusterIP
+---
 apiVersion: apisix.apache.org/v2
 kind: ApisixUpstream
 metadata:
-  name: httpbin-service-e2e-test
+  name: httpbin-alias
   namespace: %s
 spec:
   ingressClassName: %s
@@ -169,22 +187,60 @@ spec:
     hashOn: vars
 %s
 `
-		By("apply a valid and a rejected ApisixRoute, the rejected one using a rejected upstream configuration")
-		apply(fmt.Sprintf(routes, s.Namespace(), s.Namespace(), s.Namespace(), s.Namespace(), ""))
-		apply(fmt.Sprintf(upstream, s.Namespace(), s.Namespace(), rejectedHashKey))
+		const upstreamRoutes = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: valid-upstream
+  namespace: %s
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - valid-upstream.example.com
+      paths:
+      - /*
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+---
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: rejected-upstream
+  namespace: %s
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - rejected-upstream.example.com
+      paths:
+      - /*
+    backends:
+    - serviceName: httpbin-alias
+      servicePort: 80
+`
+		By("apply a valid and a rejected ApisixRoute, the rejected one using a rejected upstream configuration on its own backend")
+		apply(fmt.Sprintf(aliasBackend, s.Namespace(), s.Namespace(), s.Namespace(), rejectedHashKey))
+		apply(fmt.Sprintf(upstreamRoutes, s.Namespace(), s.Namespace(), s.Namespace(), s.Namespace()))
 
-		By("the rejected ApisixRoute reports why it is not served")
-		expectStatus("ar", "rejected",
+		By("the valid ApisixRoute stays served and the rejected one reports why it is not")
+		expectServed("valid-upstream.example.com")
+		expectStatus("ar", "rejected-upstream",
 			ContainSubstring(`status: "False"`),
 			ContainSubstring(`reason: SyncFailed`),
 		)
 
 		By("fix the upstream configuration")
-		apply(fmt.Sprintf(upstream, s.Namespace(), s.Namespace(), acceptedHashKey))
+		apply(fmt.Sprintf(aliasBackend, s.Namespace(), s.Namespace(), s.Namespace(), acceptedHashKey))
 
 		By("both ApisixRoutes are served")
-		expectServed("valid.example.com")
-		expectServed("rejected.example.com")
+		expectServed("valid-upstream.example.com")
+		expectServed("rejected-upstream.example.com")
 	})
 
 	It("isolates the rule of a rejected named upstream", func() {
