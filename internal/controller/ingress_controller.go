@@ -221,6 +221,8 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// update the ingress resources
 	if err := r.Provider.Update(ctx, tctx, ingress); err != nil {
 		r.Log.Error(err, "failed to update ingress resources", "ingress", ingress.Name)
+		// Still report policy status, e.g. an HTTPRoutePolicy with invalid vars.
+		UpdateStatus(r.Updater, r.Log, tctx)
 		return ctrl.Result{}, err
 	}
 

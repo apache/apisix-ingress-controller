@@ -30,6 +30,7 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
+	"github.com/apache/apisix-ingress-controller/internal/adc/translator"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
@@ -83,7 +84,9 @@ func (r *HTTPRouteReconciler) processHTTPRoutePolicies(tctx *provider.TranslateC
 			condition.Reason = string(gatewayv1.PolicyReasonConflicted)
 			condition.Message = "HTTPRoutePolicy conflict with others target to the HTTPRoute"
 		} else {
+			// Kept even when invalid so translation fails instead of dropping its vars.
 			tctx.HTTPRoutePolicies = append(tctx.HTTPRoutePolicies, policy)
+			condition = invalidVarsCondition(&policy)
 		}
 
 		if updated := setAncestorsForHTTPRoutePolicyStatus(parentRefs, &policy, condition); updated {
@@ -160,7 +163,11 @@ func (r *IngressReconciler) processHTTPRoutePolicies(tctx *provider.TranslateCon
 
 	for i := range list.Items {
 		policy := list.Items[i]
-		if updated := setAncestorsForHTTPRoutePolicyStatus(tctx.RouteParentRefs, &policy, condition); updated {
+		policyCondition := condition
+		if policyCondition.Status == "" {
+			policyCondition = invalidVarsCondition(&policy)
+		}
+		if updated := setAncestorsForHTTPRoutePolicyStatus(tctx.RouteParentRefs, &policy, policyCondition); updated {
 			tctx.StatusUpdaters = append(tctx.StatusUpdaters, status.Update{
 				NamespacedName: utils.NamespacedName(&policy),
 				Resource:       policy.DeepCopy(),
@@ -216,6 +223,18 @@ func (r *IngressReconciler) updateHTTPRoutePolicyStatusOnDeleting(ctx context.Co
 	}
 
 	return nil
+}
+
+// invalidVarsCondition reports malformed spec.vars; zero value means accepted.
+func invalidVarsCondition(policy *v1alpha1.HTTPRoutePolicy) metav1.Condition {
+	if _, err := translator.ParseHTTPRoutePolicyVars(policy); err != nil {
+		return metav1.Condition{
+			Status:  metav1.ConditionFalse,
+			Reason:  string(gatewayv1.PolicyReasonInvalid),
+			Message: err.Error(),
+		}
+	}
+	return metav1.Condition{}
 }
 
 func setAncestorsForHTTPRoutePolicyStatus(parentRefs []gatewayv1.ParentReference, policy *v1alpha1.HTTPRoutePolicy, condition metav1.Condition) bool {
