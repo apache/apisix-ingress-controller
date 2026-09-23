@@ -156,9 +156,9 @@ type Route struct {
 }
 
 type Timeout struct {
-	Connect int `json:"connect"`
-	Read    int `json:"read"`
-	Send    int `json:"send"`
+	Connect float64 `json:"connect"`
+	Read    float64 `json:"read"`
+	Send    float64 `json:"send"`
 }
 
 // +k8s:deepcopy-gen=true
