@@ -19,6 +19,10 @@ package cache
 
 import (
 	"cmp"
+	"encoding/json"
+	"maps"
+	"slices"
+	"strings"
 	"sync"
 
 	"github.com/go-logr/logr"
@@ -30,6 +34,14 @@ import (
 
 type Store struct {
 	cacheMap map[string]Cache
+
+	// revision increases on every write that changes what the store holds. lastChange
+	// holds, per cacheKey, the revision of each owner's latest change, and resetAt the
+	// revision the cacheKey was last wiped at. A write that leaves an owner's content as
+	// it was is not a change. See ChangedSince.
+	revision   uint64
+	lastChange map[string]map[types.NamespacedNameKind]uint64
+	resetAt    map[string]uint64
 
 	sync.Mutex
 	log logr.Logger
@@ -52,8 +64,10 @@ type Entity struct {
 
 func NewStore(log logr.Logger) *Store {
 	return &Store{
-		cacheMap: make(map[string]Cache),
-		log:      log.WithName("store"),
+		cacheMap:   make(map[string]Cache),
+		lastChange: make(map[string]map[types.NamespacedNameKind]uint64),
+		resetAt:    make(map[string]uint64),
+		log:        log.WithName("store"),
 	}
 }
 
@@ -85,6 +99,61 @@ func gatewayProxyOf(name string) (types.NamespacedNameKind, bool) {
 	}
 	return gatewayProxy, true
 }
+
+func (s *Store) recordChange(name string, owner types.NamespacedNameKind) {
+	s.revision++
+	if s.lastChange[name] == nil {
+		s.lastChange[name] = make(map[types.NamespacedNameKind]uint64)
+	}
+	s.lastChange[name][owner] = s.revision
+}
+
+// contentOf renders items, ordered by id, the way they reach ADC, so two writes can be
+// compared by what they would push.
+func contentOf[T any](log logr.Logger, items []T, id func(T) string) string {
+	if len(items) == 0 {
+		return ""
+	}
+	sorted := slices.Clone(items)
+	slices.SortFunc(sorted, func(a, b T) int { return strings.Compare(id(a), id(b)) })
+	return canonicalJSON(log, sorted)
+}
+
+// canonicalJSON renders v as JSON with every object's keys sorted. A stored object's
+// plugin configs have been through a JSON round trip while a freshly translated one may
+// still hold typed structs, whose fields marshal in declaration order rather than sorted.
+//
+// A marshal error here is logged rather than propagated: v is always a type this package
+// itself built from already-parsed JSON, so this is defensive rather than expected, and
+// callers use the result only for change detection, not for anything that reaches ADC.
+func canonicalJSON(log logr.Logger, v any) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		log.Error(err, "failed to marshal value for change detection")
+		return ""
+	}
+	var generic any
+	if err := json.Unmarshal(b, &generic); err != nil {
+		return string(b)
+	}
+	if sorted, err := json.Marshal(generic); err != nil {
+		log.Error(err, "failed to re-marshal value for change detection")
+	} else {
+		b = sorted
+	}
+	return string(b)
+}
+
+func pluginsContent(log logr.Logger, plugins adctypes.Plugins) string {
+	if len(plugins) == 0 {
+		return ""
+	}
+	return canonicalJSON(log, plugins)
+}
+
+func serviceID(service *adctypes.Service) string    { return service.ID }
+func consumerID(consumer *adctypes.Consumer) string { return consumer.Username }
+func sslID(ssl *adctypes.SSL) string                { return ssl.ID }
 
 func childrenOf(service *adctypes.Service, owner types.NamespacedNameKind) []Entity {
 	children := make([]Entity, 0, len(service.Routes)+len(service.StreamRoutes))
@@ -118,11 +187,16 @@ func routeOwner(targetCache Cache, id string) (types.NamespacedNameKind, bool) {
 
 // setGlobalRules is Insert and SetGlobalRules' shared implementation. Callers must
 // already hold s.Lock.
-func (s *Store) setGlobalRules(targetCache Cache, owner types.NamespacedNameKind, plugins adctypes.GlobalRule) error {
+func (s *Store) setGlobalRules(name string, targetCache Cache, owner types.NamespacedNameKind, plugins adctypes.GlobalRule) error {
 	rows, err := targetCache.ListGlobalRules(&OwnerSelector{Owner: owner})
 	if err != nil {
 		return err
 	}
+	existing := make(adctypes.Plugins, len(rows))
+	for _, row := range rows {
+		existing[row.ID] = row.Config
+	}
+	changed := pluginsContent(s.log, existing) != pluginsContent(s.log, adctypes.Plugins(plugins))
 	for _, row := range rows {
 		if err := targetCache.DeleteGlobalRule(row); err != nil {
 			return err
@@ -133,16 +207,25 @@ func (s *Store) setGlobalRules(targetCache Cache, owner types.NamespacedNameKind
 			return err
 		}
 	}
+	if changed {
+		s.recordChange(name, owner)
+	}
 	return nil
 }
 
 // setPluginMetadata is Insert and SetPluginMetadata's shared implementation. Callers
 // must already hold s.Lock.
-func (s *Store) setPluginMetadata(targetCache Cache, metadata adctypes.PluginMetadata) error {
+func (s *Store) setPluginMetadata(name string, targetCache Cache, metadata adctypes.PluginMetadata) error {
 	rows, err := targetCache.ListPluginMetadata()
 	if err != nil {
 		return err
 	}
+	existing := make(adctypes.Plugins, len(rows))
+	for _, row := range rows {
+		existing[row.ID] = row.Config
+	}
+	gatewayProxy, hasGatewayProxy := gatewayProxyOf(name)
+	changed := hasGatewayProxy && pluginsContent(s.log, existing) != pluginsContent(s.log, adctypes.Plugins(metadata))
 	for _, row := range rows {
 		if err := targetCache.DeletePluginMetadata(row); err != nil {
 			return err
@@ -152,6 +235,9 @@ func (s *Store) setPluginMetadata(targetCache Cache, metadata adctypes.PluginMet
 		if err := targetCache.InsertPluginMetadata(&PluginMetadataRow{ID: pluginName, Config: config}); err != nil {
 			return err
 		}
+	}
+	if changed {
+		s.recordChange(name, gatewayProxy)
 	}
 	return nil
 }
@@ -169,6 +255,7 @@ func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.
 		Name:      Labels[label.LabelName],
 		Namespace: Labels[label.LabelNamespace],
 	}
+	changed := false
 	for _, resourceType := range resourceTypes {
 		switch resourceType {
 		case adctypes.TypeService:
@@ -176,6 +263,7 @@ func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.
 			if err != nil {
 				return err
 			}
+			changed = changed || contentOf(s.log, services, serviceID) != contentOf(s.log, resources.Services, serviceID)
 			for _, service := range services {
 				if err := targetCache.DeleteService(service); err != nil {
 					return err
@@ -191,6 +279,7 @@ func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.
 			if err != nil {
 				return err
 			}
+			changed = changed || contentOf(s.log, consumers, consumerID) != contentOf(s.log, resources.Consumers, consumerID)
 			for _, consumer := range consumers {
 				if err := targetCache.DeleteConsumer(consumer); err != nil {
 					return err
@@ -205,8 +294,8 @@ func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.
 			ssls, err := targetCache.ListSSL(selector)
 			if err != nil {
 				return err
-
 			}
+			changed = changed || contentOf(s.log, ssls, sslID) != contentOf(s.log, resources.SSLs, sslID)
 			for _, ssl := range ssls {
 				if err := targetCache.DeleteSSL(ssl); err != nil {
 					return err
@@ -218,16 +307,19 @@ func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.
 				}
 			}
 		case adctypes.TypeGlobalRule:
-			if err := s.setGlobalRules(targetCache, ownerFromLabels(Labels), resources.GlobalRules); err != nil {
+			if err := s.setGlobalRules(name, targetCache, ownerFromLabels(Labels), resources.GlobalRules); err != nil {
 				return err
 			}
 		case adctypes.TypePluginMetadata:
-			if err := s.setPluginMetadata(targetCache, resources.PluginMetadata); err != nil {
+			if err := s.setPluginMetadata(name, targetCache, resources.PluginMetadata); err != nil {
 				return err
 			}
 		default:
 			continue
 		}
+	}
+	if changed {
+		s.recordChange(name, ownerFromLabels(Labels))
 	}
 	return nil
 }
@@ -247,6 +339,12 @@ func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]st
 		Name:      Labels[label.LabelName],
 		Namespace: Labels[label.LabelNamespace],
 	}
+	changed := false
+	defer func() {
+		if changed {
+			s.recordChange(name, ownerFromLabels(Labels))
+		}
+	}()
 	for _, resourceType := range resourceTypes {
 		switch resourceType {
 		case adctypes.TypeService:
@@ -254,6 +352,7 @@ func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]st
 			if err != nil {
 				s.log.Error(err, "failed to list services")
 			}
+			changed = changed || len(services) > 0
 			for _, service := range services {
 				if err := targetCache.DeleteService(service); err != nil {
 					s.log.Error(err, "failed to delete service", "service", service.ID)
@@ -264,6 +363,7 @@ func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]st
 			if err != nil {
 				s.log.Error(err, "failed to list ssl")
 			}
+			changed = changed || len(ssls) > 0
 			for _, ssl := range ssls {
 				if err := targetCache.DeleteSSL(ssl); err != nil {
 					s.log.Error(err, "failed to delete ssl", "ssl", ssl.ID)
@@ -274,17 +374,18 @@ func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]st
 			if err != nil {
 				s.log.Error(err, "failed to list consumers")
 			}
+			changed = changed || len(consumers) > 0
 			for _, consumer := range consumers {
 				if err := targetCache.DeleteConsumer(consumer); err != nil {
 					s.log.Error(err, "failed to delete consumer", "consumer", consumer.Username)
 				}
 			}
 		case adctypes.TypeGlobalRule:
-			if err := s.setGlobalRules(targetCache, ownerFromLabels(Labels), nil); err != nil {
+			if err := s.setGlobalRules(name, targetCache, ownerFromLabels(Labels), nil); err != nil {
 				s.log.Error(err, "failed to delete global rules")
 			}
 		case adctypes.TypePluginMetadata:
-			if err := s.setPluginMetadata(targetCache, nil); err != nil {
+			if err := s.setPluginMetadata(name, targetCache, nil); err != nil {
 				s.log.Error(err, "failed to delete plugin metadata")
 			}
 		}
@@ -297,14 +398,19 @@ func (s *Store) DeleteAll(name string) {
 	s.Lock()
 	defer s.Unlock()
 	delete(s.cacheMap, name)
+	delete(s.lastChange, name)
+	s.revision++
+	s.resetAt[name] = s.revision
 }
 
-func (s *Store) GetResources(name string) (*adctypes.Resources, error) {
+// GetResources returns everything the cacheKey name holds, together with the store
+// revision it was read at.
+func (s *Store) GetResources(name string) (*adctypes.Resources, uint64, error) {
 	s.Lock()
 	defer s.Unlock()
 	targetCache, ok := s.cacheMap[name]
 	if !ok {
-		return &adctypes.Resources{}, nil
+		return &adctypes.Resources{}, s.revision, nil
 	}
 	var globalRules adctypes.GlobalRule
 	globalRuleRows, _ := targetCache.ListGlobalRules()
@@ -331,7 +437,7 @@ func (s *Store) GetResources(name string) (*adctypes.Resources, error) {
 		SSLs:           ssls,
 		GlobalRules:    globalRules,
 		PluginMetadata: pluginMetadata,
-	}, nil
+	}, s.revision, nil
 }
 
 // SetGlobalRules replaces the global_rules plugins owner declares in the cacheKey name
@@ -345,7 +451,7 @@ func (s *Store) SetGlobalRules(name string, owner types.NamespacedNameKind, plug
 	if err != nil {
 		return err
 	}
-	return s.setGlobalRules(targetCache, owner, plugins)
+	return s.setGlobalRules(name, targetCache, owner, plugins)
 }
 
 // SetPluginMetadata replaces all plugin_metadata the cacheKey name holds.
@@ -356,7 +462,7 @@ func (s *Store) SetPluginMetadata(name string, metadata adctypes.PluginMetadata)
 	if err != nil {
 		return err
 	}
-	return s.setPluginMetadata(targetCache, metadata)
+	return s.setPluginMetadata(name, targetCache, metadata)
 }
 
 // Lookup finds the top-level entity of resourceType and id the cacheKey name holds,
@@ -459,4 +565,30 @@ func (s *Store) OwnedEntities(name string, owner types.NamespacedNameKind) []Ent
 		entities = append(entities, Entity{Type: adctypes.TypePluginMetadata, ID: row.ID, Name: row.ID, Owner: owner})
 	}
 	return entities
+}
+
+// Revision returns the store's current revision.
+func (s *Store) Revision() uint64 {
+	s.Lock()
+	defer s.Unlock()
+	return s.revision
+}
+
+// ChangedSince reports whether owner's content in the cacheKey name, or the cacheKey as a
+// whole, changed after revision: a sync result built at revision then no longer describes
+// what the store holds for owner.
+func (s *Store) ChangedSince(name string, owner types.NamespacedNameKind, revision uint64) bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.lastChange[name][owner] > revision || s.resetAt[name] > revision
+}
+
+// OwnerChangedSince reports whether owner's content changed after revision in any
+// cacheKey.
+func (s *Store) OwnerChangedSince(owner types.NamespacedNameKind, revision uint64) bool {
+	s.Lock()
+	defer s.Unlock()
+	return slices.ContainsFunc(slices.Collect(maps.Values(s.lastChange)), func(byOwner map[types.NamespacedNameKind]uint64) bool {
+		return byOwner[owner] > revision
+	})
 }
