@@ -18,6 +18,8 @@
 package translator
 
 import (
+	"cmp"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -121,9 +123,9 @@ func (t *Translator) attachBackendTrafficPolicyToUpstream(policy *v1alpha1.Backe
 	}
 	if policy.Spec.Timeout != nil {
 		upstream.Timeout = &adctypes.Timeout{
-			Connect: int(policy.Spec.Timeout.Connect.Seconds()),
-			Read:    int(policy.Spec.Timeout.Read.Seconds()),
-			Send:    int(policy.Spec.Timeout.Send.Seconds()),
+			Connect: cmp.Or(policy.Spec.Timeout.Connect.Duration, apiv2.DefaultUpstreamTimeout).Seconds(),
+			Read:    cmp.Or(policy.Spec.Timeout.Read.Duration, apiv2.DefaultUpstreamTimeout).Seconds(),
+			Send:    cmp.Or(policy.Spec.Timeout.Send.Duration, apiv2.DefaultUpstreamTimeout).Seconds(),
 		}
 	}
 	if policy.Spec.LoadBalancer != nil {

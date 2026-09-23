@@ -87,9 +87,9 @@ func (t *Translator) buildTimeout(rule apiv2.ApisixRouteHTTP) *adc.Timeout {
 	}
 	defaultTimeout := metav1.Duration{Duration: apiv2.DefaultUpstreamTimeout}
 	return &adc.Timeout{
-		Connect: cmp.Or(int(rule.Timeout.Connect.Seconds()), int(defaultTimeout.Seconds())),
-		Read:    cmp.Or(int(rule.Timeout.Read.Seconds()), int(defaultTimeout.Seconds())),
-		Send:    cmp.Or(int(rule.Timeout.Send.Seconds()), int(defaultTimeout.Seconds())),
+		Connect: cmp.Or(rule.Timeout.Connect.Seconds(), defaultTimeout.Seconds()),
+		Read:    cmp.Or(rule.Timeout.Read.Seconds(), defaultTimeout.Seconds()),
+		Send:    cmp.Or(rule.Timeout.Send.Seconds(), defaultTimeout.Seconds()),
 	}
 }
 
