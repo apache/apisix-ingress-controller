@@ -144,7 +144,10 @@ func (t *Translator) TranslateTLSRoute(tctx *provider.TranslateContext, tlsRoute
 		}
 
 		for _, host := range hosts {
-			streamRoutes := t.buildL4StreamRoutes(tctx, tlsRoute.Namespace, tlsRoute.Name, ruleIndex, "TLS", "TLSRoute", labels)
+			streamRoutes, err := t.buildL4StreamRoutes(tctx, tlsRoute.Namespace, tlsRoute.Name, ruleIndex, "TLS", "TLSRoute", labels)
+			if err != nil {
+				return nil, err
+			}
 			for _, streamRoute := range streamRoutes {
 				streamRoute.SNI = host
 			}
