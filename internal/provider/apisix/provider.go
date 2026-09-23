@@ -291,12 +291,9 @@ func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 
 // applyResourceState upserts a resource's config associations and its contribution to each
 // target config's cached resource snapshot, the AIC-side bookkeeping the adc client
-// package no longer holds itself.
-// applyResourceState upserts a resource's config associations and its contribution to each
-// target config's cached resource snapshot. Whatever the skip table excluded for a
-// resource whose content this changed gets another try; rewriting identical content, which
-// reconciles triggered by unrelated events do all the time, must not retry a known-bad
-// resource.
+// package no longer holds itself. Whatever the skip table excluded for a resource whose
+// content this changed gets another try; rewriting identical content, which reconciles
+// triggered by unrelated events do all the time, must not retry a known-bad resource.
 func (d *apisixProvider) applyResourceState(
 	rk types.NamespacedNameKind,
 	configs map[types.NamespacedNameKind]adctypes.Config,

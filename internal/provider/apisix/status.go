@@ -227,8 +227,10 @@ func (d *apisixProvider) applyResourceFailures(ctx context.Context, newFailures 
 }
 
 // recordIngressFailureEvent fires a Warning event for an Ingress whose status has no
-// conditions to carry a failure. It is fired every round the Ingress stays failing, since
-// events expire.
+// conditions to carry a failure. It is fired every round the Ingress stays failing: the
+// EventRecorder correlates repeats of the same reason and message into one Event object,
+// refreshing its lastTimestamp instead of creating a new one, which is what keeps a
+// long-lived failure from aging out of `kubectl get events` once its TTL passes.
 func (d *apisixProvider) recordIngressFailureEvent(ctx context.Context, nnk types.NamespacedNameKind, msgs []string) {
 	if d.EventRecorder == nil || d.K8sClient == nil {
 		return

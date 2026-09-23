@@ -110,36 +110,45 @@ func (s *Store) recordChange(name string, owner types.NamespacedNameKind) {
 
 // contentOf renders items, ordered by id, the way they reach ADC, so two writes can be
 // compared by what they would push.
-func contentOf[T any](items []T, id func(T) string) string {
+func contentOf[T any](log logr.Logger, items []T, id func(T) string) string {
 	if len(items) == 0 {
 		return ""
 	}
 	sorted := slices.Clone(items)
 	slices.SortFunc(sorted, func(a, b T) int { return strings.Compare(id(a), id(b)) })
-	return canonicalJSON(sorted)
+	return canonicalJSON(log, sorted)
 }
 
 // canonicalJSON renders v as JSON with every object's keys sorted. A stored object's
 // plugin configs have been through a JSON round trip while a freshly translated one may
 // still hold typed structs, whose fields marshal in declaration order rather than sorted.
-func canonicalJSON(v any) string {
+//
+// A marshal error here is logged rather than propagated: v is always a type this package
+// itself built from already-parsed JSON, so this is defensive rather than expected, and
+// callers use the result only for change detection, not for anything that reaches ADC.
+func canonicalJSON(log logr.Logger, v any) string {
 	b, err := json.Marshal(v)
 	if err != nil {
+		log.Error(err, "failed to marshal value for change detection")
 		return ""
 	}
 	var generic any
 	if err := json.Unmarshal(b, &generic); err != nil {
 		return string(b)
 	}
-	b, _ = json.Marshal(generic)
+	if sorted, err := json.Marshal(generic); err != nil {
+		log.Error(err, "failed to re-marshal value for change detection")
+	} else {
+		b = sorted
+	}
 	return string(b)
 }
 
-func pluginsContent(plugins adctypes.Plugins) string {
+func pluginsContent(log logr.Logger, plugins adctypes.Plugins) string {
 	if len(plugins) == 0 {
 		return ""
 	}
-	return canonicalJSON(plugins)
+	return canonicalJSON(log, plugins)
 }
 
 func serviceID(service *adctypes.Service) string    { return service.ID }
@@ -187,9 +196,7 @@ func (s *Store) setGlobalRules(name string, targetCache Cache, owner types.Names
 	for _, row := range rows {
 		existing[row.ID] = row.Config
 	}
-	if pluginsContent(existing) != pluginsContent(adctypes.Plugins(plugins)) {
-		defer s.recordChange(name, owner)
-	}
+	changed := pluginsContent(s.log, existing) != pluginsContent(s.log, adctypes.Plugins(plugins))
 	for _, row := range rows {
 		if err := targetCache.DeleteGlobalRule(row); err != nil {
 			return err
@@ -199,6 +206,9 @@ func (s *Store) setGlobalRules(name string, targetCache Cache, owner types.Names
 		if err := targetCache.InsertGlobalRule(&GlobalRuleRow{ID: pluginName, Owner: owner, Config: config}); err != nil {
 			return err
 		}
+	}
+	if changed {
+		s.recordChange(name, owner)
 	}
 	return nil
 }
@@ -214,9 +224,8 @@ func (s *Store) setPluginMetadata(name string, targetCache Cache, metadata adcty
 	for _, row := range rows {
 		existing[row.ID] = row.Config
 	}
-	if gatewayProxy, ok := gatewayProxyOf(name); ok && pluginsContent(existing) != pluginsContent(adctypes.Plugins(metadata)) {
-		defer s.recordChange(name, gatewayProxy)
-	}
+	gatewayProxy, hasGatewayProxy := gatewayProxyOf(name)
+	changed := hasGatewayProxy && pluginsContent(s.log, existing) != pluginsContent(s.log, adctypes.Plugins(metadata))
 	for _, row := range rows {
 		if err := targetCache.DeletePluginMetadata(row); err != nil {
 			return err
@@ -226,6 +235,9 @@ func (s *Store) setPluginMetadata(name string, targetCache Cache, metadata adcty
 		if err := targetCache.InsertPluginMetadata(&PluginMetadataRow{ID: pluginName, Config: config}); err != nil {
 			return err
 		}
+	}
+	if changed {
+		s.recordChange(name, gatewayProxy)
 	}
 	return nil
 }
@@ -244,11 +256,6 @@ func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.
 		Namespace: Labels[label.LabelNamespace],
 	}
 	changed := false
-	defer func() {
-		if changed {
-			s.recordChange(name, ownerFromLabels(Labels))
-		}
-	}()
 	for _, resourceType := range resourceTypes {
 		switch resourceType {
 		case adctypes.TypeService:
@@ -256,7 +263,7 @@ func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.
 			if err != nil {
 				return err
 			}
-			changed = changed || contentOf(services, serviceID) != contentOf(resources.Services, serviceID)
+			changed = changed || contentOf(s.log, services, serviceID) != contentOf(s.log, resources.Services, serviceID)
 			for _, service := range services {
 				if err := targetCache.DeleteService(service); err != nil {
 					return err
@@ -272,7 +279,7 @@ func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.
 			if err != nil {
 				return err
 			}
-			changed = changed || contentOf(consumers, consumerID) != contentOf(resources.Consumers, consumerID)
+			changed = changed || contentOf(s.log, consumers, consumerID) != contentOf(s.log, resources.Consumers, consumerID)
 			for _, consumer := range consumers {
 				if err := targetCache.DeleteConsumer(consumer); err != nil {
 					return err
@@ -288,7 +295,7 @@ func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.
 			if err != nil {
 				return err
 			}
-			changed = changed || contentOf(ssls, sslID) != contentOf(resources.SSLs, sslID)
+			changed = changed || contentOf(s.log, ssls, sslID) != contentOf(s.log, resources.SSLs, sslID)
 			for _, ssl := range ssls {
 				if err := targetCache.DeleteSSL(ssl); err != nil {
 					return err
@@ -310,6 +317,9 @@ func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.
 		default:
 			continue
 		}
+	}
+	if changed {
+		s.recordChange(name, ownerFromLabels(Labels))
 	}
 	return nil
 }
