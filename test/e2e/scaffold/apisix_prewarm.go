@@ -75,7 +75,8 @@ func isPoolable(o Options) bool {
 	return !o.SkipHooks &&
 		!o.EnableWebhook &&
 		o.ControllerName == "" &&
-		o.APISIXAdminAPIKey == ""
+		o.APISIXAdminAPIKey == "" &&
+		len(o.NamespaceSelector) == 0
 }
 
 // profileKey identifies the pool an environment belongs to. Within a process

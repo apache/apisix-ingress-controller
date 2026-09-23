@@ -19,6 +19,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/go-logr/logr"
@@ -55,7 +56,7 @@ type ApisixTlsReconciler struct {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ApisixTlsReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	bdr := ctrl.NewControllerManagedBy(mgr).
 		For(&apiv2.ApisixTls{},
 			builder.WithPredicates(
 				MatchesIngressClassPredicate(r.Client, r.Log),
@@ -66,6 +67,7 @@ func (r *ApisixTlsReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				predicate.GenerationChangedPredicate{},
 				predicate.AnnotationChangedPredicate{},
 				predicate.NewPredicateFuncs(TypePredicate[*corev1.Secret]()),
+				predicate.NewPredicateFuncs(TypePredicate[*corev1.Namespace]()),
 			),
 		).
 		Watches(
@@ -80,7 +82,8 @@ func (r *ApisixTlsReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		).
 		Watches(&corev1.Secret{},
 			handler.EnqueueRequestsFromMapFunc(r.listApisixTlsForSecret),
-		).
+		)
+	return watchNamespaceSelector(bdr, r.Client, r.Log, func() client.ObjectList { return &apiv2.ApisixTlsList{} }).
 		Complete(r)
 }
 
@@ -119,6 +122,13 @@ func (r *ApisixTlsReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		r.Log.V(1).Info("no matching IngressClass available, skip processing",
 			"ingressClassName", tls.Spec.IngressClassName,
 			"error", err.Error())
+		// Retract what was synced before the namespace stopped being watched.
+		if errors.Is(err, ErrNamespaceNotWatched) {
+			if err := r.Provider.Delete(ctx, &tls); err != nil {
+				r.Log.Error(err, "failed to delete TLS from provider")
+				return ctrl.Result{}, err
+			}
+		}
 		return ctrl.Result{}, nil
 	}
 
