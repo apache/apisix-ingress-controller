@@ -77,10 +77,13 @@ func (d *apisixProvider) updateStatusFromSyncResults(ctx context.Context, result
 	for configName, execErrs := range results {
 		dropped := map[wireKey]exclusion{}
 		gatewayProxyMsgs, failedEndpoints := d.classifySyncResult(configName, execErrs, dropped, resourceFailures)
-		builtRevision := revisions[configName]
-		newlyExcluded += d.skipped.MarkFailing(configName, dropped, func(owner types.NamespacedNameKind) bool {
-			return d.store.ChangedSince(configName, owner, builtRevision)
-		})
+		if builtRevision, ok := revisions[configName]; ok {
+			newlyExcluded += d.skipped.MarkFailing(configName, dropped, func(owner types.NamespacedNameKind) bool {
+				return d.store.ChangedSince(configName, owner, builtRevision)
+			})
+		} else {
+			d.log.Error(fmt.Errorf("no store revision for config %q", configName), "skipping this round's newly rejected resources for it: sync() should always record a revision for every config in results")
+		}
 
 		var gatewayProxy types.NamespacedNameKind
 		if err := gatewayProxy.FromString(configName); err != nil {
