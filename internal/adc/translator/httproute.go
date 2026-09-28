@@ -336,7 +336,7 @@ func (t *Translator) fillPluginFromHTTPRequestRedirectFilter(plugins adctypes.Pl
 	plugin.URI = uri
 }
 
-func (t *Translator) fillHTTPRoutePoliciesForHTTPRoute(tctx *provider.TranslateContext, routes []*adctypes.Route, rule gatewayv1.HTTPRouteRule) {
+func (t *Translator) fillHTTPRoutePoliciesForHTTPRoute(tctx *provider.TranslateContext, routes []*adctypes.Route, rule gatewayv1.HTTPRouteRule) error {
 	var policies []v1alpha1.HTTPRoutePolicy
 	for _, policy := range tctx.HTTPRoutePolicies {
 		for _, ref := range policy.Spec.TargetRefs {
@@ -347,28 +347,40 @@ func (t *Translator) fillHTTPRoutePoliciesForHTTPRoute(tctx *provider.TranslateC
 		}
 	}
 
-	t.fillHTTPRoutePolicies(routes, policies)
+	return t.fillHTTPRoutePolicies(routes, policies)
 }
 
-func (t *Translator) fillHTTPRoutePoliciesForIngress(tctx *provider.TranslateContext, routes []*adctypes.Route) {
-	t.fillHTTPRoutePolicies(routes, tctx.HTTPRoutePolicies)
+func (t *Translator) fillHTTPRoutePoliciesForIngress(tctx *provider.TranslateContext, routes []*adctypes.Route) error {
+	return t.fillHTTPRoutePolicies(routes, tctx.HTTPRoutePolicies)
 }
 
-func (t *Translator) fillHTTPRoutePolicies(routes []*adctypes.Route, policies []v1alpha1.HTTPRoutePolicy) {
+// fillHTTPRoutePolicies fails on any malformed var: vars are AND-ed match
+// conditions, so dropping one would widen the route.
+func (t *Translator) fillHTTPRoutePolicies(routes []*adctypes.Route, policies []v1alpha1.HTTPRoutePolicy) error {
 	for _, policy := range policies {
+		vars, err := ParseHTTPRoutePolicyVars(&policy)
+		if err != nil {
+			return err
+		}
 		for _, route := range routes {
 			route.Priority = policy.Spec.Priority
-			for _, data := range policy.Spec.Vars {
-				var v []adctypes.StringOrSlice
-				if err := json.Unmarshal(data.Raw, &v); err != nil {
-					t.Log.Error(err, "failed to unmarshal spec.Vars item to []StringOrSlice", "data", string(data.Raw))
-					// todo: update status
-					continue
-				}
-				route.Vars = append(route.Vars, v)
-			}
+			route.Vars = append(route.Vars, vars...)
 		}
 	}
+	return nil
+}
+
+// ParseHTTPRoutePolicyVars decodes spec.vars, failing on the first malformed item.
+func ParseHTTPRoutePolicyVars(policy *v1alpha1.HTTPRoutePolicy) (adctypes.Vars, error) {
+	vars := make(adctypes.Vars, 0, len(policy.Spec.Vars))
+	for i, data := range policy.Spec.Vars {
+		var v []adctypes.StringOrSlice
+		if err := json.Unmarshal(data.Raw, &v); err != nil {
+			return nil, fmt.Errorf("HTTPRoutePolicy %s/%s: invalid spec.vars[%d]: %w", policy.Namespace, policy.Name, i, err)
+		}
+		vars = append(vars, v)
+	}
+	return vars, nil
 }
 
 func (t *Translator) translateEndpointSlice(portName *string, weight int, endpointSlices []discoveryv1.EndpointSlice, endpointFilter func(*discoveryv1.Endpoint) bool) adctypes.UpstreamNodes {
@@ -788,7 +800,9 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 			}
 		}
 
-		t.fillHTTPRoutePoliciesForHTTPRoute(tctx, routes, rule)
+		if err := t.fillHTTPRoutePoliciesForHTTPRoute(tctx, routes, rule); err != nil {
+			return nil, err
+		}
 		service.Routes = routes
 
 		result.Services = append(result.Services, service)
