@@ -61,6 +61,29 @@ func newGatewayProxy(tlsVerify *bool, caCert string) *v1alpha1.GatewayProxy {
 	}
 }
 
+func TestTranslateGatewayProxyToConfig_TlsVerifyDefault(t *testing.T) {
+	cases := []struct {
+		name      string
+		tlsVerify *bool
+		want      bool
+	}{
+		{"unset defaults to verify", nil, true},
+		{"explicit false opts out", ptr.To(false), false},
+		{"explicit true verifies", ptr.To(true), true},
+	}
+
+	translator := NewTranslator(logr.Discard(), "")
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			tctx := provider.NewDefaultTranslateContext(context.Background())
+			cfg, err := translator.TranslateGatewayProxyToConfig(tctx, newGatewayProxy(c.tlsVerify, ""), false)
+			require.NoError(t, err)
+			require.NotNil(t, cfg)
+			require.Equal(t, c.want, cfg.TlsVerify)
+		})
+	}
+}
+
 func TestTranslateGatewayProxyToConfigCaCert(t *testing.T) {
 	t.Run("carries the CA certificate into the config", func(t *testing.T) {
 		tr := &Translator{Log: logr.Discard()}
