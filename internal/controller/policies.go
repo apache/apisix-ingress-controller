@@ -38,6 +38,7 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
+	"github.com/apache/apisix-ingress-controller/internal/pluginconfig"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
@@ -300,26 +301,33 @@ func ProcessL4RoutePolicy(
 	})
 
 	winner := list.Items[0].DeepCopy()
-	// A policy whose Secrets cannot be read is not attached at all, so a route is never
-	// programmed with a subset of the plugins the policy asks for.
-	secretErr := loadPluginSecrets(tctx, c, tctx, winner.Namespace, winner.Spec.Plugins)
-	if secretErr != nil {
-		log.Error(secretErr, "failed to load Secrets referenced by L4RoutePolicy plugins", "policy", types.NamespacedName{Namespace: winner.Namespace, Name: winner.Name})
+	renderErr := loadPluginSecrets(tctx, c, tctx, winner.Namespace, winner.Spec.Plugins)
+	if renderErr == nil {
+		for _, plugin := range winner.Spec.Plugins {
+			if _, err := pluginconfig.Render(plugin, winner.Namespace, tctx.Secrets); err != nil {
+				log.Error(err, "failed to render L4RoutePolicy plugin config", "plugin", plugin.Name, "policy", types.NamespacedName{Namespace: winner.Namespace, Name: winner.Name})
+				renderErr = fmt.Errorf("plugin %q has invalid configuration", plugin.Name)
+				break
+			}
+		}
 	} else {
-		tctx.L4RoutePolicies[types.NamespacedName{Namespace: winner.Namespace, Name: winner.Name}] = winner
+		log.Error(renderErr, "failed to load Secrets referenced by L4RoutePolicy plugins", "policy", types.NamespacedName{Namespace: winner.Namespace, Name: winner.Name})
 	}
+	// Keep the winning policy in the translation context even when rendering failed.
+	// Translation must return the error instead of publishing the route without it.
+	tctx.L4RoutePolicies[types.NamespacedName{Namespace: winner.Namespace, Name: winner.Name}] = winner
 
 	for i := range list.Items {
 		policy := list.Items[i]
 		var condition metav1.Condition
-		if i == 0 && secretErr != nil {
+		if i == 0 && renderErr != nil {
 			condition = metav1.Condition{
 				Type:               string(gatewayv1.PolicyConditionAccepted),
 				Status:             metav1.ConditionFalse,
 				ObservedGeneration: policy.GetGeneration(),
 				LastTransitionTime: metav1.Now(),
 				Reason:             string(gatewayv1.PolicyReasonInvalid),
-				Message:            secretErr.Error(),
+				Message:            renderErr.Error(),
 			}
 		} else if i == 0 {
 			condition = metav1.Condition{

@@ -18,6 +18,8 @@
 package translator
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -229,9 +231,9 @@ func (t *Translator) AttachL4RoutePolicyPlugins(
 	routeNamespace, routeName, routeKind string,
 	plugins adctypes.Plugins,
 	secrets map[types.NamespacedName]*corev1.Secret,
-) {
+) error {
 	if len(policies) == 0 {
-		return
+		return nil
 	}
 	for _, policy := range policies {
 		if policy.Namespace != routeNamespace {
@@ -252,19 +254,19 @@ func (t *Translator) AttachL4RoutePolicyPlugins(
 			if ref.SectionName != nil && *ref.SectionName != "" {
 				continue
 			}
-			t.mergeL4PolicyPlugins(policy, plugins, secrets)
-			return
+			return t.mergeL4PolicyPlugins(policy, plugins, secrets)
 		}
 	}
+	return nil
 }
 
-func (t *Translator) mergeL4PolicyPlugins(policy *v1alpha1.L4RoutePolicy, plugins adctypes.Plugins, secrets map[types.NamespacedName]*corev1.Secret) {
+func (t *Translator) mergeL4PolicyPlugins(policy *v1alpha1.L4RoutePolicy, plugins adctypes.Plugins, secrets map[types.NamespacedName]*corev1.Secret) error {
 	for _, plugin := range policy.Spec.Plugins {
 		cfg, err := renderPluginConfig(plugin, policy.Namespace, secrets)
 		if err != nil {
-			t.Log.Error(err, "failed to render L4RoutePolicy plugin config", "plugin", plugin.Name, "policy", policy.Name)
-			continue
+			return fmt.Errorf("failed to render plugin %q from L4RoutePolicy %s/%s: %w", plugin.Name, policy.Namespace, policy.Name, err)
 		}
 		plugins[plugin.Name] = cfg
 	}
+	return nil
 }
