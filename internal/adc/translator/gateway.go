@@ -268,10 +268,10 @@ func (t *Translator) fillPluginMetadataFromGatewayProxy(pluginMetadata adctypes.
 	for pluginName, plugin := range gatewayProxy.Spec.PluginMetadata {
 		var pluginConfig map[string]any
 		if err := json.Unmarshal(plugin.Raw, &pluginConfig); err != nil {
-			t.Log.Error(err, "gateway proxy plugin_metadata unmarshal failed", "plugin", pluginName, "config", string(plugin.Raw))
+			t.Log.Error(err, "gateway proxy plugin_metadata unmarshal failed", "plugin", pluginName)
 			continue
 		}
-		t.Log.V(1).Info("fill plugin_metadata for gateway proxy", "plugin", pluginName, "config", pluginConfig)
+		t.Log.V(1).Info("fill plugin_metadata for gateway proxy", "plugin", pluginName)
 		pluginMetadata[pluginName] = pluginConfig
 	}
 }
