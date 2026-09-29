@@ -17,6 +17,7 @@ package ssl
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -303,6 +304,10 @@ func (d *ConflictDetector) resolveGatewayProxy(ctx context.Context, obj client.O
 		return controller.GetGatewayProxyByGateway(ctx, d.client, resource)
 	case *networkingv1.Ingress:
 		ingressClass, err := controller.FindMatchingIngressClass(ctx, d.client, logger, resource)
+		if errors.Is(err, controller.ErrNamespaceNotWatched) {
+			// Handled by another controller, so it cannot conflict.
+			return nil, nil
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -312,6 +317,10 @@ func (d *ConflictDetector) resolveGatewayProxy(ctx context.Context, obj client.O
 		return controller.GetGatewayProxyByIngressClass(ctx, d.client, ingressClass)
 	case *apiv2.ApisixTls:
 		ingressClass, err := controller.FindMatchingIngressClass(ctx, d.client, logger, resource)
+		if errors.Is(err, controller.ErrNamespaceNotWatched) {
+			// Handled by another controller, so it cannot conflict.
+			return nil, nil
+		}
 		if err != nil {
 			return nil, err
 		}

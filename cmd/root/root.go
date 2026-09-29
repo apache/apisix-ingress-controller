@@ -35,6 +35,7 @@ import (
 
 	// +kubebuilder:scaffold:imports
 
+	"github.com/apache/apisix-ingress-controller/internal/controller"
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/manager"
 	"github.com/apache/apisix-ingress-controller/internal/version"
@@ -106,6 +107,9 @@ func newAPISIXIngressController() *cobra.Command {
 			}
 
 			if err := cfg.Validate(); err != nil {
+				return err
+			}
+			if err := controller.SetNamespaceSelector(cfg.NamespaceSelector); err != nil {
 				return err
 			}
 

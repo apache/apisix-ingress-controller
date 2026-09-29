@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -92,11 +93,9 @@ func (g *GlobalRule) DeepCopy() GlobalRule {
 	return GlobalRule(copied)
 }
 
-// +k8s:deepcopy-gen=true
-type GlobalRuleItem struct {
-	Metadata `json:",inline" yaml:",inline"`
-
-	Plugins Plugins `json:"plugins" yaml:"plugins"`
+// MarshalLog implements logr.Marshaler. See Plugins.MarshalLog.
+func (g GlobalRule) MarshalLog() any {
+	return pluginNames(g)
 }
 
 type PluginMetadata Plugins
@@ -105,6 +104,11 @@ func (p *PluginMetadata) DeepCopy() PluginMetadata {
 	original := Plugins(*p)
 	copied := original.DeepCopy()
 	return PluginMetadata(copied)
+}
+
+// MarshalLog implements logr.Marshaler. See Plugins.MarshalLog.
+func (p PluginMetadata) MarshalLog() any {
+	return pluginNames(p)
 }
 
 // +k8s:deepcopy-gen=true
@@ -411,6 +415,23 @@ func (p Plugins) DeepCopy() Plugins {
 	out := make(Plugins)
 	p.DeepCopyInto(&out)
 	return out
+}
+
+// MarshalLog implements logr.Marshaler so logging a plugin map emits only the
+// plugin names. Plugin config is arbitrary user JSON and routinely carries
+// credentials (kafka SASL passwords, logger tokens, OIDC client secrets).
+// It affects logging only, not the JSON sent to the data plane.
+func (p Plugins) MarshalLog() any {
+	return pluginNames(p)
+}
+
+func pluginNames(p map[string]any) []string {
+	names := make([]string, 0, len(p))
+	for name := range p {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
 }
 
 // UpstreamNode is the node in upstream

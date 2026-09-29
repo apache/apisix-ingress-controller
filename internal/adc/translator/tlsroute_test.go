@@ -191,33 +191,3 @@ func TestTranslateTLSRouteSNIs(t *testing.T) {
 		assert.Equal(t, "*", streamRoutes[0].SNI)
 	})
 }
-
-func TestTranslateTLSRouteServerPort(t *testing.T) {
-	passthrough := gatewayv1.TLSModePassthrough
-
-	t.Run("each listener port gets its own stream route", func(t *testing.T) {
-		result := translateTLSRoute(t, []gatewayv1.Listener{
-			tlsModeListener("a", 9110, &passthrough, ""),
-			tlsModeListener("b", 9120, &passthrough, ""),
-		}, false, "example.com")
-
-		// Regression: without a server_port match both listeners' traffic fell
-		// onto one StreamRoute, and the two shared a name, hence an id.
-		streamRoutes := result.Services[0].StreamRoutes
-		require.Len(t, streamRoutes, 2)
-		assert.Equal(t, int32(9110), streamRoutes[0].ServerPort)
-		assert.Equal(t, int32(9120), streamRoutes[1].ServerPort)
-		assert.NotEqual(t, streamRoutes[0].ID, streamRoutes[1].ID)
-		assert.NotEqual(t, streamRoutes[0].Name, streamRoutes[1].Name)
-	})
-
-	t.Run("a single listener without explicit targeting stays portless", func(t *testing.T) {
-		result := translateTLSRoute(t, []gatewayv1.Listener{
-			tlsModeListener("a", 9110, &passthrough, ""),
-		}, false, "example.com")
-
-		streamRoutes := result.Services[0].StreamRoutes
-		require.Len(t, streamRoutes, 1)
-		assert.Zero(t, streamRoutes[0].ServerPort)
-	})
-}

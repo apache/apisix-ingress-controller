@@ -45,7 +45,11 @@ func (c *noopCache) InsertService(u *types.Service) error {
 	return nil
 }
 
-func (c *noopCache) InsertGlobalRule(gr *types.GlobalRuleItem) error {
+func (c *noopCache) InsertGlobalRule(gr *GlobalRuleRow) error {
+	return nil
+}
+
+func (c *noopCache) InsertPluginMetadata(pm *PluginMetadataRow) error {
 	return nil
 }
 
@@ -61,7 +65,11 @@ func (c *noopCache) GetService(id string) (*types.Service, error) {
 	return nil, nil
 }
 
-func (c *noopCache) GetGlobalRule(id string) (*types.GlobalRuleItem, error) {
+func (c *noopCache) GetGlobalRule(id string) (*GlobalRuleRow, error) {
+	return nil, nil
+}
+
+func (c *noopCache) GetPluginMetadata(id string) (*PluginMetadataRow, error) {
 	return nil, nil
 }
 
@@ -81,7 +89,11 @@ func (c *noopCache) ListStreamRoutes(...ListOption) ([]*types.StreamRoute, error
 	return nil, nil
 }
 
-func (c *noopCache) ListGlobalRules(...ListOption) ([]*types.GlobalRuleItem, error) {
+func (c *noopCache) ListGlobalRules(...ListOption) ([]*GlobalRuleRow, error) {
+	return nil, nil
+}
+
+func (c *noopCache) ListPluginMetadata(...ListOption) ([]*PluginMetadataRow, error) {
 	return nil, nil
 }
 
@@ -97,7 +109,11 @@ func (c *noopCache) DeleteService(u *types.Service) error {
 	return nil
 }
 
-func (c *noopCache) DeleteGlobalRule(gr *types.GlobalRuleItem) error {
+func (c *noopCache) DeleteGlobalRule(gr *GlobalRuleRow) error {
+	return nil
+}
+
+func (c *noopCache) DeletePluginMetadata(pm *PluginMetadataRow) error {
 	return nil
 }
 

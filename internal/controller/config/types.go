@@ -86,6 +86,7 @@ type Config struct {
 	Webhook               *WebhookConfig        `json:"webhook" yaml:"webhook"`
 	DisableGatewayAPI     bool                  `json:"disable_gateway_api" yaml:"disable_gateway_api"`
 	ListenerPortMatchMode ListenerPortMatchMode `json:"listener_port_match_mode" yaml:"listener_port_match_mode"`
+	NamespaceSelector     []string              `json:"namespace_selector" yaml:"namespace_selector"`
 }
 
 type GatewayConfig struct {

@@ -63,7 +63,7 @@ type ApisixRouteReconciler struct {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ApisixRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	bdr := ctrl.NewControllerManagedBy(mgr).
 		For(&apiv2.ApisixRoute{},
 			builder.WithPredicates(
 				MatchesIngressClassPredicate(r.Client, r.Log),
@@ -74,6 +74,7 @@ func (r *ApisixRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				predicate.GenerationChangedPredicate{},
 				predicate.AnnotationChangedPredicate{},
 				predicate.NewPredicateFuncs(TypePredicate[*corev1.Secret]()),
+				predicate.NewPredicateFuncs(TypePredicate[*corev1.Namespace]()),
 			),
 		).
 		Watches(
@@ -97,7 +98,8 @@ func (r *ApisixRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		).
 		Watches(&apiv2.ApisixPluginConfig{},
 			handler.EnqueueRequestsFromMapFunc(r.listApisixRoutesForPluginConfig),
-		).
+		)
+	return watchNamespaceSelector(bdr, r.Client, r.Log, func() client.ObjectList { return &apiv2.ApisixRouteList{} }).
 		Named("apisixroute").
 		Complete(r)
 }
@@ -133,6 +135,9 @@ func (r *ApisixRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		r.Log.V(1).Info("no matching IngressClass available",
 			"ingressClassName", ar.Spec.IngressClassName,
 			"error", err.Error())
+		if !isIngressClassSelectionAbsent(err) {
+			return ctrl.Result{}, err
+		}
 		if err := r.Provider.Delete(ctx, &ar); err != nil {
 			r.Log.Error(err, "failed to delete apisixroute", "apisixroute", utils.NamespacedName(&ar))
 			return ctrl.Result{}, err

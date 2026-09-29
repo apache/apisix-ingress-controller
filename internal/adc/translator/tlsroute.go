@@ -141,18 +141,11 @@ func (t *Translator) TranslateTLSRoute(tctx *provider.TranslateContext, tlsRoute
 			}
 		}
 
-		for _, port := range t.l4StreamRoutePorts(tctx) {
-			streamRoute := adctypes.NewDefaultStreamRoute()
-			ruleKey := fmt.Sprintf("%d", ruleIndex)
-			if port != 0 {
-				// Include the port in the name key so multiple listeners produce
-				// distinct StreamRoute names/IDs instead of colliding.
-				ruleKey = fmt.Sprintf("%d-%d", ruleIndex, port)
-				streamRoute.ServerPort = port
-			}
-			streamRouteName := adctypes.ComposeStreamRouteName(tlsRoute.Namespace, tlsRoute.Name, ruleKey, "TLS")
-			streamRoute.Name = streamRouteName
-			streamRoute.ID = id.GenID(streamRouteName)
+		// One set of stream routes per rule carrying every SNI, not one set per
+		// hostname: buildL4StreamRoutes names them by rule and port only, so a per
+		// hostname loop produced N sets sharing one ID and only the last survived.
+		streamRoutes := t.buildL4StreamRoutes(tctx, tlsRoute.Namespace, tlsRoute.Name, ruleIndex, "TLS", "TLSRoute", labels)
+		for _, streamRoute := range streamRoutes {
 			// A single SNI keeps using the singular form: it is what every
 			// APISIX version understands, and snis only earns its place once
 			// there is more than one to match.
@@ -161,17 +154,11 @@ func (t *Translator) TranslateTLSRoute(tctx *provider.TranslateContext, tlsRoute
 			} else {
 				streamRoute.SNIs = snis
 			}
-			if tlsPassthroughOnPort(tctx.Listeners, port) {
+			if tlsPassthroughOnPort(tctx.Listeners, streamRoute.ServerPort) {
 				streamRoute.TLSPassthrough = ptr.To(true)
 			}
-			streamRoute.Labels = labels
-			// Attach L4RoutePolicy plugins at the stream_route level: the APISIX stream proxy
-			// applies plugins from the stream_route, not from the service. With multiple
-			// listener ports each stream_route carries its own copy of the plugins.
-			streamRoute.Plugins = make(adctypes.Plugins)
-			t.AttachL4RoutePolicyPlugins(tctx.L4RoutePolicies, tlsRoute.Namespace, tlsRoute.Name, "TLSRoute", streamRoute.Plugins, tctx.Secrets)
-			service.StreamRoutes = append(service.StreamRoutes, streamRoute)
 		}
+		service.StreamRoutes = append(service.StreamRoutes, streamRoutes...)
 
 		result.Services = append(result.Services, service)
 	}
