@@ -19,12 +19,14 @@ package translator
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/types"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
+	"github.com/apache/apisix-ingress-controller/internal/id"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 )
 
@@ -42,6 +44,7 @@ func (t *Translator) TranslateConsumerV1alpha1(tctx *provider.TranslateContext, 
 	for _, credentialSpec := range consumerV.Spec.Credentials {
 		credential := adctypes.Credential{}
 		credential.Name = credentialSpec.Name
+		credential.ID = id.GenID(fmt.Sprintf("%s/credentials/%s", username, credentialSpec.Name))
 		credential.Type = credentialSpec.Type
 		if credentialSpec.SecretRef != nil {
 			ns := consumerV.Namespace

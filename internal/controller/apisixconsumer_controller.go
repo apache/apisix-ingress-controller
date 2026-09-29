@@ -89,6 +89,13 @@ func (r *ApisixConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		r.Log.V(1).Info("no matching IngressClass available",
 			"ingressClassName", ac.Spec.IngressClassName,
 			"error", err.Error())
+		if !isIngressClassSelectionAbsent(err) {
+			return ctrl.Result{}, err
+		}
+		if err := r.Provider.Delete(ctx, ac); err != nil {
+			r.Log.Error(err, "failed to delete provider", "ApisixConsumer", utils.NamespacedName(ac))
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, nil
 	}
 	defer func() { r.updateStatus(ac, err) }()
@@ -112,7 +119,7 @@ func (r *ApisixConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ApisixConsumerReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
+	bdr := ctrl.NewControllerManagedBy(mgr).
 		For(&apiv2.ApisixConsumer{},
 			builder.WithPredicates(
 				MatchesIngressClassPredicate(r.Client, r.Log),
@@ -122,6 +129,7 @@ func (r *ApisixConsumerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				predicate.GenerationChangedPredicate{},
 				predicate.AnnotationChangedPredicate{},
 				predicate.NewPredicateFuncs(TypePredicate[*corev1.Secret]()),
+				predicate.NewPredicateFuncs(TypePredicate[*corev1.Namespace]()),
 			),
 		).
 		Watches(
@@ -136,7 +144,8 @@ func (r *ApisixConsumerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		).
 		Watches(&corev1.Secret{},
 			handler.EnqueueRequestsFromMapFunc(r.listApisixConsumerForSecret),
-		).
+		)
+	return watchNamespaceSelector(bdr, r.Client, r.Log, func() client.ObjectList { return &apiv2.ApisixConsumerList{} }).
 		Named("apisixconsumer").
 		Complete(r)
 }

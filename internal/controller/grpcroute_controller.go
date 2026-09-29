@@ -240,7 +240,7 @@ func (r *GRPCRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	var backendRefErr error
 	if err := r.processGRPCRoute(tctx, gr); err != nil {
 		// When encountering a backend reference error, it should not affect the acceptance status
-		if types.IsSomeReasonError(err, gatewayv1.RouteReasonInvalidKind) {
+		if types.IsSomeReasonError(err, gatewayv1.RouteReasonInvalidKind, gatewayv1.RouteReasonBackendNotFound) {
 			backendRefErr = err
 		} else {
 			acceptStatus.status = false
@@ -518,23 +518,8 @@ func (r *GRPCRouteReconciler) processGRPCRoute(tctx *provider.TranslateContext, 
 			if filter.Type != gatewayv1.GRPCRouteFilterExtensionRef || filter.ExtensionRef == nil {
 				continue
 			}
-			if filter.ExtensionRef.Kind == "PluginConfig" {
-				pluginconfig := new(v1alpha1.PluginConfig)
-				if err := r.Get(context.Background(), client.ObjectKey{
-					Namespace: grpcroute.GetNamespace(),
-					Name:      string(filter.ExtensionRef.Name),
-				}, pluginconfig); err != nil {
-					terror = err
-					continue
-				}
-				tctx.PluginConfigs[k8stypes.NamespacedName{
-					Namespace: grpcroute.GetNamespace(),
-					Name:      string(filter.ExtensionRef.Name),
-				}] = pluginconfig
-				if err := loadPluginSecrets(tctx, r.Client, tctx, grpcroute.GetNamespace(), pluginconfig.Spec.Plugins); err != nil {
-					terror = err
-					continue
-				}
+			if err := loadPluginConfigExtensionRef(tctx, r.Client, tctx, grpcroute.GetNamespace(), filter.ExtensionRef); err != nil {
+				terror = err
 			}
 		}
 		for _, backend := range rule.BackendRefs {

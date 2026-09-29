@@ -152,7 +152,7 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 				}
 				sslObj.Snis = sslutils.NormalizeHosts(sslObj.Snis)
 				sslObj.Client = client
-				sslObj.ID = id.GenID(fmt.Sprintf("%s_%s_%d", adctypes.ComposeSSLName(internaltypes.KindGateway, obj.Namespace, obj.Name), listener.Name, refIndex))
+				sslObj.ID = id.GenID(adctypes.ComposeGatewayListenerSSLName(internaltypes.KindGateway, obj.Namespace, obj.Name, string(listener.Name), refIndex))
 				t.Log.V(1).Info("generated ssl id", "ssl id", sslObj.ID, "secret", secretNN.String())
 				sslObj.Labels = label.GenLabel(obj)
 				sslObjs = append(sslObjs, sslObj)
@@ -285,7 +285,7 @@ func (t *Translator) fillPluginMetadataFromGatewayProxy(pluginMetadata adctypes.
 		if pluginConfig == nil {
 			return fmt.Errorf("GatewayProxy plugin metadata for %q must be a JSON object", pluginName)
 		}
-		t.Log.V(1).Info("fill plugin_metadata for gateway proxy", "plugin", pluginName, "config", pluginConfig)
+		t.Log.V(1).Info("fill plugin_metadata for gateway proxy", "plugin", pluginName)
 		translated[pluginName] = pluginConfig
 	}
 	for pluginName, pluginConfig := range translated {

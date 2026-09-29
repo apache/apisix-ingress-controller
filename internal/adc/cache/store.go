@@ -18,43 +18,150 @@
 package cache
 
 import (
-	"fmt"
+	"cmp"
 	"sync"
 
 	"github.com/go-logr/logr"
-	"github.com/google/uuid"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
+	"github.com/apache/apisix-ingress-controller/internal/types"
 )
 
 type Store struct {
-	cacheMap          map[string]Cache
-	pluginMetadataMap map[string]adctypes.PluginMetadata
+	cacheMap map[string]Cache
 
 	sync.Mutex
 	log logr.Logger
 }
 
+// Entity is a top-level ADC resource a cacheKey holds: a service, ssl, consumer,
+// global_rule or plugin_metadata.
+type Entity struct {
+	Type string
+	ID   string
+	// Name identifies the entity in a status message: a service's name, a consumer's
+	// username, or the id for the other types.
+	Name  string
+	Owner types.NamespacedNameKind
+	// Children are the routes and stream routes a service holds. A service whose
+	// children are all dropped serves nothing, even though the service itself was never
+	// rejected.
+	Children []Entity
+}
+
 func NewStore(log logr.Logger) *Store {
 	return &Store{
-		cacheMap:          make(map[string]Cache),
-		pluginMetadataMap: make(map[string]adctypes.PluginMetadata),
-		log:               log.WithName("store"),
+		cacheMap: make(map[string]Cache),
+		log:      log.WithName("store"),
 	}
+}
+
+func (s *Store) cacheFor(name string) (Cache, error) {
+	if c, ok := s.cacheMap[name]; ok {
+		return c, nil
+	}
+	db, err := NewMemDBCache()
+	if err != nil {
+		return nil, err
+	}
+	s.cacheMap[name] = db
+	return db, nil
+}
+
+func ownerFromLabels(labels map[string]string) types.NamespacedNameKind {
+	return types.NamespacedNameKind{
+		Kind:      labels[label.LabelKind],
+		Namespace: labels[label.LabelNamespace],
+		Name:      labels[label.LabelName],
+	}
+}
+
+// gatewayProxyOf returns the GatewayProxy a cacheKey names.
+func gatewayProxyOf(name string) (types.NamespacedNameKind, bool) {
+	var gatewayProxy types.NamespacedNameKind
+	if err := gatewayProxy.FromString(name); err != nil {
+		return types.NamespacedNameKind{}, false
+	}
+	return gatewayProxy, true
+}
+
+func childrenOf(service *adctypes.Service, owner types.NamespacedNameKind) []Entity {
+	children := make([]Entity, 0, len(service.Routes)+len(service.StreamRoutes))
+	for _, route := range service.Routes {
+		children = append(children, Entity{Type: adctypes.TypeRoute, ID: route.ID, Name: cmp.Or(route.Name, route.ID), Owner: owner})
+	}
+	for _, streamRoute := range service.StreamRoutes {
+		children = append(children, Entity{Type: adctypes.TypeStreamRoute, ID: streamRoute.ID, Name: cmp.Or(streamRoute.Name, streamRoute.ID), Owner: owner})
+	}
+	return children
+}
+
+// routeOwner finds the Kubernetes resource that produced the route id, by scanning
+// every service the cacheKey holds. A route's own labels can differ from its service's
+// (a traffic-split service can combine rules several ApisixRoutes each contributed),
+// so this can't reuse the service's own KindLabelSelector match.
+func routeOwner(targetCache Cache, id string) (types.NamespacedNameKind, bool) {
+	services, err := targetCache.ListServices()
+	if err != nil {
+		return types.NamespacedNameKind{}, false
+	}
+	for _, service := range services {
+		for _, route := range service.Routes {
+			if route.ID == id {
+				return ownerFromLabels(route.GetLabels()), true
+			}
+		}
+	}
+	return types.NamespacedNameKind{}, false
+}
+
+// setGlobalRules is Insert and SetGlobalRules' shared implementation. Callers must
+// already hold s.Lock.
+func (s *Store) setGlobalRules(targetCache Cache, owner types.NamespacedNameKind, plugins adctypes.GlobalRule) error {
+	rows, err := targetCache.ListGlobalRules(&OwnerSelector{Owner: owner})
+	if err != nil {
+		return err
+	}
+	for _, row := range rows {
+		if err := targetCache.DeleteGlobalRule(row); err != nil {
+			return err
+		}
+	}
+	for pluginName, config := range plugins {
+		if err := targetCache.InsertGlobalRule(&GlobalRuleRow{ID: pluginName, Owner: owner, Config: config}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// setPluginMetadata is Insert and SetPluginMetadata's shared implementation. Callers
+// must already hold s.Lock.
+func (s *Store) setPluginMetadata(targetCache Cache, metadata adctypes.PluginMetadata) error {
+	rows, err := targetCache.ListPluginMetadata()
+	if err != nil {
+		return err
+	}
+	for _, row := range rows {
+		if err := targetCache.DeletePluginMetadata(row); err != nil {
+			return err
+		}
+	}
+	for pluginName, config := range metadata {
+		if err := targetCache.InsertPluginMetadata(&PluginMetadataRow{ID: pluginName, Config: config}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.Resources, Labels map[string]string) error {
 	s.Lock()
 	defer s.Unlock()
-	targetCache, ok := s.cacheMap[name]
-	if !ok {
-		db, err := NewMemDBCache()
-		if err != nil {
-			return err
-		}
-		s.cacheMap[name] = db
-		targetCache = s.cacheMap[name]
+	targetCache, err := s.cacheFor(name)
+	if err != nil {
+		return err
 	}
 	s.log.V(1).Info("Inserting resources into cache", "name", name, "resourceTypes", resourceTypes, "Labels", Labels)
 	selector := &KindLabelSelector{
@@ -111,34 +218,13 @@ func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.
 				}
 			}
 		case adctypes.TypeGlobalRule:
-			// List existing global rules that match the selector
-			globalRules, err := targetCache.ListGlobalRules(selector)
-			if err != nil {
+			if err := s.setGlobalRules(targetCache, ownerFromLabels(Labels), resources.GlobalRules); err != nil {
 				return err
 			}
-			// Delete existing matching global rules
-			for _, globalRule := range globalRules {
-				if err := targetCache.DeleteGlobalRule(globalRule); err != nil {
-					return err
-				}
-			}
-			// Convert GlobalRule (Plugins) to GlobalRuleItem and insert
-			if len(resources.GlobalRules) > 0 {
-				id := name + "-" + uuid.NewString()
-				globalRuleItem := &adctypes.GlobalRuleItem{
-					Metadata: adctypes.Metadata{
-						ID:     id,
-						Name:   id,
-						Labels: Labels,
-					},
-					Plugins: adctypes.Plugins(resources.GlobalRules),
-				}
-				if err := targetCache.InsertGlobalRule(globalRuleItem); err != nil {
-					return err
-				}
-			}
 		case adctypes.TypePluginMetadata:
-			s.pluginMetadataMap[name] = resources.PluginMetadata
+			if err := s.setPluginMetadata(targetCache, resources.PluginMetadata); err != nil {
+				return err
+			}
 		default:
 			continue
 		}
@@ -146,6 +232,9 @@ func (s *Store) Insert(name string, resourceTypes []string, resources *adctypes.
 	return nil
 }
 
+// Delete removes the services, consumers, ssls and global_rules the resource identified
+// by Labels contributes to the cacheKey name. An empty resourceTypes deletes nothing;
+// see DeleteAll for wiping a whole cacheKey.
 func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]string) error {
 	s.Lock()
 	defer s.Unlock()
@@ -191,23 +280,23 @@ func (s *Store) Delete(name string, resourceTypes []string, Labels map[string]st
 				}
 			}
 		case adctypes.TypeGlobalRule:
-			globalRules, err := targetCache.ListGlobalRules(selector)
-			if err != nil {
-				s.log.Error(err, "failed to list global rules")
-			}
-			for _, globalRule := range globalRules {
-				if err := targetCache.DeleteGlobalRule(globalRule); err != nil {
-					s.log.Error(err, "failed to delete global rule", "global rule", globalRule.ID)
-				}
+			if err := s.setGlobalRules(targetCache, ownerFromLabels(Labels), nil); err != nil {
+				s.log.Error(err, "failed to delete global rules")
 			}
 		case adctypes.TypePluginMetadata:
-			delete(s.pluginMetadataMap, name)
+			if err := s.setPluginMetadata(targetCache, nil); err != nil {
+				s.log.Error(err, "failed to delete plugin metadata")
+			}
 		}
 	}
-	if len(resourceTypes) == 0 {
-		delete(s.cacheMap, name)
-	}
 	return nil
+}
+
+// DeleteAll wipes everything the cacheKey name holds.
+func (s *Store) DeleteAll(name string) {
+	s.Lock()
+	defer s.Unlock()
+	delete(s.cacheMap, name)
 }
 
 func (s *Store) GetResources(name string) (*adctypes.Resources, error) {
@@ -217,22 +306,21 @@ func (s *Store) GetResources(name string) (*adctypes.Resources, error) {
 	if !ok {
 		return &adctypes.Resources{}, nil
 	}
-	var globalrule adctypes.GlobalRule
-	var metadata adctypes.PluginMetadata
-	// Get all global rules from cache and merge them
-	globalRuleItems, _ := targetCache.ListGlobalRules()
-	if len(globalRuleItems) > 0 {
-		merged := make(adctypes.Plugins)
-		for _, item := range globalRuleItems {
-			for k, v := range item.Plugins {
-				merged[k] = v
-			}
+	var globalRules adctypes.GlobalRule
+	globalRuleRows, _ := targetCache.ListGlobalRules()
+	if len(globalRuleRows) > 0 {
+		globalRules = make(adctypes.GlobalRule, len(globalRuleRows))
+		for _, row := range globalRuleRows {
+			globalRules[row.ID] = row.Config
 		}
-		globalrule = adctypes.GlobalRule(merged)
 	}
-	s.log.V(1).Info("GetResources fetched global rule items", "itemCount", len(globalRuleItems), "pluginCount", len(globalrule))
-	if meta, ok := s.pluginMetadataMap[name]; ok {
-		metadata = meta.DeepCopy()
+	var pluginMetadata adctypes.PluginMetadata
+	pluginMetadataRows, _ := targetCache.ListPluginMetadata()
+	if len(pluginMetadataRows) > 0 {
+		pluginMetadata = make(adctypes.PluginMetadata, len(pluginMetadataRows))
+		for _, row := range pluginMetadataRows {
+			pluginMetadata[row.ID] = row.Config
+		}
 	}
 	consumers, _ := targetCache.ListConsumers()
 	services, _ := targetCache.ListServices()
@@ -241,79 +329,134 @@ func (s *Store) GetResources(name string) (*adctypes.Resources, error) {
 		Consumers:      consumers,
 		Services:       services,
 		SSLs:           ssls,
-		GlobalRules:    globalrule,
-		PluginMetadata: metadata,
+		GlobalRules:    globalRules,
+		PluginMetadata: pluginMetadata,
 	}, nil
 }
 
-func (s *Store) ListGlobalRules(name string) ([]*adctypes.GlobalRuleItem, error) {
+// SetGlobalRules replaces the global_rules plugins owner declares in the cacheKey name
+// with plugins; an empty plugins removes all of them. A plugin name can only be
+// configured once, so another owner's plugin of the same name is overwritten: which
+// declaration wins is undefined.
+func (s *Store) SetGlobalRules(name string, owner types.NamespacedNameKind, plugins adctypes.GlobalRule) error {
 	s.Lock()
 	defer s.Unlock()
-	targetCache, ok := s.cacheMap[name]
-	if !ok {
-		return nil, fmt.Errorf("cache not found for name: %s", name)
-	}
-	globalRules, err := targetCache.ListGlobalRules()
+	targetCache, err := s.cacheFor(name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list global rules: %w", err)
+		return err
 	}
-	return globalRules, nil
+	return s.setGlobalRules(targetCache, owner, plugins)
 }
 
-func (s *Store) GetResourceLabel(name, resourceType string, id string) (map[string]string, error) {
+// SetPluginMetadata replaces all plugin_metadata the cacheKey name holds.
+func (s *Store) SetPluginMetadata(name string, metadata adctypes.PluginMetadata) error {
+	s.Lock()
+	defer s.Unlock()
+	targetCache, err := s.cacheFor(name)
+	if err != nil {
+		return err
+	}
+	return s.setPluginMetadata(targetCache, metadata)
+}
+
+// Lookup finds the top-level entity of resourceType and id the cacheKey name holds,
+// along with the Kubernetes resource that produced it, read straight from the entity's
+// own stored labels (the same ones KindLabelSelector matches Insert/Delete against, so
+// there is exactly one place this can ever disagree with what a selector would find). A
+// route is not top-level, but is looked up the same way pending its own nested-entity
+// tracking.
+func (s *Store) Lookup(name, resourceType, id string) (Entity, bool) {
 	s.Lock()
 	defer s.Unlock()
 	targetCache, ok := s.cacheMap[name]
 	if !ok {
-		return nil, fmt.Errorf("cache not found for name: %s", name)
+		return Entity{}, false
 	}
 	switch resourceType {
 	case adctypes.TypeService:
 		service, err := targetCache.GetService(id)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get service: %w", err)
+			return Entity{}, false
 		}
-		return service.Labels, nil
-	case adctypes.TypeRoute:
-		services, err := targetCache.ListServices()
-		if err != nil {
-			return nil, fmt.Errorf("failed to list services: %w", err)
-		}
-		for _, service := range services {
-			for _, route := range service.Routes {
-				if route.ID == id {
-					// Return labels from the service that contains the route
-					return route.GetLabels(), nil
-				}
-			}
-		}
-		return nil, fmt.Errorf("route not found: %s", id)
+		return Entity{Type: resourceType, ID: id, Name: cmp.Or(service.Name, id), Owner: ownerFromLabels(service.GetLabels())}, true
 	case adctypes.TypeSSL:
 		ssl, err := targetCache.GetSSL(id)
 		if err != nil {
-			return nil, err
+			return Entity{}, false
 		}
-		if ssl != nil {
-			return ssl.GetLabels(), nil
-		}
+		return Entity{Type: resourceType, ID: id, Name: id, Owner: ownerFromLabels(ssl.GetLabels())}, true
 	case adctypes.TypeConsumer:
 		consumer, err := targetCache.GetConsumer(id)
 		if err != nil {
-			return nil, err
+			return Entity{}, false
 		}
-		if consumer != nil {
-			return consumer.Labels, nil
+		return Entity{Type: resourceType, ID: id, Name: id, Owner: ownerFromLabels(consumer.GetLabels())}, true
+	case adctypes.TypeRoute:
+		owner, ok := routeOwner(targetCache, id)
+		if !ok {
+			return Entity{}, false
 		}
+		return Entity{Type: resourceType, ID: id, Name: id, Owner: owner}, true
 	case adctypes.TypeGlobalRule:
-		globalRule, err := targetCache.GetGlobalRule(id)
+		row, err := targetCache.GetGlobalRule(id)
 		if err != nil {
-			return nil, err
+			return Entity{}, false
 		}
-		if globalRule != nil {
-			return globalRule.GetLabels(), nil
+		return Entity{Type: resourceType, ID: id, Name: id, Owner: row.Owner}, true
+	case adctypes.TypePluginMetadata:
+		if _, err := targetCache.GetPluginMetadata(id); err != nil {
+			return Entity{}, false
 		}
-	default:
-		return nil, fmt.Errorf("unknown resource type: %s", resourceType)
+		gatewayProxy, ok := gatewayProxyOf(name)
+		if !ok {
+			return Entity{}, false
+		}
+		return Entity{Type: resourceType, ID: id, Name: id, Owner: gatewayProxy}, true
 	}
-	return nil, nil
+	return Entity{}, false
+}
+
+// OwnedEntities lists every top-level entity owner produced in the cacheKey name, via
+// the same KindLabelSelector index Insert and Delete already use for service, ssl and
+// consumer.
+func (s *Store) OwnedEntities(name string, owner types.NamespacedNameKind) []Entity {
+	s.Lock()
+	defer s.Unlock()
+	targetCache, ok := s.cacheMap[name]
+	if !ok {
+		return nil
+	}
+	selector := &KindLabelSelector{Kind: owner.Kind, Namespace: owner.Namespace, Name: owner.Name}
+	services, _ := targetCache.ListServices(selector)
+	ssls, _ := targetCache.ListSSL(selector)
+	consumers, _ := targetCache.ListConsumers(selector)
+	globalRules, _ := targetCache.ListGlobalRules(&OwnerSelector{Owner: owner})
+	var pluginMetadata []*PluginMetadataRow
+	if gatewayProxy, ok := gatewayProxyOf(name); ok && gatewayProxy == owner {
+		pluginMetadata, _ = targetCache.ListPluginMetadata()
+	}
+
+	entities := make([]Entity, 0, len(services)+len(ssls)+len(consumers)+len(globalRules)+len(pluginMetadata))
+	for _, service := range services {
+		entities = append(entities, Entity{
+			Type:     adctypes.TypeService,
+			ID:       service.ID,
+			Name:     cmp.Or(service.Name, service.ID),
+			Owner:    owner,
+			Children: childrenOf(service, owner),
+		})
+	}
+	for _, ssl := range ssls {
+		entities = append(entities, Entity{Type: adctypes.TypeSSL, ID: ssl.ID, Name: ssl.ID, Owner: owner})
+	}
+	for _, consumer := range consumers {
+		entities = append(entities, Entity{Type: adctypes.TypeConsumer, ID: consumer.Username, Name: consumer.Username, Owner: owner})
+	}
+	for _, row := range globalRules {
+		entities = append(entities, Entity{Type: adctypes.TypeGlobalRule, ID: row.ID, Name: row.ID, Owner: owner})
+	}
+	for _, row := range pluginMetadata {
+		entities = append(entities, Entity{Type: adctypes.TypePluginMetadata, ID: row.ID, Name: row.ID, Owner: owner})
+	}
+	return entities
 }

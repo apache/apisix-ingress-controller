@@ -86,11 +86,20 @@ var (
 						Unique:  true,
 						Indexer: &memdb.StringFieldIndex{Field: "ID"},
 					},
-					KindLabelIndex: {
-						Name:         KindLabelIndex,
-						Unique:       false,
-						AllowMissing: true,
-						Indexer:      &KindLabelIndexer,
+					OwnerIndex: {
+						Name:    OwnerIndex,
+						Unique:  false,
+						Indexer: &ownerIndexer{},
+					},
+				},
+			},
+			"plugin_metadata": {
+				Name: "plugin_metadata",
+				Indexes: map[string]*memdb.IndexSchema{
+					"id": {
+						Name:    "id",
+						Unique:  true,
+						Indexer: &memdb.StringFieldIndex{Field: "ID"},
 					},
 				},
 			},

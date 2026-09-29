@@ -27,6 +27,8 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 
 	"github.com/apache/apisix-ingress-controller/internal/types"
 )
@@ -132,6 +134,10 @@ func (c *Config) Validate() error {
 		}
 	}
 
+	if _, err := ParseNamespaceSelector(c.NamespaceSelector); err != nil {
+		return err
+	}
+
 	if err := validateProvider(c.ProviderConfig); err != nil {
 		return err
 	}
@@ -151,6 +157,52 @@ func validateProvider(config ProviderConfig) error {
 	default:
 		return fmt.Errorf("unsupported provider type: %s", config.Type)
 	}
+}
+
+// ParseNamespaceSelector combines the namespace_selector entries into one
+// selector, keeping the semantics of 1.x: every entry must match, and entries
+// holding a single equality or "in" requirement on the same key are merged, so
+// ["team=a", "team=b"] selects "team in (a,b)". An entry with several
+// requirements keeps the standard label selector semantics, so "team=a,team=b"
+// matches nothing. Empty entries are ignored, as 1.x used [""] to disable the
+// selector. It returns nil when no entry is left.
+func ParseNamespaceSelector(entries []string) (labels.Selector, error) {
+	var (
+		selector labels.Selector
+		keys     []string
+		values   = map[string][]string{}
+	)
+	for _, entry := range entries {
+		if strings.TrimSpace(entry) == "" {
+			continue
+		}
+		reqs, err := labels.ParseToRequirements(entry)
+		if err != nil {
+			return nil, fmt.Errorf("invalid namespace_selector %q: %w", entry, err)
+		}
+		if selector == nil {
+			selector = labels.NewSelector()
+		}
+		if len(reqs) == 1 {
+			switch req := reqs[0]; req.Operator() {
+			case selection.Equals, selection.DoubleEquals, selection.In:
+				if _, ok := values[req.Key()]; !ok {
+					keys = append(keys, req.Key())
+				}
+				values[req.Key()] = append(values[req.Key()], req.ValuesUnsorted()...)
+				continue
+			}
+		}
+		selector = selector.Add(reqs...)
+	}
+	for _, key := range keys {
+		req, err := labels.NewRequirement(key, selection.In, values[key])
+		if err != nil {
+			return nil, fmt.Errorf("invalid namespace_selector on key %q: %w", key, err)
+		}
+		selector = selector.Add(*req)
+	}
+	return selector, nil
 }
 
 func GetControllerName() string {

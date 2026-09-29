@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -36,6 +37,12 @@ const (
 	TypeSSL            = "ssl"
 	TypeGlobalRule     = "global_rule"
 	TypePluginMetadata = "plugin_metadata"
+	// TypeStreamRoute, TypeUpstream and TypeConsumerCredential only ever name a nested
+	// entity in an ADC event: a stream route or named upstream inside a service, a
+	// credential inside a consumer.
+	TypeStreamRoute        = "stream_route"
+	TypeUpstream           = "upstream"
+	TypeConsumerCredential = "consumer_credential"
 )
 
 type Object interface {
@@ -86,11 +93,9 @@ func (g *GlobalRule) DeepCopy() GlobalRule {
 	return GlobalRule(copied)
 }
 
-// +k8s:deepcopy-gen=true
-type GlobalRuleItem struct {
-	Metadata `json:",inline" yaml:",inline"`
-
-	Plugins Plugins `json:"plugins" yaml:"plugins"`
+// MarshalLog implements logr.Marshaler. See Plugins.MarshalLog.
+func (g GlobalRule) MarshalLog() any {
+	return pluginNames(g)
 }
 
 type PluginMetadata Plugins
@@ -99,6 +104,11 @@ func (p *PluginMetadata) DeepCopy() PluginMetadata {
 	original := Plugins(*p)
 	copied := original.DeepCopy()
 	return PluginMetadata(copied)
+}
+
+// MarshalLog implements logr.Marshaler. See Plugins.MarshalLog.
+func (p PluginMetadata) MarshalLog() any {
+	return pluginNames(p)
 }
 
 // +k8s:deepcopy-gen=true
@@ -400,6 +410,23 @@ func (p Plugins) DeepCopy() Plugins {
 	return out
 }
 
+// MarshalLog implements logr.Marshaler so logging a plugin map emits only the
+// plugin names. Plugin config is arbitrary user JSON and routinely carries
+// credentials (kafka SASL passwords, logger tokens, OIDC client secrets).
+// It affects logging only, not the JSON sent to the data plane.
+func (p Plugins) MarshalLog() any {
+	return pluginNames(p)
+}
+
+func pluginNames(p map[string]any) []string {
+	names := make([]string, 0, len(p))
+	for name := range p {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
 // UpstreamNode is the node in upstream
 type UpstreamNode struct {
 	Host     string `json:"host" yaml:"host"`
@@ -539,6 +566,12 @@ func ComposeStreamRouteName(namespace, name string, rule string, typ string) str
 	buf.WriteString(typ)
 
 	return buf.String()
+}
+
+// ComposeGatewayListenerSSLName composes the name a Gateway listener's certificateRef at
+// refIndex is identified by; its SSL id is generated from it.
+func ComposeGatewayListenerSSLName(kind, namespace, name, listener string, refIndex int) string {
+	return fmt.Sprintf("%s_%s_%d", ComposeSSLName(kind, namespace, name), listener, refIndex)
 }
 
 func ComposeServiceNameWithRule(namespace, name string, rule string) string {

@@ -155,7 +155,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 
 			if err := r.Provider.Delete(ctx, hr); err != nil {
-				r.Log.Error(err, "failed to delete httproute", "httproute", hr)
+				r.Log.Error(err, "failed to delete httproute", "httproute", utils.NamespacedName(hr))
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{}, nil
@@ -198,7 +198,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			APIVersion: gatewayv1.GroupVersion.String(),
 		}
 		if err := r.Provider.Delete(ctx, hr); err != nil {
-			r.Log.Error(err, "failed to delete httproute", "httproute", hr)
+			r.Log.Error(err, "failed to delete httproute", "httproute", utils.NamespacedName(hr))
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
@@ -227,7 +227,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	var backendRefErr error
 	if err := r.processHTTPRoute(tctx, hr); err != nil {
 		// When encountering a backend reference error, it should not affect the acceptance status
-		if types.IsSomeReasonError(err, gatewayv1.RouteReasonInvalidKind) {
+		if types.IsSomeReasonError(err, gatewayv1.RouteReasonInvalidKind, gatewayv1.RouteReasonBackendNotFound) {
 			backendRefErr = err
 		} else {
 			acceptStatus.status = false
@@ -603,23 +603,8 @@ func (r *HTTPRouteReconciler) processHTTPRoute(tctx *provider.TranslateContext, 
 			if filter.Type != gatewayv1.HTTPRouteFilterExtensionRef || filter.ExtensionRef == nil {
 				continue
 			}
-			if filter.ExtensionRef.Kind == types.KindPluginConfig {
-				pluginconfig := new(v1alpha1.PluginConfig)
-				if err := r.Get(context.Background(), client.ObjectKey{
-					Namespace: httpRoute.GetNamespace(),
-					Name:      string(filter.ExtensionRef.Name),
-				}, pluginconfig); err != nil {
-					terror = err
-					continue
-				}
-				tctx.PluginConfigs[k8stypes.NamespacedName{
-					Namespace: httpRoute.GetNamespace(),
-					Name:      string(filter.ExtensionRef.Name),
-				}] = pluginconfig
-				if err := loadPluginSecrets(tctx, r.Client, tctx, httpRoute.GetNamespace(), pluginconfig.Spec.Plugins); err != nil {
-					terror = err
-					continue
-				}
+			if err := loadPluginConfigExtensionRef(tctx, r.Client, tctx, httpRoute.GetNamespace(), filter.ExtensionRef); err != nil {
+				terror = err
 			}
 		}
 		for _, backend := range rule.BackendRefs {

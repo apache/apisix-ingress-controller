@@ -18,6 +18,8 @@
 package types
 
 import (
+	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	netv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -27,6 +29,27 @@ import (
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	v2 "github.com/apache/apisix-ingress-controller/api/v2"
 )
+
+// IsPluginConfigExtensionRef reports whether ref identifies the supported PluginConfig type.
+func IsPluginConfigExtensionRef(ref *gatewayv1.LocalObjectReference) bool {
+	return ref != nil &&
+		string(ref.Group) == v1alpha1.GroupVersion.Group &&
+		string(ref.Kind) == KindPluginConfig
+}
+
+// ValidatePluginConfigExtensionRef validates the group and kind of an ExtensionRef.
+func ValidatePluginConfigExtensionRef(ref *gatewayv1.LocalObjectReference) error {
+	if ref == nil || IsPluginConfigExtensionRef(ref) {
+		return nil
+	}
+	return ReasonError{
+		Reason: string(gatewayv1.RouteReasonInvalidKind),
+		Message: fmt.Sprintf(
+			"Invalid ExtensionRef %s/%s, only %s/%s is supported",
+			ref.Group, ref.Kind, v1alpha1.GroupVersion.Group, KindPluginConfig,
+		),
+	}
+}
 
 const (
 	DefaultIngressClassAnnotation = "ingressclass.kubernetes.io/is-default-class"

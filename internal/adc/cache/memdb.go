@@ -55,8 +55,10 @@ func (c *dbCache) Insert(obj any) error {
 		return c.InsertService(t)
 	case *types.Consumer:
 		return c.InsertConsumer(t)
-	case *types.GlobalRuleItem:
+	case *GlobalRuleRow:
 		return c.InsertGlobalRule(t)
+	case *PluginMetadataRow:
+		return c.InsertPluginMetadata(t)
 	default:
 		return errors.New("unsupported type")
 	}
@@ -72,8 +74,10 @@ func (c *dbCache) Delete(obj any) error {
 		return c.DeleteService(t)
 	case *types.Consumer:
 		return c.DeleteConsumer(t)
-	case *types.GlobalRuleItem:
+	case *GlobalRuleRow:
 		return c.DeleteGlobalRule(t)
+	case *PluginMetadataRow:
+		return c.DeletePluginMetadata(t)
 	default:
 		return errors.New("unsupported type")
 	}
@@ -96,8 +100,12 @@ func (c *dbCache) InsertConsumer(consumer *types.Consumer) error {
 	return c.insert(types.TypeConsumer, consumer.DeepCopy())
 }
 
-func (c *dbCache) InsertGlobalRule(globalRule *types.GlobalRuleItem) error {
+func (c *dbCache) InsertGlobalRule(globalRule *GlobalRuleRow) error {
 	return c.insert(types.TypeGlobalRule, globalRule.DeepCopy())
+}
+
+func (c *dbCache) InsertPluginMetadata(pluginMetadata *PluginMetadataRow) error {
+	return c.insert(types.TypePluginMetadata, pluginMetadata.DeepCopy())
 }
 
 func (c *dbCache) insert(table string, obj any) error {
@@ -142,12 +150,20 @@ func (c *dbCache) GetConsumer(username string) (*types.Consumer, error) {
 	return obj.(*types.Consumer).DeepCopy(), nil
 }
 
-func (c *dbCache) GetGlobalRule(id string) (*types.GlobalRuleItem, error) {
+func (c *dbCache) GetGlobalRule(id string) (*GlobalRuleRow, error) {
 	obj, err := c.get(types.TypeGlobalRule, id)
 	if err != nil {
 		return nil, err
 	}
-	return obj.(*types.GlobalRuleItem).DeepCopy(), nil
+	return obj.(*GlobalRuleRow).DeepCopy(), nil
+}
+
+func (c *dbCache) GetPluginMetadata(id string) (*PluginMetadataRow, error) {
+	obj, err := c.get(types.TypePluginMetadata, id)
+	if err != nil {
+		return nil, err
+	}
+	return obj.(*PluginMetadataRow).DeepCopy(), nil
 }
 
 func (c *dbCache) GetStreamRoute(id string) (*types.StreamRoute, error) {
@@ -222,16 +238,28 @@ func (c *dbCache) ListConsumers(opts ...ListOption) ([]*types.Consumer, error) {
 	return consumers, nil
 }
 
-func (c *dbCache) ListGlobalRules(opts ...ListOption) ([]*types.GlobalRuleItem, error) {
+func (c *dbCache) ListGlobalRules(opts ...ListOption) ([]*GlobalRuleRow, error) {
 	raws, err := c.list(types.TypeGlobalRule, opts...)
 	if err != nil {
 		return nil, err
 	}
-	globalRules := make([]*types.GlobalRuleItem, 0, len(raws))
+	globalRules := make([]*GlobalRuleRow, 0, len(raws))
 	for _, raw := range raws {
-		globalRules = append(globalRules, raw.(*types.GlobalRuleItem).DeepCopy())
+		globalRules = append(globalRules, raw.(*GlobalRuleRow).DeepCopy())
 	}
 	return globalRules, nil
+}
+
+func (c *dbCache) ListPluginMetadata(opts ...ListOption) ([]*PluginMetadataRow, error) {
+	raws, err := c.list(types.TypePluginMetadata, opts...)
+	if err != nil {
+		return nil, err
+	}
+	pluginMetadata := make([]*PluginMetadataRow, 0, len(raws))
+	for _, raw := range raws {
+		pluginMetadata = append(pluginMetadata, raw.(*PluginMetadataRow).DeepCopy())
+	}
+	return pluginMetadata, nil
 }
 
 func (c *dbCache) list(table string, opts ...ListOption) ([]any, error) {
@@ -244,6 +272,10 @@ func (c *dbCache) list(table string, opts ...ListOption) ([]any, error) {
 	if listOpts.KindLabelSelector != nil {
 		index = KindLabelIndex
 		args = []any{listOpts.KindLabelSelector.Kind, listOpts.KindLabelSelector.Namespace, listOpts.KindLabelSelector.Name}
+	}
+	if listOpts.OwnerSelector != nil {
+		index = OwnerIndex
+		args = []any{listOpts.OwnerSelector.Owner}
 	}
 	iter, err := txn.Get(table, index, args...)
 	if err != nil {
@@ -272,8 +304,12 @@ func (c *dbCache) DeleteConsumer(consumer *types.Consumer) error {
 	return c.delete(types.TypeConsumer, consumer)
 }
 
-func (c *dbCache) DeleteGlobalRule(globalRule *types.GlobalRuleItem) error {
+func (c *dbCache) DeleteGlobalRule(globalRule *GlobalRuleRow) error {
 	return c.delete(types.TypeGlobalRule, globalRule)
+}
+
+func (c *dbCache) DeletePluginMetadata(pluginMetadata *PluginMetadataRow) error {
+	return c.delete(types.TypePluginMetadata, pluginMetadata)
 }
 
 func (c *dbCache) delete(table string, obj any) error {
