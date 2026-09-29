@@ -154,6 +154,13 @@ func TestMain(m *testing.M) {
 		ServiceType:       "LoadBalancer",
 		ServiceHTTPPort:   80,
 		ServiceHTTPSPort:  443,
+		// The TLSRoute tests pin their Gateway listener to port 443 in
+		// Passthrough mode and dial the Gateway address there, so 443 has to
+		// reach APISIX's stream tls_passthrough listen rather than its HTTP ssl
+		// listen. One port cannot serve both, and the HTTPRoute tests that would
+		// want HTTP-over-TLS on 443 are skipped for unrelated reasons
+		// (skippedTestsForSSL).
+		ServiceHTTPSTargetPort: 9120,
 	})
 	svc := s.GetDataplaneService()
 

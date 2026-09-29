@@ -211,6 +211,97 @@ func TestFilterHostnamesNoMatchedListeners(t *testing.T) {
 	assert.ErrorIs(t, err, ErrNoMatchingListenerHostname)
 }
 
+// The Gateway API conformance case TLSRouteHostnameIntersection turns on this:
+// four Gateways whose TLS listeners carry different hostnames all resolve to one
+// physical stream listen, so a TLSRoute keeping its own hostname verbatim serves
+// SNIs its listener never accepted and steals them from the route whose listener
+// did.
+func TestFilterTLSRouteHostnames(t *testing.T) {
+	exact := gatewayv1.Hostname("abc.example.com")
+	moreSpecificWildcard := gatewayv1.Hostname("*.example.com")
+	lessSpecificWildcard := gatewayv1.Hostname("*.com")
+
+	tlsListener := func(name string, hostname *gatewayv1.Hostname) gatewayv1.Listener {
+		return gatewayv1.Listener{
+			Name:     gatewayv1.SectionName(name),
+			Protocol: gatewayv1.TLSProtocolType,
+			Port:     443,
+			Hostname: hostname,
+		}
+	}
+	route := func(hostnames ...gatewayv1.Hostname) *gatewayv1.TLSRoute {
+		return &gatewayv1.TLSRoute{
+			ObjectMeta: metav1.ObjectMeta{Name: "test", Namespace: "default"},
+			Spec:       gatewayv1.TLSRouteSpec{Hostnames: hostnames},
+		}
+	}
+
+	for _, tc := range []struct {
+		name      string
+		listener  *gatewayv1.Hostname
+		hostnames []gatewayv1.Hostname
+		want      []gatewayv1.Hostname
+		wantErr   bool
+	}{
+		{
+			name:      "a wildcard route narrows to the exact listener hostname",
+			listener:  &exact,
+			hostnames: []gatewayv1.Hostname{moreSpecificWildcard},
+			want:      []gatewayv1.Hostname{exact},
+		},
+		{
+			name:      "a broader wildcard route narrows to the listener wildcard",
+			listener:  &moreSpecificWildcard,
+			hostnames: []gatewayv1.Hostname{lessSpecificWildcard},
+			want:      []gatewayv1.Hostname{moreSpecificWildcard},
+		},
+		{
+			name:      "an exact route under a listener wildcard keeps its own hostname",
+			listener:  &moreSpecificWildcard,
+			hostnames: []gatewayv1.Hostname{exact},
+			want:      []gatewayv1.Hostname{exact},
+		},
+		{
+			name:      "a listener without a hostname leaves the route alone",
+			listener:  nil,
+			hostnames: []gatewayv1.Hostname{lessSpecificWildcard},
+			want:      []gatewayv1.Hostname{lessSpecificWildcard},
+		},
+		{
+			name:      "a route without hostnames takes the listener hostname",
+			listener:  &moreSpecificWildcard,
+			hostnames: nil,
+			want:      []gatewayv1.Hostname{moreSpecificWildcard},
+		},
+		{
+			name:      "a route without hostnames under a hostname-less listener matches anything",
+			listener:  nil,
+			hostnames: nil,
+			want:      nil,
+		},
+		{
+			name:      "no intersection is rejected",
+			listener:  &exact,
+			hostnames: []gatewayv1.Hostname{gatewayv1.Hostname("other.example.net")},
+			wantErr:   true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			gateways := []RouteParentRefContext{
+				{Listeners: []gatewayv1.Listener{tlsListener("tls", tc.listener)}},
+			}
+
+			filtered, err := filterTLSRouteHostnames(gateways, route(tc.hostnames...).DeepCopy())
+			if tc.wantErr {
+				assert.ErrorIs(t, err, ErrNoMatchingListenerHostname)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tc.want, filtered.Spec.Hostnames)
+		})
+	}
+}
+
 func TestAppendListeners(t *testing.T) {
 	listenerA := gatewayv1.Listener{Name: "a", Port: 80}
 	listenerB := gatewayv1.Listener{Name: "b", Port: 81}
