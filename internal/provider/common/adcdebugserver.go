@@ -153,7 +153,7 @@ func (asrv *ADCDebugProvider) showResourceTypes(w http.ResponseWriter, configNam
 }
 
 func (asrv *ADCDebugProvider) showResources(w http.ResponseWriter, r *http.Request, configName, configNameEncoded, resourceType string) {
-	resources, err := asrv.store.GetResources(configName)
+	resources, _, err := asrv.store.GetResources(configName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -256,7 +256,7 @@ func (asrv *ADCDebugProvider) showResources(w http.ResponseWriter, r *http.Reque
 }
 
 func (asrv *ADCDebugProvider) showResourceDetail(w http.ResponseWriter, r *http.Request, configName, resourceType, resourceID string) {
-	resources, err := asrv.store.GetResources(configName)
+	resources, _, err := asrv.store.GetResources(configName)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
