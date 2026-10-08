@@ -20,6 +20,9 @@ package indexer
 import (
 	"cmp"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -54,6 +57,7 @@ const (
 	ApisixUpstreamRef         = "apisixUpstreamRef"
 	PluginConfigIndexRef      = "pluginConfigRefs"
 	ControllerName            = "controllerName"
+	KeyAuthKey                = "keyAuthKey"
 )
 
 func SetupAPIv1alpha1Indexer(mgr ctrl.Manager) error {
@@ -201,6 +205,22 @@ func setupConsumerIndexer(mgr ctrl.Manager) error {
 	); err != nil {
 		return err
 	}
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&v1alpha1.Consumer{},
+		KeyAuthKey,
+		ConsumerKeyAuthKeyIndexFunc,
+	); err != nil {
+		return err
+	}
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&corev1.Secret{},
+		KeyAuthKey,
+		SecretKeyAuthKeyIndexFunc,
+	); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -261,6 +281,48 @@ func ConsumerSecretIndexFunc(rawObj client.Object) []string {
 	}
 	secretKeys = append(secretKeys, PluginSecretIndexKeys(consumer.GetNamespace(), consumer.Spec.Plugins)...)
 	return secretKeys
+}
+
+// GenKeyAuthKeyIndex hashes a key-auth key so the index never holds plaintext.
+func GenKeyAuthKeyIndex(key string) string {
+	sum := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(sum[:])
+}
+
+// InlineKeyAuthKey returns the key of an inline key-auth credential, or "" if none.
+func InlineKeyAuthKey(credential v1alpha1.Credential) string {
+	if credential.Type != "key-auth" || credential.SecretRef != nil || len(credential.Config.Raw) == 0 {
+		return ""
+	}
+	var cfg struct {
+		Key string `json:"key"`
+	}
+	if err := json.Unmarshal(credential.Config.Raw, &cfg); err != nil {
+		return ""
+	}
+	return cfg.Key
+}
+
+// ConsumerKeyAuthKeyIndexFunc indexes Consumers by their inline key-auth keys.
+func ConsumerKeyAuthKeyIndexFunc(rawObj client.Object) []string {
+	consumer := rawObj.(*v1alpha1.Consumer)
+	var keys []string
+	for _, credential := range consumer.Spec.Credentials {
+		if key := InlineKeyAuthKey(credential); key != "" {
+			keys = append(keys, GenKeyAuthKeyIndex(key))
+		}
+	}
+	return keys
+}
+
+// SecretKeyAuthKeyIndexFunc indexes Secrets by the key-auth key they hold.
+func SecretKeyAuthKeyIndexFunc(rawObj client.Object) []string {
+	secret := rawObj.(*corev1.Secret)
+	key := secret.Data["key"]
+	if len(key) == 0 {
+		return nil
+	}
+	return []string{GenKeyAuthKeyIndex(string(key))}
 }
 
 func ConsumerGatewayRefIndexFunc(rawObj client.Object) []string {

@@ -20,6 +20,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -46,6 +47,8 @@ import (
 	"github.com/apache/apisix-ingress-controller/internal/utils"
 	pkgutils "github.com/apache/apisix-ingress-controller/pkg/utils"
 )
+
+const keyAuthType = "key-auth"
 
 // ConsumerReconciler  reconciles a Gateway object.
 type ConsumerReconciler struct { //nolint:revive
@@ -103,6 +106,9 @@ func (r *ConsumerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				},
 			),
 		).
+		Watches(&v1alpha1.Consumer{},
+			handler.EnqueueRequestsFromMapFunc(r.listConsumersSharingKeyAuthKeys),
+		).
 		Watches(&corev1.Secret{},
 			handler.EnqueueRequestsFromMapFunc(r.listConsumersForSecret),
 		).
@@ -118,7 +124,7 @@ func (r *ConsumerReconciler) listConsumersForSecret(ctx context.Context, obj cli
 		r.Log.Error(nil, "failed to convert to Secret", "object", obj)
 		return nil
 	}
-	return ListRequests(
+	requests := ListRequests(
 		ctx,
 		r.Client,
 		r.Log,
@@ -127,6 +133,51 @@ func (r *ConsumerReconciler) listConsumersForSecret(ctx context.Context, obj cli
 			indexer.SecretIndexRef: indexer.GenIndexKey(secret.GetNamespace(), secret.GetName()),
 		},
 	)
+	return append(requests, r.listKeyAuthKeyOwners(ctx, string(secret.Data["key"]))...)
+}
+
+// listConsumersSharingKeyAuthKeys requeues Consumers sharing a key-auth key with
+// obj, so a credential skipped as a duplicate returns once the key is free.
+func (r *ConsumerReconciler) listConsumersSharingKeyAuthKeys(ctx context.Context, obj client.Object) []reconcile.Request {
+	consumer, ok := obj.(*v1alpha1.Consumer)
+	if !ok {
+		r.Log.Error(nil, "failed to convert to Consumer", "object", obj)
+		return nil
+	}
+	keys := make([]string, 0, len(consumer.Spec.Credentials))
+	for _, credential := range consumer.Spec.Credentials {
+		if credential.Type != keyAuthType {
+			continue
+		}
+		if credential.SecretRef == nil {
+			keys = append(keys, indexer.InlineKeyAuthKey(credential))
+			continue
+		}
+		var secret corev1.Secret
+		if err := r.Get(ctx, credentialSecretNN(consumer, credential), &secret); err != nil {
+			continue
+		}
+		keys = append(keys, string(secret.Data["key"]))
+	}
+	return r.listKeyAuthKeyOwners(ctx, keys...)
+}
+
+func (r *ConsumerReconciler) listKeyAuthKeyOwners(ctx context.Context, keys ...string) []reconcile.Request {
+	var requests []reconcile.Request
+	for _, key := range keys {
+		if key == "" {
+			continue
+		}
+		owners, err := r.keyAuthKeyOwners(ctx, key)
+		if err != nil {
+			r.Log.Error(err, "failed to list consumers sharing a key-auth key")
+			continue
+		}
+		for i := range owners {
+			requests = append(requests, reconcile.Request{NamespacedName: utils.NamespacedName(&owners[i])})
+		}
+	}
+	return requests
 }
 
 func (r *ConsumerReconciler) listConsumersForGateway(ctx context.Context, obj client.Object) []reconcile.Request {
@@ -241,7 +292,15 @@ func (r *ConsumerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		statusErr = err
 	}
 
-	if err := r.Provider.Update(ctx, tctx, consumer); err != nil {
+	published, skipped, err := r.skipDuplicateKeyAuthCredentials(ctx, tctx, consumer)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if skipped > 0 {
+		statusErr = fmt.Errorf("%d key-auth credential(s) skipped: key already used by another Consumer", skipped)
+	}
+
+	if err := r.Provider.Update(ctx, tctx, published); err != nil {
 		r.Log.Error(err, "failed to update consumer", "consumer", utils.NamespacedName(consumer))
 		statusErr = err
 	}
@@ -291,6 +350,132 @@ func (r *ConsumerReconciler) processSpec(ctx context.Context, tctx *provider.Tra
 
 	}
 	return loadPluginSecrets(ctx, r.Client, tctx, consumer.GetNamespace(), consumer.Spec.Plugins)
+}
+
+// skipDuplicateKeyAuthCredentials drops key-auth credentials whose key an older
+// Consumer on the same Gateway already uses. Admission alone misses a duplicate
+// that arrives later, e.g. via a Secret created after its Consumer.
+func (r *ConsumerReconciler) skipDuplicateKeyAuthCredentials(ctx context.Context, tctx *provider.TranslateContext, consumer *v1alpha1.Consumer) (*v1alpha1.Consumer, int, error) {
+	kept := make([]v1alpha1.Credential, 0, len(consumer.Spec.Credentials))
+	for _, credential := range consumer.Spec.Credentials {
+		key := publishedKeyAuthKey(tctx, consumer, credential)
+		if key != "" {
+			taken, err := r.keyAuthKeyTaken(ctx, consumer, key)
+			if err != nil {
+				return nil, 0, err
+			}
+			if taken {
+				continue
+			}
+		}
+		kept = append(kept, credential)
+	}
+	skipped := len(consumer.Spec.Credentials) - len(kept)
+	if skipped == 0 {
+		return consumer, 0, nil
+	}
+	published := consumer.DeepCopy()
+	published.Spec.Credentials = kept
+	return published, skipped, nil
+}
+
+// keyAuthKeyTaken reports whether an older Consumer on the same Gateway uses key.
+func (r *ConsumerReconciler) keyAuthKeyTaken(ctx context.Context, consumer *v1alpha1.Consumer, key string) (bool, error) {
+	owners, err := r.keyAuthKeyOwners(ctx, key)
+	if err != nil {
+		return false, err
+	}
+	gatewayRef := indexer.ConsumerGatewayRefIndexFunc(consumer)
+	for i := range owners {
+		owner := &owners[i]
+		if owner.Namespace == consumer.Namespace && owner.Name == consumer.Name {
+			continue
+		}
+		if !slices.Equal(indexer.ConsumerGatewayRefIndexFunc(owner), gatewayRef) {
+			continue
+		}
+		if olderConsumer(owner, consumer) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// keyAuthKeyOwners lists the Consumers whose key-auth credentials use key.
+func (r *ConsumerReconciler) keyAuthKeyOwners(ctx context.Context, key string) ([]v1alpha1.Consumer, error) {
+	index := client.MatchingFields{indexer.KeyAuthKey: indexer.GenKeyAuthKeyIndex(key)}
+
+	var owners v1alpha1.ConsumerList
+	if err := r.List(ctx, &owners, index); err != nil {
+		return nil, err
+	}
+	var secrets corev1.SecretList
+	if err := r.List(ctx, &secrets, index); err != nil {
+		return nil, err
+	}
+	for _, secret := range secrets.Items {
+		var refs v1alpha1.ConsumerList
+		if err := r.List(ctx, &refs, client.MatchingFields{
+			indexer.SecretIndexRef: indexer.GenIndexKey(secret.Namespace, secret.Name),
+		}); err != nil {
+			return nil, err
+		}
+		for i := range refs.Items {
+			uses, err := usesKeyAuthSecret(ctx, r.Client, &refs.Items[i], utils.NamespacedName(&secret))
+			if err != nil {
+				return nil, err
+			}
+			if uses {
+				owners.Items = append(owners.Items, refs.Items[i])
+			}
+		}
+	}
+	return owners.Items, nil
+}
+
+// usesKeyAuthSecret reports whether consumer loads secretNN as a key-auth credential.
+func usesKeyAuthSecret(ctx context.Context, c client.Client, consumer *v1alpha1.Consumer, secretNN types.NamespacedName) (bool, error) {
+	for _, credential := range consumer.Spec.Credentials {
+		if credential.Type != keyAuthType || credential.SecretRef == nil || credentialSecretNN(consumer, credential) != secretNN {
+			continue
+		}
+		if secretNN.Namespace == consumer.Namespace {
+			return true, nil
+		}
+		return CheckConsumerSecretRef(ctx, c, consumer.Namespace, secretNN)
+	}
+	return false, nil
+}
+
+// publishedKeyAuthKey returns the key a key-auth credential publishes, or "".
+func publishedKeyAuthKey(tctx *provider.TranslateContext, consumer *v1alpha1.Consumer, credential v1alpha1.Credential) string {
+	if credential.Type != keyAuthType {
+		return ""
+	}
+	if credential.SecretRef == nil {
+		return indexer.InlineKeyAuthKey(credential)
+	}
+	secret := tctx.Secrets[credentialSecretNN(consumer, credential)]
+	if secret == nil {
+		return ""
+	}
+	return string(secret.Data["key"])
+}
+
+func credentialSecretNN(consumer *v1alpha1.Consumer, credential v1alpha1.Credential) types.NamespacedName {
+	ns := consumer.Namespace
+	if credential.SecretRef.Namespace != nil {
+		ns = *credential.SecretRef.Namespace
+	}
+	return types.NamespacedName{Namespace: ns, Name: credential.SecretRef.Name}
+}
+
+// olderConsumer orders by creation time, then by namespace/name for a stable tie-break.
+func olderConsumer(a, b *v1alpha1.Consumer) bool {
+	if !a.CreationTimestamp.Equal(&b.CreationTimestamp) {
+		return a.CreationTimestamp.Before(&b.CreationTimestamp)
+	}
+	return utils.NamespacedName(a).String() < utils.NamespacedName(b).String()
 }
 
 func (r *ConsumerReconciler) updateStatus(consumer *v1alpha1.Consumer, err error) {
