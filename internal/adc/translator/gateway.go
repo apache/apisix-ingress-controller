@@ -246,7 +246,6 @@ func (t *Translator) fillPluginsFromGatewayProxy(plugins adctypes.GlobalRule, ga
 		return nil
 	}
 
-	translated := make(adctypes.GlobalRule)
 	for _, plugin := range gatewayProxy.Spec.Plugins {
 		// only apply enabled plugins
 		if !plugin.Enabled {
@@ -263,9 +262,6 @@ func (t *Translator) fillPluginsFromGatewayProxy(plugins adctypes.GlobalRule, ga
 				return fmt.Errorf("config of GatewayProxy plugin %q must be a JSON object", pluginName)
 			}
 		}
-		translated[pluginName] = pluginConfig
-	}
-	for pluginName, pluginConfig := range translated {
 		plugins[pluginName] = pluginConfig
 	}
 	t.Log.V(1).Info("fill plugins for gateway proxy", "plugins", plugins)
@@ -276,7 +272,6 @@ func (t *Translator) fillPluginMetadataFromGatewayProxy(pluginMetadata adctypes.
 	if gatewayProxy == nil {
 		return nil
 	}
-	translated := make(adctypes.PluginMetadata)
 	for pluginName, plugin := range gatewayProxy.Spec.PluginMetadata {
 		var pluginConfig map[string]any
 		if err := json.Unmarshal(plugin.Raw, &pluginConfig); err != nil {
@@ -286,9 +281,6 @@ func (t *Translator) fillPluginMetadataFromGatewayProxy(pluginMetadata adctypes.
 			return fmt.Errorf("GatewayProxy plugin metadata for %q must be a JSON object", pluginName)
 		}
 		t.Log.V(1).Info("fill plugin_metadata for gateway proxy", "plugin", pluginName)
-		translated[pluginName] = pluginConfig
-	}
-	for pluginName, pluginConfig := range translated {
 		pluginMetadata[pluginName] = pluginConfig
 	}
 	return nil
