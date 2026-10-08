@@ -373,6 +373,39 @@ func TestConsumerValidator_DenyDuplicateKeyAuthCredential(t *testing.T) {
 	require.NotContains(t, err.Error(), "shared-key")
 }
 
+// A collision with a Consumer in another namespace must not reveal its identity.
+func TestConsumerValidator_DenyDuplicateKeyAuthCredentialCrossNamespace(t *testing.T) {
+	gatewayNS := "default"
+	existing := &apisixv1alpha1.Consumer{
+		ObjectMeta: metav1.ObjectMeta{Name: "victim", Namespace: authNS},
+		Spec: apisixv1alpha1.ConsumerSpec{
+			GatewayRef: apisixv1alpha1.GatewayRef{Name: "test-gateway", Namespace: &gatewayNS},
+			Credentials: []apisixv1alpha1.Credential{{
+				Type:   "key-auth",
+				Config: apiextensionsv1.JSON{Raw: []byte(`{"key":"shared-key"}`)},
+			}},
+		},
+	}
+	consumer := &apisixv1alpha1.Consumer{
+		ObjectMeta: metav1.ObjectMeta{Name: "demo", Namespace: "default"},
+		Spec: apisixv1alpha1.ConsumerSpec{
+			GatewayRef: apisixv1alpha1.GatewayRef{Name: "test-gateway"},
+			Credentials: []apisixv1alpha1.Credential{{
+				Type:   "key-auth",
+				Config: apiextensionsv1.JSON{Raw: []byte(`{"key":"shared-key"}`)},
+			}},
+		},
+	}
+
+	validator := buildConsumerValidator(t, existing)
+
+	_, err := validator.ValidateCreate(context.Background(), consumer)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "duplicate key-auth credential already used by another Consumer")
+	require.NotContains(t, err.Error(), authNS+"/victim")
+	require.NotContains(t, err.Error(), "shared-key")
+}
+
 // The duplicate-key check must not become a cross-namespace oracle: a key-auth
 // credential whose secretRef points across namespaces without a ReferenceGrant
 // must respond the same whether the Secret exists with a colliding key or is
@@ -418,5 +451,5 @@ func TestConsumerValidator_CrossNamespaceKeyAuthDuplicateOracleSuppressed(t *tes
 	// Identical response either way, and no duplicate-key error ever surfaces.
 	require.Equal(t, absentWarnings, collidesWarnings)
 	require.Equal(t, fmt.Sprint(absentErr), fmt.Sprint(collidesErr))
-	require.NotContains(t, fmt.Sprint(collidesErr), "duplicate key-auth credential key")
+	require.NotContains(t, fmt.Sprint(collidesErr), "duplicate key-auth credential")
 }
