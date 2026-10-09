@@ -330,6 +330,11 @@ func getPortFromService(svc *corev1.Service, backendSvcPort intstr.IntOrString) 
 	if backendSvcPort.Type == intstr.Int {
 		port = int32(backendSvcPort.IntValue())
 	} else {
+		// A Service port may omit its name, so an empty name would match it by
+		// accident instead of being reported as the invalid reference it is.
+		if backendSvcPort.StrVal == "" {
+			return 0, errors.Errorf("service port must not be empty for service %s", svc.Name)
+		}
 		found := false
 		for _, servicePort := range svc.Spec.Ports {
 			if servicePort.Name == backendSvcPort.StrVal {
