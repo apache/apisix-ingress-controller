@@ -75,30 +75,19 @@ spec:
 
 			// Create GatewayClass
 			gatewayClassName := s.Namespace()
-			Expect(s.CreateResourceFromString(s.GetGatewayClassYaml())).
-				NotTo(HaveOccurred(), "creating GatewayClass")
-			gcyaml, _ := s.GetResourceYaml("GatewayClass", gatewayClassName)
-			s.ResourceApplied("GatewayClass", gatewayClassName, gcyaml, 1)
+			s.ResourceApplied("GatewayClass", gatewayClassName, s.GetGatewayClassYaml(), 1)
 
 			// Create Gateway with UDP listener
 			gatewayName := s.Namespace()
-			Expect(s.CreateResourceFromString(fmt.Sprintf(udpGateway, gatewayName, gatewayClassName))).
-				NotTo(HaveOccurred(), "creating Gateway")
-
-			gwyaml, _ := s.GetResourceYaml("Gateway", gatewayName)
-			s.ResourceApplied("Gateway", gatewayName, gwyaml, 1)
+			s.ResourceApplied("Gateway", gatewayName, fmt.Sprintf(udpGateway, gatewayName, gatewayClassName), 1)
 		})
 
 		It("should route UDP traffic to backend service", func() {
 			dnsSvc := s.NewCoreDNSService()
 			gatewayName := s.Namespace()
 			By("creating UDPRoute")
-			Expect(s.CreateResourceFromString(fmt.Sprintf(udpRoute, gatewayName, dnsSvc.Name, dnsSvc.Spec.Ports[0].Port))).
-				NotTo(HaveOccurred(), "creating UDPRoute")
-
-			// Verify UDPRoute status becomes programmed
-			routeYaml, _ := s.GetResourceYaml("UDPRoute", "udp-app-1")
-			s.ResourceApplied("UDPRoute", "udp-app-1", routeYaml, 1)
+			s.ResourceApplied("UDPRoute", "udp-app-1",
+				fmt.Sprintf(udpRoute, gatewayName, dnsSvc.Name, dnsSvc.Spec.Ports[0].Port), 1)
 
 			svc := s.GetDataplaneService()
 
