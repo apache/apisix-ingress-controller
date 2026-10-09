@@ -256,6 +256,17 @@ func (r *GRPCRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	ProcessBackendTrafficPolicy(r.Client, r.Log, tctx)
 
+	// Translate and sync before writing Accepted=True. A translation or
+	// buildConfig failure from Provider.Update used to leave a green status
+	// and only requeue, matching neither Ingress nor ApisixGlobalRule.
+	var syncErr error
+	if isRouteAccepted(gateways) && err == nil {
+		if syncErr = r.Provider.Update(ctx, tctx, gr); syncErr != nil {
+			acceptStatus.status = false
+			acceptStatus.msg = syncErr.Error()
+		}
+	}
+
 	// TODO: diff the old and new status
 	gr.Status.Parents = make([]gatewayv1.RouteParentStatus, 0, len(gateways))
 	for _, gateway := range gateways {
@@ -287,11 +298,7 @@ func (r *GRPCRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	UpdateStatus(r.Updater, r.Log, tctx)
 
 	if isRouteAccepted(gateways) && err == nil {
-		routeToUpdate := gr
-		if err := r.Provider.Update(ctx, tctx, routeToUpdate); err != nil {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, syncErr
 	}
 
 	// The route still resolves to one of our Gateways but no parent accepts it any

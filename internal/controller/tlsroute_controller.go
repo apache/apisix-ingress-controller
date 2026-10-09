@@ -348,6 +348,16 @@ func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if r.supportsL4RoutePolicy {
 		ProcessL4RoutePolicy(r.Client, r.Log, tctx, tr.Namespace, tr.Name, types.KindTLSRoute)
 	}
+	// Translate and sync before writing Accepted=True. A translation or
+	// buildConfig failure from Provider.Update used to leave a green status
+	// and only requeue, matching neither Ingress nor ApisixGlobalRule.
+	var syncErr error
+	if isRouteAccepted(gateways) {
+		if syncErr = r.Provider.Update(ctx, tctx, tr); syncErr != nil {
+			acceptStatus.status = false
+			acceptStatus.msg = syncErr.Error()
+		}
+	}
 	tr.Status.Parents = make([]gatewayv1.RouteParentStatus, 0, len(gateways))
 	for _, gateway := range gateways {
 		parentStatus := gatewayv1.RouteParentStatus{}
@@ -377,11 +387,7 @@ func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	})
 	UpdateStatus(r.Updater, r.Log, tctx)
 	if isRouteAccepted(gateways) {
-		routeToUpdate := tr
-		if err := r.Provider.Update(ctx, tctx, routeToUpdate); err != nil {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, syncErr
 	}
 
 	// The route still resolves to one of our Gateways but no parent accepts it any

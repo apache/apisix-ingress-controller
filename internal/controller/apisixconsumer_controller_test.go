@@ -46,18 +46,19 @@ import (
 const testConsumerNamespace = "default"
 
 // recordingProvider records the objects passed to Update and Delete, and can be
-// told to fail a delete. Shared by the reconciler tests in this package.
+// told to fail an update or a delete. Shared by the reconciler tests in this package.
 type recordingProvider struct {
 	updated   int
 	deleted   []types.NamespacedName
 	deleteErr error
+	updateErr error
 }
 
 func (p *recordingProvider) Register(string, *http.ServeMux) {}
 
 func (p *recordingProvider) Update(context.Context, *provider.TranslateContext, client.Object) error {
 	p.updated++
-	return nil
+	return p.updateErr
 }
 
 func (p *recordingProvider) Delete(_ context.Context, obj client.Object) error {
