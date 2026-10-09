@@ -26,6 +26,10 @@ on:
     branches:
       - master
       - 1.8.0
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   changes:
     runs-on: ubuntu-latest
