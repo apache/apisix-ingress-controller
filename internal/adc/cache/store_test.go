@@ -119,12 +119,12 @@ func TestSetGlobalRulesReplacesOnlyThatOwnersPlugins(t *testing.T) {
 	require.NoError(t, s.SetGlobalRules(configName, globalRule, adctypes.GlobalRule{"prometheus": map[string]any{}, "old": map[string]any{}}))
 	require.NoError(t, s.SetGlobalRules(configName, globalRule, adctypes.GlobalRule{"prometheus": map[string]any{}}))
 
-	resources, err := s.GetResources(configName)
+	resources, _, err := s.GetResources(configName)
 	require.NoError(t, err)
 	assert.Equal(t, adctypes.GlobalRule{"cors": map[string]any{"a": "b"}, "prometheus": map[string]any{}}, resources.GlobalRules)
 
 	require.NoError(t, s.SetGlobalRules(configName, globalRule, nil))
-	resources, err = s.GetResources(configName)
+	resources, _, err = s.GetResources(configName)
 	require.NoError(t, err)
 	assert.Equal(t, adctypes.GlobalRule{"cors": map[string]any{"a": "b"}}, resources.GlobalRules)
 }
@@ -135,7 +135,7 @@ func TestSetGlobalRulesOfTheSameNameOverwritesAndAttributesToTheLastWriter(t *te
 	require.NoError(t, s.SetGlobalRules(configName, gatewayProxy, adctypes.GlobalRule{"prometheus": map[string]any{"from": "gp"}}))
 	require.NoError(t, s.SetGlobalRules(configName, globalRule, adctypes.GlobalRule{"prometheus": map[string]any{"from": "agr"}}))
 
-	resources, err := s.GetResources(configName)
+	resources, _, err := s.GetResources(configName)
 	require.NoError(t, err)
 	entity, ok := s.Lookup(configName, adctypes.TypeGlobalRule, "prometheus")
 	require.True(t, ok)
@@ -148,7 +148,7 @@ func TestSetPluginMetadataReplacesEverything(t *testing.T) {
 	require.NoError(t, s.SetPluginMetadata(configName, adctypes.PluginMetadata{"old": map[string]any{}}))
 	require.NoError(t, s.SetPluginMetadata(configName, adctypes.PluginMetadata{"new": map[string]any{}}))
 
-	resources, err := s.GetResources(configName)
+	resources, _, err := s.GetResources(configName)
 	require.NoError(t, err)
 	assert.Equal(t, adctypes.PluginMetadata{"new": map[string]any{}}, resources.PluginMetadata)
 }
@@ -241,4 +241,99 @@ func TestOwnedEntitiesIncludesGlobalRulesAndPluginMetadataOfTheGatewayProxy(t *t
 	require.Len(t, agrEntities, 1)
 	assert.Equal(t, adctypes.TypeGlobalRule, agrEntities[0].Type)
 	assert.Equal(t, "prometheus", agrEntities[0].ID)
+}
+
+func TestInsertOfIdenticalContentIsNotAChange(t *testing.T) {
+	route := ownerNamed(types.KindApisixRoute, "route")
+	s := NewStore(logr.Discard())
+	write := func(id string) {
+		require.NoError(t, s.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{Services: []*adctypes.Service{service(id, route)}}, labelsOf(route)))
+	}
+
+	write("svc")
+	built := s.Revision()
+	assert.False(t, s.ChangedSince(configName, route, built))
+
+	write("svc")
+	assert.False(t, s.ChangedSince(configName, route, built), "rewriting the same content is not a change")
+
+	write("other")
+	assert.True(t, s.ChangedSince(configName, route, built))
+	assert.False(t, s.ChangedSince(configName, ownerNamed(types.KindApisixRoute, "unrelated"), built), "another owner is unaffected")
+}
+
+// A stored plugin config has been through a JSON round trip, while a freshly translated
+// one can still be a typed struct, whose fields marshal in declaration order.
+func TestPluginConfigsThatDifferOnlyInFieldOrderAreNotAChange(t *testing.T) {
+	type outOfOrder struct {
+		Z string `json:"z"`
+		A string `json:"a"`
+	}
+	route := ownerNamed(types.KindApisixRoute, "route")
+	s := NewStore(logr.Discard())
+	write := func(config any) {
+		svc := service("svc", route)
+		svc.Plugins = adctypes.Plugins{"p": config}
+		require.NoError(t, s.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{Services: []*adctypes.Service{svc}}, labelsOf(route)))
+	}
+
+	write(outOfOrder{Z: "1", A: "2"})
+	built := s.Revision()
+	write(outOfOrder{Z: "1", A: "2"})
+	assert.False(t, s.ChangedSince(configName, route, built))
+}
+
+func TestDeleteRecordsAChangeOnlyWhenSomethingWasRemoved(t *testing.T) {
+	route := ownerNamed(types.KindApisixRoute, "route")
+	s := NewStore(logr.Discard())
+	require.NoError(t, s.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{Services: []*adctypes.Service{service("svc", route)}}, labelsOf(route)))
+	built := s.Revision()
+
+	require.NoError(t, s.Delete(configName, []string{adctypes.TypeService}, labelsOf(ownerNamed(types.KindApisixRoute, "nothing-here"))))
+	assert.Equal(t, built, s.Revision())
+
+	require.NoError(t, s.Delete(configName, []string{adctypes.TypeService}, labelsOf(route)))
+	assert.True(t, s.ChangedSince(configName, route, built))
+}
+
+func TestDeleteAllIsAChangeToEveryOwnerOfTheCacheKey(t *testing.T) {
+	route := ownerNamed(types.KindApisixRoute, "route")
+	s := NewStore(logr.Discard())
+	require.NoError(t, s.Insert(configName, []string{adctypes.TypeService}, &adctypes.Resources{Services: []*adctypes.Service{service("svc", route)}}, labelsOf(route)))
+	built := s.Revision()
+
+	s.DeleteAll("GatewayProxy/ns/other")
+	assert.False(t, s.ChangedSince(configName, route, built), "wiping another cacheKey leaves this one alone")
+
+	s.DeleteAll(configName)
+	assert.True(t, s.ChangedSince(configName, route, built))
+	assert.True(t, s.ChangedSince(configName, ownerNamed(types.KindApisixRoute, "anyone"), built), "everything a result was built from is gone")
+}
+
+func TestSetGlobalRulesAndPluginMetadataRecordChangesOnlyOnContentDifference(t *testing.T) {
+	globalRule := ownerNamed(types.KindApisixGlobalRule, "global")
+	s := NewStore(logr.Discard())
+	require.NoError(t, s.SetGlobalRules(configName, globalRule, adctypes.GlobalRule{"cors": map[string]any{"a": "b"}}))
+	require.NoError(t, s.SetPluginMetadata(configName, adctypes.PluginMetadata{"http-logger": map[string]any{"x": 1}}))
+	built := s.Revision()
+
+	require.NoError(t, s.SetGlobalRules(configName, globalRule, adctypes.GlobalRule{"cors": map[string]any{"a": "b"}}))
+	require.NoError(t, s.SetPluginMetadata(configName, adctypes.PluginMetadata{"http-logger": map[string]any{"x": 1}}))
+	assert.Equal(t, built, s.Revision(), "rewriting the same plugins changes nothing")
+
+	require.NoError(t, s.SetGlobalRules(configName, globalRule, adctypes.GlobalRule{"cors": map[string]any{"a": "c"}}))
+	assert.True(t, s.ChangedSince(configName, globalRule, built))
+	require.NoError(t, s.SetPluginMetadata(configName, adctypes.PluginMetadata{}))
+	assert.True(t, s.ChangedSince(configName, gatewayProxy, built), "plugin_metadata belongs to the GatewayProxy the cacheKey names")
+}
+
+func TestOwnerChangedSinceLooksAtEveryCacheKey(t *testing.T) {
+	route := ownerNamed(types.KindApisixRoute, "route")
+	s := NewStore(logr.Discard())
+	require.NoError(t, s.Insert("GatewayProxy/ns/a", []string{adctypes.TypeService}, &adctypes.Resources{Services: []*adctypes.Service{service("svc", route)}}, labelsOf(route)))
+	built := s.Revision()
+	assert.False(t, s.OwnerChangedSince(route, built))
+
+	require.NoError(t, s.Insert("GatewayProxy/ns/b", []string{adctypes.TypeService}, &adctypes.Resources{Services: []*adctypes.Service{service("svc", route)}}, labelsOf(route)))
+	assert.True(t, s.OwnerChangedSince(route, built))
 }

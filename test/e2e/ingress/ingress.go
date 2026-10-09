@@ -1600,4 +1600,146 @@ spec:
 		})
 
 	})
+
+	Context("Bad resource isolation", func() {
+		var gatewayProxy = `
+apiVersion: apisix.apache.org/v1alpha1
+kind: GatewayProxy
+metadata:
+  name: apisix-proxy-config
+  namespace: %s
+spec:
+  provider:
+    type: ControlPlane
+    controlPlane:
+      endpoints:
+      - %s
+      auth:
+        type: AdminKey
+        adminKey:
+          value: "%s"
+`
+		var ingressClass = `
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: %s
+spec:
+  controller: "%s"
+  parameters:
+    apiGroup: "apisix.apache.org"
+    kind: "GatewayProxy"
+    name: "apisix-proxy-config"
+    namespace: "%s"
+    scope: "Namespace"
+`
+		// The Ingress picks up its plugins from an ApisixPluginConfig named in an
+		// annotation; limit-count refuses a count that is not greater than 0.
+		var rejectedPluginConfig = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixPluginConfig
+metadata:
+  name: rejected-plugins
+spec:
+  ingressClassName: %s
+  plugins:
+  - name: limit-count
+    enable: true
+    config:
+      count: 0
+      time_window: 60
+      rejected_code: 503
+      key: remote_addr
+`
+		var ingressTemplate = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rejected
+%s
+spec:
+  ingressClassName: %s
+  rules:
+  - host: rejected-ingress.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
+		const withRejectedPlugins = `  annotations:
+    k8s.apisix.apache.org/plugin-config-name: rejected-plugins`
+		var validIngress = `
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: valid
+spec:
+  ingressClassName: %s
+  rules:
+  - host: valid-ingress.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: httpbin-service-e2e-test
+            port:
+              number: 80
+`
+		expectValidIngressServed := func() {
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "valid-ingress.example.com",
+				Check:  scaffold.WithExpectedStatus(200),
+			})
+		}
+
+		It("a rejected Ingress is reported as an event", func() {
+			By("create GatewayProxy")
+			err := s.CreateResourceFromStringWithNamespace(fmt.Sprintf(gatewayProxy, s.Namespace(), s.Deployer.GetAdminEndpoint(), s.AdminKey()), s.Namespace())
+			Expect(err).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			By("create IngressClass")
+			err = s.CreateResourceFromStringWithNamespace(fmt.Sprintf(ingressClass, s.Namespace(), s.GetControllerName(), s.Namespace()), "")
+			Expect(err).NotTo(HaveOccurred(), "creating IngressClass")
+
+			By("create a valid Ingress and one whose plugins the data plane rejects")
+			err = s.CreateResourceFromString(fmt.Sprintf(rejectedPluginConfig, s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "creating ApisixPluginConfig")
+			err = s.CreateResourceFromString(fmt.Sprintf(validIngress, s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "creating valid Ingress")
+			err = s.CreateResourceFromString(fmt.Sprintf(ingressTemplate, withRejectedPlugins, s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "creating Ingress")
+
+			By("the valid Ingress stays served and the rejected one reports an event")
+			expectValidIngressServed()
+			s.RetryAssertion(func() string {
+				output, _ := s.GetOutputFromString("events", "--field-selector", "involvedObject.name=rejected", "-n", s.Namespace())
+				return output
+			}).Should(And(
+				ContainSubstring("Warning"),
+				ContainSubstring("SyncFailed"),
+			))
+
+			By("stop using the rejected plugins")
+			err = s.CreateResourceFromString(fmt.Sprintf(ingressTemplate, "", s.Namespace()))
+			Expect(err).NotTo(HaveOccurred(), "updating Ingress")
+
+			By("both Ingresses are served")
+			expectValidIngressServed()
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "rejected-ingress.example.com",
+				Check:  scaffold.WithExpectedStatus(200),
+			})
+		})
+	})
 })
