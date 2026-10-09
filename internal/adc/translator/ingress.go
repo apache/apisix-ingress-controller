@@ -180,7 +180,9 @@ func (t *Translator) buildServiceFromIngressPath(
 	}
 	service.Routes = []*adctypes.Route{route}
 
-	t.fillHTTPRoutePoliciesForIngress(tctx, service.Routes)
+	if err := t.fillHTTPRoutePoliciesForIngress(tctx, service.Routes); err != nil {
+		return nil, err
+	}
 	return service, nil
 }
 
