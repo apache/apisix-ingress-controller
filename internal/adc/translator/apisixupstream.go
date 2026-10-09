@@ -164,9 +164,9 @@ func translateApisixUpstreamRetriesAndTimeout(config *apiv2.ApisixUpstreamConfig
 	sendTimeout := cmp.Or(timeout.Send.Duration, apiv2.DefaultUpstreamTimeout)
 
 	ups.Timeout = &adc.Timeout{
-		Connect: int(connTimeout.Seconds()),
-		Read:    int(readTimeout.Seconds()),
-		Send:    int(sendTimeout.Seconds()),
+		Connect: connTimeout.Seconds(),
+		Read:    readTimeout.Seconds(),
+		Send:    sendTimeout.Seconds(),
 	}
 
 	return nil
