@@ -29,7 +29,7 @@ KIND_NAME ?= apisix-ingress-cluster
 CLOUD_PROVIDER_KIND_VERSION ?= v0.6.0
 CLOUD_PROVIDER_KIND_PID ?= /tmp/cloud-provider-kind.pid
 
-ADC_VERSION ?= 0.30.5
+ADC_VERSION ?= 0.31.0
 
 DIR := $(shell pwd)
 
@@ -71,12 +71,10 @@ CONFORMANCE_CHANNEL ?= experimental
 # report's Reproduce section.
 CONFORMANCE_MODE ?= default
 # The data plane a release report is produced against. apisix:dev is a floating
-# tag, so a report meant to be reproducible has to name a released one.
-# The TLSRoute Passthrough tests need a data plane carrying apache/apisix#13912
-# (stream_proxy tls_passthrough), which 3.17.0 predates - a release report has
-# to wait for the first APISIX release that ships it. A dev run picks it up from
-# apisix:dev already.
-CONFORMANCE_DATAPLANE_VERSION ?= 3.17.0-debian
+# tag, so a report meant to be reproducible has to name a released one. 3.19.0
+# is the first release carrying apache/apisix#13912 (stream_proxy
+# tls_passthrough), which the TLSRoute Passthrough tests need.
+CONFORMANCE_DATAPLANE_VERSION ?= 3.19.0-debian
 # What the run deploys and what the report declares, following the checked-out
 # state: a release tag pulls the published images for that release, anything
 # else uses the dev images. Upstream rejects a floating name as the version, so

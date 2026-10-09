@@ -54,26 +54,6 @@ func listenerPortSet(tctx *provider.TranslateContext) map[int32]struct{} {
 	return portSet
 }
 
-// l4StreamRoutePorts returns the listener ports to emit one StreamRoute for
-// each, or the single sentinel 0 meaning one StreamRoute with no server_port
-// match at all. See buildL4StreamRoutes for why the injection is opt-in.
-func (t *Translator) l4StreamRoutePorts(tctx *provider.TranslateContext) []int32 {
-	var ports []int32
-	if portSet := listenerPortSet(tctx); t.shouldInjectServerPortVars(tctx.HasExplicitListenerMatch, portSet) {
-		ports = make([]int32, 0, len(portSet))
-		for port := range portSet {
-			ports = append(ports, port)
-		}
-		sort.Slice(ports, func(i, j int) bool { return ports[i] < ports[j] })
-	}
-	if len(ports) == 0 {
-		// No server_port isolation: a single StreamRoute that matches all
-		// connections on the stream listener, as before.
-		return []int32{0}
-	}
-	return ports
-}
-
 // buildL4StreamRoutes builds the StreamRoutes for one L4 route rule.
 //
 // A StreamRoute without a server_port match matches every connection on any
@@ -87,8 +67,20 @@ func (t *Translator) l4StreamRoutePorts(tctx *provider.TranslateContext) []int32
 // the match to work, so injection is opt-in (explicit sectionName/port targeting,
 // or more than one listener port). When it is not injected we keep the previous
 // single portless StreamRoute, preserving backward compatibility.
-func (t *Translator) buildL4StreamRoutes(tctx *provider.TranslateContext, namespace, name string, ruleIndex int, typ, routeKind string, labels map[string]string) []*adctypes.StreamRoute {
-	ports := t.l4StreamRoutePorts(tctx)
+func (t *Translator) buildL4StreamRoutes(tctx *provider.TranslateContext, namespace, name string, ruleIndex int, typ, routeKind string, labels map[string]string) ([]*adctypes.StreamRoute, error) {
+	var ports []int32
+	if portSet := listenerPortSet(tctx); t.shouldInjectServerPortVars(tctx.HasExplicitListenerMatch, portSet) {
+		ports = make([]int32, 0, len(portSet))
+		for port := range portSet {
+			ports = append(ports, port)
+		}
+		sort.Slice(ports, func(i, j int) bool { return ports[i] < ports[j] })
+	}
+	if len(ports) == 0 {
+		// No server_port isolation: a single StreamRoute that matches all
+		// connections on the stream listener, as before.
+		ports = []int32{0}
+	}
 	streamRoutes := make([]*adctypes.StreamRoute, 0, len(ports))
 	for _, port := range ports {
 		streamRoute := adctypes.NewDefaultStreamRoute()
@@ -106,10 +98,12 @@ func (t *Translator) buildL4StreamRoutes(tctx *provider.TranslateContext, namesp
 		// Attach L4RoutePolicy plugins at the stream_route level: the APISIX stream proxy
 		// applies plugins from the stream_route, not from the service.
 		streamRoute.Plugins = make(adctypes.Plugins)
-		t.AttachL4RoutePolicyPlugins(tctx.L4RoutePolicies, namespace, name, routeKind, streamRoute.Plugins, tctx.Secrets)
+		if err := t.AttachL4RoutePolicyPlugins(tctx.L4RoutePolicies, namespace, name, routeKind, streamRoute.Plugins, tctx.Secrets); err != nil {
+			return nil, err
+		}
 		streamRoutes = append(streamRoutes, streamRoute)
 	}
-	return streamRoutes
+	return streamRoutes, nil
 }
 
 func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute *gatewayv1.TCPRoute) (*TranslateResult, error) {
@@ -220,7 +214,11 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 			}
 		}
 		// TODO: support remote_addr, server_addr, sni
-		service.StreamRoutes = t.buildL4StreamRoutes(tctx, tcpRoute.Namespace, tcpRoute.Name, ruleIndex, "TCP", "TCPRoute", labels)
+		streamRoutes, err := t.buildL4StreamRoutes(tctx, tcpRoute.Namespace, tcpRoute.Name, ruleIndex, "TCP", "TCPRoute", labels)
+		if err != nil {
+			return nil, err
+		}
+		service.StreamRoutes = streamRoutes
 
 		result.Services = append(result.Services, service)
 	}

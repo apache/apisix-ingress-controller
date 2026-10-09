@@ -144,7 +144,10 @@ func (t *Translator) TranslateTLSRoute(tctx *provider.TranslateContext, tlsRoute
 		// One set of stream routes per rule carrying every SNI, not one set per
 		// hostname: buildL4StreamRoutes names them by rule and port only, so a per
 		// hostname loop produced N sets sharing one ID and only the last survived.
-		streamRoutes := t.buildL4StreamRoutes(tctx, tlsRoute.Namespace, tlsRoute.Name, ruleIndex, "TLS", "TLSRoute", labels)
+		streamRoutes, err := t.buildL4StreamRoutes(tctx, tlsRoute.Namespace, tlsRoute.Name, ruleIndex, "TLS", "TLSRoute", labels)
+		if err != nil {
+			return nil, err
+		}
 		for _, streamRoute := range streamRoutes {
 			// A single SNI keeps using the singular form: it is what every
 			// APISIX version understands, and snis only earns its place once
