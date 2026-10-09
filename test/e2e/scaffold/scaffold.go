@@ -23,6 +23,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -318,15 +319,66 @@ const tlsPassthroughPortName = "tls-passthrough"
 // Verifying is the point: the gateway holds no certificate for a passthrough
 // listener, so a chain that validates against the backend's own CA can only
 // have come from the backend itself.
+// tlsPassthroughTunnel forwards the data plane's tls_passthrough stream port on
+// first use, and caches it for the rest of the spec.
+//
+// Forwarding it alongside the other tunnels when the data plane is deployed does
+// not work: APISIX opens its stream listens later than its HTTP ones, so the
+// forward is set up against a port nothing accepts on yet, dies, and leaves a
+// dead local listener that nothing re-establishes - every later dial then gets
+// "connection refused". Only one spec dials this port, so forwarding it on
+// demand also keeps the other ~118 specs in the suite from each paying for a
+// port-forward they never use.
+func (s *Scaffold) tlsPassthroughTunnel() Tunnel {
+	if s.apisixTunnels.TLSPassthrough != nil {
+		return s.apisixTunnels.TLSPassthrough
+	}
+
+	svc := s.dataplaneService
+	Expect(svc).NotTo(BeNil(), "data plane service")
+
+	var port int
+	for _, p := range svc.Spec.Ports {
+		if p.Name == tlsPassthroughPortName {
+			port = int(p.Port)
+		}
+	}
+	Expect(port).NotTo(BeZero(), "data plane service has no %s port", tlsPassthroughPortName)
+
+	kubectlOpts := k8s.NewKubectlOptions("", "", svc.Namespace)
+	var tunnel *k8s.Tunnel
+	Eventually(func() error {
+		t := k8s.NewTunnel(kubectlOpts, k8s.ResourceTypeService, svc.Name, 0, port)
+		if err := t.ForwardPortE(s.t); err != nil {
+			return err
+		}
+		// ForwardPortE returns before the forward has proxied anything, so a
+		// listen that the data plane is not accepting on yet still looks
+		// successful here. Dial it to find out.
+		conn, err := net.DialTimeout("tcp", t.Endpoint(), 5*time.Second)
+		if err != nil {
+			t.Close()
+			return err
+		}
+		_ = conn.Close()
+		tunnel = t
+		return nil
+	}).WithTimeout(time.Minute*2).WithPolling(time.Second*2).
+		Should(Succeed(), "forwarding the tls passthrough port")
+
+	s.apisixTunnels.TLSPassthrough = tunnel
+	return tunnel
+}
+
 func (s *Scaffold) NewAPISIXClientWithTLSPassthrough(sni string, caCert []byte) *httpexpect.Expect {
-	Expect(s.apisixTunnels.TLSPassthrough).NotTo(BeNil(), "tls passthrough tunnel")
+	tunnel := s.tlsPassthroughTunnel()
 
 	pool := x509.NewCertPool()
 	Expect(pool.AppendCertsFromPEM(caCert)).To(BeTrue(), "parsing CA certificate")
 
 	u := url.URL{
 		Scheme: apiv2.SchemeHTTPS,
-		Host:   s.apisixTunnels.TLSPassthrough.Endpoint(),
+		Host:   tunnel.Endpoint(),
 	}
 	return httpexpect.WithConfig(httpexpect.Config{
 		BaseURL: u.String(),
@@ -495,11 +547,10 @@ func (s *Scaffold) createDataplaneTunnels(
 	serviceName string,
 ) (*Tunnels, error) {
 	var (
-		httpPort           int
-		httpsPort          int
-		tcpPort            int
-		tlsPort            int
-		tlsPassthroughPort int
+		httpPort  int
+		httpsPort int
+		tcpPort   int
+		tlsPort   int
 	)
 
 	for _, port := range svc.Spec.Ports {
@@ -512,8 +563,6 @@ func (s *Scaffold) createDataplaneTunnels(
 			tcpPort = int(port.Port)
 		case apiv2.SchemeTLS:
 			tlsPort = int(port.Port)
-		case tlsPassthroughPortName:
-			tlsPassthroughPort = int(port.Port)
 		}
 	}
 
@@ -548,16 +597,8 @@ func (s *Scaffold) createDataplaneTunnels(
 	}
 	tunnels.TLS = tlsTunnel
 
-	// Absent on a gateway deployed from an older manifest revision; the specs
-	// that need it assert on the tunnel being there.
-	if tlsPassthroughPort != 0 {
-		tlsPassthroughTunnel := k8s.NewTunnel(kubectlOpts, k8s.ResourceTypeService, serviceName,
-			0, tlsPassthroughPort)
-		if err := tlsPassthroughTunnel.ForwardPortE(s.t); err != nil {
-			return nil, err
-		}
-		tunnels.TLSPassthrough = tlsPassthroughTunnel
-	}
+	// The TLS passthrough tunnel is deliberately not forwarded here. See
+	// tlsPassthroughTunnel.
 
 	return tunnels, nil
 }
