@@ -319,21 +319,24 @@ const tlsPassthroughPortName = "tls-passthrough"
 // Verifying is the point: the gateway holds no certificate for a passthrough
 // listener, so a chain that validates against the backend's own CA can only
 // have come from the backend itself.
-// tlsPassthroughTunnel forwards the data plane's tls_passthrough stream port on
-// first use, and caches it for the rest of the spec.
+// tlsPassthroughTunnel forwards the data plane's tls_passthrough stream port and
+// hands back a tunnel that has been proven to carry a handshake end to end.
 //
-// Forwarding it alongside the other tunnels when the data plane is deployed does
-// not work: APISIX opens its stream listens later than its HTTP ones, so the
-// forward is set up against a port nothing accepts on yet, dies, and leaves a
-// dead local listener that nothing re-establishes - every later dial then gets
-// "connection refused". Only one spec dials this port, so forwarding it on
-// demand also keeps the other ~118 specs in the suite from each paying for a
-// port-forward they never use.
-func (s *Scaffold) tlsPassthroughTunnel() Tunnel {
-	if s.apisixTunnels.TLSPassthrough != nil {
-		return s.apisixTunnels.TLSPassthrough
-	}
-
+// Two things make this port different from the others the scaffold forwards.
+//
+// A tls_passthrough listen prereads the ClientHello to pick a stream route, so a
+// connection that carries no TLS gets reset. kubectl port-forward treats that
+// reset as fatal and exits, taking the local listener with it - every later dial
+// then gets "connection refused" rather than anything describing the cause. So
+// the tunnel is verified with a real handshake for sni, never a bare TCP dial,
+// and a failed attempt rebuilds it rather than reusing a forwarder that may
+// already be gone.
+//
+// It is also forwarded on demand rather than alongside the HTTP tunnels when the
+// data plane is deployed: APISIX opens its stream listens later than its HTTP
+// ones, and only this one spec dials this port, so the rest of the suite would
+// pay for a forward it never uses.
+func (s *Scaffold) tlsPassthroughTunnel(sni string, pool *x509.CertPool) Tunnel {
 	svc := s.dataplaneService
 	Expect(svc).NotTo(BeNil(), "data plane service")
 
@@ -352,10 +355,13 @@ func (s *Scaffold) tlsPassthroughTunnel() Tunnel {
 		if err := t.ForwardPortE(s.t); err != nil {
 			return err
 		}
-		// ForwardPortE returns before the forward has proxied anything, so a
-		// listen that the data plane is not accepting on yet still looks
-		// successful here. Dial it to find out.
-		conn, err := net.DialTimeout("tcp", t.Endpoint(), 5*time.Second)
+		// ForwardPortE returns before the forward has proxied anything, so the
+		// handshake is what decides whether this tunnel works.
+		conn, err := tls.DialWithDialer(
+			&net.Dialer{Timeout: 10 * time.Second},
+			"tcp", t.Endpoint(),
+			&tls.Config{ServerName: sni, RootCAs: pool},
+		)
 		if err != nil {
 			t.Close()
 			return err
@@ -371,10 +377,10 @@ func (s *Scaffold) tlsPassthroughTunnel() Tunnel {
 }
 
 func (s *Scaffold) NewAPISIXClientWithTLSPassthrough(sni string, caCert []byte) *httpexpect.Expect {
-	tunnel := s.tlsPassthroughTunnel()
-
 	pool := x509.NewCertPool()
 	Expect(pool.AppendCertsFromPEM(caCert)).To(BeTrue(), "parsing CA certificate")
+
+	tunnel := s.tlsPassthroughTunnel(sni, pool)
 
 	u := url.URL{
 		Scheme: apiv2.SchemeHTTPS,
