@@ -185,8 +185,12 @@ type StreamRoute struct {
 	SNI  string   `json:"sni,omitempty"`
 	SNIs []string `json:"snis,omitempty"`
 	// TLSPassthrough forwards the TLS stream to the upstream untouched instead
-	// of terminating it on the gateway. APISIX only consults it on a stream
-	// listen configured with both tls and tls_passthrough.
+	// of terminating it on the gateway.
+	//
+	// A listen carrying tls_passthrough alone passes every connection through
+	// and never reads this; a listen carrying tls alone always terminates. It
+	// decides only on a listen configured with both, where the matched stream
+	// route picks between the terminating and the prereading server.
 	TLSPassthrough *bool `json:"tls_passthrough,omitempty"`
 }
 
