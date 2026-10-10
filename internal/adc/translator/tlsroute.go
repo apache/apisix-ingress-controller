@@ -20,6 +20,7 @@ package translator
 import (
 	"fmt"
 
+	"k8s.io/utils/ptr"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
@@ -34,10 +35,7 @@ func (t *Translator) TranslateTLSRoute(tctx *provider.TranslateContext, tlsRoute
 	result := &TranslateResult{}
 	rules := tlsRoute.Spec.Rules
 	labels := label.GenLabel(tlsRoute)
-	hosts := make([]string, 0, len(tlsRoute.Spec.Hostnames))
-	for _, hostname := range tlsRoute.Spec.Hostnames {
-		hosts = append(hosts, string(hostname))
-	}
+	snis := tlsRouteSNIs(tctx, tlsRoute)
 	for ruleIndex, rule := range rules {
 		service := adctypes.NewDefaultService()
 		service.Labels = labels
@@ -143,18 +141,90 @@ func (t *Translator) TranslateTLSRoute(tctx *provider.TranslateContext, tlsRoute
 			}
 		}
 
-		for _, host := range hosts {
-			streamRoutes, err := t.buildL4StreamRoutes(tctx, tlsRoute.Namespace, tlsRoute.Name, ruleIndex, "TLS", "TLSRoute", labels)
-			if err != nil {
-				return nil, err
-			}
-			for _, streamRoute := range streamRoutes {
-				streamRoute.SNI = host
-			}
-			service.StreamRoutes = append(service.StreamRoutes, streamRoutes...)
+		// One set of stream routes per rule carrying every SNI, not one set per
+		// hostname: buildL4StreamRoutes names them by rule and port only, so a per
+		// hostname loop produced N sets sharing one ID and only the last survived.
+		streamRoutes, err := t.buildL4StreamRoutes(tctx, tlsRoute.Namespace, tlsRoute.Name, ruleIndex, "TLS", "TLSRoute", labels)
+		if err != nil {
+			return nil, err
 		}
+		for _, streamRoute := range streamRoutes {
+			// A single SNI keeps using the singular form: it is what every
+			// APISIX version understands, and snis only earns its place once
+			// there is more than one to match.
+			if len(snis) == 1 {
+				streamRoute.SNI = snis[0]
+			} else {
+				streamRoute.SNIs = snis
+			}
+			if tlsPassthroughOnPort(tctx.Listeners, streamRoute.ServerPort) {
+				streamRoute.TLSPassthrough = ptr.To(true)
+			}
+		}
+		service.StreamRoutes = append(service.StreamRoutes, streamRoutes...)
 
 		result.Services = append(result.Services, service)
 	}
 	return result, nil
+}
+
+// tlsRouteSNIs returns the SNIs the route's stream routes match on.
+//
+// A TLSRoute without hostnames matches everything its listeners accept, so it
+// falls back to the matched listener hostnames and, when those carry none
+// either, to the catch-all "*". Emitting nothing - which is what the per
+// hostname loop used to do - left such a route attached but unserved.
+func tlsRouteSNIs(tctx *provider.TranslateContext, tlsRoute *gatewayv1.TLSRoute) []string {
+	if len(tlsRoute.Spec.Hostnames) > 0 {
+		snis := make([]string, 0, len(tlsRoute.Spec.Hostnames))
+		for _, hostname := range tlsRoute.Spec.Hostnames {
+			snis = append(snis, string(hostname))
+		}
+		return snis
+	}
+
+	snis := make([]string, 0, len(tctx.Listeners))
+	seen := make(map[string]struct{}, len(tctx.Listeners))
+	for _, listener := range tctx.Listeners {
+		if listener.Hostname == nil || *listener.Hostname == "" {
+			continue
+		}
+		hostname := string(*listener.Hostname)
+		if _, ok := seen[hostname]; ok {
+			continue
+		}
+		seen[hostname] = struct{}{}
+		snis = append(snis, hostname)
+	}
+	if len(snis) == 0 {
+		return []string{"*"}
+	}
+	return snis
+}
+
+// tlsPassthroughOnPort reports whether the stream routes bound to port must
+// forward the connection untouched instead of having the gateway terminate it.
+// port 0 means the StreamRoute carries no server_port match, so every matched
+// listener applies.
+//
+// Every matched TLS listener on the port has to agree. Within one Gateway a
+// port carrying both modes is already reported ProtocolConflict and attaches
+// no routes; across Gateways the combination is unrepresentable, since the
+// physical stream listen has a single mode - so the terminating behaviour wins
+// rather than a guess.
+func tlsPassthroughOnPort(listeners []gatewayv1.Listener, port int32) bool {
+	matched := false
+	for _, listener := range listeners {
+		if listener.Protocol != gatewayv1.TLSProtocolType {
+			continue
+		}
+		if port != 0 && listener.Port != port {
+			continue
+		}
+		if listener.TLS == nil || listener.TLS.Mode == nil || *listener.TLS.Mode != gatewayv1.TLSModePassthrough {
+			return false
+		}
+		matched = true
+	}
+	return matched
 }

@@ -1392,30 +1392,56 @@ func FullTypeName(a any) string {
 // filterHostnames accepts a list of gateways and an HTTPRoute, and returns a copy of the HTTPRoute with only the hostnames that match the listener hostnames of the gateways.
 // If the HTTPRoute hostnames do not intersect with the listener hostnames of the gateways, it returns an ErrNoMatchingListenerHostname error.
 func filterHostnames(gateways []RouteParentRefContext, httpRoute *gatewayv1.HTTPRoute) (*gatewayv1.HTTPRoute, error) {
-	filteredHostnames := make([]gatewayv1.Hostname, 0)
+	hostnames, err := intersectRouteHostnames(gateways, httpRoute.Spec.Hostnames)
+	if err != nil {
+		return httpRoute, err
+	}
+	httpRoute.Spec.Hostnames = hostnames
+	return httpRoute, nil
+}
 
-	// If the HTTPRoute does not specify hostnames, we use the union of the listener hostnames of all supported gateways
-	// If any supported listener does not specify a hostname, the HTTPRoute hostnames remain empty to match any hostname
-	if len(httpRoute.Spec.Hostnames) == 0 {
+// filterTLSRouteHostnames is filterHostnames for a TLSRoute. Its hostnames become
+// the SNIs the stream routes match on, so a route left carrying its own broader
+// hostname would serve names the listener it attached to never accepted - and, on
+// a single shared stream listen, would take them from the route that should have.
+func filterTLSRouteHostnames(gateways []RouteParentRefContext, tlsRoute *gatewayv1.TLSRoute) (*gatewayv1.TLSRoute, error) {
+	hostnames, err := intersectRouteHostnames(gateways, tlsRoute.Spec.Hostnames)
+	if err != nil {
+		return tlsRoute, err
+	}
+	tlsRoute.Spec.Hostnames = hostnames
+	return tlsRoute, nil
+}
+
+// intersectRouteHostnames narrows a route's hostnames to what the listeners it
+// attached to actually accept.
+//
+// A route without hostnames takes the union of the listener hostnames, and stays
+// empty - matching any hostname - as soon as one supported listener carries no
+// hostname of its own. Otherwise every hostname is replaced by its smallest
+// intersection with a listener hostname, and a route that intersects with none
+// is ErrNoMatchingListenerHostname.
+func intersectRouteHostnames(gateways []RouteParentRefContext, routeHostnames []gatewayv1.Hostname) ([]gatewayv1.Hostname, error) {
+	gateways = acceptedParentRefs(gateways)
+
+	if len(routeHostnames) == 0 {
 		hostnames, matchAnyHost := getUnionOfGatewayHostnames(gateways)
 		if matchAnyHost {
-			return httpRoute, nil
+			return routeHostnames, nil
 		}
-		filteredHostnames = hostnames
-	} else {
-		// If the HTTPRoute specifies hostnames, we need to find the intersection with the gateway listener hostnames
-		for _, hostname := range httpRoute.Spec.Hostnames {
-			if hostnameMatching := getMinimumHostnameIntersection(gateways, hostname); hostnameMatching != "" {
-				filteredHostnames = append(filteredHostnames, hostnameMatching)
-			}
-		}
-		if len(filteredHostnames) == 0 {
-			return httpRoute, ErrNoMatchingListenerHostname
-		}
+		return hostnames, nil
 	}
 
-	httpRoute.Spec.Hostnames = filteredHostnames
-	return httpRoute, nil
+	filteredHostnames := make([]gatewayv1.Hostname, 0, len(routeHostnames))
+	for _, hostname := range routeHostnames {
+		if hostnameMatching := getMinimumHostnameIntersection(gateways, hostname); hostnameMatching != "" {
+			filteredHostnames = append(filteredHostnames, hostnameMatching)
+		}
+	}
+	if len(filteredHostnames) == 0 {
+		return nil, ErrNoMatchingListenerHostname
+	}
+	return filteredHostnames, nil
 }
 
 // getUnionOfGatewayHostnames returns the union of the hostnames specified in all supported gateways
@@ -1486,6 +1512,33 @@ func isListenerHostnameEffective(listener gatewayv1.Listener) bool {
 // names are only unique within a single Gateway.
 func appendListeners(target []gatewayv1.Listener, source ...gatewayv1.Listener) []gatewayv1.Listener {
 	return append(target, source...)
+}
+
+// acceptedParentRefs keeps only the contexts whose parentRef was accepted.
+//
+// ParseRouteParentRefs returns a context per parentRef, accepted or not, and a
+// rejected one carries no matched listener at all - so listenersForGatewayContext
+// falls back to every listener on its Gateway. A hostname that only such a
+// Gateway accepts would then survive the intersection and be served through the
+// parentRef that was accepted. Only an accepted parent may widen the set.
+//
+// When nothing was accepted the contexts are returned unchanged: the route is
+// not translated in that case, and narrowing here would only change which
+// reason its status reports.
+func acceptedParentRefs(gateways []RouteParentRefContext) []RouteParentRefContext {
+	accepted := make([]RouteParentRefContext, 0, len(gateways))
+	for _, gateway := range gateways {
+		for _, condition := range gateway.Conditions {
+			if condition.Type == string(gatewayv1.RouteConditionAccepted) && condition.Status == metav1.ConditionTrue {
+				accepted = append(accepted, gateway)
+				break
+			}
+		}
+	}
+	if len(accepted) == 0 {
+		return gateways
+	}
+	return accepted
 }
 
 func isRouteAccepted(gateways []RouteParentRefContext) bool {

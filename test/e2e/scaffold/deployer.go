@@ -47,7 +47,10 @@ type DeployDataplaneOptions struct {
 	SkipCreateTunnels bool
 	ServiceHTTPPort   int
 	ServiceHTTPSPort  int
-	Replicas          *int
-	AdminKey          string
-	ProviderType      string
+	// ServiceHTTPSTargetPort redirects the HTTPS service port at the data
+	// plane's stream tls_passthrough listen instead of its HTTP ssl listen.
+	ServiceHTTPSTargetPort int
+	Replicas               *int
+	AdminKey               string
+	ProviderType           string
 }
