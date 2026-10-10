@@ -377,6 +377,12 @@ func (s *Scaffold) tlsPassthroughTunnel(sni string, pool *x509.CertPool) Tunnel 
 	}).WithTimeout(time.Minute*2).WithPolling(time.Second*2).
 		Should(Succeed(), "forwarding the tls passthrough port")
 
+	// Tunnels.Close only knows about the tunnel currently stored, so a spec
+	// that builds a second client would otherwise leave the first
+	// kubectl port-forward running until the process exits.
+	if previous := s.apisixTunnels.TLSPassthrough; previous != nil {
+		previous.Close()
+	}
 	s.apisixTunnels.TLSPassthrough = tunnel
 	return tunnel
 }
