@@ -1422,6 +1422,8 @@ func filterTLSRouteHostnames(gateways []RouteParentRefContext, tlsRoute *gateway
 // intersection with a listener hostname, and a route that intersects with none
 // is ErrNoMatchingListenerHostname.
 func intersectRouteHostnames(gateways []RouteParentRefContext, routeHostnames []gatewayv1.Hostname) ([]gatewayv1.Hostname, error) {
+	gateways = acceptedParentRefs(gateways)
+
 	if len(routeHostnames) == 0 {
 		hostnames, matchAnyHost := getUnionOfGatewayHostnames(gateways)
 		if matchAnyHost {
@@ -1510,6 +1512,33 @@ func isListenerHostnameEffective(listener gatewayv1.Listener) bool {
 // names are only unique within a single Gateway.
 func appendListeners(target []gatewayv1.Listener, source ...gatewayv1.Listener) []gatewayv1.Listener {
 	return append(target, source...)
+}
+
+// acceptedParentRefs keeps only the contexts whose parentRef was accepted.
+//
+// ParseRouteParentRefs returns a context per parentRef, accepted or not, and a
+// rejected one carries no matched listener at all - so listenersForGatewayContext
+// falls back to every listener on its Gateway. A hostname that only such a
+// Gateway accepts would then survive the intersection and be served through the
+// parentRef that was accepted. Only an accepted parent may widen the set.
+//
+// When nothing was accepted the contexts are returned unchanged: the route is
+// not translated in that case, and narrowing here would only change which
+// reason its status reports.
+func acceptedParentRefs(gateways []RouteParentRefContext) []RouteParentRefContext {
+	accepted := make([]RouteParentRefContext, 0, len(gateways))
+	for _, gateway := range gateways {
+		for _, condition := range gateway.Conditions {
+			if condition.Type == string(gatewayv1.RouteConditionAccepted) && condition.Status == metav1.ConditionTrue {
+				accepted = append(accepted, gateway)
+				break
+			}
+		}
+	}
+	if len(accepted) == 0 {
+		return gateways
+	}
+	return accepted
 }
 
 func isRouteAccepted(gateways []RouteParentRefContext) bool {

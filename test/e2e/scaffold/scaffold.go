@@ -348,10 +348,15 @@ func (s *Scaffold) tlsPassthroughTunnel(sni string, pool *x509.CertPool) Tunnel 
 	}
 	Expect(port).NotTo(BeZero(), "data plane service has no %s port", tlsPassthroughPortName)
 
-	kubectlOpts := k8s.NewKubectlOptions("", "", svc.Namespace)
+	// Copy the scaffold's options rather than building fresh ones: a run that
+	// configures a kubeconfig or context would otherwise be ignored here while
+	// every other dataplane tunnel honours it.
+	kubectlOpts := *s.kubectlOptions
+	kubectlOpts.Namespace = svc.Namespace
+
 	var tunnel *k8s.Tunnel
 	Eventually(func() error {
-		t := k8s.NewTunnel(kubectlOpts, k8s.ResourceTypeService, svc.Name, 0, port)
+		t := k8s.NewTunnel(&kubectlOpts, k8s.ResourceTypeService, svc.Name, 0, port)
 		if err := t.ForwardPortE(s.t); err != nil {
 			return err
 		}
