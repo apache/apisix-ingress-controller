@@ -26,6 +26,7 @@ import (
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
+	cutils "github.com/apache/apisix-ingress-controller/internal/controller/utils"
 	"github.com/apache/apisix-ingress-controller/internal/id"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	"github.com/apache/apisix-ingress-controller/internal/types"
@@ -35,7 +36,6 @@ func (t *Translator) TranslateTLSRoute(tctx *provider.TranslateContext, tlsRoute
 	result := &TranslateResult{}
 	rules := tlsRoute.Spec.Rules
 	labels := label.GenLabel(tlsRoute)
-	snis := tlsRouteSNIs(tctx, tlsRoute)
 	for ruleIndex, rule := range rules {
 		service := adctypes.NewDefaultService()
 		service.Labels = labels
@@ -141,14 +141,22 @@ func (t *Translator) TranslateTLSRoute(tctx *provider.TranslateContext, tlsRoute
 			}
 		}
 
-		// One set of stream routes per rule carrying every SNI, not one set per
-		// hostname: buildL4StreamRoutes names them by rule and port only, so a per
-		// hostname loop produced N sets sharing one ID and only the last survived.
+		// One set of stream routes per rule, each carrying the SNIs of its own
+		// port, rather than one set per hostname: buildL4StreamRoutes names them by
+		// rule and port only, so a per hostname loop produced N sets sharing one ID
+		// and only the last survived.
 		streamRoutes, err := t.buildL4StreamRoutes(tctx, tlsRoute.Namespace, tlsRoute.Name, ruleIndex, "TLS", "TLSRoute", labels)
 		if err != nil {
 			return nil, err
 		}
 		for _, streamRoute := range streamRoutes {
+			snis := tlsRouteSNIsForPort(tctx.Listeners, tlsRoute.Spec.Hostnames, streamRoute.ServerPort)
+			if len(snis) == 0 {
+				// Nothing for the stream route to match on. The listeners a route
+				// attaches to already intersect its hostnames, so this is a guard
+				// against emitting a route that would answer every SNI instead.
+				continue
+			}
 			// A single SNI keeps using the singular form: it is what every
 			// APISIX version understands, and snis only earns its place once
 			// there is more than one to match.
@@ -160,44 +168,66 @@ func (t *Translator) TranslateTLSRoute(tctx *provider.TranslateContext, tlsRoute
 			if tlsPassthroughOnPort(tctx.Listeners, streamRoute.ServerPort) {
 				streamRoute.TLSPassthrough = ptr.To(true)
 			}
+			service.StreamRoutes = append(service.StreamRoutes, streamRoute)
 		}
-		service.StreamRoutes = append(service.StreamRoutes, streamRoutes...)
 
 		result.Services = append(result.Services, service)
 	}
 	return result, nil
 }
 
-// tlsRouteSNIs returns the SNIs the route's stream routes match on.
+// tlsRouteSNIsForPort returns the SNIs the stream route bound to port matches on.
+//
+// The set is derived from the listeners on that port alone. Handing every port
+// the route-wide union instead would let a port answer a hostname its own
+// listener never accepted, and would cost a port its catch-all as soon as a
+// listener on another port named a hostname. port 0 means the stream route
+// carries no server_port match, so every matched listener applies.
 //
 // A TLSRoute without hostnames matches everything its listeners accept, so it
-// falls back to the matched listener hostnames and, when those carry none
-// either, to the catch-all "*". Emitting nothing - which is what the per
-// hostname loop used to do - left such a route attached but unserved.
-func tlsRouteSNIs(tctx *provider.TranslateContext, tlsRoute *gatewayv1.TLSRoute) []string {
-	if len(tlsRoute.Spec.Hostnames) > 0 {
-		snis := make([]string, 0, len(tlsRoute.Spec.Hostnames))
-		for _, hostname := range tlsRoute.Spec.Hostnames {
-			snis = append(snis, string(hostname))
+// falls back to the hostnames of the listeners on the port and, when one of them
+// carries no hostname either, to the catch-all "*". Emitting nothing - which is
+// what the per hostname loop used to do - left such a route attached but
+// unserved.
+func tlsRouteSNIsForPort(listeners []gatewayv1.Listener, routeHostnames []gatewayv1.Hostname, port int32) []string {
+	matched := make([]gatewayv1.Listener, 0, len(listeners))
+	for _, listener := range listeners {
+		if listener.Protocol != gatewayv1.TLSProtocolType {
+			continue
 		}
-		return snis
+		if port != 0 && listener.Port != port {
+			continue
+		}
+		matched = append(matched, listener)
 	}
 
-	snis := make([]string, 0, len(tctx.Listeners))
-	seen := make(map[string]struct{}, len(tctx.Listeners))
-	for _, listener := range tctx.Listeners {
-		if listener.Hostname == nil || *listener.Hostname == "" {
-			continue
+	// No listener to narrow against: keep what the route itself asks for.
+	if len(matched) == 0 {
+		if len(routeHostnames) == 0 {
+			return []string{"*"}
 		}
-		hostname := string(*listener.Hostname)
-		if _, ok := seen[hostname]; ok {
-			continue
-		}
-		seen[hostname] = struct{}{}
-		snis = append(snis, hostname)
+		return hostnamesToSNIs(routeHostnames)
 	}
-	if len(snis) == 0 {
-		return []string{"*"}
+
+	if len(routeHostnames) == 0 {
+		hostnames, matchAnyHost := cutils.UnionHostnames(matched)
+		if matchAnyHost {
+			return []string{"*"}
+		}
+		return hostnamesToSNIs(cutils.DedupHostnames(hostnames))
+	}
+
+	snis := make([]gatewayv1.Hostname, 0, len(routeHostnames))
+	for _, hostname := range routeHostnames {
+		snis = append(snis, cutils.NarrowHostname(matched, hostname)...)
+	}
+	return hostnamesToSNIs(cutils.DedupHostnames(snis))
+}
+
+func hostnamesToSNIs(hostnames []gatewayv1.Hostname) []string {
+	snis := make([]string, 0, len(hostnames))
+	for _, hostname := range hostnames {
+		snis = append(snis, string(hostname))
 	}
 	return snis
 }

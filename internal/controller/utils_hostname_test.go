@@ -24,6 +24,8 @@ import (
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
+
+	cutils "github.com/apache/apisix-ingress-controller/internal/controller/utils"
 )
 
 func TestListenersForGatewayContext(t *testing.T) {
@@ -87,7 +89,7 @@ func TestListenersForGatewayContext(t *testing.T) {
 	}
 }
 
-func TestGetUnionOfGatewayHostnames(t *testing.T) {
+func TestHostnameEffectiveListenersUnion(t *testing.T) {
 	fooHostname := gatewayv1.Hostname("foo.example.com")
 	barHostname := gatewayv1.Hostname("bar.example.com")
 
@@ -102,7 +104,7 @@ func TestGetUnionOfGatewayHostnames(t *testing.T) {
 			},
 		}
 
-		hostnames, matchAny := getUnionOfGatewayHostnames(gateways)
+		hostnames, matchAny := cutils.UnionHostnames(hostnameEffectiveListeners(gateways))
 		assert.False(t, matchAny)
 		assert.Equal(t, []gatewayv1.Hostname{fooHostname, barHostname}, hostnames)
 	})
@@ -116,13 +118,13 @@ func TestGetUnionOfGatewayHostnames(t *testing.T) {
 			},
 		}
 
-		hostnames, matchAny := getUnionOfGatewayHostnames(gateways)
+		hostnames, matchAny := cutils.UnionHostnames(hostnameEffectiveListeners(gateways))
 		assert.True(t, matchAny)
 		assert.Nil(t, hostnames)
 	})
 }
 
-func TestGetMinimumHostnameIntersection(t *testing.T) {
+func TestNarrowHostnameAcrossListeners(t *testing.T) {
 	fooHostname := gatewayv1.Hostname("foo.example.com")
 	routeHostname := gatewayv1.Hostname("foo.example.com")
 	wildcardHostname := gatewayv1.Hostname("*.example.com")
@@ -137,7 +139,8 @@ func TestGetMinimumHostnameIntersection(t *testing.T) {
 			},
 		}
 
-		assert.Equal(t, routeHostname, getMinimumHostnameIntersection(gateways, routeHostname))
+		assert.Equal(t, []gatewayv1.Hostname{routeHostname},
+			cutils.NarrowHostname(hostnameEffectiveListeners(gateways), routeHostname))
 	})
 
 	t.Run("returns empty when there is no listener match", func(t *testing.T) {
@@ -149,8 +152,61 @@ func TestGetMinimumHostnameIntersection(t *testing.T) {
 			},
 		}
 		unmatched := gatewayv1.Hostname("bar.example.com")
-		assert.Equal(t, gatewayv1.Hostname(""), getMinimumHostnameIntersection(gateways, unmatched))
+		assert.Empty(t, cutils.NarrowHostname(hostnameEffectiveListeners(gateways), unmatched))
 	})
+}
+
+// A route hostname that covers several listener hostnames intersects with every
+// one of them. Keeping only the first left the names the other listeners accept
+// unserved.
+func TestIntersectRouteHostnamesKeepsEveryIntersection(t *testing.T) {
+	aHostname := gatewayv1.Hostname("a.example.com")
+	bHostname := gatewayv1.Hostname("b.example.com")
+	gateways := []RouteParentRefContext{
+		{
+			Listeners: []gatewayv1.Listener{
+				{Name: "a", Protocol: gatewayv1.TLSProtocolType, Port: gatewayv1.PortNumber(443), Hostname: &aHostname},
+				{Name: "b", Protocol: gatewayv1.TLSProtocolType, Port: gatewayv1.PortNumber(443), Hostname: &bHostname},
+			},
+			Conditions: []metav1.Condition{
+				{
+					Type:   string(gatewayv1.RouteConditionAccepted),
+					Status: metav1.ConditionTrue,
+				},
+			},
+		},
+	}
+
+	got, err := intersectRouteHostnames(gateways, []gatewayv1.Hostname{"*.example.com"})
+	require.NoError(t, err)
+	assert.Equal(t, []gatewayv1.Hostname{aHostname, bHostname}, got)
+}
+
+// The same hostname contributed by two listeners is one hostname: listeners are
+// aggregated across Gateways without de-duplication.
+func TestIntersectRouteHostnamesDedups(t *testing.T) {
+	hostname := gatewayv1.Hostname("a.example.com")
+	listener := gatewayv1.Listener{
+		Name: "a", Protocol: gatewayv1.TLSProtocolType, Port: gatewayv1.PortNumber(443), Hostname: &hostname,
+	}
+	accepted := []metav1.Condition{
+		{
+			Type:   string(gatewayv1.RouteConditionAccepted),
+			Status: metav1.ConditionTrue,
+		},
+	}
+	gateways := []RouteParentRefContext{
+		{Listeners: []gatewayv1.Listener{listener}, Conditions: accepted},
+		{Listeners: []gatewayv1.Listener{listener}, Conditions: accepted},
+	}
+
+	got, err := intersectRouteHostnames(gateways, []gatewayv1.Hostname{"*.example.com"})
+	require.NoError(t, err)
+	assert.Equal(t, []gatewayv1.Hostname{hostname}, got)
+
+	got, err = intersectRouteHostnames(gateways, nil)
+	require.NoError(t, err)
+	assert.Equal(t, []gatewayv1.Hostname{hostname}, got)
 }
 
 func TestFilterHostnamesWithMatchedListeners(t *testing.T) {

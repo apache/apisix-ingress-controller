@@ -191,3 +191,85 @@ func TestTranslateTLSRouteSNIs(t *testing.T) {
 		assert.Equal(t, "*", streamRoutes[0].SNI)
 	})
 }
+
+func TestTranslateTLSRouteSNIsPerPort(t *testing.T) {
+	passthrough := gatewayv1.TLSModePassthrough
+
+	snisByPort := func(result *TranslateResult) map[int32][]string {
+		byPort := make(map[int32][]string)
+		for _, streamRoute := range result.Services[0].StreamRoutes {
+			snis := streamRoute.SNIs
+			if streamRoute.SNI != "" {
+				snis = []string{streamRoute.SNI}
+			}
+			byPort[streamRoute.ServerPort] = snis
+		}
+		return byPort
+	}
+
+	// The route-wide union went to every port, so each port also answered the
+	// hostname only the other port's listener accepted.
+	t.Run("a hostname-less route takes the hostnames of its own port", func(t *testing.T) {
+		result := translateTLSRoute(t, []gatewayv1.Listener{
+			tlsModeListener("a", 9110, &passthrough, "a.example.com"),
+			tlsModeListener("b", 9120, &passthrough, "b.example.com"),
+		}, true)
+
+		assert.Equal(t, map[int32][]string{
+			9110: {"a.example.com"},
+			9120: {"b.example.com"},
+		}, snisByPort(result))
+	})
+
+	// A listener carrying no hostname accepts every name. Collecting hostnames
+	// route-wide cost that port its catch-all as soon as a listener on another
+	// port named a hostname.
+	t.Run("a port whose listener names no hostname keeps the catch-all", func(t *testing.T) {
+		result := translateTLSRoute(t, []gatewayv1.Listener{
+			tlsModeListener("named", 9110, &passthrough, "a.example.com"),
+			tlsModeListener("any", 9120, &passthrough, ""),
+		}, true)
+
+		assert.Equal(t, map[int32][]string{
+			9110: {"a.example.com"},
+			9120: {"*"},
+		}, snisByPort(result))
+	})
+
+	t.Run("route hostnames are narrowed to the listeners of each port", func(t *testing.T) {
+		result := translateTLSRoute(t, []gatewayv1.Listener{
+			tlsModeListener("a", 9110, &passthrough, "a.example.com"),
+			tlsModeListener("b", 9120, &passthrough, "b.example.com"),
+		}, true, "*.example.com")
+
+		assert.Equal(t, map[int32][]string{
+			9110: {"a.example.com"},
+			9120: {"b.example.com"},
+		}, snisByPort(result))
+	})
+
+	// Both listeners on the port are covered by the route's wildcard, so the
+	// route answers both names rather than only the first intersection.
+	t.Run("one port with several listeners keeps every intersection", func(t *testing.T) {
+		result := translateTLSRoute(t, []gatewayv1.Listener{
+			tlsModeListener("a", 9110, &passthrough, "a.example.com"),
+			tlsModeListener("b", 9110, &passthrough, "b.example.com"),
+		}, true, "*.example.com")
+
+		assert.Equal(t, map[int32][]string{
+			9110: {"a.example.com", "b.example.com"},
+		}, snisByPort(result))
+	})
+
+	// A listener hostname that covers the route hostname accepts it whole, so
+	// the route keeps its own name instead of the listener's.
+	t.Run("a wildcard listener keeps the route hostname", func(t *testing.T) {
+		result := translateTLSRoute(t, []gatewayv1.Listener{
+			tlsModeListener("wildcard", 9110, &passthrough, "*.example.com"),
+		}, true, "a.example.com")
+
+		assert.Equal(t, map[int32][]string{
+			9110: {"a.example.com"},
+		}, snisByPort(result))
+	})
+}
