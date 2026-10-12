@@ -237,11 +237,16 @@ func hostnamesToSNIs(hostnames []gatewayv1.Hostname) []string {
 // port 0 means the StreamRoute carries no server_port match, so every matched
 // listener applies.
 //
-// Every matched TLS listener on the port has to agree. Within one Gateway a
-// port carrying both modes is already reported ProtocolConflict and attaches
-// no routes; across Gateways the combination is unrepresentable, since the
-// physical stream listen has a single mode - so the terminating behaviour wins
-// rather than a guess.
+// Every TLS listener this route matched on the port has to agree. Within one
+// Gateway a port carrying both modes is already reported ProtocolConflict and
+// attaches no routes; a route attached to two Gateways that disagree falls back
+// to terminating rather than to a guess, since the physical stream listen has a
+// single mode.
+//
+// Two *different* routes attached to two disagreeing Gateways are each
+// translated for the mode their own listener declares, and only one of those is
+// the mode the listen was configured with. The controller does not configure the
+// stream listen, so it can neither detect that nor resolve it.
 func tlsPassthroughOnPort(listeners []gatewayv1.Listener, port int32) bool {
 	matched := false
 	for _, listener := range listeners {
