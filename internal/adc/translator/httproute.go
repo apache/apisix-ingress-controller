@@ -20,6 +20,7 @@ package translator
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -355,9 +356,21 @@ func (t *Translator) fillHTTPRoutePoliciesForIngress(tctx *provider.TranslateCon
 }
 
 func (t *Translator) fillHTTPRoutePolicies(routes []*adctypes.Route, policies []v1alpha1.HTTPRoutePolicy) {
+	// Policy application order is namespace/name, with the last non-nil
+	// priority winning. Conflicting priorities are rejected by the controller.
+	policies = append([]v1alpha1.HTTPRoutePolicy(nil), policies...)
+	sort.Slice(policies, func(i, j int) bool {
+		if policies[i].Namespace != policies[j].Namespace {
+			return policies[i].Namespace < policies[j].Namespace
+		}
+		return policies[i].Name < policies[j].Name
+	})
+
 	for _, policy := range policies {
 		for _, route := range routes {
-			route.Priority = policy.Spec.Priority
+			if policy.Spec.Priority != nil {
+				route.Priority = policy.Spec.Priority
+			}
 			for _, data := range policy.Spec.Vars {
 				var v []adctypes.StringOrSlice
 				if err := json.Unmarshal(data.Raw, &v); err != nil {
@@ -475,26 +488,24 @@ func (t *Translator) translateBackendRef(tctx *provider.TranslateContext, ref ga
 	return nodes, protocol, nil
 }
 
-// calculateHTTPRoutePriority calculates the priority of the HTTP route.
+// calculateHTTPRoutePriority calculates the priority of the HTTP route. Fields
+// use disjoint bit ranges and generated values remain exactly representable by
+// APISIX's Lua number type.
 // ref: https://github.com/Kong/kubernetes-ingress-controller/blob/57472721319e2c63e56cb8540425257e8e02520f/internal/dataplane/translator/subtranslator/httproute_atc.go#L279-L296
 func calculateHTTPRoutePriority(match *gatewayv1.HTTPRouteMatch, ruleIndex int, hosts []string) uint64 {
 	const (
-		// PreciseHostnameShiftBits assigns bit 31-38 for the length of hostname(max length=253).
-		// which has 8 bits, so the max length of hostname is 2^8-1 = 255.
-		PreciseHostnameShiftBits = 31
-
-		// HostnameLengthShiftBits assigns bits 23-30 for the length of hostname(max length=253).
-		// which has 8 bits, so the max length of hostname is 2^8-1 = 255.
-		HostnameLengthShiftBits = 23
-
-		// MethodMatchShiftBits assigns bit 22 to mark if method is specified.
-		MethodMatchShiftBits = 22
-		// HeaderNumberShiftBits assign bits 17-21 to number of headers. (max number of headers = 16)
-		HeaderNumberShiftBits = 17
-		// QueryParamNumberShiftBits makes bits 12-16 used for number of query params (max number of query params = 16)
-		QueryParamNumberShiftBits = 12
-		// RuleIndexShiftBits assigns bits 7-11 to rule index. (max number of rules = 16)
-		RuleIndexShiftBits = 7
+		// Allocate disjoint fields from least to most significant: rule (5),
+		// query count (5), header count (5), method (1), path length (10),
+		// path type (2), hostname length (8), precise hostname (8) bits.
+		RuleIndexShiftBits        = 8
+		QueryParamNumberShiftBits = 13
+		HeaderNumberShiftBits     = 18
+		MethodMatchShiftBits      = 23
+		PathLengthShiftBits       = 24
+		PathTypeShiftBits         = 34
+		HostnameLengthShiftBits   = 36
+		PreciseHostnameShiftBits  = 44
+		maxPriorityPathLength     = (1 << 10) - 1
 	)
 
 	var (
@@ -527,6 +538,13 @@ func calculateHTTPRoutePriority(match *gatewayv1.HTTPRouteMatch, ruleIndex int, 
 		priority |= (uint64(maxHostnameLength) << HostnameLengthShiftBits)
 	}
 
+	pathType, pathLength := httpRoutePathPriority(match.Path)
+	if pathLength > maxPriorityPathLength {
+		pathLength = maxPriorityPathLength
+	}
+	priority |= pathType << PathTypeShiftBits
+	priority |= pathLength << PathLengthShiftBits
+
 	// MethodMatchShiftBits
 	if match.Method != nil {
 		priority |= (1 << MethodMatchShiftBits)
@@ -548,6 +566,41 @@ func calculateHTTPRoutePriority(match *gatewayv1.HTTPRouteMatch, ruleIndex int, 
 	priority |= (uint64(index) << RuleIndexShiftBits)
 
 	return priority
+}
+
+// httpRoutePathPriority ranks Exact over RegularExpression over PathPrefix.
+// Gateway API does not define relative precedence for regular expressions;
+// assigning them the middle rank is this controller's documented policy.
+func httpRoutePathPriority(path *gatewayv1.HTTPPathMatch) (uint64, uint64) {
+	if path == nil {
+		return 1, 1
+	}
+
+	value := ptr.Deref(path.Value, "")
+	pathType := gatewayv1.PathMatchPathPrefix
+	if path.Type != nil {
+		pathType = *path.Type
+	}
+	switch pathType {
+	case gatewayv1.PathMatchExact:
+		return 3, uint64(len(value))
+	case gatewayv1.PathMatchRegularExpression:
+		return 2, 0
+	default:
+		value = normalizeHTTPRoutePathPrefix(value)
+		return 1, uint64(len(value))
+	}
+}
+
+func normalizeHTTPRoutePathPrefix(value string) string {
+	if value == "/" {
+		return value
+	}
+	value = strings.TrimSuffix(value, "/")
+	if value == "" {
+		return "/"
+	}
+	return value
 }
 
 // ruleProducesResponse reports whether the rule answers requests on its own,
@@ -798,38 +851,38 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 }
 
 func (t *Translator) translateGatewayHTTPRouteMatch(match *gatewayv1.HTTPRouteMatch) (*adctypes.Route, error) {
-	route := &adctypes.Route{}
+	// APISIX Admin API requires uris to be a non-null array. Use "/*" as a
+	// catch-all so APISIX accepts the route; the vars entry below performs the
+	// actual path filtering.
+	route := &adctypes.Route{
+		Uris: []string{"/*"},
+	}
 
 	if match.Path != nil {
 		switch *match.Path.Type {
 		case gatewayv1.PathMatchExact:
-			route.Uris = []string{*match.Path.Value}
+			route.Vars = append(route.Vars, []adctypes.StringOrSlice{
+				{StrVal: "uri"},
+				{StrVal: "=="},
+				{StrVal: *match.Path.Value},
+			})
 		case gatewayv1.PathMatchPathPrefix:
-			pathValue := *match.Path.Value
-			route.Uris = []string{pathValue}
-
-			if strings.HasSuffix(pathValue, "/") {
-				route.Uris = append(route.Uris, pathValue+"*")
-			} else {
-				route.Uris = append(route.Uris, pathValue+"/*")
+			pathValue := normalizeHTTPRoutePathPrefix(*match.Path.Value)
+			pathPattern := "^" + regexp.QuoteMeta(pathValue)
+			if pathValue != "/" {
+				pathPattern += "(/|$)"
 			}
+			route.Vars = append(route.Vars, []adctypes.StringOrSlice{
+				{StrVal: "uri"},
+				{StrVal: "~~"},
+				{StrVal: pathPattern},
+			})
 		case gatewayv1.PathMatchRegularExpression:
-			var this []adctypes.StringOrSlice
-			this = append(this, adctypes.StringOrSlice{
-				StrVal: "uri",
+			route.Vars = append(route.Vars, []adctypes.StringOrSlice{
+				{StrVal: "uri"},
+				{StrVal: "~~"},
+				{StrVal: *match.Path.Value},
 			})
-			this = append(this, adctypes.StringOrSlice{
-				StrVal: "~~",
-			})
-			this = append(this, adctypes.StringOrSlice{
-				StrVal: *match.Path.Value,
-			})
-
-			route.Vars = append(route.Vars, this)
-			// APISIX Admin API requires uris to be a non-null array. Use "/*"
-			// as a catch-all so APISIX accepts the route; the vars entry above
-			// performs the actual regex filtering.
-			route.Uris = []string{"/*"}
 		default:
 			return nil, errors.New("unknown path match type " + string(*match.Path.Type))
 		}
@@ -837,7 +890,11 @@ func (t *Translator) translateGatewayHTTPRouteMatch(match *gatewayv1.HTTPRouteMa
 		/* If no matches are specified, the default is a prefix
 		path match on "/", which has the effect of matching every
 		HTTP request. */
-		route.Uris = []string{"/", "/*"}
+		route.Vars = append(route.Vars, []adctypes.StringOrSlice{
+			{StrVal: "uri"},
+			{StrVal: "~~"},
+			{StrVal: "^/"},
+		})
 	}
 
 	if len(match.Headers) > 0 {

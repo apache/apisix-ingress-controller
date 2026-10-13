@@ -19,6 +19,8 @@ package translator
 
 import (
 	"context"
+	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -27,6 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	discoveryv1 "k8s.io/api/discovery/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/ptr"
@@ -227,11 +230,18 @@ func TestTranslateHTTPRouteServerPortVarsByMode(t *testing.T) {
 			if assert.Len(t, got.Services, 1) && assert.Len(t, got.Services[0].Routes, 1) {
 				// Every listener in this table is HTTP, so the route also carries the
 				// scheme predicate. TestTranslateHTTPRouteSchemeVar covers that on its own.
-				want := append(adctypes.Vars{{
-					{StrVal: "scheme"},
-					{StrVal: "=="},
-					{StrVal: "http"},
-				}}, tt.expected...)
+				want := append(adctypes.Vars{
+					{
+						{StrVal: "uri"},
+						{StrVal: "~~"},
+						{StrVal: "^/"},
+					},
+					{
+						{StrVal: "scheme"},
+						{StrVal: "=="},
+						{StrVal: "http"},
+					},
+				}, tt.expected...)
 				assert.Equal(t, want, got.Services[0].Routes[0].Vars)
 			}
 		})
@@ -724,4 +734,190 @@ func TestAttachBackendTrafficPolicyToUpstreamSectionName(t *testing.T) {
 			assert.Equal(t, tt.wantScheme, upstream.Scheme)
 		})
 	}
+}
+
+func TestTranslateGatewayHTTPRoutePathMatches(t *testing.T) {
+	tests := []struct {
+		name       string
+		pathType   gatewayv1.PathMatchType
+		pathValue  string
+		operator   string
+		value      string
+		matchPaths map[string]bool
+	}{
+		{
+			name:      "exact",
+			pathType:  gatewayv1.PathMatchExact,
+			pathValue: "/myservice",
+			operator:  "==",
+			value:     "/myservice",
+		},
+		{
+			name:      "prefix respects segment boundaries",
+			pathType:  gatewayv1.PathMatchPathPrefix,
+			pathValue: "/myservice",
+			operator:  "~~",
+			value:     `^/myservice(/|$)`,
+			matchPaths: map[string]bool{
+				"/myservice":         true,
+				"/myservice/child":   true,
+				"/myserviceX":        false,
+				"/another/myservice": false,
+			},
+		},
+		{
+			name:      "prefix quotes regex metacharacters",
+			pathType:  gatewayv1.PathMatchPathPrefix,
+			pathValue: "/foo.bar+",
+			operator:  "~~",
+			value:     `^/foo\.bar\+(/|$)`,
+			matchPaths: map[string]bool{
+				"/foo.bar+":   true,
+				"/foo.bar+/x": true,
+				"/fooXbar+":   false,
+			},
+		},
+		{
+			name:      "prefix ignores trailing slash",
+			pathType:  gatewayv1.PathMatchPathPrefix,
+			pathValue: "/myservice/",
+			operator:  "~~",
+			value:     `^/myservice(/|$)`,
+			matchPaths: map[string]bool{
+				"/myservice":       true,
+				"/myservice/child": true,
+			},
+		},
+		{
+			name:      "root prefix",
+			pathType:  gatewayv1.PathMatchPathPrefix,
+			pathValue: "/",
+			operator:  "~~",
+			value:     `^/`,
+			matchPaths: map[string]bool{
+				"/":         true,
+				"/any/path": true,
+			},
+		},
+		{
+			name:      "regular expression",
+			pathType:  gatewayv1.PathMatchRegularExpression,
+			pathValue: `^/myservice/[0-9]+$`,
+			operator:  "~~",
+			value:     `^/myservice/[0-9]+$`,
+		},
+	}
+
+	translator := NewTranslator(logr.Discard(), "")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			route, err := translator.translateGatewayHTTPRouteMatch(&gatewayv1.HTTPRouteMatch{
+				Path: &gatewayv1.HTTPPathMatch{
+					Type:  ptr.To(tt.pathType),
+					Value: ptr.To(tt.pathValue),
+				},
+			})
+			require.NoError(t, err)
+			require.Equal(t, []string{"/*"}, route.Uris)
+			require.Len(t, route.Vars, 1)
+			require.Len(t, route.Vars[0], 3)
+			assert.Equal(t, "uri", route.Vars[0][0].StrVal)
+			assert.Equal(t, tt.operator, route.Vars[0][1].StrVal)
+			assert.Equal(t, tt.value, route.Vars[0][2].StrVal)
+
+			if len(tt.matchPaths) > 0 {
+				compiled, err := regexp.Compile(tt.value)
+				require.NoError(t, err)
+				for path, wantMatch := range tt.matchPaths {
+					assert.Equal(t, wantMatch, compiled.MatchString(path), "path %q", path)
+				}
+			}
+		})
+	}
+}
+
+func TestCalculateHTTPRoutePriorityPathPrecedence(t *testing.T) {
+	match := func(matchType gatewayv1.PathMatchType, value string) *gatewayv1.HTTPRouteMatch {
+		return &gatewayv1.HTTPRouteMatch{
+			Path: &gatewayv1.HTTPPathMatch{
+				Type:  ptr.To(matchType),
+				Value: ptr.To(value),
+			},
+		}
+	}
+
+	exact := calculateHTTPRoutePriority(match(gatewayv1.PathMatchExact, "/api"), 0, nil)
+	regex := calculateHTTPRoutePriority(match(gatewayv1.PathMatchRegularExpression, `^/api$`), 0, nil)
+	prefix := calculateHTTPRoutePriority(match(gatewayv1.PathMatchPathPrefix, "/api"), 0, nil)
+	prefixWithSlash := calculateHTTPRoutePriority(match(gatewayv1.PathMatchPathPrefix, "/api/"), 0, nil)
+	longerPrefix := calculateHTTPRoutePriority(match(gatewayv1.PathMatchPathPrefix, "/api/v1"), 0, nil)
+
+	assert.Greater(t, exact, regex)
+	assert.Greater(t, regex, longerPrefix)
+	assert.Greater(t, longerPrefix, prefix)
+	assert.Equal(t, prefix, prefixWithSlash)
+
+	longPath := strings.Repeat("a", 2048)
+	longHost := strings.Repeat("a", 253)
+	priority := calculateHTTPRoutePriority(match(gatewayv1.PathMatchExact, longPath), 0, []string{longHost})
+	assert.Less(t, priority, uint64(1<<53))
+}
+
+func TestFillHTTPRoutePoliciesPriorityAndVars(t *testing.T) {
+	translator := NewTranslator(logr.Discard(), "")
+	calculatedPriority := int64(123456)
+	policyVars := []adctypes.StringOrSlice{
+		{StrVal: "http_x_custom"},
+		{StrVal: "=="},
+		{StrVal: "value"},
+	}
+
+	for _, tt := range []struct {
+		name           string
+		policyPriority *int64
+		wantPriority   int64
+	}{
+		{
+			name:         "vars-only policy preserves generated priority",
+			wantPriority: calculatedPriority,
+		},
+		{
+			name:           "explicit policy priority overrides generated priority",
+			policyPriority: ptr.To(int64(1000)),
+			wantPriority:   1000,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			route := &adctypes.Route{Priority: ptr.To(calculatedPriority)}
+			policies := []v1alpha1.HTTPRoutePolicy{{
+				ObjectMeta: metav1.ObjectMeta{Name: "policy", Namespace: "default"},
+				Spec: v1alpha1.HTTPRoutePolicySpec{
+					Priority: tt.policyPriority,
+					Vars: []apiextensionsv1.JSON{{
+						Raw: []byte(`["http_x_custom","==","value"]`),
+					}},
+				},
+			}}
+
+			translator.fillHTTPRoutePolicies([]*adctypes.Route{route}, policies)
+
+			require.NotNil(t, route.Priority)
+			assert.Equal(t, tt.wantPriority, *route.Priority)
+			assert.Contains(t, route.Vars, policyVars)
+		})
+	}
+}
+
+func TestFillHTTPRoutePoliciesUsesDeterministicPriorityOrder(t *testing.T) {
+	translator := NewTranslator(logr.Discard(), "")
+	route := &adctypes.Route{Priority: ptr.To(int64(1))}
+	policies := []v1alpha1.HTTPRoutePolicy{
+		{ObjectMeta: metav1.ObjectMeta{Name: "z"}, Spec: v1alpha1.HTTPRoutePolicySpec{Priority: ptr.To(int64(3))}},
+		{ObjectMeta: metav1.ObjectMeta{Name: "a"}, Spec: v1alpha1.HTTPRoutePolicySpec{Priority: ptr.To(int64(2))}},
+	}
+
+	translator.fillHTTPRoutePolicies([]*adctypes.Route{route}, policies)
+
+	assert.Equal(t, int64(3), *route.Priority)
+	assert.Equal(t, "z", policies[0].Name, "policy application must not reorder the caller's slice")
 }
