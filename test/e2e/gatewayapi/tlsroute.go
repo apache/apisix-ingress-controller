@@ -24,7 +24,9 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/utils/ptr"
 
+	"github.com/apache/apisix-ingress-controller/test/e2e/framework"
 	"github.com/apache/apisix-ingress-controller/test/e2e/scaffold"
 )
 
@@ -119,6 +121,89 @@ spec:
 				return errMsg
 			}).WithTimeout(time.Minute*3).
 				Should(ContainSubstring("EOF"), "should get EOF after deleting TLSRoute")
+		})
+	})
+
+	Context("TLSRoute Passthrough", func() {
+		// The certificate the e2e nginx serves, and the CA that signed it.
+		const backendSNI = "server.example.com"
+
+		var passthroughGateway = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: tls-passthrough-gateway
+spec:
+  gatewayClassName: %s
+  listeners:
+    - name: passthrough
+      protocol: TLS
+      # Must equal APISIX's physical stream_proxy listen configured with
+      # tls_passthrough (see the e2e apisix manifest): the controller runs with
+      # listener_port_match_mode=auto, so the port reaches the stream route as a
+      # server_port match and has to be one the data plane actually accepts on.
+      port: 9120
+      hostname: server.example.com
+      tls:
+        mode: Passthrough
+  infrastructure:
+    parametersRef:
+      group: apisix.apache.org
+      kind: GatewayProxy
+      name: apisix-proxy-config
+`
+
+		var passthroughRoute = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: TLSRoute
+metadata:
+  name: tls-passthrough-route
+spec:
+  parentRefs:
+  - name: tls-passthrough-gateway
+    sectionName: passthrough
+  hostnames: ["server.example.com"]
+  rules:
+  - backendRefs:
+    - name: nginx
+      port: 443
+`
+
+		BeforeEach(func() {
+			By("create GatewayProxy")
+			Expect(s.CreateResourceFromString(s.GetGatewayProxySpec())).NotTo(HaveOccurred(), "creating GatewayProxy")
+
+			By("create GatewayClass")
+			Expect(s.CreateResourceFromString(s.GetGatewayClassYaml())).NotTo(HaveOccurred(), "creating GatewayClass")
+
+			By("create Gateway with a Passthrough listener")
+			Expect(s.CreateResourceFromString(fmt.Sprintf(passthroughGateway, s.Namespace()))).NotTo(HaveOccurred(), "creating Gateway")
+
+			By("deploy the TLS backend")
+			s.DeployNginx(framework.NginxOptions{
+				Namespace: s.Namespace(),
+				Replicas:  ptr.To(int32(1)),
+			})
+		})
+
+		It("forwards the stream to the backend that owns the certificate", func() {
+			s.ResourceApplied("TLSRoute", "tls-passthrough-route", passthroughRoute, 1)
+
+			// The client verifies the served chain against the backend's own CA.
+			// The gateway holds no certificate for this listener - Passthrough
+			// takes no certificateRefs - so a chain that validates here can only
+			// have come from nginx, which is what passthrough means.
+			s.RequestAssert(&scaffold.RequestAssert{
+				Client: s.NewAPISIXClientWithTLSPassthrough(backendSNI, []byte(framework.TestCACert)),
+				Method: http.MethodGet,
+				Path:   "/",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedBodyContains("Hello, World!"),
+				},
+				Timeout:  time.Minute * 3,
+				Interval: time.Second * 2,
+			})
 		})
 	})
 })

@@ -48,6 +48,7 @@ import (
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/config"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
+	cutils "github.com/apache/apisix-ingress-controller/internal/controller/utils"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	sslutils "github.com/apache/apisix-ingress-controller/internal/ssl"
 	"github.com/apache/apisix-ingress-controller/internal/types"
@@ -726,63 +727,12 @@ func listenerHostnameIntersectWithRouteHostnames(listener gatewayv1.Listener, ho
 
 	// iterate over all the hostnames and check that at least one intersect with the listener hostname
 	for _, hostname := range hostnames {
-		if HostnamesIntersect(string(*listener.Hostname), string(hostname)) {
+		if cutils.HostnamesIntersect(string(*listener.Hostname), string(hostname)) {
 			return true
 		}
 	}
 
 	return false
-}
-
-func HostnamesIntersect(a, b string) bool {
-	return HostnamesMatch(a, b) || HostnamesMatch(b, a)
-}
-
-// HostnamesMatch checks that the hostnameB matches the hostnameA. HostnameA is treated as mask
-// to be checked against the hostnameB.
-func HostnamesMatch(hostnameA, hostnameB string) bool {
-	// the hostnames are in the form of "foo.bar.com"; split them
-	// in a slice of substrings
-	hostnameALabels := strings.Split(hostnameA, ".")
-	hostnameBLabels := strings.Split(hostnameB, ".")
-
-	var a, b int
-	var wildcard bool
-
-	// iterate over the parts of both the hostnames
-	for a, b = 0, 0; a < len(hostnameALabels) && b < len(hostnameBLabels); a, b = a+1, b+1 {
-		var matchFound bool
-
-		// if the current part of B is a wildcard, we need to find the first
-		// A part that matches with the following B part
-		if wildcard {
-			for ; b < len(hostnameBLabels); b++ {
-				if hostnameALabels[a] == hostnameBLabels[b] {
-					matchFound = true
-					break
-				}
-			}
-		}
-
-		// if no match was found, the hostnames don't match
-		if wildcard && !matchFound {
-			return false
-		}
-
-		// check if at least on of the current parts are a wildcard; if so, continue
-		if hostnameALabels[a] == "*" {
-			wildcard = true
-			continue
-		}
-		// reset the wildcard  variables
-		wildcard = false
-
-		// if the current a part is different from the b part, the hostnames are incompatible
-		if hostnameALabels[a] != hostnameBLabels[b] {
-			return false
-		}
-	}
-	return len(hostnameBLabels)-b == len(hostnameALabels)-a
 }
 
 func routeMatchesListenerAllowedRoutes(
@@ -1392,75 +1342,71 @@ func FullTypeName(a any) string {
 // filterHostnames accepts a list of gateways and an HTTPRoute, and returns a copy of the HTTPRoute with only the hostnames that match the listener hostnames of the gateways.
 // If the HTTPRoute hostnames do not intersect with the listener hostnames of the gateways, it returns an ErrNoMatchingListenerHostname error.
 func filterHostnames(gateways []RouteParentRefContext, httpRoute *gatewayv1.HTTPRoute) (*gatewayv1.HTTPRoute, error) {
-	filteredHostnames := make([]gatewayv1.Hostname, 0)
-
-	// If the HTTPRoute does not specify hostnames, we use the union of the listener hostnames of all supported gateways
-	// If any supported listener does not specify a hostname, the HTTPRoute hostnames remain empty to match any hostname
-	if len(httpRoute.Spec.Hostnames) == 0 {
-		hostnames, matchAnyHost := getUnionOfGatewayHostnames(gateways)
-		if matchAnyHost {
-			return httpRoute, nil
-		}
-		filteredHostnames = hostnames
-	} else {
-		// If the HTTPRoute specifies hostnames, we need to find the intersection with the gateway listener hostnames
-		for _, hostname := range httpRoute.Spec.Hostnames {
-			if hostnameMatching := getMinimumHostnameIntersection(gateways, hostname); hostnameMatching != "" {
-				filteredHostnames = append(filteredHostnames, hostnameMatching)
-			}
-		}
-		if len(filteredHostnames) == 0 {
-			return httpRoute, ErrNoMatchingListenerHostname
-		}
+	hostnames, err := intersectRouteHostnames(gateways, httpRoute.Spec.Hostnames)
+	if err != nil {
+		return httpRoute, err
 	}
-
-	httpRoute.Spec.Hostnames = filteredHostnames
+	httpRoute.Spec.Hostnames = hostnames
 	return httpRoute, nil
 }
 
-// getUnionOfGatewayHostnames returns the union of the hostnames specified in all supported gateways
-// The second return value indicates whether any listener can match any hostname
-func getUnionOfGatewayHostnames(gateways []RouteParentRefContext) ([]gatewayv1.Hostname, bool) {
-	hostnames := make([]gatewayv1.Hostname, 0)
+// filterTLSRouteHostnames is filterHostnames for a TLSRoute. Its hostnames become
+// the SNIs the stream routes match on, so a route left carrying its own broader
+// hostname would serve names the listener it attached to never accepted - and, on
+// a single shared stream listen, would take them from the route that should have.
+func filterTLSRouteHostnames(gateways []RouteParentRefContext, tlsRoute *gatewayv1.TLSRoute) (*gatewayv1.TLSRoute, error) {
+	hostnames, err := intersectRouteHostnames(gateways, tlsRoute.Spec.Hostnames)
+	if err != nil {
+		return tlsRoute, err
+	}
+	tlsRoute.Spec.Hostnames = hostnames
+	return tlsRoute, nil
+}
 
+// intersectRouteHostnames narrows a route's hostnames to what the listeners it
+// attached to actually accept.
+//
+// A route without hostnames takes the union of the listener hostnames, and stays
+// empty - matching any hostname - as soon as one supported listener carries no
+// hostname of its own. Otherwise every hostname is replaced by its intersections
+// with the listener hostnames, and a route that intersects with none is
+// ErrNoMatchingListenerHostname.
+func intersectRouteHostnames(gateways []RouteParentRefContext, routeHostnames []gatewayv1.Hostname) ([]gatewayv1.Hostname, error) {
+	listeners := hostnameEffectiveListeners(acceptedParentRefs(gateways))
+
+	if len(routeHostnames) == 0 {
+		hostnames, matchAnyHost := cutils.UnionHostnames(listeners)
+		if matchAnyHost {
+			return routeHostnames, nil
+		}
+		return cutils.DedupHostnames(hostnames), nil
+	}
+
+	filteredHostnames := make([]gatewayv1.Hostname, 0, len(routeHostnames))
+	for _, hostname := range routeHostnames {
+		filteredHostnames = append(filteredHostnames, cutils.NarrowHostname(listeners, hostname)...)
+	}
+	filteredHostnames = cutils.DedupHostnames(filteredHostnames)
+	if len(filteredHostnames) == 0 {
+		return nil, ErrNoMatchingListenerHostname
+	}
+	return filteredHostnames, nil
+}
+
+// hostnameEffectiveListeners flattens the listeners the route attached to,
+// keeping only those a hostname can be matched against.
+func hostnameEffectiveListeners(gateways []RouteParentRefContext) []gatewayv1.Listener {
+	listeners := make([]gatewayv1.Listener, 0, len(gateways))
 	for _, gateway := range gateways {
 		for _, listener := range listenersForGatewayContext(gateway) {
 			// Only consider listeners that can effectively configure hostnames (HTTP, HTTPS, or TLS).
 			if !isListenerHostnameEffective(listener) {
 				continue
 			}
-			if listener.Hostname == nil {
-				return nil, true
-			}
-			hostnames = append(hostnames, *listener.Hostname)
+			listeners = append(listeners, listener)
 		}
 	}
-
-	return hostnames, false
-}
-
-// getMinimumHostnameIntersection returns the smallest intersection hostname
-// - If the listener hostname is empty, return the HTTPRoute hostname
-// - If the listener hostname is a wildcard of the HTTPRoute hostname, return the HTTPRoute hostname
-// - If the HTTPRoute hostname is a wildcard of the listener hostname, return the listener hostname
-// - If the HTTPRoute hostname and listener hostname are the same, return it
-// - If none of the above, return an empty string
-func getMinimumHostnameIntersection(gateways []RouteParentRefContext, hostname gatewayv1.Hostname) gatewayv1.Hostname {
-	for _, gateway := range gateways {
-		for _, listener := range listenersForGatewayContext(gateway) {
-			if listener.Hostname == nil || *listener.Hostname == "" {
-				return hostname
-			}
-			if HostnamesMatch(string(*listener.Hostname), string(hostname)) {
-				return hostname
-			}
-			if HostnamesMatch(string(hostname), string(*listener.Hostname)) {
-				return *listener.Hostname
-			}
-		}
-	}
-
-	return ""
+	return listeners
 }
 
 func listenersForGatewayContext(gw RouteParentRefContext) []gatewayv1.Listener {
@@ -1486,6 +1432,33 @@ func isListenerHostnameEffective(listener gatewayv1.Listener) bool {
 // names are only unique within a single Gateway.
 func appendListeners(target []gatewayv1.Listener, source ...gatewayv1.Listener) []gatewayv1.Listener {
 	return append(target, source...)
+}
+
+// acceptedParentRefs keeps only the contexts whose parentRef was accepted.
+//
+// ParseRouteParentRefs returns a context per parentRef, accepted or not, and a
+// rejected one carries no matched listener at all - so listenersForGatewayContext
+// falls back to every listener on its Gateway. A hostname that only such a
+// Gateway accepts would then survive the intersection and be served through the
+// parentRef that was accepted. Only an accepted parent may widen the set.
+//
+// When nothing was accepted the contexts are returned unchanged: the route is
+// not translated in that case, and narrowing here would only change which
+// reason its status reports.
+func acceptedParentRefs(gateways []RouteParentRefContext) []RouteParentRefContext {
+	accepted := make([]RouteParentRefContext, 0, len(gateways))
+	for _, gateway := range gateways {
+		for _, condition := range gateway.Conditions {
+			if condition.Type == string(gatewayv1.RouteConditionAccepted) && condition.Status == metav1.ConditionTrue {
+				accepted = append(accepted, gateway)
+				break
+			}
+		}
+	}
+	if len(accepted) == 0 {
+		return gateways
+	}
+	return accepted
 }
 
 func isRouteAccepted(gateways []RouteParentRefContext) bool {

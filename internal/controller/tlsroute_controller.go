@@ -318,7 +318,8 @@ func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 			acceptStatus.msg = err.Error()
 		}
 		// Populate the matched listeners so the translator can derive the
-		// StreamRoute server_port from the listener the route attaches to.
+		// StreamRoute server_port and its tls.mode from the listener the route
+		// attaches to.
 		if len(gateway.Listeners) > 0 {
 			tctx.Listeners = appendListeners(tctx.Listeners, gateway.Listeners...)
 		} else if gateway.Listener != nil {
@@ -348,12 +349,26 @@ func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	if r.supportsL4RoutePolicy {
 		ProcessL4RoutePolicy(r.Client, r.Log, tctx, tr.Namespace, tr.Name, types.KindTLSRoute)
 	}
+
+	// The hostnames become the SNIs the stream routes match on, so they have to be
+	// narrowed to what the listeners accept first. Every Gateway shares one physical
+	// stream listen, so a route keeping its own broader hostname does not merely
+	// over-serve: it takes that name from the route whose listener does accept it.
+	filteredTLSRoute, hostnameErr := filterTLSRouteHostnames(gateways, tr.DeepCopy())
+	if hostnameErr != nil {
+		acceptStatus.status = false
+		acceptStatus.msg = hostnameErr.Error()
+	}
 	// Translate and sync before writing Accepted=True. A translation or
 	// buildConfig failure from Provider.Update used to leave a green status
 	// and only requeue, matching neither Ingress nor ApisixGlobalRule.
 	var syncErr error
-	if isRouteAccepted(gateways) {
-		if syncErr = r.Provider.Update(ctx, tctx, tr); syncErr != nil {
+	if isRouteAccepted(gateways) && hostnameErr == nil {
+		routeToUpdate := tr
+		if filteredTLSRoute != nil {
+			routeToUpdate = filteredTLSRoute
+		}
+		if syncErr = r.Provider.Update(ctx, tctx, routeToUpdate); syncErr != nil {
 			acceptStatus.status = false
 			acceptStatus.msg = syncErr.Error()
 		}
@@ -386,7 +401,7 @@ func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		}),
 	})
 	UpdateStatus(r.Updater, r.Log, tctx)
-	if isRouteAccepted(gateways) {
+	if isRouteAccepted(gateways) && hostnameErr == nil {
 		return ctrl.Result{}, syncErr
 	}
 

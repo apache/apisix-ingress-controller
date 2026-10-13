@@ -180,7 +180,18 @@ type StreamRoute struct {
 	RemoteAddr string  `json:"remote_addr,omitempty"`
 	ServerAddr string  `json:"server_addr,omitempty"`
 	ServerPort int32   `json:"server_port,omitempty"`
-	SNI        string  `json:"sni,omitempty"`
+	// SNI and SNIs are the singular and plural forms of the same match; APISIX
+	// rejects a stream route carrying both, so only one is ever set.
+	SNI  string   `json:"sni,omitempty"`
+	SNIs []string `json:"snis,omitempty"`
+	// TLSPassthrough forwards the TLS stream to the upstream untouched instead
+	// of terminating it on the gateway.
+	//
+	// A listen carrying tls_passthrough alone passes every connection through
+	// and never reads this; a listen carrying tls alone always terminates. It
+	// decides only on a listen configured with both, where the matched stream
+	// route picks between the terminating and the prereading server.
+	TLSPassthrough *bool `json:"tls_passthrough,omitempty"`
 }
 
 // +k8s:deepcopy-gen=true
