@@ -74,19 +74,14 @@ spec:
 				NotTo(HaveOccurred(), "creating GatewayProxy")
 
 			// Create GatewayClass
+			// Re-applying a fetched object would carry its resourceVersion, and
+			// the controller writing status in between turns that into a Conflict.
 			gatewayClassName := s.Namespace()
-			Expect(s.CreateResourceFromString(s.GetGatewayClassYaml())).
-				NotTo(HaveOccurred(), "creating GatewayClass")
-			gcyaml, _ := s.GetResourceYaml("GatewayClass", gatewayClassName)
-			s.ResourceApplied("GatewayClass", gatewayClassName, gcyaml, 1)
+			s.ResourceApplied("GatewayClass", gatewayClassName, s.GetGatewayClassYaml(), 1)
 
 			// Create Gateway with UDP listener
 			gatewayName := s.Namespace()
-			Expect(s.CreateResourceFromString(fmt.Sprintf(udpGateway, gatewayName, gatewayClassName))).
-				NotTo(HaveOccurred(), "creating Gateway")
-
-			gwyaml, _ := s.GetResourceYaml("Gateway", gatewayName)
-			s.ResourceApplied("Gateway", gatewayName, gwyaml, 1)
+			s.ResourceApplied("Gateway", gatewayName, fmt.Sprintf(udpGateway, gatewayName, gatewayClassName), 1)
 		})
 
 		It("should route UDP traffic to backend service", func() {

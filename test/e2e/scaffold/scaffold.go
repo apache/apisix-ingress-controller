@@ -28,6 +28,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/api7/gopkg/pkg/log"
@@ -319,24 +320,66 @@ const tlsPassthroughPortName = "tls-passthrough"
 // Verifying is the point: the gateway holds no certificate for a passthrough
 // listener, so a chain that validates against the backend's own CA can only
 // have come from the backend itself.
-// tlsPassthroughTunnel forwards the data plane's tls_passthrough stream port and
-// hands back a tunnel that has been proven to carry a handshake end to end.
+func (s *Scaffold) NewAPISIXClientWithTLSPassthrough(sni string, caCert []byte) *httpexpect.Expect {
+	pool := x509.NewCertPool()
+	Expect(pool.AppendCertsFromPEM(caCert)).To(BeTrue(), "parsing CA certificate")
+
+	forward := s.newTLSPassthroughForward(&tls.Config{ServerName: sni, RootCAs: pool})
+
+	u := url.URL{
+		Scheme: apiv2.SchemeHTTPS,
+		Host:   forward.endpoint(),
+	}
+	return httpexpect.WithConfig(httpexpect.Config{
+		BaseURL: u.String(),
+		Client: &http.Client{
+			Transport: &http.Transport{
+				// Every request dials afresh, so a forwarder that died since the
+				// last one is noticed and replaced rather than reused.
+				DisableKeepAlives: true,
+				DialTLSContext:    forward.dialTLSContext,
+			},
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+		Reporter: httpexpect.NewAssertReporter(
+			httpexpect.NewAssertReporter(s.GinkgoT),
+		),
+	})
+}
+
+// tlsPassthroughForward owns the port-forward to the data plane's
+// tls_passthrough stream port and replaces it whenever it stops working.
 //
 // Two things make this port different from the others the scaffold forwards.
 //
-// A tls_passthrough listen prereads the ClientHello to pick a stream route, so a
-// connection that carries no TLS gets reset. kubectl port-forward treats that
-// reset as fatal and exits, taking the local listener with it - every later dial
-// then gets "connection refused" rather than anything describing the cause. So
-// the tunnel is verified with a real handshake for sni, never a bare TCP dial,
-// and a failed attempt rebuilds it rather than reusing a forwarder that may
-// already be gone.
+// A tls_passthrough listen prereads the ClientHello to pick a stream route, and
+// resets a connection no route matches. The port-forward treats that reset as
+// fatal and exits, taking the local listener with it - every later dial then
+// gets "connection refused" rather than anything describing the cause. A
+// handshake that succeeded once does not rule this out: the data plane workers
+// load a new stream route independently, so the next connection can still land
+// on one that has not. So the forward is verified with a real handshake for the
+// SNI, never a bare TCP dial, and any failed dial rebuilds it instead of
+// leaving every later retry to hit a forwarder that is already gone.
 //
 // It is also forwarded on demand rather than alongside the HTTP tunnels when the
 // data plane is deployed: APISIX opens its stream listens later than its HTTP
 // ones, and only this one spec dials this port, so the rest of the suite would
 // pay for a forward it never uses.
-func (s *Scaffold) tlsPassthroughTunnel(sni string, pool *x509.CertPool) Tunnel {
+type tlsPassthroughForward struct {
+	s         *Scaffold
+	opts      k8s.KubectlOptions
+	service   string
+	port      int
+	tlsConfig *tls.Config
+
+	mu     sync.Mutex
+	tunnel *k8s.Tunnel
+}
+
+func (s *Scaffold) newTLSPassthroughForward(tlsConfig *tls.Config) *tlsPassthroughForward {
 	svc := s.dataplaneService
 	Expect(svc).NotTo(BeNil(), "data plane service")
 
@@ -351,69 +394,90 @@ func (s *Scaffold) tlsPassthroughTunnel(sni string, pool *x509.CertPool) Tunnel 
 	// Copy the scaffold's options rather than building fresh ones: a run that
 	// configures a kubeconfig or context would otherwise be ignored here while
 	// every other dataplane tunnel honours it.
-	kubectlOpts := *s.kubectlOptions
-	kubectlOpts.Namespace = svc.Namespace
+	f := &tlsPassthroughForward{
+		s:         s,
+		opts:      *s.kubectlOptions,
+		service:   svc.Name,
+		port:      port,
+		tlsConfig: tlsConfig,
+	}
+	f.opts.Namespace = svc.Namespace
 
-	var tunnel *k8s.Tunnel
 	Eventually(func() error {
-		t := k8s.NewTunnel(&kubectlOpts, k8s.ResourceTypeService, svc.Name, 0, port)
-		if err := t.ForwardPortE(s.t); err != nil {
-			return err
-		}
-		// ForwardPortE returns before the forward has proxied anything, so the
-		// handshake is what decides whether this tunnel works.
-		conn, err := tls.DialWithDialer(
-			&net.Dialer{Timeout: 10 * time.Second},
-			"tcp", t.Endpoint(),
-			&tls.Config{ServerName: sni, RootCAs: pool},
-		)
+		t, err := f.open()
 		if err != nil {
-			t.Close()
 			return err
 		}
-		_ = conn.Close()
-		tunnel = t
+		f.replace(t)
 		return nil
 	}).WithTimeout(time.Minute*2).WithPolling(time.Second*2).
 		Should(Succeed(), "forwarding the tls passthrough port")
-
-	// Tunnels.Close only knows about the tunnel currently stored, so a spec
-	// that builds a second client would otherwise leave the first
-	// kubectl port-forward running until the process exits.
-	if previous := s.apisixTunnels.TLSPassthrough; previous != nil {
-		previous.Close()
-	}
-	s.apisixTunnels.TLSPassthrough = tunnel
-	return tunnel
+	return f
 }
 
-func (s *Scaffold) NewAPISIXClientWithTLSPassthrough(sni string, caCert []byte) *httpexpect.Expect {
-	pool := x509.NewCertPool()
-	Expect(pool.AppendCertsFromPEM(caCert)).To(BeTrue(), "parsing CA certificate")
-
-	tunnel := s.tlsPassthroughTunnel(sni, pool)
-
-	u := url.URL{
-		Scheme: apiv2.SchemeHTTPS,
-		Host:   tunnel.Endpoint(),
+// open forwards the port and proves the forward with a handshake, since
+// ForwardPortE returns before the forward has proxied anything.
+func (f *tlsPassthroughForward) open() (*k8s.Tunnel, error) {
+	t := k8s.NewTunnel(&f.opts, k8s.ResourceTypeService, f.service, 0, f.port)
+	if err := t.ForwardPortE(f.s.t); err != nil {
+		return nil, err
 	}
-	return httpexpect.WithConfig(httpexpect.Config{
-		BaseURL: u.String(),
-		Client: &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					RootCAs:    pool,
-					ServerName: sni,
-				},
-			},
-			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				return http.ErrUseLastResponse
-			},
-		},
-		Reporter: httpexpect.NewAssertReporter(
-			httpexpect.NewAssertReporter(s.GinkgoT),
-		),
-	})
+	conn, err := f.handshake(context.Background(), t.Endpoint())
+	if err != nil {
+		t.Close()
+		return nil, err
+	}
+	_ = conn.Close()
+	return t, nil
+}
+
+func (f *tlsPassthroughForward) handshake(ctx context.Context, endpoint string) (*tls.Conn, error) {
+	d := &tls.Dialer{
+		NetDialer: &net.Dialer{Timeout: 10 * time.Second},
+		Config:    f.tlsConfig.Clone(),
+	}
+	conn, err := d.DialContext(ctx, "tcp", endpoint)
+	if err != nil {
+		return nil, err
+	}
+	return conn.(*tls.Conn), nil
+}
+
+// replace installs t as the current forward and closes the one it supersedes.
+// Tunnels.Close only knows about the tunnel stored there, so a superseded
+// forward would otherwise keep running until the process exits.
+func (f *tlsPassthroughForward) replace(t *k8s.Tunnel) {
+	if f.tunnel != nil {
+		f.tunnel.Close()
+	} else if previous := f.s.apisixTunnels.TLSPassthrough; previous != nil {
+		previous.Close()
+	}
+	f.tunnel = t
+	f.s.apisixTunnels.TLSPassthrough = t
+}
+
+func (f *tlsPassthroughForward) endpoint() string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.tunnel.Endpoint()
+}
+
+// dialTLSContext ignores addr: the request URL names whichever local port the
+// forward had when the client was built, and that port changes on a rebuild.
+func (f *tlsPassthroughForward) dialTLSContext(ctx context.Context, _, _ string) (net.Conn, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	conn, err := f.handshake(ctx, f.tunnel.Endpoint())
+	if err == nil {
+		return conn, nil
+	}
+	t, rebuildErr := f.open()
+	if rebuildErr != nil {
+		return nil, fmt.Errorf("%w; rebuilding the tls passthrough forward: %v", err, rebuildErr)
+	}
+	f.replace(t)
+	return f.handshake(ctx, t.Endpoint())
 }
 
 func (s *Scaffold) NewAPISIXClientWithTLSProxy(host string) *httpexpect.Expect {
@@ -615,7 +679,7 @@ func (s *Scaffold) createDataplaneTunnels(
 	tunnels.TLS = tlsTunnel
 
 	// The TLS passthrough tunnel is deliberately not forwarded here. See
-	// tlsPassthroughTunnel.
+	// tlsPassthroughForward.
 
 	return tunnels, nil
 }
