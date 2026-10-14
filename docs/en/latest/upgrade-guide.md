@@ -25,6 +25,26 @@ keywords:
 #
 -->
 
+## GatewayProxy control-plane TLS verification
+
+TLS certificate verification is enabled by default for HTTPS control-plane
+connections. Kubernetes CRD defaulting also applies to existing `GatewayProxy`
+objects when they are read after the CRD is upgraded. As a result, an existing
+object that omits `spec.provider.controlPlane.tlsVerify` will begin verifying
+the control plane's certificate after upgrading to a release that contains
+this change.
+
+Before upgrading, check every `GatewayProxy` that uses an HTTPS control-plane
+endpoint:
+
+- No change is required when the certificate is trusted by the system trust
+  store.
+- For a self-signed certificate or private CA, configure the PEM-encoded CA
+  certificate or bundle in `spec.provider.controlPlane.caCert.value`.
+- Use `spec.provider.controlPlane.tlsVerify: false` only as a temporary
+  development workaround. It disables certificate verification and exposes
+  the AdminKey to man-in-the-middle attacks.
+
 ## Upgrading from 1.x.x to 2.0.0: Key Changes and Considerations
 
 This document outlines the major updates, configuration compatibility changes, API behavior differences, and critical considerations when upgrading the APISIX Ingress Controller from version 1.x.x to 2.0.0. Please read carefully and assess the impact on your existing system before proceeding with the upgrade.
@@ -137,7 +157,7 @@ spec:
     type: ControlPlane
     controlPlane:
       endpoints:
-      - https://127.0.0.1:9180
+      - http://127.0.0.1:9180
       auth:
         type: AdminKey
         adminKey:
