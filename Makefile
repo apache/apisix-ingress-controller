@@ -496,6 +496,10 @@ generate-crd-docs: manifests ## Generate CRD reference documentation in a single
 		--max-depth=100
 	@echo "CRD reference documentation generated at $(CRD_DOCS_OUTPUT)"
 
+.PHONY: check-crd-doc-links
+check-crd-doc-links: ## Check links to headings in the generated CRD reference
+	@python3 scripts/check-crd-doc-links.py $(CRD_DOCS_OUTPUT)
+
 .PHONY: generate-crd-docs-grouped
 generate-crd-docs-grouped: manifests ## Generate CRD reference documentation grouped by API group
 	@mkdir -p docs/crd/groups

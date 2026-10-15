@@ -62,3 +62,5 @@ jobs:
             echo "docs/en/latest/reference/api-reference.md has changed. Please run 'make generate-crd-docs' and commit the updated file."
             exit 1
           fi
+      - name: Check CRD Docs Links
+        run: make check-crd-doc-links

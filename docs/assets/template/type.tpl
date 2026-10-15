@@ -50,9 +50,15 @@
 
 {{ end }}
 
-{{ if $type.References -}}
+{{ $renderedReferences := list -}}
+{{ range $type.SortedReferences -}}
+{{ if markdownShouldRenderType . -}}
+{{ $renderedReferences = append $renderedReferences . -}}
+{{ end -}}
+{{ end -}}
+{{ if $renderedReferences -}}
 _Appears in:_
-{{- range $type.SortedReferences }}
+{{- range $renderedReferences }}
 - {{ markdownRenderTypeLink . }}
 {{- end }}
 {{- end }}
