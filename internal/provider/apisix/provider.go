@@ -98,6 +98,10 @@ type apisixProvider struct {
 	// keeps no such history: see updateStatusFromSyncResults.
 	resourceFailures map[types.NamespacedNameKind][]string
 
+	// skipped holds the resources ADC rejected, left out of every push until their owner
+	// is written again. See skiptable.go.
+	skipped *skipTable
+
 	readier readiness.ReadinessManager
 
 	syncCh chan struct{}
@@ -135,6 +139,7 @@ func New(log logr.Logger, updater status.Updater, readier readiness.ReadinessMan
 		updater:          updater,
 		readier:          readier,
 		syncCh:           make(chan struct{}, 1),
+		skipped:          newSkipTable(),
 		log:              logger,
 	}, nil
 }
@@ -286,7 +291,9 @@ func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 
 // applyResourceState upserts a resource's config associations and its contribution to each
 // target config's cached resource snapshot, the AIC-side bookkeeping the adc client
-// package no longer holds itself.
+// package no longer holds itself. Whatever the skip table excluded for a resource whose
+// content this changed gets another try; rewriting identical content, which reconciles
+// triggered by unrelated events do all the time, must not retry a known-bad resource.
 func (d *apisixProvider) applyResourceState(
 	rk types.NamespacedNameKind,
 	configs map[types.NamespacedNameKind]adctypes.Config,
@@ -297,6 +304,13 @@ func (d *apisixProvider) applyResourceState(
 ) error {
 	d.Lock()
 	defer d.Unlock()
+
+	before := d.store.Revision()
+	defer func() {
+		if d.store.OwnerChangedSince(rk, before) {
+			d.skipped.ClearOwner(rk)
+		}
+	}()
 
 	evicted := d.configManager.Update(rk, configs)
 	if err := d.evictFromStore(rk, evicted, resourceTypes, labels, plugins); err != nil {
@@ -346,12 +360,14 @@ func (d *apisixProvider) removeResourceState(
 	if wholeConfig {
 		for _, cfg := range evicted {
 			d.store.DeleteAll(cfg.Name)
+			d.skipped.ClearCacheKey(cfg.Name)
 		}
 		return evicted, nil
 	}
 	if err := d.evictFromStore(rk, evicted, resourceTypes, labels, plugins); err != nil {
 		return nil, err
 	}
+	d.skipped.ClearOwner(rk)
 	return evicted, nil
 }
 
@@ -553,23 +569,28 @@ func (d *apisixProvider) Start(ctx context.Context) error {
 // sync pushes every GatewayProxy AIC currently knows about, config by config, each one's
 // current resource snapshot is only read once syncConfigNow actually holds that
 // cacheKey's lock, so a slow round can never push a snapshot that was already stale by
-// the time its turn came up. results collects one entry per config this round actually
+// the time its turn came up. Whatever the skip table holds for a config is left out of its
+// push. results collects one entry per config this round actually
 // reached pushConfig for, success (a zero-value types.ADCExecutionErrors) or failure. A
 // config whose build itself failed (a local error, before anything reached the data
 // plane) is left out of results entirely and its status goes untouched this round,
 // logged here rather than silently treated as either outcome; see
-// updateStatusFromSyncResults for what results feeds into.
+// updateStatusFromSyncResults for what results feeds into, and for the immediate retry a
+// round that excluded something new asks for.
 func (d *apisixProvider) sync(ctx context.Context) error {
 	configs := d.configManager.List()
 
 	results := map[string]types.ADCExecutionErrors{}
+	revisions := map[string]uint64{}
 	var errs []error
 	for _, config := range configs {
 		result, err := d.syncConfigNow(ctx, config.Name, func() (adcclient.SyncInput, error) {
-			resources, err := d.store.GetResources(config.Name)
+			resources, revision, err := d.store.GetResources(config.Name)
 			if err != nil {
 				return adcclient.SyncInput{}, fmt.Errorf("failed to get resources from store: %w", err)
 			}
+			revisions[config.Name] = revision
+			resources = exclude(resources, d.skipped.Excluded(config.Name))
 			return adcclient.SyncInput{Name: config.Name, Config: config, Resources: resources}, nil
 		})
 		if result == nil {
@@ -583,7 +604,14 @@ func (d *apisixProvider) sync(ctx context.Context) error {
 		}
 	}
 
-	d.updateStatusFromSyncResults(ctx, results)
+	if d.updateStatusFromSyncResults(ctx, results, revisions) {
+		// Excluding what ADC just rejected makes the next push different from the one
+		// that failed, and it is the push that carries every other resource's pending
+		// changes, so it goes out now rather than waiting for the retry backoff. Only a
+		// round that excluded something new asks for this, and each exclusion leaves one
+		// resource out of the next push, so this cannot repeat indefinitely.
+		d.syncNotify()
+	}
 	return errors.Join(errs...)
 }
 
@@ -610,6 +638,7 @@ func (d *apisixProvider) updateConfigForGatewayProxy(tctx *provider.TranslateCon
 		d.Lock()
 		d.configManager.DeleteConfig(nnk)
 		d.Unlock()
+		d.skipped.ClearCacheKey(nnk.String())
 		return nil
 	}
 
