@@ -340,10 +340,9 @@ func parentRefTargetsListenerExplicitly(parentRef gatewayv1.ParentReference) boo
 
 // ParseRouteParentRefs resolves the parentRefs of a route to the Gateways this
 // controller manages. The second return value reports that at least one
-// parentRef could not be resolved, because its Gateway or that Gateway's
-// GatewayClass does not exist. An empty gateway list then means "ownership
-// unknown", not "owned by another controller", and callers must not act on the
-// route's data plane configuration.
+// parentRef points to an existing Gateway whose GatewayClass does not exist.
+// Callers preserve the existing configuration while GatewayClass ownership
+// cannot be determined. Missing Gateways do not keep stale routes active.
 func ParseRouteParentRefs(
 	ctx context.Context,
 	mgrc client.Client,
@@ -370,7 +369,7 @@ func ParseRouteParentRefs(
 			Name:      name,
 		}, &gateway); err != nil {
 			if client.IgnoreNotFound(err) == nil {
-				unresolved = true
+				// A deleted Gateway no longer authorizes its routes to serve traffic.
 				continue
 			}
 			return nil, false, fmt.Errorf("failed to retrieve gateway for route: %w", err)

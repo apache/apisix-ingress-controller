@@ -234,10 +234,9 @@ func TestParseRouteParentRefs_ConflictingTLSModePort(t *testing.T) {
 }
 
 // TestParseRouteParentRefs_UnresolvedParents verifies the second return value
-// distinguishes "no parentRef named this controller" from "a parentRef could not
-// be resolved". Callers delete data plane configuration on an empty gateway list,
-// which is only correct in the first case: a GatewayClass is cluster-scoped, so
-// while one is missing every route under it resolves to an empty list at once.
+// distinguishes missing Gateways from unresolved GatewayClass ownership.
+// Missing Gateways require route cleanup, while a missing cluster-scoped
+// GatewayClass must not drain every route under it.
 func TestParseRouteParentRefs_UnresolvedParents(t *testing.T) {
 	scheme := parentRefTestScheme(t)
 
@@ -267,10 +266,10 @@ func TestParseRouteParentRefs_UnresolvedParents(t *testing.T) {
 		wantUnresolved bool
 	}{
 		{
-			name:           "gateway missing",
+			name:           "gateway missing retracts stale routes",
 			objects:        []client.Object{newParentRefGatewayClass()},
 			parentRef:      "gw",
-			wantUnresolved: true,
+			wantUnresolved: false,
 		},
 		{
 			name:           "gatewayclass missing",

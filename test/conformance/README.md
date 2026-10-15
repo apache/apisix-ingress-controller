@@ -114,3 +114,23 @@ that capability.
    runs in parallel and those tests report after the report is written, so a
    report can read `Failed: 0` while `make conformance-test` exited non-zero;
    the exit status is what to trust.
+
+## Coverage and remaining skips
+
+The default profiles are `GATEWAY-HTTP`, `GATEWAY-GRPC`, and `GATEWAY-TLS`.
+Both Admin API and standalone providers run the same tests. Tests requiring
+undeclared Extended features or other profiles are also skipped by the upstream
+suite; those skips are separate from the explicit exclusions below.
+
+| Test | Level | Remaining constraint |
+| --- | --- | --- |
+| `HTTPRouteHTTPSListener` | Core | The suite generates a certificate with a bare `*` SAN. The translator excludes that SAN, and port 443 in this deployment is assigned to stream TLS passthrough rather than HTTP TLS termination. |
+| `HTTPRouteMultipleGateways` | Core | Both Gateways share an address and listener, but the test requires their dedicated `/` routes to reach different backends independently. Separate data plane listeners or addresses are needed. |
+| `TLSRouteHostnameIntersection` | Core | Gateways share the same stream listener and SNI routing table. A wildcard accepted by one Gateway can also answer traffic sent to another Gateway's identical address. |
+| `HTTPRouteRedirectPortAndScheme` | Extended | Uses HTTP TLS termination, with the same certificate and port constraints as `HTTPRouteHTTPSListener`. |
+| `TLSRouteTerminateSimpleSameNamespace` | Extended, provisional | Requires a terminating stream listener on the selected port, while this deployment exposes passthrough on port 443. |
+
+The invalid-backend Core tests for unknown kinds, missing Services, and denied
+cross-namespace references are enabled. They check both `ResolvedRefs=False`
+and HTTP 500 responses; these responses must remain synchronizable through both
+providers even when the translated upstream has no nodes.
