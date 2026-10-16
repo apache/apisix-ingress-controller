@@ -236,16 +236,21 @@ func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 		resourceTypes []string
 		labels        map[string]string
 		plugins       pluginSource
-		// wholeConfig is set for a Gateway or IngressClass, whose deletion wipes every
-		// config it referenced.
-		wholeConfig bool
+		// IngressClass deletion clears its config; Gateways can share a config.
+		wholeConfig   bool
+		immediateSync bool
 	)
 	switch obj.(type) {
 	case *gatewayv1.HTTPRoute, *apiv2.ApisixRoute, *gatewayv1.GRPCRoute, *gatewayv1.TCPRoute, *gatewayv1.UDPRoute, *gatewayv1.TLSRoute:
 		resourceTypes = append(resourceTypes, adctypes.TypeService)
 		labels = label.GenLabel(obj)
-	case *gatewayv1.Gateway, *networkingv1.IngressClass:
+	case *gatewayv1.Gateway:
+		resourceTypes = append(resourceTypes, adctypes.TypeSSL)
+		labels = label.GenLabel(obj)
+		immediateSync = true
+	case *networkingv1.IngressClass:
 		wholeConfig = true
+		immediateSync = true
 	case *networkingv1.Ingress:
 		resourceTypes = append(resourceTypes, adctypes.TypeService, adctypes.TypeSSL)
 		labels = label.GenLabel(obj)
@@ -268,11 +273,10 @@ func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 	if err != nil {
 		return err
 	}
-	// Full synchronization is performed on a gateway by gateway basis
-	// and it is not possible to perform scheduled synchronization
-	// on deleted gateway level resources
-	if wholeConfig {
-		d.syncEvictedConfigsNow(ctx, removed, resourceTypes, labels)
+	// Push deletions immediately even when the deleted resource was the last
+	// source of a config and no scheduled sync will pick it up.
+	if immediateSync {
+		d.syncEvictedConfigsNow(ctx, removed)
 		return nil
 	}
 	// Syncing pushes the whole store to every data plane. Objects this controller never
@@ -465,28 +469,23 @@ func toADCExecutionError(name string, err error) types.ADCExecutionError {
 	return types.ADCExecutionError{Name: name, FailedErrors: []types.ADCExecutionServerAddrError{{Err: err.Error()}}}
 }
 
-// syncEvictedConfigsNow pushes an empty resource set for each of the given configs
-// immediately, instead of waiting for the next scheduled sync round, through the same
-// per-cacheKey lock the periodic sync uses, so it can never race a periodic round for the
-// same GatewayProxy. Used only when the deleted resource is a Gateway or IngressClass,
-// where resourceTypes is empty, so the preceding removeResourceState call already
-// reset each config's whole cached snapshot via Store.Delete, and that reset should reach
-// the data plane promptly. Failures are logged, not surfaced as a status update, matching
-// the deferred path, which only reports through the next scheduled sync round.
+// syncEvictedConfigsNow pushes the remaining snapshot immediately after deleting
+// a Gateway or IngressClass. Read it under the sync lock so a concurrent update
+// cannot be overwritten by a stale snapshot or an unconditional empty push.
 func (d *apisixProvider) syncEvictedConfigsNow(
 	ctx context.Context,
 	configs map[types.NamespacedNameKind]adctypes.Config,
-	resourceTypes []string,
-	labels map[string]string,
 ) {
 	for _, cfg := range configs {
 		_, err := d.syncConfigNow(ctx, cfg.Name, func() (adcclient.SyncInput, error) {
+			resources, err := d.store.GetResources(cfg.Name)
+			if err != nil {
+				return adcclient.SyncInput{}, err
+			}
 			return adcclient.SyncInput{
-				Name:          cfg.Name,
-				Config:        cfg,
-				Resources:     &adctypes.Resources{},
-				ResourceTypes: resourceTypes,
-				Labels:        labels,
+				Name:      cfg.Name,
+				Config:    cfg,
+				Resources: resources,
 			}, nil
 		})
 		if err != nil {

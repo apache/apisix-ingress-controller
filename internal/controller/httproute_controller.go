@@ -97,7 +97,7 @@ func (r *HTTPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 						return false
 					},
 					DeleteFunc: func(e event.DeleteEvent) bool {
-						return false
+						return true
 					},
 					CreateFunc: func(e event.CreateEvent) bool {
 						return true
@@ -181,7 +181,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	if len(gateways) == 0 {
 		if unresolvedParents {
-			// A missing Gateway or GatewayClass leaves ownership unknown rather than
+			// A missing GatewayClass leaves ownership unknown rather than
 			// disproven. GatewayClass is cluster-scoped, so while one is absent every
 			// route under it resolves empty and deleting would drain the data plane.
 			return ctrl.Result{}, nil
