@@ -162,13 +162,15 @@ spec:
 			assert.ElementsMatch(GinkgoT(), []string{host}, tls[0].Snis)
 
 			By("test HTTPS request to dataplane")
-			Eventually(func() int {
-				return s.NewAPISIXHttpsClient("api6.com").
-					GET("/get").
-					WithHost("api6.com").
-					Expect().
-					Raw().StatusCode
-			}).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(Equal(http.StatusOK))
+			s.RequestAssert(&scaffold.RequestAssert{
+				Client:   s.NewAPISIXHttpsClient("api6.com"),
+				Method:   "GET",
+				Path:     "/get",
+				Host:     "api6.com",
+				Check:    scaffold.WithExpectedStatus(http.StatusOK),
+				Timeout:  30 * time.Second,
+				Interval: time.Second,
+			})
 
 			s.NewAPISIXHttpsClient("api6.com").
 				GET("/get").

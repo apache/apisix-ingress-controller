@@ -623,19 +623,24 @@ spec:
 				Check:  scaffold.WithExpectedStatus(http.StatusPermanentRedirect),
 			})
 
-			_ = s.NewAPISIXClient().
-				GET("/get").
-				WithHost("httpbin.example").
-				Expect().
-				Status(http.StatusMovedPermanently).
-				Header("Location").IsEqual("https://httpbin.example:9443/get")
-
-			_ = s.NewAPISIXClient().
-				GET("/ip").
-				WithHost("httpbin.example").
-				Expect().
-				Status(http.StatusPermanentRedirect).
-				Header("Location").IsEqual("/anything/ip")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Host:   "httpbin.example",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusMovedPermanently),
+					scaffold.WithExpectedHeader("Location", "https://httpbin.example:9443/get"),
+				},
+			})
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/ip",
+				Host:   "httpbin.example",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusPermanentRedirect),
+					scaffold.WithExpectedHeader("Location", "/anything/ip"),
+				},
+			})
 		})
 
 		It("csrf", func() {
