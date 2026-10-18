@@ -88,12 +88,8 @@ spec:
 			dnsSvc := s.NewCoreDNSService()
 			gatewayName := s.Namespace()
 			By("creating UDPRoute")
-			Expect(s.CreateResourceFromString(fmt.Sprintf(udpRoute, gatewayName, dnsSvc.Name, dnsSvc.Spec.Ports[0].Port))).
-				NotTo(HaveOccurred(), "creating UDPRoute")
-
-			// Verify UDPRoute status becomes programmed
-			routeYaml, _ := s.GetResourceYaml("UDPRoute", "udp-app-1")
-			s.ResourceApplied("UDPRoute", "udp-app-1", routeYaml, 1)
+			s.ResourceApplied("UDPRoute", "udp-app-1",
+				fmt.Sprintf(udpRoute, gatewayName, dnsSvc.Name, dnsSvc.Spec.Ports[0].Port), 1)
 
 			svc := s.GetDataplaneService()
 
