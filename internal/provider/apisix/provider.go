@@ -430,7 +430,7 @@ func (d *apisixProvider) pushConfig(ctx context.Context, input adcclient.SyncInp
 		if input.Labels == nil {
 			input.Labels = make(map[string]string)
 		}
-		input.Labels[label.LabelManagedBy] = "apisix-ingress-controller"
+		input.Labels[label.LabelManagedBy] = label.LabelManagedByValue
 	}
 
 	startTime := time.Now()
