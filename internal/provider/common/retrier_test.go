@@ -40,7 +40,14 @@ func TestRetrierPreservesPendingDeadline(t *testing.T) {
 			t.Fatal("event-triggered failures postponed the pending retry")
 		}
 		r.Next()
-		time.Sleep(20 * time.Second)
+		time.Sleep(20*time.Second - time.Millisecond)
+		synctest.Wait()
+		select {
+		case <-r.C():
+			t.Fatal("the next retry fired before its backoff delay")
+		default:
+		}
+		time.Sleep(time.Millisecond)
 		synctest.Wait()
 		select {
 		case <-r.C():

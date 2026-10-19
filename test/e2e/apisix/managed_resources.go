@@ -112,6 +112,8 @@ spec:
 			Check: scaffold.WithExpectedStatus(http.StatusOK),
 		})
 		assertExternal := func() {
+			admin.GET("/apisix/admin/services/external-service").
+				WithHeader("X-API-KEY", s.AdminKey()).Expect().Status(http.StatusOK)
 			admin.GET("/apisix/admin/routes/"+externalID).
 				WithHeader("X-API-KEY", s.AdminKey()).Expect().Status(http.StatusOK).
 				JSON().Object().Value("value").Object().Value("uri").IsEqual("/external")
