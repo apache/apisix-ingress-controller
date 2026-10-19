@@ -261,14 +261,15 @@ spec:
 				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify initial plugin config works")
-			request := func() int {
-				return s.NewAPISIXClient().GET("/get").Expect().Raw().StatusCode
-			}
-			Eventually(request).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(Equal(http.StatusOK))
-
-			resp := s.NewAPISIXClient().GET("/get").Expect().Status(http.StatusOK)
-			resp.Header("X-Version").IsEqual("v1")
-			resp.Header("X-Updated").IsEmpty()
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedHeader("X-Version", "v1"),
+					scaffold.WithExpectedHeader("X-Updated", ""),
+				},
+			})
 
 			By("update ApisixPluginConfig")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-update"},
