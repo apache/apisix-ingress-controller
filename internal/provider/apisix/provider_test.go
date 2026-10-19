@@ -403,7 +403,13 @@ func TestDeleteGatewayPreservesSharedProxyResources(t *testing.T) {
 }
 
 func TestDeleteLastGatewayClearsProxyPlugins(t *testing.T) {
+	var mu sync.Mutex
+	var received adcclient.ADCServerRequest
 	withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		received = adcclient.ADCServerRequest{}
+		assert.NoError(t, json.NewDecoder(r.Body).Decode(&received))
 		_ = json.NewEncoder(w).Encode(adctypes.SyncResult{Status: adctypes.StatusSuccess})
 	})
 	proxy := types.NamespacedNameKind{Kind: "GatewayProxy", Namespace: "default", Name: "proxy"}
@@ -441,6 +447,10 @@ func TestDeleteLastGatewayClearsProxyPlugins(t *testing.T) {
 				assert.Equal(t, plugins.GlobalRules, resources.GlobalRules)
 				assert.Equal(t, plugins.PluginMetadata, resources.PluginMetadata)
 			}
+			mu.Lock()
+			defer mu.Unlock()
+			assert.Equal(t, resources.GlobalRules, received.Task.Config.GlobalRules, "the deletion push must carry the remaining global rules")
+			assert.Equal(t, resources.PluginMetadata, received.Task.Config.PluginMetadata)
 		})
 	}
 }
