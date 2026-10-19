@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"strings"
 	"sync"
@@ -420,6 +421,16 @@ func (d *apisixProvider) pushConfig(ctx context.Context, input adcclient.SyncInp
 	backend := input.Config.BackendType
 	if backend == "" {
 		backend = d.DefaultBackendMode
+	}
+
+	if backend == ProviderTypeAPISIX {
+		// Scope both regular syncs and empty-config cleanup to controller-owned resources.
+		// ADC does not apply label selectors to global rules or plugin metadata.
+		input.Labels = maps.Clone(input.Labels)
+		if input.Labels == nil {
+			input.Labels = make(map[string]string)
+		}
+		input.Labels[label.LabelManagedBy] = "apisix-ingress-controller"
 	}
 
 	startTime := time.Now()
