@@ -40,11 +40,7 @@ type noopReadier struct {
 
 func (noopReadier) Done(client.Object, k8stypes.NamespacedName) {}
 
-// TestHTTPRouteReconcile_EmptyGateways covers the two ways a route resolves to no
-// Gateway of this controller. Only a resolved parent naming another controller
-// proves the route is not ours; an unresolvable parent must leave the data plane
-// alone, since a missing cluster-scoped GatewayClass empties the list for every
-// route under it at once.
+// Routes with no known managed parents retract any stale configuration.
 func TestHTTPRouteReconcile_EmptyGateways(t *testing.T) {
 	scheme := parentRefTestScheme(t)
 
@@ -82,9 +78,9 @@ func TestHTTPRouteReconcile_EmptyGateways(t *testing.T) {
 			wantDelete: true,
 		},
 		{
-			name:       "gatewayclass missing",
+			name:       "gatewayclass never resolved",
 			objects:    []client.Object{route, gw("gone")},
-			wantDelete: false,
+			wantDelete: true,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

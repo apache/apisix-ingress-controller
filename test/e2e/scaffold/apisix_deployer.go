@@ -285,6 +285,12 @@ func (s *APISIXDeployer) deployDataplane(opts *APISIXDeployOptions) *corev1.Serv
 			LabelSelector: "app.kubernetes.io/name=apisix",
 		})
 		Expect(err).ToNot(HaveOccurred(), "waiting for gateway pod ready")
+	} else {
+		// A terminating pod can still be Ready and selected by a new port-forward.
+		err = k8s.WaitUntilNumPodsCreatedE(s.GinkgoT, kubectlOpts, metav1.ListOptions{
+			LabelSelector: "app.kubernetes.io/name=apisix",
+		}, 0, 60, time.Second)
+		Expect(err).ToNot(HaveOccurred(), "waiting for gateway pods to terminate")
 	}
 
 	Eventually(func() bool {

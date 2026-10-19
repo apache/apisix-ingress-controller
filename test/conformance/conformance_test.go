@@ -30,17 +30,9 @@ var skippedTestsForSSL = []string{
 	tests.HTTPRouteRedirectPortAndScheme.ShortName,
 }
 
-// Known gaps tracked for follow-up. These are genuine feature gaps rather than
-// architectural limits, so they are expected to shrink over time.
-var skippedTestsForKnownGaps = []string{
-	// An unresolvable or unknown-kind backendRef must respond 500. The
-	// translator already injects fault-injection for these, but they still trip
-	// against the APISIX admin API: UnknownKind fails consistently (passes in
-	// standalone), while the cross-namespace and nonexistent cases are flaky
-	// across runs. Kept skipped until the empty-upstream sync is sorted out.
-	tests.HTTPRouteInvalidBackendRefUnknownKind.ShortName,
-	tests.HTTPRouteInvalidCrossNamespaceBackendRef.ShortName,
-	tests.HTTPRouteInvalidNonExistentBackendRef.ShortName,
+// These tests require listener or data plane isolation that the shared
+// conformance deployment does not provide.
+var skippedTestsForSharedDataplane = []string{
 	// Terminate mode itself is covered by TLSRouteListenerTerminateSupportedKinds
 	// and by the e2e TLSRoute suite. This provisional test additionally requires a
 	// standalone Gateway with no GatewayProxy attached to reach Accepted=True, and
@@ -71,7 +63,7 @@ func TestGatewayAPIConformance(t *testing.T) {
 	opts.CleanupBaseResources = true
 	opts.GatewayClassName = gatewayClassName
 	opts.SkipTests = append(opts.SkipTests, skippedTestsForSSL...)
-	opts.SkipTests = append(opts.SkipTests, skippedTestsForKnownGaps...)
+	opts.SkipTests = append(opts.SkipTests, skippedTestsForSharedDataplane...)
 	// Implementation is left to the flags DefaultOptions already applied.
 	// Assigning it here would override them and pin the report to a stale version.
 

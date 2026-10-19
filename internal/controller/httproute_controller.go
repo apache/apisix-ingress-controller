@@ -60,6 +60,8 @@ type HTTPRouteReconciler struct { //nolint:revive
 
 	Provider provider.Provider
 
+	parentResolver routeParentResolver
+
 	genericEvent chan event.GenericEvent
 
 	Updater status.Updater
@@ -97,7 +99,7 @@ func (r *HTTPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 						return false
 					},
 					DeleteFunc: func(e event.DeleteEvent) bool {
-						return false
+						return true
 					},
 					CreateFunc: func(e event.CreateEvent) bool {
 						return true
@@ -143,6 +145,7 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	hr := new(gatewayv1.HTTPRoute)
 	if err := r.Get(ctx, req.NamespacedName, hr); err != nil {
 		if client.IgnoreNotFound(err) == nil {
+			r.parentResolver.Forget(req.NamespacedName)
 			if err := r.updateHTTPRoutePolicyStatusOnDeleting(ctx, req.NamespacedName); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -174,18 +177,12 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		msg:    "Route is accepted",
 	}
 
-	gateways, unresolvedParents, err := ParseRouteParentRefs(ctx, r.Client, r.Log, hr, hr.Spec.ParentRefs)
+	gateways, err := r.parentResolver.Resolve(ctx, r.Client, r.Log, hr, hr.Spec.ParentRefs)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	if len(gateways) == 0 {
-		if unresolvedParents {
-			// A missing Gateway or GatewayClass leaves ownership unknown rather than
-			// disproven. GatewayClass is cluster-scoped, so while one is absent every
-			// route under it resolves empty and deleting would drain the data plane.
-			return ctrl.Result{}, nil
-		}
 		// The route does not reference any Gateway managed by this controller.
 		// It may have referenced one before, e.g. when its parentRefs are
 		// repointed at a Gateway belonging to another GatewayClass, so the
