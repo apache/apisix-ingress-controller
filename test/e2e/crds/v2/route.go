@@ -812,26 +812,22 @@ spec:
 				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Namespace()))
 
 			By("verify ApisixRoute with secretRef works")
-			Eventually(func() *http.Response {
-				return s.NewAPISIXClient().GET("/ip").
-					WithHeader("Host", "httpbin.org").
-					Expect().
-					Raw()
-			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(And(
-				HaveHTTPStatus(http.StatusOK),
-				HaveHTTPHeaderWithValue("X-Foo", "v1"),
-				HaveHTTPHeaderWithValue("X-Foo2", "v2"),
-			))
-
-			// Verify the response body contains the secret values
-			resp := s.NewAPISIXClient().GET("/ip").
-				WithHeader("Host", "httpbin.org").
-				Expect().
-				Status(http.StatusOK)
-
-			resp.Body().Contains("This is the replaced preface") // From secret
-			resp.Body().Contains("This is the epilogue")         // From config
-			resp.Body().Contains("my custom body")               // From secret
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:  "GET",
+				Path:    "/ip",
+				Host:    "httpbin.org",
+				Timeout: 20 * time.Second,
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedHeader("X-Foo", "v1"),
+					scaffold.WithExpectedHeader("X-Foo2", "v2"),
+					scaffold.WithExpectedBodyContains(
+						"This is the replaced preface", // From secret
+						"This is the epilogue",         // From config
+						"my custom body",               // From secret
+					),
+				},
+			})
 		})
 
 		It("Test ApisixRoute with secretRef - nested keys", func() {
@@ -885,23 +881,17 @@ spec:
 				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace(), s.Namespace()))
 
 			By("verify ApisixRoute with secretRef (nested keys) works")
-			Eventually(func() *http.Response {
-				return s.NewAPISIXClient().GET("/ip").
-					WithHeader("Host", "httpbin.org").
-					Expect().
-					Raw()
-			}).WithTimeout(20 * time.Second).ProbeEvery(time.Second).Should(And(
-				HaveHTTPStatus(http.StatusOK),
-				HaveHTTPHeaderWithValue("X-Foo", "v2"), // From secret, overriding config value "v1"
-			))
-
-			// Verify the response body contains the secret values
-			resp := s.NewAPISIXClient().GET("/ip").
-				WithHeader("Host", "httpbin.org").
-				Expect().
-				Status(http.StatusOK)
-
-			resp.Body().Contains("my custom body") // From secret
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:  "GET",
+				Path:    "/ip",
+				Host:    "httpbin.org",
+				Timeout: 20 * time.Second,
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedHeader("X-Foo", "v2"),          // From secret, overriding config value "v1"
+					scaffold.WithExpectedBodyContains("my custom body"), // From secret
+				},
+			})
 		})
 	})
 

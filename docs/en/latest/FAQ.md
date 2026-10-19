@@ -54,3 +54,28 @@ When both filters and a PluginConfig CRD are applied:
 
 * If filters are applied first, PluginConfig overrides any overlapping plugin settings.
 * If PluginConfig is applied first, filters merge with PluginConfig settings, and overlapping fields from filters take precedence.
+
+### Can Admin API resources coexist with controller-managed resources?
+
+With `provider.type: apisix`, synchronization selects resources labeled
+`manager-by: apisix-ingress-controller`. Resources created outside the controller
+without this label are excluded from deletion, including when a Gateway or
+IngressClass is deleted. Do not reuse controller-generated resource IDs for
+externally managed resources: a matching ID can still be overwritten.
+
+ADC filters top-level resources. Routes nested under a selected Service are
+included with that Service, so externally managed routes should not share a
+controller-managed Service. Global rules and plugin metadata do not support this
+label-based isolation and remain subject to full reconciliation. The label also
+does not distinguish separate controller installations sharing one APISIX instance,
+or separate GatewayProxy resources that point to the same Admin API endpoint: each
+GatewayProxy is synchronized on its own and can delete resources the other one created.
+Give each GatewayProxy its own APISIX instance.
+This behavior does not apply to `apisix-standalone`, which manages a complete
+configuration.
+
+When upgrading, unlabeled historical resources with IDs still present in the
+controller's desired configuration are updated and labeled during synchronization.
+Unlabeled orphaned resources are preserved. Review their ownership before deleting
+them or adding the controller label; adding the label allows the next synchronization
+to delete resources absent from the controller's desired configuration.

@@ -131,9 +131,13 @@ spec:
 				g.Expect(ups[0].Checks.Passive.Unhealthy.HTTPStatuses).To(Equal([]int{502}), "the passive unhealthy http status")
 			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 
-			for range 100 {
-				s.NewAPISIXClient().GET("/ip").WithHost("httpbin.org").Expect().Status(200)
-			}
+			// Workers pick up the route at different times; retry until a full round succeeds.
+			Eventually(func(g Gomega) {
+				for range 100 {
+					g.Expect(s.NewAPISIXClient().GET("/ip").WithHost("httpbin.org").Expect().Raw().StatusCode).
+						To(Equal(200))
+				}
+			}).WithTimeout(scaffold.DefaultTimeout).ProbeEvery(scaffold.DefaultInterval).Should(Succeed())
 		})
 	})
 

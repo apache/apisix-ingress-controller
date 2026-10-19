@@ -70,6 +70,10 @@ func (r *Retrier) Reset() {
 		r.timer.Stop()
 		r.timer = nil
 	}
+	select {
+	case <-r.ch:
+	default:
+	}
 	r.backoff.Reset()
 }
 
@@ -77,18 +81,27 @@ func (r *Retrier) Next() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if r.timer != nil {
-		r.timer.Stop()
-		r.timer = nil
+	// Event-triggered failures must not postpone an already scheduled retry.
+	if r.timer != nil || len(r.ch) > 0 {
+		return
 	}
 
 	delay := r.backoff.Next()
-	r.timer = time.AfterFunc(delay, func() {
+	var timer *time.Timer
+	timer = time.AfterFunc(delay, func() {
+		r.mu.Lock()
+		defer r.mu.Unlock()
+		// Reset may have canceled this callback while it waited for the lock.
+		if r.timer != timer {
+			return
+		}
+		r.timer = nil
 		select {
 		case r.ch <- struct{}{}:
 		default:
 		}
 	})
+	r.timer = timer
 }
 
 func (r *Retrier) C() <-chan struct{} {
