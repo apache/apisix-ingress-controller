@@ -54,14 +54,15 @@ func (r *routeParentResolver) Forget(key client.ObjectKey) {
 }
 
 func (r *routeParentResolver) Resolve(ctx context.Context, cli client.Client, log logr.Logger, route client.Object, refs []gatewayv1.ParentReference) ([]RouteParentRefContext, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
+	// controller-runtime never reconciles one route concurrently, so the lock only
+	// guards the map, not the parent lookups between the read and the write.
 	routeKey := client.ObjectKeyFromObject(route)
+	r.mu.Lock()
 	previous := r.parents[routeKey].parents
 	if r.parents[routeKey].uid != route.GetUID() {
 		previous = nil
 	}
+	r.mu.Unlock()
 	next := make(map[client.ObjectKey]resolvedParentClass)
 	gateways, err := parseRouteParentRefs(ctx, cli, log, route, refs, func(gw *gatewayv1.Gateway) (*gatewayv1.GatewayClass, error) {
 		key := client.ObjectKeyFromObject(gw)
@@ -86,6 +87,8 @@ func (r *routeParentResolver) Resolve(ctx context.Context, cli client.Client, lo
 	if err != nil {
 		return nil, err
 	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	if len(next) == 0 {
 		delete(r.parents, routeKey)
 	} else {
