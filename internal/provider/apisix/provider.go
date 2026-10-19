@@ -423,8 +423,9 @@ func (d *apisixProvider) pushConfig(ctx context.Context, input adcclient.SyncInp
 		backend = d.DefaultBackendMode
 	}
 
-	if backend == ProviderTypeAPISIX {
-		// Scope both regular syncs and empty-config cleanup to controller-owned resources.
+	if backend != adcclient.BackendAPISIXStandalone {
+		// Scope both regular syncs and empty-config cleanup to controller-owned resources;
+		// only standalone, which replaces the whole configuration, stays unscoped.
 		// ADC does not apply label selectors to global rules or plugin metadata.
 		input.Labels = maps.Clone(input.Labels)
 		if input.Labels == nil {

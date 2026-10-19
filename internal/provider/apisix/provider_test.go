@@ -362,6 +362,7 @@ func TestPushConfigScopesAPISIXResources(t *testing.T) {
 	}{
 		{"explicit APISIX", "apisix", "apisix-standalone", true},
 		{"default APISIX", "", "apisix", true},
+		{"other backend", "custom", "apisix-standalone", true},
 		{"standalone", "apisix-standalone", "apisix", false},
 		{"default standalone", "", "apisix-standalone", false},
 	} {
