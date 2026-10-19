@@ -247,6 +247,7 @@ func (d *apisixProvider) Delete(ctx context.Context, obj client.Object) error {
 	case *gatewayv1.Gateway:
 		resourceTypes = append(resourceTypes, adctypes.TypeSSL)
 		labels = label.GenLabel(obj)
+		plugins = pluginsFromGatewayProxy
 		immediateSync = true
 	case *networkingv1.IngressClass:
 		wholeConfig = true
@@ -361,7 +362,8 @@ func (d *apisixProvider) removeResourceState(
 
 // evictFromStore deletes rk's contribution from each of the given configs' cached
 // snapshots. global_rules and plugin_metadata sourced from a GatewayProxy belong to that
-// GatewayProxy's own config and are left in place. Callers must already hold d.Lock.
+// GatewayProxy's own config and are left in place until no Gateway or IngressClass
+// references it any more. Callers must already hold d.Lock.
 func (d *apisixProvider) evictFromStore(
 	rk types.NamespacedNameKind,
 	configs map[types.NamespacedNameKind]adctypes.Config,
@@ -369,17 +371,29 @@ func (d *apisixProvider) evictFromStore(
 	labels map[string]string,
 	plugins pluginSource,
 ) error {
-	for _, cfg := range configs {
+	for gatewayProxy, cfg := range configs {
 		if err := d.store.Delete(cfg.Name, resourceTypes, labels); err != nil {
 			return fmt.Errorf("store delete failed for config %s: %w", cfg.Name, err)
 		}
-		if plugins == pluginsFromResource {
-			if err := d.store.SetGlobalRules(cfg.Name, rk, nil); err != nil {
-				return fmt.Errorf("store global rules failed for config %s: %w", cfg.Name, err)
+		owner := rk
+		switch {
+		case plugins == pluginsFromGatewayProxy && !d.configManager.HasResource(gatewayProxy, isGatewayProxyReferrer):
+			owner = gatewayProxy
+			if err := d.store.SetPluginMetadata(cfg.Name, nil); err != nil {
+				return fmt.Errorf("store plugin metadata failed for config %s: %w", cfg.Name, err)
 			}
+		case plugins != pluginsFromResource:
+			continue
+		}
+		if err := d.store.SetGlobalRules(cfg.Name, owner, nil); err != nil {
+			return fmt.Errorf("store global rules failed for config %s: %w", cfg.Name, err)
 		}
 	}
 	return nil
+}
+
+func isGatewayProxyReferrer(rk types.NamespacedNameKind) bool {
+	return rk.Kind == types.KindGateway || rk.Kind == types.KindIngressClass
 }
 
 // syncConfigNow reads name's current data (via build, called only once this cacheKey's

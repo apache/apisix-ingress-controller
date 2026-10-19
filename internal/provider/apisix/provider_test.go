@@ -401,3 +401,46 @@ func TestDeleteGatewayPreservesSharedProxyResources(t *testing.T) {
 	assert.NotEmpty(t, d.configManager.Get(other))
 	assert.NotEmpty(t, d.configManager.Get(route))
 }
+
+func TestDeleteLastGatewayClearsProxyPlugins(t *testing.T) {
+	withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(adctypes.SyncResult{Status: adctypes.StatusSuccess})
+	})
+	proxy := types.NamespacedNameKind{Kind: "GatewayProxy", Namespace: "default", Name: "proxy"}
+	configs := map[types.NamespacedNameKind]adctypes.Config{proxy: {
+		Name: proxy.String(), BackendType: "apisix", ServerAddrs: []string{"http://apisix:9180"},
+	}}
+	plugins := &adctypes.Resources{
+		GlobalRules:    adctypes.GlobalRule{"cors": map[string]any{}},
+		PluginMetadata: adctypes.PluginMetadata{"http-logger": map[string]any{}},
+	}
+	for name, referrers := range map[string][]types.NamespacedNameKind{
+		"last referrer":           nil,
+		"IngressClass remains":    {{Kind: "IngressClass", Name: "apisix"}},
+		"another Gateway remains": {{Kind: "Gateway", Namespace: "default", Name: "remaining"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			d := newTestProvider(t)
+			gateway := &gatewayv1.Gateway{
+				TypeMeta:   metav1.TypeMeta{Kind: "Gateway", APIVersion: gatewayv1.GroupVersion.String()},
+				ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "deleted"},
+			}
+			route := types.NamespacedNameKind{Kind: "HTTPRoute", Namespace: "default", Name: "route"}
+			for _, key := range append(referrers, utils.NamespacedNameKind(gateway)) {
+				require.NoError(t, d.applyResourceState(key, configs, []string{adctypes.TypeSSL}, plugins, labelsOf(key), pluginsFromGatewayProxy))
+			}
+			require.NoError(t, d.applyResourceState(route, configs, []string{adctypes.TypeService}, &adctypes.Resources{}, labelsOf(route), pluginsNone))
+
+			require.NoError(t, d.Delete(context.Background(), gateway))
+			resources, err := d.store.GetResources(proxy.String())
+			require.NoError(t, err)
+			if len(referrers) == 0 {
+				assert.Empty(t, resources.GlobalRules, "an attached route must not keep the GatewayProxy's plugins alive")
+				assert.Empty(t, resources.PluginMetadata)
+			} else {
+				assert.Equal(t, plugins.GlobalRules, resources.GlobalRules)
+				assert.Equal(t, plugins.PluginMetadata, resources.PluginMetadata)
+			}
+		})
+	}
+}

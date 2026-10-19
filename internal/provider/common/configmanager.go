@@ -18,6 +18,7 @@
 package common
 
 import (
+	"slices"
 	"sync"
 )
 
@@ -146,6 +147,18 @@ func (s *ConfigManager[K, T]) Update(
 	}
 
 	return discard
+}
+
+// HasResource reports whether a resource accepted by match still references config.
+func (s *ConfigManager[K, T]) HasResource(config K, match func(K) bool) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for resource, configKeys := range s.resourceConfigKeys {
+		if match(resource) && slices.Contains(configKeys, config) {
+			return true
+		}
+	}
+	return false
 }
 
 func (s *ConfigManager[K, T]) Set(key K, cfg T) {
