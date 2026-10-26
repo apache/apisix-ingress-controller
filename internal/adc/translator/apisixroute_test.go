@@ -20,6 +20,7 @@ package translator
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
@@ -249,6 +250,51 @@ func TestTranslateApisixRouteStreamUpstreamScheme(t *testing.T) {
 
 			assert.Equal(t, tt.scheme, result.Services[0].Upstream.Scheme)
 			assert.Equal(t, "10.0.0.1", result.Services[0].Upstream.Nodes[0].Host)
+		})
+	}
+}
+
+func TestTranslateApisixRouteRejectsNegativeTimeouts(t *testing.T) {
+	tests := []struct {
+		name    string
+		timeout apiv2.UpstreamTimeout
+	}{
+		{
+			name: "connect",
+			timeout: apiv2.UpstreamTimeout{
+				Connect: metav1.Duration{Duration: -500 * time.Millisecond},
+			},
+		},
+		{
+			name: "read",
+			timeout: apiv2.UpstreamTimeout{
+				Read: metav1.Duration{Duration: -500 * time.Millisecond},
+			},
+		},
+		{
+			name: "send",
+			timeout: apiv2.UpstreamTimeout{
+				Send: metav1.Duration{Duration: -500 * time.Millisecond},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ar := &apiv2.ApisixRoute{
+				Spec: apiv2.ApisixRouteSpec{
+					HTTP: []apiv2.ApisixRouteHTTP{{
+						Name:    "rule1",
+						Timeout: &tt.timeout,
+					}},
+				},
+			}
+
+			_, err := NewTranslator(logr.Discard(), "").TranslateApisixRoute(
+				provider.NewDefaultTranslateContext(context.Background()), ar,
+			)
+
+			require.ErrorContains(t, err, "invalid value timeout."+tt.name)
 		})
 	}
 }

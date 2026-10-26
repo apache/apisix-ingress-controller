@@ -63,7 +63,10 @@ func (t *Translator) TranslateApisixRoute(tctx *provider.TranslateContext, ar *a
 }
 
 func (t *Translator) translateHTTPRule(tctx *provider.TranslateContext, ar *apiv2.ApisixRoute, rule apiv2.ApisixRouteHTTP, ruleIndex int) (*adc.Service, error) {
-	timeout := t.buildTimeout(rule)
+	timeout, err := t.buildTimeout(rule)
+	if err != nil {
+		return nil, err
+	}
 	plugins, err := t.buildPlugins(tctx, ar, rule)
 	if err != nil {
 		return nil, err
@@ -81,16 +84,28 @@ func (t *Translator) translateHTTPRule(tctx *provider.TranslateContext, ar *apiv
 	return service, nil
 }
 
-func (t *Translator) buildTimeout(rule apiv2.ApisixRouteHTTP) *adc.Timeout {
+func (t *Translator) buildTimeout(rule apiv2.ApisixRouteHTTP) (*adc.Timeout, error) {
 	if rule.Timeout == nil {
-		return nil
+		return nil, nil
+	}
+	for _, timeout := range []struct {
+		name     string
+		duration metav1.Duration
+	}{
+		{name: "connect", duration: rule.Timeout.Connect},
+		{name: "read", duration: rule.Timeout.Read},
+		{name: "send", duration: rule.Timeout.Send},
+	} {
+		if timeout.duration.Duration < 0 {
+			return nil, fmt.Errorf("invalid value timeout.%s", timeout.name)
+		}
 	}
 	defaultTimeout := metav1.Duration{Duration: apiv2.DefaultUpstreamTimeout}
 	return &adc.Timeout{
 		Connect: cmp.Or(rule.Timeout.Connect.Seconds(), defaultTimeout.Seconds()),
 		Read:    cmp.Or(rule.Timeout.Read.Seconds(), defaultTimeout.Seconds()),
 		Send:    cmp.Or(rule.Timeout.Send.Seconds(), defaultTimeout.Seconds()),
-	}
+	}, nil
 }
 
 func (t *Translator) buildPlugins(tctx *provider.TranslateContext, ar *apiv2.ApisixRoute, rule apiv2.ApisixRouteHTTP) (adc.Plugins, error) {

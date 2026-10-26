@@ -57,8 +57,9 @@ func TestBuildTimeoutPreservesSubsecondValues(t *testing.T) {
 		},
 	}
 
-	timeout := (&Translator{}).buildTimeout(rule)
+	timeout, err := (&Translator{}).buildTimeout(rule)
 
+	require.NoError(t, err)
 	assert.Equal(t, 0.5, timeout.Connect)
 	assert.Equal(t, 1.5, timeout.Read)
 	assert.Equal(t, 2.5, timeout.Send)
