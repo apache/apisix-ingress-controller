@@ -57,6 +57,8 @@ type GRPCRouteReconciler struct { //nolint:revive
 
 	Provider provider.Provider
 
+	parentResolver routeParentResolver
+
 	genericEvent chan event.GenericEvent
 
 	Updater status.Updater
@@ -94,7 +96,7 @@ func (r *GRPCRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 						return false
 					},
 					DeleteFunc: func(e event.DeleteEvent) bool {
-						return false
+						return true
 					},
 					CreateFunc: func(e event.CreateEvent) bool {
 						return true
@@ -164,6 +166,7 @@ func (r *GRPCRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	gr := new(gatewayv1.GRPCRoute)
 	if err := r.Get(ctx, req.NamespacedName, gr); err != nil {
 		if client.IgnoreNotFound(err) == nil {
+			r.parentResolver.Forget(req.NamespacedName)
 			gr.Namespace = req.Namespace
 			gr.Name = req.Name
 
@@ -192,17 +195,12 @@ func (r *GRPCRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		msg:    "Route is accepted",
 	}
 
-	gateways, unresolvedParents, err := ParseRouteParentRefs(ctx, r.Client, r.Log, gr, gr.Spec.ParentRefs)
+	gateways, err := r.parentResolver.Resolve(ctx, r.Client, r.Log, gr, gr.Spec.ParentRefs)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	if len(gateways) == 0 {
-		if unresolvedParents {
-			// See the HTTPRoute reconciler: an unresolvable parentRef leaves ownership
-			// unknown rather than disproven, so the data plane must be left alone.
-			return ctrl.Result{}, nil
-		}
 		// See the HTTPRoute reconciler: a route that no longer references a
 		// Gateway managed by this controller must have its previously pushed
 		// configuration removed, or the data plane keeps serving it.
