@@ -193,6 +193,10 @@ func (v *ConsumerCustomValidator) validateDuplicateKeyAuthCredentials(ctx contex
 			if _, ok := keys[key]; ok {
 				// Do not include the credential value in the error: it is returned to
 				// API clients and logged, which would leak the secret key material.
+				// Name the owner only within the caller's own namespace.
+				if existing.Namespace != consumer.Namespace {
+					return fmt.Errorf("duplicate key-auth credential already used by another Consumer")
+				}
 				return fmt.Errorf("duplicate key-auth credential already used by Consumer %s/%s", existing.Namespace, existing.Name)
 			}
 		}
