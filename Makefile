@@ -248,22 +248,35 @@ kind-down:
 		&& kind delete cluster --name $(KIND_NAME) \
 		|| echo "kind cluster does not exist"
 
+# kind imports images with `ctr import --all-platforms`. With Docker's containerd
+# image store, `docker save` exports every platform of a pulled multi-platform image
+# although only one was pulled, so the import fails; save only the node platform.
+define kind-load-image
+	@if docker info -f '{{.DriverStatus}}' | grep -q io.containerd.snapshotter; then \
+		archive=$$(mktemp) && trap 'rm -f "$$archive"' EXIT && \
+		docker save --platform "$$(docker version -f '{{.Server.Os}}/{{.Server.Arch}}')" -o "$$archive" $(1) && \
+		kind load image-archive "$$archive" --name $(KIND_NAME); \
+	else \
+		kind load docker-image $(1) --name $(KIND_NAME); \
+	fi
+endef
+
 .PHONY: kind-load-images
 kind-load-images: pull-infra-images kind-load-ingress-image kind-load-adc-image
-	@kind load docker-image kennethreitz/httpbin:latest --name $(KIND_NAME)
-	@kind load docker-image jmalloc/echo-server:latest --name $(KIND_NAME)
-	@kind load docker-image openresty/openresty:1.27.1.2-4-bullseye-fat --name $(KIND_NAME)
-	@kind load docker-image alpine/curl:8.17.0 --name $(KIND_NAME)
+	$(call kind-load-image,kennethreitz/httpbin:latest)
+	$(call kind-load-image,jmalloc/echo-server:latest)
+	$(call kind-load-image,openresty/openresty:1.27.1.2-4-bullseye-fat)
+	$(call kind-load-image,alpine/curl:8.17.0)
 
 .PHONY: kind-load-ingress-image
 kind-load-ingress-image:
-	@kind load docker-image $(IMG) --name $(KIND_NAME)
+	$(call kind-load-image,$(IMG))
 
 .PHONY: kind-load-adc-image
 kind-load-adc-image:
 	@docker pull ghcr.io/api7/adc:$(ADC_VERSION)
 	@docker tag ghcr.io/api7/adc:$(ADC_VERSION) ghcr.io/api7/adc:dev
-	@kind load docker-image ghcr.io/api7/adc:dev --name $(KIND_NAME)
+	$(call kind-load-image,ghcr.io/api7/adc:dev)
 
 .PHONY: pull-infra-images
 pull-infra-images:
