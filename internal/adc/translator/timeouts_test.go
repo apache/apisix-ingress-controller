@@ -48,6 +48,27 @@ func TestTranslateApisixUpstreamRetriesAndTimeoutPreservesSubsecondValues(t *tes
 	assert.Equal(t, 2.5, upstream.Timeout.Send)
 }
 
+func TestTranslateApisixUpstreamRetriesAndTimeoutRejectsNegativeValues(t *testing.T) {
+	tests := []struct {
+		name    string
+		timeout apiv2.UpstreamTimeout
+	}{
+		{name: "connect", timeout: apiv2.UpstreamTimeout{Connect: metav1.Duration{Duration: -500 * time.Millisecond}}},
+		{name: "read", timeout: apiv2.UpstreamTimeout{Read: metav1.Duration{Duration: -500 * time.Millisecond}}},
+		{name: "send", timeout: apiv2.UpstreamTimeout{Send: metav1.Duration{Duration: -500 * time.Millisecond}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := &apiv2.ApisixUpstreamConfig{Timeout: &tt.timeout}
+			upstream := adc.NewDefaultUpstream()
+
+			err := translateApisixUpstreamRetriesAndTimeout(config, upstream)
+
+			require.ErrorContains(t, err, "invalid value timeout."+tt.name)
+		})
+	}
+}
+
 func TestBuildTimeoutPreservesSubsecondValues(t *testing.T) {
 	rule := apiv2.ApisixRouteHTTP{
 		Timeout: &apiv2.UpstreamTimeout{
@@ -63,6 +84,38 @@ func TestBuildTimeoutPreservesSubsecondValues(t *testing.T) {
 	assert.Equal(t, 0.5, timeout.Connect)
 	assert.Equal(t, 1.5, timeout.Read)
 	assert.Equal(t, 2.5, timeout.Send)
+}
+
+func TestBuildTimeoutDefaultsZeroValuesAndPreservesWholeSeconds(t *testing.T) {
+	tests := []struct {
+		name    string
+		timeout apiv2.UpstreamTimeout
+		want    adc.Timeout
+	}{
+		{
+			name: "zero values use the default",
+			want: adc.Timeout{Connect: 60, Read: 60, Send: 60},
+		},
+		{
+			name: "whole-second values are preserved",
+			timeout: apiv2.UpstreamTimeout{
+				Connect: metav1.Duration{Duration: time.Second},
+				Read:    metav1.Duration{Duration: 2 * time.Second},
+				Send:    metav1.Duration{Duration: 3 * time.Second},
+			},
+			want: adc.Timeout{Connect: 1, Read: 2, Send: 3},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rule := apiv2.ApisixRouteHTTP{Timeout: &tt.timeout}
+
+			got, err := (&Translator{}).buildTimeout(rule)
+
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, *got)
+		})
+	}
 }
 
 func TestAttachBackendTrafficPolicyToUpstreamPreservesSubsecondValues(t *testing.T) {
