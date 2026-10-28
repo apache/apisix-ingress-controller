@@ -218,6 +218,9 @@ spec:
       containers:
       - name: mosquito
         image: eclipse-mosquitto:1.6
+        # Skip the image's all-comment config file: Ubuntu hosts ship an AppArmor
+        # profile for /usr/sbin/mosquitto that denies reading it inside kind.
+        args: ["/usr/sbin/mosquitto"]
         livenessProbe:
           tcpSocket:
             port: 1883
