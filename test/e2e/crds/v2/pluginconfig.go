@@ -94,15 +94,15 @@ spec:
 				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify ApisixRoute works with plugin config")
-			request := func() int {
-				return s.NewAPISIXClient().GET("/get").Expect().Raw().StatusCode
-			}
-			Eventually(request).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(Equal(http.StatusOK))
-
-			By("verify plugin from ApisixPluginConfig works")
-			resp := s.NewAPISIXClient().GET("/get").Expect().Status(http.StatusOK)
-			resp.Header("X-Plugin-Config").IsEqual("test-response-rewrite")
-			resp.Header("X-Plugin-Test").IsEqual("enabled")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedHeader("X-Plugin-Config", "test-response-rewrite"),
+					scaffold.WithExpectedHeader("X-Plugin-Test", "enabled"),
+				},
+			})
 
 			By("delete ApisixRoute")
 			err := s.DeleteResource("ApisixRoute", "test-route")
@@ -112,7 +112,11 @@ spec:
 			err = s.DeleteResource("ApisixPluginConfig", "test-plugin-config")
 			Expect(err).ShouldNot(HaveOccurred(), "deleting ApisixPluginConfig")
 
-			Eventually(request).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(Equal(http.StatusNotFound))
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Check:  scaffold.WithExpectedStatus(http.StatusNotFound),
+			})
 		})
 
 		It("Test ApisixRoute stops serving when its ApisixPluginConfig is deleted", func() {
@@ -261,14 +265,15 @@ spec:
 				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify initial plugin config works")
-			request := func() int {
-				return s.NewAPISIXClient().GET("/get").Expect().Raw().StatusCode
-			}
-			Eventually(request).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(Equal(http.StatusOK))
-
-			resp := s.NewAPISIXClient().GET("/get").Expect().Status(http.StatusOK)
-			resp.Header("X-Version").IsEqual("v1")
-			resp.Header("X-Updated").IsEmpty()
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedHeader("X-Version", "v1"),
+					scaffold.WithExpectedHeader("X-Updated", ""),
+				},
+			})
 
 			By("update ApisixPluginConfig")
 			applier.MustApplyAPIv2(types.NamespacedName{Namespace: s.Namespace(), Name: "test-plugin-config-update"},
@@ -342,17 +347,16 @@ spec:
 				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify ApisixRoute works")
-			request := func() int {
-				return s.NewAPISIXClient().GET("/get").Expect().Raw().StatusCode
-			}
-			Eventually(request).WithTimeout(60 * time.Second).ProbeEvery(2 * time.Second).Should(Equal(http.StatusOK))
-
-			By("verify disabled plugin is not applied")
-			resp := s.NewAPISIXClient().GET("/get").Expect().Status(http.StatusOK)
-			resp.Header("X-Should-Not-Exist").IsEmpty()
-
-			By("verify enabled plugin is applied")
-			resp.Header("Access-Control-Allow-Origin").IsEqual("*")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method:  "GET",
+				Path:    "/get",
+				Timeout: 60 * time.Second,
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedNotHeader("X-Should-Not-Exist"),
+					scaffold.WithExpectedHeader("Access-Control-Allow-Origin", "*"),
+				},
+			})
 
 			By("delete resources")
 			err := s.DeleteResource("ApisixRoute", "test-route-disabled")
@@ -414,16 +418,16 @@ spec:
 				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify ApisixRoute works")
-			request := func() int {
-				return s.NewAPISIXClient().GET("/get").Expect().Raw().StatusCode
-			}
-			Eventually(request).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(Equal(http.StatusOK))
-
-			By("verify route plugins override plugin config")
-			resp := s.NewAPISIXClient().GET("/get").Expect().Status(http.StatusOK)
-			resp.Header("X-From-Config").IsEmpty()
-			resp.Header("X-From-Route").IsEqual("route")
-			resp.Header("X-Shared").IsEqual("from-route")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedNotHeader("X-From-Config"),
+					scaffold.WithExpectedHeader("X-From-Route", "route"),
+					scaffold.WithExpectedHeader("X-Shared", "from-route"),
+				},
+			})
 
 			By("delete resources")
 			err := s.DeleteResource("ApisixRoute", "test-route-override")
@@ -479,14 +483,15 @@ spec:
 				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify cross-namespace reference works")
-			request := func() int {
-				return s.NewAPISIXClient().GET("/get").Expect().Raw().StatusCode
-			}
-			Eventually(request).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(Equal(http.StatusOK))
-
-			resp := s.NewAPISIXClient().GET("/get").Expect().Status(http.StatusOK)
-			resp.Header("X-Cross-Namespace").IsEqual("true")
-			resp.Header("X-Namespace").IsEqual("default")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedHeader("X-Cross-Namespace", "true"),
+					scaffold.WithExpectedHeader("X-Namespace", "default"),
+				},
+			})
 
 			By("delete resources")
 			err = s.DeleteResource("ApisixRoute", "test-route-cross-ns")
@@ -557,13 +562,14 @@ spec:
 				&apisixRoute, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
 
 			By("verify ApisixRoute works with SecretRef")
-			request := func() int {
-				return s.NewAPISIXClient().GET("/get").Expect().Raw().StatusCode
-			}
-			Eventually(request).WithTimeout(30 * time.Second).ProbeEvery(1 * time.Second).Should(Equal(http.StatusOK))
-
-			resp := s.NewAPISIXClient().GET("/get").Expect().Status(http.StatusOK)
-			resp.Header("X-Secret-Ref").IsEqual("true")
+			s.RequestAssert(&scaffold.RequestAssert{
+				Method: "GET",
+				Path:   "/get",
+				Checks: []scaffold.ResponseCheckFunc{
+					scaffold.WithExpectedStatus(http.StatusOK),
+					scaffold.WithExpectedHeader("X-Secret-Ref", "true"),
+				},
+			})
 
 			By("delete resources")
 			err = s.DeleteResource("ApisixRoute", "test-route-secret")

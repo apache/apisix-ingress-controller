@@ -31,9 +31,11 @@ import (
 	"github.com/go-logr/logr/funcr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	networkingv1 "k8s.io/api/networking/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8stypes "k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
@@ -206,43 +208,45 @@ func TestDeleteLogsObjectIdentity(t *testing.T) {
 // Delete: a Gateway going away must reach the data plane right away -- an empty resource
 // set for the config it referenced -- not wait for the next scheduled sync round.
 func TestDeleteTriggersImmediateSyncForEvictedConfigs(t *testing.T) {
-	var mu sync.Mutex
-	var received []adcclient.ADCServerRequest
+	for _, gw := range []client.Object{
+		&gatewayv1.Gateway{TypeMeta: metav1.TypeMeta{Kind: "Gateway", APIVersion: gatewayv1.GroupVersion.String()}, ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "gw"}},
+		&networkingv1.IngressClass{TypeMeta: metav1.TypeMeta{Kind: "IngressClass", APIVersion: networkingv1.SchemeGroupVersion.String()}, ObjectMeta: metav1.ObjectMeta{Name: "class"}},
+	} {
+		t.Run(utils.NamespacedNameKind(gw).String(), func(t *testing.T) {
+			var mu sync.Mutex
+			var received []adcclient.ADCServerRequest
 
-	withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
-		var req adcclient.ADCServerRequest
-		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
-		mu.Lock()
-		received = append(received, req)
-		mu.Unlock()
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(adctypes.SyncResult{Status: adctypes.StatusSuccess})
-	})
+			withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
+				var req adcclient.ADCServerRequest
+				require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+				mu.Lock()
+				received = append(received, req)
+				mu.Unlock()
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(adctypes.SyncResult{Status: adctypes.StatusSuccess})
+			})
 
-	d := newTestProvider(t)
+			d := newTestProvider(t)
 
-	gw := &gatewayv1.Gateway{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Gateway",
-			APIVersion: gatewayv1.GroupVersion.String(),
-		},
-		ObjectMeta: metav1.ObjectMeta{Namespace: "default", Name: "gw"},
+			d.configManager.Update(utils.NamespacedNameKind(gw), map[types.NamespacedNameKind]adctypes.Config{
+				{Namespace: "default", Name: "proxy", Kind: "GatewayProxy"}: {
+					Name:        "proxy",
+					BackendType: "apisix",
+					ServerAddrs: []string{"http://apisix:9080"},
+				},
+			})
+
+			require.NoError(t, d.Delete(context.Background(), gw))
+
+			mu.Lock()
+			defer mu.Unlock()
+			require.Len(t, received, 1, "deleting a Gateway or IngressClass must push immediately")
+			assert.Equal(t, "proxy", received[0].Task.Opts.CacheKey)
+			assert.Equal(t, map[string]string{label.LabelManagedBy: "apisix-ingress-controller"}, received[0].Task.Opts.LabelSelector)
+			assert.Empty(t, received[0].Task.Config.Services, "the evicted config's push must carry an empty resource set")
+
+		})
 	}
-	d.configManager.Update(utils.NamespacedNameKind(gw), map[types.NamespacedNameKind]adctypes.Config{
-		{Namespace: "default", Name: "proxy", Kind: "GatewayProxy"}: {
-			Name:        "proxy",
-			BackendType: "apisix",
-			ServerAddrs: []string{"http://apisix:9080"},
-		},
-	})
-
-	require.NoError(t, d.Delete(context.Background(), gw))
-
-	mu.Lock()
-	defer mu.Unlock()
-	require.Len(t, received, 1, "deleting a Gateway must push immediately, not wait for the next scheduled round")
-	assert.Equal(t, "proxy", received[0].Task.Opts.CacheKey)
-	assert.Empty(t, received[0].Task.Config.Services, "the evicted config's push must carry an empty resource set")
 }
 
 // TestSyncStillPushesHealthyConfigsWhenAnotherFails covers sync's error aggregation: one
@@ -255,6 +259,7 @@ func TestSyncStillPushesHealthyConfigsWhenAnotherFails(t *testing.T) {
 	withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
 		var req adcclient.ADCServerRequest
 		require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+		assert.Equal(t, map[string]string{label.LabelManagedBy: "apisix-ingress-controller"}, req.Task.Opts.LabelSelector)
 		mu.Lock()
 		seen[req.Task.Opts.CacheKey] = true
 		mu.Unlock()
@@ -346,6 +351,46 @@ func TestRemoveResourceStateRemovesAnApisixGlobalRulesPlugins(t *testing.T) {
 	resources, err = d.store.GetResources(proxy.String())
 	require.NoError(t, err)
 	assert.Equal(t, adctypes.GlobalRule{"cors": map[string]any{}}, resources.GlobalRules, "only the deleted resource's own plugins go away")
+}
+
+func TestPushConfigScopesAPISIXResources(t *testing.T) {
+	for _, tc := range []struct {
+		name           string
+		backend        string
+		defaultBackend string
+		scoped         bool
+	}{
+		{"explicit APISIX", "apisix", "apisix-standalone", true},
+		{"default APISIX", "", "apisix", true},
+		{"other backend", "custom", "apisix-standalone", true},
+		{"standalone", "apisix-standalone", "apisix", false},
+		{"default standalone", "", "apisix-standalone", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var received adcclient.ADCServerRequest
+			withMockADCServer(t, func(w http.ResponseWriter, r *http.Request) {
+				assert.NoError(t, json.NewDecoder(r.Body).Decode(&received))
+				_ = json.NewEncoder(w).Encode(adctypes.SyncResult{Status: adctypes.StatusSuccess})
+			})
+			d := newTestProvider(t)
+			d.DefaultBackendMode = tc.defaultBackend
+			labels := map[string]string{label.LabelNamespace: "default"}
+			input := adcclient.SyncInput{
+				Name:      "proxy",
+				Config:    adctypes.Config{Name: "proxy", BackendType: tc.backend, ServerAddrs: []string{"http://apisix:9180"}},
+				Resources: &adctypes.Resources{},
+				Labels:    labels,
+			}
+			require.Empty(t, d.pushConfig(context.Background(), input))
+			assert.Equal(t, "default", received.Task.Opts.LabelSelector[label.LabelNamespace])
+			if tc.scoped {
+				assert.Equal(t, "apisix-ingress-controller", received.Task.Opts.LabelSelector[label.LabelManagedBy])
+			} else {
+				assert.NotContains(t, received.Task.Opts.LabelSelector, label.LabelManagedBy)
+			}
+			assert.Equal(t, map[string]string{label.LabelNamespace: "default"}, labels, "must not mutate the caller's selector")
+		})
+	}
 }
 
 func TestDeleteGatewayPreservesSharedProxyResources(t *testing.T) {
