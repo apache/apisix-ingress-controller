@@ -98,12 +98,10 @@ jobs:
         if: ${{ env.ADC_VERSION == 'dev' }}
         run: |
           docker create --name adc-temp ghcr.io/api7/adc:dev
-          # main.cjs lives in the image's WORKDIR, not at the container root,
-          # and docker cp resolves a relative SRC_PATH against the root.
-          docker cp "adc-temp:$(docker inspect -f '{{.Config.WorkingDir}}' adc-temp)/main.cjs" adc.js
+          docker cp adc-temp:/adc adc
           docker rm adc-temp
-          node $(pwd)/adc.js -v
-          echo "ADC_BIN=node $(pwd)/adc.js" >> $GITHUB_ENV
+          ./adc --version
+          echo "ADC_BIN=$(pwd)/adc" >> $GITHUB_ENV
 
       - name: Run Benchmark Test
         shell: bash
