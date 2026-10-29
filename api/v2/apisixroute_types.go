@@ -131,10 +131,13 @@ type ApisixRouteStream struct {
 // UpstreamTimeout defines timeout settings for connecting, sending, and reading from the upstream.
 type UpstreamTimeout struct {
 	// Connect timeout for establishing a connection to the upstream.
+	// +kubebuilder:validation:XValidation:rule="duration(self) >= duration('0s')",message="timeout must not be negative"
 	Connect metav1.Duration `json:"connect,omitempty" yaml:"connect,omitempty"`
 	// Send timeout for sending data to the upstream.
+	// +kubebuilder:validation:XValidation:rule="duration(self) >= duration('0s')",message="timeout must not be negative"
 	Send metav1.Duration `json:"send,omitempty" yaml:"send,omitempty"`
 	// Read timeout for reading data from the upstream.
+	// +kubebuilder:validation:XValidation:rule="duration(self) >= duration('0s')",message="timeout must not be negative"
 	Read metav1.Duration `json:"read,omitempty" yaml:"read,omitempty"`
 }
 
