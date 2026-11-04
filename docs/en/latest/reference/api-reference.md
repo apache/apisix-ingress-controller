@@ -234,10 +234,10 @@ _Base type:_ `LocalPolicyTargetReferenceWithSectionName`
 
 | Field | Description |
 | --- | --- |
-| `group` _[Group](#group)_ | Group is the group of the target resource. |
-| `kind` _[Kind](#kind)_ | Kind is kind of the target resource. |
-| `name` _[ObjectName](#objectname)_ | Name is the name of the target resource. |
-| `sectionName` _[SectionName](#sectionname)_ | SectionName is the name of a section within the target resource. When unspecified, this targetRef targets the entire resource. In the following resources, SectionName is interpreted as the following:<br /><br /> • Gateway: Listener name<br /> • HTTPRoute: HTTPRouteRule name<br /> • Service: Port name<br /><br /> If a SectionName is specified, but does not exist on the targeted object, the Policy must fail to attach, and the policy implementation should record a `ResolvedRefs` or similar Condition in the Policy's status. |
+| `group` _[Group](https://pkg.go.dev/sigs.k8s.io/gateway-api@v1.6.0/apis/v1#Group)_ | Group is the group of the target resource. |
+| `kind` _[Kind](https://pkg.go.dev/sigs.k8s.io/gateway-api@v1.6.0/apis/v1#Kind)_ | Kind is kind of the target resource. |
+| `name` _[ObjectName](https://pkg.go.dev/sigs.k8s.io/gateway-api@v1.6.0/apis/v1#ObjectName)_ | Name is the name of the target resource. |
+| `sectionName` _[SectionName](https://pkg.go.dev/sigs.k8s.io/gateway-api@v1.6.0/apis/v1#SectionName)_ | SectionName is the name of a section within the target resource. When unspecified, this targetRef targets the entire resource. In the following resources, SectionName is interpreted as the following:<br /><br /> • Gateway: Listener name<br /> • HTTPRoute: HTTPRouteRule name<br /> • Service: Port name<br /><br /> If a SectionName is specified, but does not exist on the targeted object, the Policy must fail to attach, and the policy implementation should record a `ResolvedRefs` or similar Condition in the Policy's status. |
 
 
 _Appears in:_
@@ -666,8 +666,7 @@ _Appears in:_
 | `conditions` _[Condition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#condition-v1-meta) array_ |  |
 
 
-_Appears in:_
-- [ConsumerStatus](#consumerstatus)
+
 
 #### Timeout
 
@@ -806,7 +805,7 @@ ActiveHealthCheck defines the active upstream health check configuration.
 | Field | Description |
 | --- | --- |
 | `type` _string_ | Type is the health check type. Can be `http`, `https`, or `tcp`. |
-| `timeout` _[Duration](#duration)_ | Timeout sets health check timeout in seconds. |
+| `timeout` _[Duration](https://pkg.go.dev/time#Duration)_ | Timeout sets health check timeout in seconds. |
 | `concurrency` _integer_ | Concurrency sets the number of targets to be checked at the same time. |
 | `host` _string_ | Host sets the upstream host. |
 | `port` _integer_ | Port sets the upstream port. |
