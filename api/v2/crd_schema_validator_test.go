@@ -67,6 +67,11 @@ func (v *crdSchemaValidator) Validate(t *testing.T, obj any) error {
 // loadCRDSchema reads a CRD YAML file and returns a validator for the "v2" version schema.
 func loadCRDSchema(t *testing.T, crdPath string) *crdSchemaValidator {
 	t.Helper()
+	return loadCRDSchemaVersion(t, crdPath, "v2")
+}
+
+func loadCRDSchemaVersion(t *testing.T, crdPath, version string) *crdSchemaValidator {
+	t.Helper()
 
 	data, err := os.ReadFile(crdPath)
 	require.NoError(t, err, "failed to read CRD file: %s", crdPath)
@@ -79,12 +84,12 @@ func loadCRDSchema(t *testing.T, crdPath string) *crdSchemaValidator {
 
 	var v1Schema *apiextensionsv1.JSONSchemaProps
 	for _, v := range crd.Spec.Versions {
-		if v.Name == "v2" {
+		if v.Name == version {
 			v1Schema = v.Schema.OpenAPIV3Schema
 			break
 		}
 	}
-	require.NotNil(t, v1Schema, "v2 schema not found in CRD")
+	require.NotNil(t, v1Schema, "%s schema not found in CRD", version)
 
 	var internal apiextensions.JSONSchemaProps
 	require.NoError(t,
