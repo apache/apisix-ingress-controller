@@ -19,6 +19,7 @@ package translator
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -63,13 +64,24 @@ func TestParseHTTPRoutePolicyVars(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, adctypes.Vars{{{StrVal: "remote_addr"}, {StrVal: "=="}, {StrVal: "10.0.0.1"}}}, vars)
 
-	for _, malformed := range []string{`{"remote_addr":"10.0.0.0/8"}`, `"remote_addr"`, `[{"a":"b"}]`, `[1]`} {
+	for _, malformed := range []string{`{"remote_addr":"10.0.0.0/8"}`, `"remote_addr"`, `[{"a":"b"}]`, `[]`, `null`} {
 		t.Run(malformed, func(t *testing.T) {
 			policy := policyWithVars(validPolicyVar, malformed)
 			_, err := ParseHTTPRoutePolicyVars(&policy)
 			assert.ErrorContains(t, err, "invalid spec.vars[1]")
 		})
 	}
+}
+
+// Numbers and booleans keep their JSON type: APISIX compares 18 and "18" differently.
+func TestParseHTTPRoutePolicyVars_Scalars(t *testing.T) {
+	policy := policyWithVars(`["arg_age",">",18]`, `["arg_debug","==",true]`, `["arg_id","in",[1,"2"]]`)
+	vars, err := ParseHTTPRoutePolicyVars(&policy)
+	require.NoError(t, err)
+
+	got, err := json.Marshal(vars)
+	require.NoError(t, err)
+	assert.JSONEq(t, `[["arg_age",">",18],["arg_debug","==",true],["arg_id","in",[1,"2"]]]`, string(got))
 }
 
 func TestTranslateHTTPRoute_HTTPRoutePolicyVars(t *testing.T) {

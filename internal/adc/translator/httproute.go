@@ -378,6 +378,9 @@ func ParseHTTPRoutePolicyVars(policy *v1alpha1.HTTPRoutePolicy) (adctypes.Vars, 
 		if err := json.Unmarshal(data.Raw, &v); err != nil {
 			return nil, fmt.Errorf("HTTPRoutePolicy %s/%s: invalid spec.vars[%d]: %w", policy.Namespace, policy.Name, i, err)
 		}
+		if len(v) == 0 {
+			return nil, fmt.Errorf("HTTPRoutePolicy %s/%s: invalid spec.vars[%d]: empty expression", policy.Namespace, policy.Name, i)
+		}
 		vars = append(vars, v)
 	}
 	return vars, nil

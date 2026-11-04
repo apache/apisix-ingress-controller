@@ -791,17 +791,22 @@ func (vars *Vars) UnmarshalJSON(p []byte) error {
 	return nil
 }
 
-// StringOrSlice represents a string or a string slice.
+// StringOrSlice represents a string, a number, a boolean or a slice of them.
 // TODO Do not use interface{} to avoid the reflection overheads.
 // +k8s:deepcopy-gen=true
 type StringOrSlice struct {
 	StrVal   string          `json:"-"`
 	SliceVal []StringOrSlice `json:"-"`
+	// ScalarVal keeps a number or boolean verbatim, since APISIX compares by type.
+	ScalarVal json.RawMessage `json:"-"`
 }
 
 func (s *StringOrSlice) MarshalJSON() ([]byte, error) {
 	if s.SliceVal != nil {
 		return json.Marshal(s.SliceVal)
+	}
+	if s.ScalarVal != nil {
+		return s.ScalarVal, nil
 	}
 	return json.Marshal(s.StrVal)
 }
@@ -812,6 +817,17 @@ func (s *StringOrSlice) UnmarshalJSON(p []byte) error {
 	}
 	if p[0] == '[' {
 		return json.Unmarshal(p, &s.SliceVal)
+	}
+	if p[0] != '"' && p[0] != 'n' {
+		var v any
+		if err := json.Unmarshal(p, &v); err != nil {
+			return err
+		}
+		switch v.(type) {
+		case float64, bool:
+			s.ScalarVal = append(json.RawMessage(nil), p...)
+			return nil
+		}
 	}
 	return json.Unmarshal(p, &s.StrVal)
 }
