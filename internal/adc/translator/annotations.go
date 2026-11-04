@@ -61,6 +61,16 @@ func (t *Translator) TranslateIngressAnnotations(anno map[string]string) *Ingres
 	return ing
 }
 
+// ValidateIngressAnnotations reports whether the APISIX annotations on an Ingress
+// parse cleanly. The admission webhook rejects an Ingress that fails here so a
+// requested plugin cannot be dropped on the way to the data plane.
+func ValidateIngressAnnotations(anno map[string]string) error {
+	if len(anno) == 0 {
+		return nil
+	}
+	return translateAnnotations(anno, &IngressConfig{})
+}
+
 func translateAnnotations(anno map[string]string, dst any) error {
 	extractor := annotations.NewExtractor(anno)
 	data := make(map[string]any)
@@ -70,8 +80,9 @@ func translateAnnotations(anno map[string]string, dst any) error {
 		out, err := parser.Parse(extractor)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("parse %s: %w", name, err))
-			continue
 		}
+		// a parser that failed may still have produced the part that parsed, so
+		// merge it: reporting the error must not change what is published
 		if out != nil {
 			data[name] = out
 		}

@@ -158,3 +158,62 @@ func TestIngressCustomValidator_AllowsEnableCsrfWithKey(t *testing.T) {
 	_, err = validator.ValidateCreate(context.Background(), csrfIngress(nil))
 	require.NoError(t, err)
 }
+
+func TestIngressCustomValidator_RejectsUnparsableAnnotations(t *testing.T) {
+	validator := buildIngressValidator(t)
+
+	tests := []struct {
+		name string
+		anno map[string]string
+	}{
+		{
+			name: "uncompilable rewrite regex",
+			anno: map[string]string{
+				"k8s.apisix.apache.org/rewrite-target-regex":          "/api/([",
+				"k8s.apisix.apache.org/rewrite-target-regex-template": "/$1",
+			},
+		},
+		{
+			name: "invalid upstream scheme",
+			anno: map[string]string{
+				"k8s.apisix.apache.org/upstream-scheme": "htp",
+			},
+		},
+		{
+			name: "non-integer upstream retries",
+			anno: map[string]string{
+				"k8s.apisix.apache.org/upstream-retries": "three",
+			},
+		},
+		{
+			name: "non-integer upstream timeout",
+			anno: map[string]string{
+				"k8s.apisix.apache.org/upstream-read-timeout": "quick",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := validator.ValidateCreate(context.Background(), csrfIngress(tt.anno))
+			require.ErrorContains(t, err, "invalid APISIX annotations")
+
+			_, err = validator.ValidateUpdate(context.Background(), csrfIngress(nil), csrfIngress(tt.anno))
+			require.ErrorContains(t, err, "invalid APISIX annotations")
+		})
+	}
+}
+
+func TestIngressCustomValidator_AllowsParsableAnnotations(t *testing.T) {
+	validator := buildIngressValidator(t)
+
+	_, err := validator.ValidateCreate(context.Background(), csrfIngress(map[string]string{
+		"k8s.apisix.apache.org/rewrite-target-regex":          "/api/(.*)",
+		"k8s.apisix.apache.org/rewrite-target-regex-template": "/$1",
+		"k8s.apisix.apache.org/upstream-scheme":               "https",
+		"k8s.apisix.apache.org/upstream-retries":              "3",
+		"k8s.apisix.apache.org/upstream-read-timeout":         "30s",
+		"k8s.apisix.apache.org/allowlist-source-range":        "10.0.0.0/8",
+	}))
+	require.NoError(t, err)
+}
