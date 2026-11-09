@@ -633,12 +633,21 @@ spec:
                           description: Connect timeout for establishing a connection
                             to the upstream.
                           type: string
+                          x-kubernetes-validations:
+                          - message: timeout must not be negative
+                            rule: duration(self) >= duration('0s')
                         read:
                           description: Read timeout for reading data from the upstream.
                           type: string
+                          x-kubernetes-validations:
+                          - message: timeout must not be negative
+                            rule: duration(self) >= duration('0s')
                         send:
                           description: Send timeout for sending data to the upstream.
                           type: string
+                          x-kubernetes-validations:
+                          - message: timeout must not be negative
+                            rule: duration(self) >= duration('0s')
                       type: object
                     tlsSecret:
                       description: |-
@@ -718,12 +727,21 @@ spec:
                     description: Connect timeout for establishing a connection to
                       the upstream.
                     type: string
+                    x-kubernetes-validations:
+                    - message: timeout must not be negative
+                      rule: duration(self) >= duration('0s')
                   read:
                     description: Read timeout for reading data from the upstream.
                     type: string
+                    x-kubernetes-validations:
+                    - message: timeout must not be negative
+                      rule: duration(self) >= duration('0s')
                   send:
                     description: Send timeout for sending data to the upstream.
                     type: string
+                    x-kubernetes-validations:
+                    - message: timeout must not be negative
+                      rule: duration(self) >= duration('0s')
                 type: object
               tlsSecret:
                 description: |-

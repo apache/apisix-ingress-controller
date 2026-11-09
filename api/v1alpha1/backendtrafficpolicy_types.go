@@ -113,17 +113,17 @@ type LoadBalancer struct {
 type Timeout struct {
 	// Connection timeout. Default is `60s`.
 	// +kubebuilder:default="60s"
-	// +kubebuilder:validation:Pattern=`^[0-9]+s$`
+	// +kubebuilder:validation:XValidation:rule="duration(self) >= duration('0s')",message="timeout must not be negative"
 	// +kubebuilder:validation:Type=string
 	Connect metav1.Duration `json:"connect,omitempty" yaml:"connect,omitempty"`
 	// Send timeout. Default is `60s`.
 	// +kubebuilder:default="60s"
-	// +kubebuilder:validation:Pattern=`^[0-9]+s$`
+	// +kubebuilder:validation:XValidation:rule="duration(self) >= duration('0s')",message="timeout must not be negative"
 	// +kubebuilder:validation:Type=string
 	Send metav1.Duration `json:"send,omitempty" yaml:"send,omitempty"`
 	// Read timeout. Default is `60s`.
 	// +kubebuilder:default="60s"
-	// +kubebuilder:validation:Pattern=`^[0-9]+s$`
+	// +kubebuilder:validation:XValidation:rule="duration(self) >= duration('0s')",message="timeout must not be negative"
 	// +kubebuilder:validation:Type=string
 	Read metav1.Duration `json:"read,omitempty" yaml:"read,omitempty"`
 }

@@ -19,9 +19,11 @@ import (
 	"path/filepath"
 	"runtime"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	apisixv2 "github.com/apache/apisix-ingress-controller/api/v2"
@@ -32,6 +34,14 @@ func loadApisixRouteSchema(t *testing.T) *crdSchemaValidator {
 	_, thisFile, _, _ := runtime.Caller(0)
 	crdPath := filepath.Join(filepath.Dir(thisFile), "..", "..",
 		"config", "crd", "bases", "apisix.apache.org_apisixroutes.yaml")
+	return loadCRDSchema(t, crdPath)
+}
+
+func loadApisixUpstreamSchema(t *testing.T) *crdSchemaValidator {
+	t.Helper()
+	_, thisFile, _, _ := runtime.Caller(0)
+	crdPath := filepath.Join(filepath.Dir(thisFile), "..", "..",
+		"config", "crd", "bases", "apisix.apache.org_apisixupstreams.yaml")
 	return loadCRDSchema(t, crdPath)
 }
 
@@ -124,4 +134,44 @@ func TestApisixRoute_PathScope_EmptyName(t *testing.T) {
 		},
 	}
 	assert.NoError(t, v.Validate(t, ar))
+}
+
+func TestApisixRoute_NegativeTimeoutRejected(t *testing.T) {
+	v := loadApisixRouteSchema(t)
+	tests := []struct {
+		name    string
+		timeout apisixv2.UpstreamTimeout
+	}{
+		{name: "connect", timeout: apisixv2.UpstreamTimeout{Connect: metav1.Duration{Duration: -500 * time.Millisecond}}},
+		{name: "read", timeout: apisixv2.UpstreamTimeout{Read: metav1.Duration{Duration: -500 * time.Millisecond}}},
+		{name: "send", timeout: apisixv2.UpstreamTimeout{Send: metav1.Duration{Duration: -500 * time.Millisecond}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ar := &apisixv2.ApisixRoute{Spec: apisixv2.ApisixRouteSpec{HTTP: []apisixv2.ApisixRouteHTTP{{
+				Name: "rule1", Websocket: boolPtr(false), Match: apisixv2.ApisixRouteHTTPMatch{Paths: []string{"/*"}}, Timeout: &tt.timeout,
+			}}}}
+			require.ErrorContains(t, v.Validate(t, ar), "timeout must not be negative")
+		})
+	}
+}
+
+func TestApisixUpstream_NegativeTimeoutRejected(t *testing.T) {
+	v := loadApisixUpstreamSchema(t)
+	tests := []struct {
+		name    string
+		timeout apisixv2.UpstreamTimeout
+	}{
+		{name: "connect", timeout: apisixv2.UpstreamTimeout{Connect: metav1.Duration{Duration: -500 * time.Millisecond}}},
+		{name: "read", timeout: apisixv2.UpstreamTimeout{Read: metav1.Duration{Duration: -500 * time.Millisecond}}},
+		{name: "send", timeout: apisixv2.UpstreamTimeout{Send: metav1.Duration{Duration: -500 * time.Millisecond}}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			upstream := &apisixv2.ApisixUpstream{Spec: apisixv2.ApisixUpstreamSpec{
+				ApisixUpstreamConfig: apisixv2.ApisixUpstreamConfig{Timeout: &tt.timeout},
+			}}
+			require.ErrorContains(t, v.Validate(t, upstream), "timeout must not be negative")
+		})
+	}
 }

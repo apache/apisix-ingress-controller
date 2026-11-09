@@ -210,9 +210,9 @@ spec:
 			Expect(err).NotTo(HaveOccurred(), "listing Upstream")
 			Expect(upstreams).To(HaveLen(1), "checking Upstream length")
 			Expect(upstreams[0].Timeout).ToNot(BeNil(), "checking Upstream timeout")
-			Expect(upstreams[0].Timeout.Read).To(Equal(2), "checking Upstream read timeout")
-			Expect(upstreams[0].Timeout.Send).To(Equal(3), "checking Upstream send timeout")
-			Expect(upstreams[0].Timeout.Connect).To(Equal(4), "checking Upstream connect timeout")
+			Expect(upstreams[0].Timeout.Read).To(Equal(2.0), "checking Upstream read timeout")
+			Expect(upstreams[0].Timeout.Send).To(Equal(3.0), "checking Upstream send timeout")
+			Expect(upstreams[0].Timeout.Connect).To(Equal(4.0), "checking Upstream connect timeout")
 		})
 
 		It("cors annotations", func() {

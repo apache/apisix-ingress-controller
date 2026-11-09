@@ -207,9 +207,9 @@ func (t *Translator) resolveIngressUpstream(
 		}
 		if upConfig.TimeoutConnect > 0 || upConfig.TimeoutRead > 0 || upConfig.TimeoutSend > 0 {
 			upstream.Timeout = &adctypes.Timeout{
-				Connect: cmp.Or(upConfig.TimeoutConnect, 60),
-				Read:    cmp.Or(upConfig.TimeoutRead, 60),
-				Send:    cmp.Or(upConfig.TimeoutSend, 60),
+				Connect: float64(cmp.Or(upConfig.TimeoutConnect, 60)),
+				Read:    float64(cmp.Or(upConfig.TimeoutRead, 60)),
+				Send:    float64(cmp.Or(upConfig.TimeoutSend, 60)),
 			}
 		}
 	}

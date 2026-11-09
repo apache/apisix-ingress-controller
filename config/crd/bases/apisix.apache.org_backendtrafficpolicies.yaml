@@ -365,18 +365,24 @@ spec:
                   connect:
                     default: 60s
                     description: Connection timeout. Default is `60s`.
-                    pattern: ^[0-9]+s$
                     type: string
+                    x-kubernetes-validations:
+                    - message: timeout must not be negative
+                      rule: duration(self) >= duration('0s')
                   read:
                     default: 60s
                     description: Read timeout. Default is `60s`.
-                    pattern: ^[0-9]+s$
                     type: string
+                    x-kubernetes-validations:
+                    - message: timeout must not be negative
+                      rule: duration(self) >= duration('0s')
                   send:
                     default: 60s
                     description: Send timeout. Default is `60s`.
-                    pattern: ^[0-9]+s$
                     type: string
+                    x-kubernetes-validations:
+                    - message: timeout must not be negative
+                      rule: duration(self) >= duration('0s')
                 type: object
               upstreamHost:
                 description: |-
