@@ -288,8 +288,13 @@ func (t *Translator) buildRouteFromIngressPath(
 			// In order to be conformant with Ingress specification, here
 			// we create two paths here, the first is the path itself
 			// (exact match), the other is path + "/*" (prefix match).
-			prefix := strings.TrimSuffix(path.Path, "/") + "/*"
-			uris = append(uris, prefix)
+			// The trailing slash of the path is ignored as well: /foo/
+			// matches a request to /foo, so that exact path is added too.
+			base := strings.TrimSuffix(path.Path, "/")
+			if base != "" && base != path.Path {
+				uris = append(uris, base)
+			}
+			uris = append(uris, base+"/*")
 		case networkingv1.PathTypeImplementationSpecific:
 			if config != nil && config.UseRegex {
 				uris = []string{"/*"}

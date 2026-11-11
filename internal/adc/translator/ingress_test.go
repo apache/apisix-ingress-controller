@@ -76,3 +76,56 @@ func TestTranslateIngress_ImplementationSpecificPathWithoutAnnotations(t *testin
 	assert.Equal(t, []string{"/api/(.*)"}, route.Uris)
 	assert.Empty(t, route.Vars)
 }
+
+func TestTranslateIngress_PrefixPathURIs(t *testing.T) {
+	// "/foo" and "/foo/" both match requests to "/foo" and "/foo/"
+	// (networking.k8s.io/v1 PathTypePrefix), so the trailing slash of a
+	// Prefix path must not stop it from matching the path without it.
+	tests := []struct {
+		name string
+		path string
+		uris []string
+	}{
+		{name: "root", path: "/", uris: []string{"/", "/*"}},
+		{name: "no trailing slash", path: "/foo", uris: []string{"/foo", "/foo/*"}},
+		{name: "trailing slash", path: "/foo/", uris: []string{"/foo/", "/foo", "/foo/*"}},
+		{name: "nested trailing slash", path: "/foo/bar/", uris: []string{"/foo/bar/", "/foo/bar", "/foo/bar/*"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			translator := NewTranslator(logr.Discard(), "")
+			pathType := networkingv1.PathTypePrefix
+
+			ingress := &networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "default",
+					Name:      "test-ingress",
+				},
+				Spec: networkingv1.IngressSpec{
+					Rules: []networkingv1.IngressRule{{
+						Host: "example.com",
+						IngressRuleValue: networkingv1.IngressRuleValue{HTTP: &networkingv1.HTTPIngressRuleValue{
+							Paths: []networkingv1.HTTPIngressPath{{
+								Path:     tt.path,
+								PathType: &pathType,
+								Backend: networkingv1.IngressBackend{
+									Service: &networkingv1.IngressServiceBackend{
+										Name: "test-svc",
+										Port: networkingv1.ServiceBackendPort{Number: 80},
+									},
+								},
+							}},
+						}},
+					}},
+				},
+			}
+
+			result, err := translator.TranslateIngress(&provider.TranslateContext{}, ingress)
+			require.NoError(t, err)
+			require.Len(t, result.Services, 1)
+			require.Len(t, result.Services[0].Routes, 1)
+			assert.Equal(t, tt.uris, result.Services[0].Routes[0].Uris)
+		})
+	}
+}
