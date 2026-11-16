@@ -59,6 +59,14 @@ namespace_selector: []                  # Label selectors of the namespaces whos
                                         # from the data plane.
                                         # The default value is empty, which selects all namespaces. Empty entries are ignored.
 
+secret_namespaces: []                   # Namespaces the controller reads Secrets from.
+                                        # When set, Secrets are only listed and watched in these namespaces, so the
+                                        # controller needs get, list and watch on secrets only there, for example
+                                        # through namespaced Roles instead of a ClusterRole rule. Secrets referenced from
+                                        # other namespaces, such as TLS or consumer credentials, can't be read and
+                                        # the resources that use them fail to sync.
+                                        # The default value is empty, which reads Secrets from all namespaces.
+
 provider:
   type: "apisix"                        # Provider type.
                                         # Value can be "apisix" or "apisix-standalone".

@@ -87,6 +87,7 @@ type Config struct {
 	DisableGatewayAPI     bool                  `json:"disable_gateway_api" yaml:"disable_gateway_api"`
 	ListenerPortMatchMode ListenerPortMatchMode `json:"listener_port_match_mode" yaml:"listener_port_match_mode"`
 	NamespaceSelector     []string              `json:"namespace_selector" yaml:"namespace_selector"`
+	SecretNamespaces      []string              `json:"secret_namespaces" yaml:"secret_namespaces"`
 }
 
 type GatewayConfig struct {
