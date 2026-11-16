@@ -711,88 +711,11 @@ func (r *IngressReconciler) updateStatus(ctx context.Context, tctx *provider.Tra
 		return nil
 	}
 
-	// 1. use the IngressStatusAddress in the config
-	statusAddresses := gatewayProxy.Spec.StatusAddress
-	if len(statusAddresses) > 0 {
-		for _, addr := range statusAddresses {
-			if addr == "" {
-				continue
-			}
-			lbIngress := networkingv1.IngressLoadBalancerIngress{}
-			if net.ParseIP(addr) != nil {
-				lbIngress.IP = addr
-			} else {
-				lbIngress.Hostname = addr
-			}
-			loadBalancerStatus.Ingress = append(loadBalancerStatus.Ingress, lbIngress)
-		}
-	} else {
-		// 2. if the IngressStatusAddress is not configured, try to use the PublishService
-		publishService := gatewayProxy.Spec.PublishService
-		if publishService != "" {
-			// a bare name resolves against the GatewayProxy's namespace, where
-			// the publish Service lives, matching the Gateway API path
-			svc, err := resolvePublishService(ctx, r.Client, publishService, gatewayProxy.GetNamespace())
-			if err != nil {
-				return err
-			}
-			namespace, name := svc.Namespace, svc.Name
-
-			switch svc.Spec.Type {
-			case corev1.ServiceTypeLoadBalancer:
-				for _, addr := range serviceLoadBalancerAddresses(svc) {
-					lbIngress := networkingv1.IngressLoadBalancerIngress{}
-					if net.ParseIP(addr) != nil {
-						lbIngress.IP = addr
-					} else {
-						lbIngress.Hostname = addr
-					}
-					loadBalancerStatus.Ingress = append(loadBalancerStatus.Ingress, lbIngress)
-				}
-			case corev1.ServiceTypeClusterIP:
-				// For ClusterIP services, propagate load balancer status from any other
-				// Ingress that lists this service as a backend (e.g. a cloud LB Ingress
-				// fronting the APISIX ClusterIP Service). Uses ServiceIndexRef, which
-				// indexes Ingresses by spec.rules[].http.paths[].backend.service.name.
-				ingressList := &networkingv1.IngressList{}
-				if err := r.List(ctx, ingressList, client.MatchingFields{
-					indexer.ServiceIndexRef: indexer.GenIndexKey(namespace, name),
-				}); err != nil {
-					return fmt.Errorf("failed to list ingresses for ClusterIP service %s/%s: %w", namespace, name, err)
-				}
-				if len(ingressList.Items) == 0 {
-					r.Log.V(1).Info("no Ingress found with this ClusterIP service as a backend; status will not be propagated",
-						"service", namespace+"/"+name)
-				}
-				for _, ing := range ingressList.Items {
-					// Skip the current Ingress being reconciled to avoid a
-					// self-referential loop: updating its own status would trigger
-					// a new reconcile, which would collect its own (just-written)
-					// hostname again and potentially repeat indefinitely.
-					if ing.Namespace == ingress.Namespace && ing.Name == ingress.Name {
-						continue
-					}
-					for _, lb := range ing.Status.LoadBalancer.Ingress {
-						if lb.IP != "" {
-							loadBalancerStatus.Ingress = append(loadBalancerStatus.Ingress, networkingv1.IngressLoadBalancerIngress{
-								IP: lb.IP,
-							})
-						}
-						if lb.Hostname != "" {
-							loadBalancerStatus.Ingress = append(loadBalancerStatus.Ingress, networkingv1.IngressLoadBalancerIngress{
-								Hostname: lb.Hostname,
-							})
-						}
-					}
-				}
-			}
-		}
+	addresses, err := gatewayProxyLoadBalancerIngress(ctx, r.Client, r.Log, &gatewayProxy, utils.NamespacedName(ingress))
+	if err != nil {
+		return err
 	}
-
-	// deduplicate load balancer ingress entries that may arise when multiple
-	// source Ingresses carry the same address (ClusterIP case) or when
-	// statusAddress contains repeated values.
-	loadBalancerStatus.Ingress = deduplicateLoadBalancerIngress(loadBalancerStatus.Ingress)
+	loadBalancerStatus.Ingress = addresses
 
 	// update the load balancer status
 	if !reflect.DeepEqual(ingress.Status.LoadBalancer, loadBalancerStatus) {
@@ -810,6 +733,98 @@ func (r *IngressReconciler) updateStatus(ctx context.Context, tctx *provider.Tra
 	}
 
 	return nil
+}
+
+// gatewayProxyLoadBalancerIngress returns the addresses published for the resources
+// served through gatewayProxy: its statusAddress entries, or else the addresses of its
+// publishService. For a ClusterIP publishService they are taken from the other Ingresses
+// that route to it; self is skipped there so a resource never copies its own status.
+func gatewayProxyLoadBalancerIngress(ctx context.Context, c client.Client, log logr.Logger,
+	gatewayProxy *v1alpha1.GatewayProxy, self types.NamespacedName) ([]networkingv1.IngressLoadBalancerIngress, error) {
+	var addresses []networkingv1.IngressLoadBalancerIngress
+
+	// 1. use the IngressStatusAddress in the config
+	statusAddresses := gatewayProxy.Spec.StatusAddress
+	if len(statusAddresses) > 0 {
+		for _, addr := range statusAddresses {
+			if addr == "" {
+				continue
+			}
+			lbIngress := networkingv1.IngressLoadBalancerIngress{}
+			if net.ParseIP(addr) != nil {
+				lbIngress.IP = addr
+			} else {
+				lbIngress.Hostname = addr
+			}
+			addresses = append(addresses, lbIngress)
+		}
+	} else {
+		// 2. if the IngressStatusAddress is not configured, try to use the PublishService
+		publishService := gatewayProxy.Spec.PublishService
+		if publishService != "" {
+			// a bare name resolves against the GatewayProxy's namespace, where
+			// the publish Service lives, matching the Gateway API path
+			svc, err := resolvePublishService(ctx, c, publishService, gatewayProxy.GetNamespace())
+			if err != nil {
+				return nil, err
+			}
+			namespace, name := svc.Namespace, svc.Name
+
+			switch svc.Spec.Type {
+			case corev1.ServiceTypeLoadBalancer:
+				for _, addr := range serviceLoadBalancerAddresses(svc) {
+					lbIngress := networkingv1.IngressLoadBalancerIngress{}
+					if net.ParseIP(addr) != nil {
+						lbIngress.IP = addr
+					} else {
+						lbIngress.Hostname = addr
+					}
+					addresses = append(addresses, lbIngress)
+				}
+			case corev1.ServiceTypeClusterIP:
+				// For ClusterIP services, propagate load balancer status from any other
+				// Ingress that lists this service as a backend (e.g. a cloud LB Ingress
+				// fronting the APISIX ClusterIP Service). Uses ServiceIndexRef, which
+				// indexes Ingresses by spec.rules[].http.paths[].backend.service.name.
+				ingressList := &networkingv1.IngressList{}
+				if err := c.List(ctx, ingressList, client.MatchingFields{
+					indexer.ServiceIndexRef: indexer.GenIndexKey(namespace, name),
+				}); err != nil {
+					return nil, fmt.Errorf("failed to list ingresses for ClusterIP service %s/%s: %w", namespace, name, err)
+				}
+				if len(ingressList.Items) == 0 {
+					log.V(1).Info("no Ingress found with this ClusterIP service as a backend; status will not be propagated",
+						"service", namespace+"/"+name)
+				}
+				for _, ing := range ingressList.Items {
+					// Skip the current Ingress being reconciled to avoid a
+					// self-referential loop: updating its own status would trigger
+					// a new reconcile, which would collect its own (just-written)
+					// hostname again and potentially repeat indefinitely.
+					if ing.Namespace == self.Namespace && ing.Name == self.Name {
+						continue
+					}
+					for _, lb := range ing.Status.LoadBalancer.Ingress {
+						if lb.IP != "" {
+							addresses = append(addresses, networkingv1.IngressLoadBalancerIngress{
+								IP: lb.IP,
+							})
+						}
+						if lb.Hostname != "" {
+							addresses = append(addresses, networkingv1.IngressLoadBalancerIngress{
+								Hostname: lb.Hostname,
+							})
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// deduplicate entries that may arise when multiple source Ingresses carry
+	// the same address (ClusterIP case) or when statusAddress contains repeated
+	// values.
+	return deduplicateLoadBalancerIngress(addresses), nil
 }
 
 // listIngressesForGatewayProxy list all ingresses that use a specific gateway proxy
