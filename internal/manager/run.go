@@ -23,6 +23,7 @@ import (
 	"os"
 
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/version"
@@ -30,6 +31,8 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -74,6 +77,24 @@ func init() {
 		panic(err)
 	}
 	// +kubebuilder:scaffold:scheme
+}
+
+// cacheOptions limits the cache for Secrets to the given namespaces, so the controller
+// only needs read access to Secrets there. Without namespaces, Secrets are cached
+// cluster-wide like every other resource.
+func cacheOptions(secretNamespaces []string) cache.Options {
+	if len(secretNamespaces) == 0 {
+		return cache.Options{}
+	}
+	namespaces := make(map[string]cache.Config, len(secretNamespaces))
+	for _, ns := range secretNamespaces {
+		namespaces[ns] = cache.Config{}
+	}
+	return cache.Options{
+		ByObject: map[client.Object]cache.ByObject{
+			&corev1.Secret{}: {Namespaces: namespaces},
+		},
+	}
 }
 
 func Run(ctx context.Context, logger logr.Logger) error {
@@ -153,6 +174,11 @@ func Run(ctx context.Context, logger logr.Logger) error {
 		// if you are doing or is intended to do any operation such as perform cleanups
 		// after the manager stops then its usage might be unsafe.
 		// LeaderElectionReleaseOnCancel: true,
+	}
+
+	mgrOptions.Cache = cacheOptions(cfg.SecretNamespaces)
+	if len(cfg.SecretNamespaces) > 0 {
+		setupLog.Info("limiting the Secret cache to namespaces", "namespaces", cfg.SecretNamespaces)
 	}
 
 	if cfg.Webhook != nil && cfg.Webhook.Enable {

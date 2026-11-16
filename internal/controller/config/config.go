@@ -29,6 +29,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/selection"
+	"k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/apache/apisix-ingress-controller/internal/types"
 )
@@ -138,11 +139,24 @@ func (c *Config) Validate() error {
 		return err
 	}
 
+	if err := validateSecretNamespaces(c.SecretNamespaces); err != nil {
+		return err
+	}
+
 	if err := validateProvider(c.ProviderConfig); err != nil {
 		return err
 	}
 	if err := validateWebhook(c.Webhook); err != nil {
 		return err
+	}
+	return nil
+}
+
+func validateSecretNamespaces(namespaces []string) error {
+	for _, ns := range namespaces {
+		if errs := validation.IsDNS1123Label(ns); len(errs) > 0 {
+			return fmt.Errorf("invalid secret_namespaces entry %q: %s", ns, strings.Join(errs, ", "))
+		}
 	}
 	return nil
 }
