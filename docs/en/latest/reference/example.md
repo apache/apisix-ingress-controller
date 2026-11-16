@@ -1285,7 +1285,16 @@ The format can be either `namespace/svc-name` or simply `svc-name`, in which cas
 
 <TabItem value="apisix-crd">
 
-Not supported.
+ApisixRoute resources get the same addresses as Ingress resources. Configure `statusAddress` or `publishService` in the GatewayProxy as shown in the Ingress tab, and the controller writes the addresses to `status.loadBalancer.ingress` of each ApisixRoute it accepts:
+
+```yaml
+status:
+  loadBalancer:
+    ingress:
+      - ip: 10.24.87.13
+```
+
+Tools such as [external-dns](https://github.com/kubernetes-sigs/external-dns) can read this field to create DNS records for the hosts of the route.
 
 </TabItem>
 

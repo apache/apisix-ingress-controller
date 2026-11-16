@@ -242,7 +242,7 @@ func (d *apisixProvider) updateStatus(nnk types.NamespacedNameKind, condition me
 			Resource:       &apiv2.ApisixRoute{},
 			Mutator: status.MutatorFunc(func(obj client.Object) client.Object {
 				cp := obj.(*apiv2.ApisixRoute).DeepCopy()
-				cutils.SetApisixCRDConditionWithGeneration(&cp.Status, cp.GetGeneration(), condition)
+				cutils.SetApisixCRDConditionWithGeneration(&cp.Status.ApisixStatus, cp.GetGeneration(), condition)
 				return cp
 			}),
 		})

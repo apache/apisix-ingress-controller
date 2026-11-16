@@ -176,8 +176,30 @@ func (r *ApisixRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		r.Log.Error(err, "failed to process", "apisixroute", utils.NamespacedName(&ar))
 		return ctrl.Result{}, err
 	}
+	r.setLoadBalancerStatus(ctx, tctx, &ar, ic)
 
 	return ctrl.Result{}, nil
+}
+
+// setLoadBalancerStatus copies the addresses of the GatewayProxy that serves the route into
+// its status, the same addresses an Ingress of the class gets, so tools such as external-dns
+// can point the route's hosts at the gateway. On failure the previous addresses are kept.
+func (r *ApisixRouteReconciler) setLoadBalancerStatus(ctx context.Context, tctx *provider.TranslateContext,
+	ar *apiv2.ApisixRoute, ic *networkingv1.IngressClass) {
+	gatewayProxy, ok := tctx.GatewayProxies[utils.NamespacedNameKind(ic)]
+	if !ok {
+		return
+	}
+	addresses, err := gatewayProxyLoadBalancerIngress(ctx, r.Client, r.Log, &gatewayProxy, k8stypes.NamespacedName{})
+	if err != nil {
+		r.Log.Error(err, "failed to resolve the gateway addresses", "apisixroute", utils.NamespacedName(ar))
+		return
+	}
+	var ingress []apiv2.ApisixRouteLoadBalancerIngress
+	for _, addr := range addresses {
+		ingress = append(ingress, apiv2.ApisixRouteLoadBalancerIngress{IP: addr.IP, Hostname: addr.Hostname})
+	}
+	ar.Status.LoadBalancer.Ingress = ingress
 }
 
 func (r *ApisixRouteReconciler) processApisixRoute(tctx *provider.TranslateContext, in *apiv2.ApisixRoute) error {
@@ -664,7 +686,7 @@ func (r *ApisixRouteReconciler) listApisixRouteForApisixUpstream(ctx context.Con
 }
 
 func (r *ApisixRouteReconciler) updateStatus(ar *apiv2.ApisixRoute, err error) {
-	SetApisixCRDConditionAccepted(&ar.Status, ar.GetGeneration(), err)
+	SetApisixCRDConditionAccepted(&ar.Status.ApisixStatus, ar.GetGeneration(), err)
 	r.Updater.Update(status.Update{
 		NamespacedName: utils.NamespacedName(ar),
 		Resource:       &apiv2.ApisixRoute{},
