@@ -113,11 +113,11 @@ func (t *Translator) translateSecret(tctx *provider.TranslateContext, listener g
 			if ref.Namespace != nil {
 				ns = string(*ref.Namespace)
 			}
-			if listener.TLS.CertificateRefs[0].Kind != nil && *listener.TLS.CertificateRefs[0].Kind == internaltypes.KindSecret {
+			if ref.Kind != nil && *ref.Kind == internaltypes.KindSecret {
 				sslObj := &adctypes.SSL{
 					Snis: []string{},
 				}
-				name := listener.TLS.CertificateRefs[0].Name
+				name := ref.Name
 				secretNN := types.NamespacedName{Namespace: ns, Name: string(ref.Name)}
 				secret := tctx.Secrets[secretNN]
 				if secret == nil {
