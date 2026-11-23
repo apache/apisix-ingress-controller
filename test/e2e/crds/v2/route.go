@@ -2375,4 +2375,75 @@ spec:
 			})
 		})
 	})
+
+	Context("Test ApisixRoute and HTTPRoute with the same name", func() {
+		const httpRouteSpec = `
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: same-name
+spec:
+  parentRefs:
+  - name: %s
+  hostnames:
+  - httproute.example.com
+  rules:
+  - matches:
+    - path:
+        type: Exact
+        value: %s
+    backendRefs:
+    - name: httpbin-service-e2e-test
+      port: 80
+`
+		const apisixRouteSpec = `
+apiVersion: apisix.apache.org/v2
+kind: ApisixRoute
+metadata:
+  name: same-name
+spec:
+  ingressClassName: %s
+  http:
+  - name: rule0
+    match:
+      hosts:
+      - apisixroute.example.com
+      paths:
+      - /get
+    backends:
+    - serviceName: httpbin-service-e2e-test
+      servicePort: 80
+`
+
+		It("keeps both routes when they share a namespace and name", func() {
+			By("create GatewayClass and Gateway on the same GatewayProxy")
+			Expect(s.CreateResourceFromString(s.GetGatewayClassYaml())).To(Succeed(), "creating GatewayClass")
+			Expect(s.CreateResourceFromString(s.GetGatewayYaml())).To(Succeed(), "creating Gateway")
+
+			expectOK := func(host, path string) {
+				s.RequestAssert(&scaffold.RequestAssert{
+					Method: "GET",
+					Path:   path,
+					Host:   host,
+					Check:  scaffold.WithExpectedStatus(http.StatusOK),
+				})
+			}
+			nn := types.NamespacedName{Namespace: s.Namespace(), Name: "same-name"}
+
+			By("create HTTPRoute")
+			s.ApplyHTTPRoute(nn, fmt.Sprintf(httpRouteSpec, s.Namespace(), "/get"))
+			expectOK("httproute.example.com", "/get")
+
+			By("create ApisixRoute with the same name")
+			var ar apiv2.ApisixRoute
+			applier.MustApplyAPIv2(nn, &ar, fmt.Sprintf(apisixRouteSpec, s.Namespace()))
+			expectOK("apisixroute.example.com", "/get")
+			expectOK("httproute.example.com", "/get")
+
+			By("update HTTPRoute")
+			s.ApplyHTTPRoute(nn, fmt.Sprintf(httpRouteSpec, s.Namespace(), "/headers"))
+			expectOK("httproute.example.com", "/headers")
+			expectOK("apisixroute.example.com", "/get")
+		})
+	})
 })

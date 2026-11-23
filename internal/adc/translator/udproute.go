@@ -37,7 +37,7 @@ func (t *Translator) TranslateUDPRoute(tctx *provider.TranslateContext, udpRoute
 	for ruleIndex, rule := range rules {
 		service := adctypes.NewDefaultService()
 		service.Labels = labels
-		service.Name = adctypes.ComposeServiceNameWithStream(udpRoute.Namespace, udpRoute.Name, fmt.Sprintf("%d", ruleIndex), "UDP")
+		service.Name = adctypes.ComposeServiceNameWithStream(types.KindUDPRoute, udpRoute.Namespace, udpRoute.Name, fmt.Sprintf("%d", ruleIndex), "UDP")
 		service.ID = id.GenID(service.Name)
 		var (
 			upstreams         = make([]*adctypes.Upstream, 0)
