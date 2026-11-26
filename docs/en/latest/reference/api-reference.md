@@ -1254,7 +1254,7 @@ ApisixRouteHTTPBackend represents an HTTP backend (Kubernetes Service).
 | --- | --- |
 | `serviceName` _string_ | ServiceName is the name of the Kubernetes Service. Cross-namespace references are not supported—ensure the ApisixRoute and the Service are in the same namespace. |
 | `servicePort` _[IntOrString](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.30/#intorstring-intstr-util)_ | ServicePort is the port of the Kubernetes Service. This can be either the port name or port number. |
-| `resolveGranularity` _string_ | ResolveGranularity determines how the backend service is resolved. Valid values are `endpoints` and `service`. When set to `endpoints`, individual pod IPs will be used; otherwise, the Service's ClusterIP or ExternalIP is used. The default is `endpoints`. |
+| `resolveGranularity` _string_ | ResolveGranularity determines how the backend service is resolved. Valid values are `endpoint` and `service`. When set to `endpoint`, individual pod IPs will be used; otherwise, the Service's ClusterIP or ExternalIP is used. The default is `endpoint`. |
 | `weight` _integer_ | Weight specifies the relative traffic weight for this backend. |
 | `subset` _string_ | Subset specifies a named subset of the target Service. The subset must be pre-defined in the corresponding ApisixUpstream resource. |
 
