@@ -145,9 +145,9 @@ spec:
                           resolveGranularity:
                             description: |-
                               ResolveGranularity determines how the backend service is resolved.
-                              Valid values are `endpoints` and `service`. When set to `endpoints`,
+                              Valid values are `endpoint` and `service`. When set to `endpoint`,
                               individual pod IPs will be used; otherwise, the Service's ClusterIP or ExternalIP is used.
-                              The default is `endpoints`.
+                              The default is `endpoint`.
                             type: string
                           serviceName:
                             description: |-

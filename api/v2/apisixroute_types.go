@@ -195,9 +195,9 @@ type ApisixRouteHTTPBackend struct {
 	// This can be either the port name or port number.
 	ServicePort intstr.IntOrString `json:"servicePort" yaml:"servicePort"`
 	// ResolveGranularity determines how the backend service is resolved.
-	// Valid values are `endpoints` and `service`. When set to `endpoints`,
+	// Valid values are `endpoint` and `service`. When set to `endpoint`,
 	// individual pod IPs will be used; otherwise, the Service's ClusterIP or ExternalIP is used.
-	// The default is `endpoints`.
+	// The default is `endpoint`.
 	ResolveGranularity string `json:"resolveGranularity,omitempty" yaml:"resolveGranularity,omitempty"`
 	// Weight specifies the relative traffic weight for this backend.
 	// +kubebuilder:validation:Optional
