@@ -27,7 +27,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
-	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations"
+	"github.com/apache/apisix-ingress-controller/internal/adc/translator"
 	"github.com/apache/apisix-ingress-controller/internal/controller"
 	"github.com/apache/apisix-ingress-controller/internal/webhook/v1/reference"
 	sslvalidator "github.com/apache/apisix-ingress-controller/internal/webhook/v1/ssl"
@@ -115,16 +115,14 @@ func (v *IngressCustomValidator) ValidateUpdate(ctx context.Context, oldObj, new
 	return warnings, nil
 }
 
-// validateAnnotations rejects annotation combinations that would otherwise be
-// silently dropped, leaving the route without a requested security plugin.
-// enable-csrf with no csrf-key is refused here so kubectl apply fails loudly
-// instead of programming a route the operator believes is protected.
+// validateAnnotations rejects annotations that would otherwise be silently
+// dropped, leaving the route without a plugin or an upstream setting the author
+// asked for. Running the real parsers keeps this honest: every parse error they
+// report fails kubectl apply, so a malformed annotation cannot reach the data
+// plane as a missing plugin the operator believes is active.
 func validateAnnotations(ingress *networkingv1.Ingress) error {
-	e := annotations.NewExtractor(ingress.Annotations)
-	if e.GetBoolAnnotation(annotations.AnnotationsEnableCsrf) &&
-		e.GetStringAnnotation(annotations.AnnotationsCsrfKey) == "" {
-		return fmt.Errorf("annotation %q is enabled but %q is missing or empty",
-			annotations.AnnotationsEnableCsrf, annotations.AnnotationsCsrfKey)
+	if err := translator.ValidateIngressAnnotations(ingress.Annotations); err != nil {
+		return fmt.Errorf("invalid APISIX annotations: %w", err)
 	}
 	return nil
 }

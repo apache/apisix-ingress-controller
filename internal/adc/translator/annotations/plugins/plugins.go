@@ -15,7 +15,8 @@
 package plugins
 
 import (
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"errors"
+	"fmt"
 
 	adctypes "github.com/apache/apisix-ingress-controller/api/adc"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations"
@@ -33,8 +34,6 @@ type PluginAnnotationsHandler interface {
 }
 
 var (
-	log = logf.Log.WithName("annotations").WithName("plugins").WithName("parser")
-
 	handlers = []PluginAnnotationsHandler{
 		NewRedirectHandler(),
 		NewRewriteHandler(),
@@ -55,12 +54,16 @@ func NewParser() annotations.IngressAnnotationsParser {
 	return &plugins{}
 }
 
+// Parse returns the plugins that parsed cleanly together with the errors of the
+// ones that did not. A handler error used to be logged and dropped here, which
+// hid a requested plugin from the admission webhook and from the operator.
 func (p *plugins) Parse(e annotations.Extractor) (any, error) {
 	plugins := make(adctypes.Plugins)
+	var errs []error
 	for _, handler := range handlers {
 		out, err := handler.Handle(e)
 		if err != nil {
-			log.Error(err, "Failed to handle annotation", "handler", handler.PluginName())
+			errs = append(errs, fmt.Errorf("%s: %w", handler.PluginName(), err))
 			continue
 		}
 		if out != nil {
@@ -68,7 +71,7 @@ func (p *plugins) Parse(e annotations.Extractor) (any, error) {
 		}
 	}
 	if len(plugins) > 0 {
-		return plugins, nil
+		return plugins, errors.Join(errs...)
 	}
-	return nil, nil
+	return nil, errors.Join(errs...)
 }

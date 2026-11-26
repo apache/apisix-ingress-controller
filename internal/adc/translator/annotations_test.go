@@ -63,6 +63,15 @@ func TestTranslateAnnotations(t *testing.T) {
 			expected:  map[string]any{},
 			expectErr: true,
 		},
+		{
+			name: "partial output is merged alongside the error",
+			anno: map[string]string{"key1": "value1"},
+			parsers: map[string]annotations.IngressAnnotationsParser{
+				"key1": &mockParser{output: "parsedValue1", err: errors.New("parse error")},
+			},
+			expected:  map[string]any{"key1": "parsedValue1"},
+			expectErr: true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -536,4 +545,87 @@ func TestShouldInjectServerPortVars(t *testing.T) {
 			assert.Equal(t, tt.expected, translator.shouldInjectServerPortVars(tt.explicit, tt.ports))
 		})
 	}
+}
+
+func TestValidateIngressAnnotations(t *testing.T) {
+	tests := []struct {
+		name      string
+		anno      map[string]string
+		expectErr string
+	}{
+		{
+			name:      "no annotations",
+			anno:      nil,
+			expectErr: "",
+		},
+		{
+			name: "valid annotations",
+			anno: map[string]string{
+				annotations.AnnotationsEnableCsrf:    "true",
+				annotations.AnnotationsCsrfKey:       "secret",
+				annotations.AnnotationsUpstreamRetry: "3",
+			},
+			expectErr: "",
+		},
+		{
+			name: "csrf enabled without a key",
+			anno: map[string]string{
+				annotations.AnnotationsEnableCsrf: "true",
+			},
+			expectErr: "csrf",
+		},
+		{
+			name: "uncompilable rewrite regex",
+			anno: map[string]string{
+				annotations.AnnotationsRewriteTargetRegex:         "/api/([",
+				annotations.AnnotationsRewriteTargetRegexTemplate: "/$1",
+			},
+			expectErr: "proxy-rewrite",
+		},
+		{
+			name: "invalid upstream scheme",
+			anno: map[string]string{
+				annotations.AnnotationsUpstreamScheme: "htp",
+			},
+			expectErr: "invalid upstream scheme",
+		},
+		{
+			name: "non-integer upstream retries",
+			anno: map[string]string{
+				annotations.AnnotationsUpstreamRetry: "three",
+			},
+			expectErr: "could not parse retry as an integer",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateIngressAnnotations(tt.anno)
+			if tt.expectErr == "" {
+				assert.NoError(t, err)
+				return
+			}
+			assert.ErrorContains(t, err, tt.expectErr)
+		})
+	}
+}
+
+// A handler error reaches the caller without changing what gets published: the
+// plugins that parsed stay, so reporting the failure cannot drop a working route
+// when the controller is upgraded.
+func TestTranslateIngressAnnotationsKeepsPluginsThatParsed(t *testing.T) {
+	tr := &Translator{}
+
+	config := tr.TranslateIngressAnnotations(map[string]string{
+		annotations.AnnotationsEnableCsrf:           "true",
+		annotations.AnnotationsAllowlistSourceRange: "10.0.0.0/8",
+		annotations.AnnotationsUpstreamScheme:       "https",
+		annotations.AnnotationsEnableWebSocket:      "true",
+	})
+
+	assert.NotNil(t, config)
+	assert.Contains(t, config.Plugins, "ip-restriction")
+	assert.NotContains(t, config.Plugins, "csrf")
+	assert.Equal(t, "https", config.Upstream.Scheme)
+	assert.True(t, config.EnableWebsocket)
 }

@@ -31,6 +31,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -44,6 +45,7 @@ import (
 
 	"github.com/apache/apisix-ingress-controller/api/v1alpha1"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
+	"github.com/apache/apisix-ingress-controller/internal/adc/translator"
 	"github.com/apache/apisix-ingress-controller/internal/adc/translator/annotations"
 	"github.com/apache/apisix-ingress-controller/internal/controller/indexer"
 	"github.com/apache/apisix-ingress-controller/internal/controller/status"
@@ -59,6 +61,8 @@ type IngressReconciler struct { //nolint:revive
 	Scheme *runtime.Scheme
 	Log    logr.Logger
 
+	record.EventRecorder
+
 	Provider     provider.Provider
 	genericEvent chan event.GenericEvent
 
@@ -69,6 +73,9 @@ type IngressReconciler struct { //nolint:revive
 // SetupWithManager sets up the controller with the Manager.
 func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.genericEvent = make(chan event.GenericEvent, 100)
+	// GetEventRecorderFor returns the legacy record.EventRecorder; the suggested
+	// GetEventRecorder uses the new events API with an incompatible interface.
+	r.EventRecorder = mgr.GetEventRecorderFor("ingress-controller") //nolint:staticcheck
 
 	bdr := ctrl.NewControllerManagedBy(mgr).
 		For(&networkingv1.Ingress{},
@@ -183,6 +190,8 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
+	r.warnOnInvalidAnnotations(ingress)
+
 	// process TLS configuration
 	if err := r.processTLS(tctx, ingress); err != nil {
 		r.Log.Error(err, "failed to process TLS configuration", "ingress", ingress.Name)
@@ -239,6 +248,25 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// warnOnInvalidAnnotations records a Warning for APISIX annotations that do not
+// parse. The admission webhook rejects them on create and update, so this covers
+// only what the webhook cannot: a disabled webhook, its failurePolicy of Ignore,
+// and Ingresses admitted before the webhook validated annotations. Translation
+// still publishes whatever parsed, so an operator upgrading the controller does
+// not lose a route, but the event says which part was dropped.
+func (r *IngressReconciler) warnOnInvalidAnnotations(ingress *networkingv1.Ingress) {
+	err := translator.ValidateIngressAnnotations(ingress.Annotations)
+	if err == nil {
+		return
+	}
+	r.Log.Error(err, "invalid APISIX annotations on Ingress", "ingress", utils.NamespacedName(ingress))
+	if r.EventRecorder == nil {
+		return
+	}
+	r.Eventf(ingress, corev1.EventTypeWarning, "InvalidAnnotations",
+		"APISIX annotations did not parse, the configuration they request is not applied: %v", err)
 }
 
 // matchesIngressController check if the ingress class is controlled by us
