@@ -111,6 +111,34 @@ func TestConfigValidateNamespaceSelector(t *testing.T) {
 	}
 }
 
+func TestConfigValidateSecretNamespaces(t *testing.T) {
+	tests := []struct {
+		name       string
+		namespaces []string
+		expectErr  bool
+	}{
+		{name: "unset", namespaces: nil},
+		{name: "one namespace", namespaces: []string{"ingress-apisix"}},
+		{name: "several namespaces", namespaces: []string{"ingress-apisix", "team-a"}},
+		{name: "empty entry", namespaces: []string{""}, expectErr: true},
+		{name: "invalid name", namespaces: []string{"Team_A"}, expectErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := NewDefaultConfig()
+			cfg.SecretNamespaces = tt.namespaces
+
+			err := cfg.Validate()
+			if tt.expectErr {
+				assert.ErrorContains(t, err, "invalid secret_namespaces entry")
+			} else {
+				assert.NoError(t, err)
+			}
+		})
+	}
+}
+
 func TestParseNamespaceSelector(t *testing.T) {
 	nsLabels := labels.Set{"version": "v1", "env": "prod"}
 
