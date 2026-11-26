@@ -316,3 +316,28 @@ func TestTranslateSecret_FrontendValidation(t *testing.T) {
 		require.Error(t, err)
 	})
 }
+
+func TestTranslateSecret_MultipleCertificateRefsPerRefKind(t *testing.T) {
+	// A listener may carry multiple certificateRefs. The Kind guard and the
+	// resolved Secret name must be read from the ref being processed, not from
+	// the first element. Here the first ref is not a Secret and must be skipped,
+	// while the second ref is a valid Secret and must be programmed.
+	tr := &Translator{Log: logr.Discard()}
+	gateway := newTLSGateway(nil)
+	gateway.Spec.Listeners[0].TLS.CertificateRefs = []gatewayv1.SecretObjectReference{
+		{
+			Kind: ptr.To(gatewayv1.Kind("ConfigMap")),
+			Name: gatewayv1.ObjectName("not-a-secret"),
+		},
+		{
+			Kind: ptr.To(gatewayv1.Kind("Secret")),
+			Name: gatewayv1.ObjectName("server-cert"),
+		},
+	}
+	tctx := newTranslateContextWithTLS()
+
+	sslObjs, err := tr.translateSecret(tctx, gateway.Spec.Listeners[0], gateway)
+	require.NoError(t, err)
+	require.Len(t, sslObjs, 1, "only the Secret certificateRef should be programmed")
+	assert.Equal(t, "server-cert-data", sslObjs[0].Certificates[0].Certificate)
+}
