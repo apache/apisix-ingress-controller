@@ -541,21 +541,10 @@ func ComposeSSLName(kind, namespace, name string) string {
 	return buf.String()
 }
 
-// kindAbbreviations shorten the kind prefixed to generated route and service names.
-// The prefix keeps resources of different kinds that share a namespace and name from
-// composing the same name, and so the same ID.
-var kindAbbreviations = map[string]string{
-	"ApisixRoute": "ar",
-	"HTTPRoute":   "hr",
-	"GRPCRoute":   "gr",
-	"Ingress":     "ing",
-	"TCPRoute":    "tcpr",
-	"UDPRoute":    "udpr",
-	"TLSRoute":    "tlsr",
-}
-
+// composeName prefixes the lowercased kind so that resources of different kinds that
+// share a namespace and name compose distinct names, and so distinct IDs.
 func composeName(kind string, parts ...string) string {
-	return strings.Join(append([]string{cmp.Or(kindAbbreviations[kind], kind)}, parts...), "_")
+	return strings.Join(append([]string{strings.ToLower(kind)}, parts...), "_")
 }
 
 // ComposeRouteName uses kind, namespace, name and rule name to compose
