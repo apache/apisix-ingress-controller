@@ -49,7 +49,32 @@ type ApisixRouteSpec struct {
 }
 
 // ApisixRouteStatus defines the observed state of ApisixRoute.
-type ApisixRouteStatus = ApisixStatus
+type ApisixRouteStatus struct {
+	ApisixStatus `json:",inline" yaml:",inline"`
+	// LoadBalancer holds the addresses the route is reachable at.
+	// +optional
+	LoadBalancer ApisixRouteLoadBalancerStatus `json:"loadBalancer,omitempty" yaml:"loadBalancer,omitempty"`
+}
+
+// ApisixRouteLoadBalancerStatus lists the addresses of the gateway that serves the route.
+// They come from the statusAddress or publishService of the GatewayProxy, the same way
+// they do for an Ingress, so tools such as external-dns can create DNS records for the
+// route's hosts.
+type ApisixRouteLoadBalancerStatus struct {
+	// Ingress is a list of the IP addresses and hostnames of the gateway.
+	// +optional
+	Ingress []ApisixRouteLoadBalancerIngress `json:"ingress,omitempty" yaml:"ingress,omitempty"`
+}
+
+// ApisixRouteLoadBalancerIngress is a single address of the gateway.
+type ApisixRouteLoadBalancerIngress struct {
+	// IP is set for addresses that are IP based.
+	// +optional
+	IP string `json:"ip,omitempty" yaml:"ip,omitempty"`
+	// Hostname is set for addresses that are DNS based.
+	// +optional
+	Hostname string `json:"hostname,omitempty" yaml:"hostname,omitempty"`
+}
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
