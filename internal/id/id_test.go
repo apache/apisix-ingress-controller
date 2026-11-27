@@ -18,19 +18,16 @@
 package id
 
 import (
-	"fmt"
-	"hash/crc32"
+	"testing"
 
-	"github.com/apache/apisix-ingress-controller/pkg/utils"
+	"github.com/stretchr/testify/assert"
 )
 
-// GenID generates an ID according to the raw material.
-func GenID(raw string) string {
-	if raw == "" {
-		return ""
-	}
-	p := utils.String2Byte(raw)
+func TestGenID(t *testing.T) {
+	assert.Empty(t, GenID(""))
 
-	res := crc32.ChecksumIEEE(p)
-	return fmt.Sprintf("%x", res)
+	assert.Equal(t, GenID("111"), GenID("111"))
+	assert.NotEqual(t, GenID("112"), GenID("111"))
+	assert.Len(t, GenID("111"), 32)
+	assert.Regexp(t, `^[0-9a-f]+$`, GenID("111"))
 }

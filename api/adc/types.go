@@ -19,6 +19,7 @@ package adc
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -540,43 +541,22 @@ func ComposeSSLName(kind, namespace, name string) string {
 	return buf.String()
 }
 
-// ComposeRouteName uses namespace, name and rule name to compose
-// the route name.
-func ComposeRouteName(namespace, name string, rule string) string {
-	// FIXME Use sync.Pool to reuse this buffer if the upstream
-	// name composing code path is hot.
-	p := make([]byte, 0, len(namespace)+len(name)+len(rule)+2)
-	buf := bytes.NewBuffer(p)
-
-	buf.WriteString(namespace)
-	buf.WriteByte('_')
-	buf.WriteString(name)
-	buf.WriteByte('_')
-	buf.WriteString(rule)
-
-	return buf.String()
+// composeName prefixes the lowercased kind so that resources of different kinds that
+// share a namespace and name compose distinct names, and so distinct IDs.
+func composeName(kind string, parts ...string) string {
+	return strings.Join(append([]string{strings.ToLower(kind)}, parts...), "_")
 }
 
-// ComposeStreamRouteName uses namespace, name and rule name to compose
+// ComposeRouteName uses kind, namespace, name and rule name to compose
+// the route name.
+func ComposeRouteName(kind, namespace, name, rule string) string {
+	return composeName(kind, namespace, name, rule)
+}
+
+// ComposeStreamRouteName uses kind, namespace, name and rule name to compose
 // the stream_route name.
-func ComposeStreamRouteName(namespace, name string, rule string, typ string) string {
-	if typ == "" {
-		typ = "TCP"
-	}
-	// FIXME Use sync.Pool to reuse this buffer if the upstream
-	// name composing code path is hot.
-	p := make([]byte, 0, len(namespace)+len(name)+len(rule)+len(typ)+3)
-	buf := bytes.NewBuffer(p)
-
-	buf.WriteString(namespace)
-	buf.WriteByte('_')
-	buf.WriteString(name)
-	buf.WriteByte('_')
-	buf.WriteString(rule)
-	buf.WriteByte('_')
-	buf.WriteString(typ)
-
-	return buf.String()
+func ComposeStreamRouteName(kind, namespace, name, rule, typ string) string {
+	return composeName(kind, namespace, name, rule, cmp.Or(typ, "TCP"))
 }
 
 // ComposeGatewayListenerSSLName composes the name a Gateway listener's certificateRef at
@@ -585,46 +565,20 @@ func ComposeGatewayListenerSSLName(kind, namespace, name, listener string, refIn
 	return fmt.Sprintf("%s_%s_%d", ComposeSSLName(kind, namespace, name), listener, refIndex)
 }
 
-func ComposeServiceNameWithRule(namespace, name string, rule string) string {
-	// FIXME Use sync.Pool to reuse this buffer if the upstream
-	// name composing code path is hot.
-	var p []byte
-	plen := len(namespace) + len(name) + 2
-
-	p = make([]byte, 0, plen)
-	buf := bytes.NewBuffer(p)
-	buf.WriteString(namespace)
-	buf.WriteByte('_')
-	buf.WriteString(name)
-	buf.WriteByte('_')
-	buf.WriteString(rule)
-
-	return buf.String()
+func ComposeServiceNameWithRule(kind, namespace, name, rule string) string {
+	return composeName(kind, namespace, name, rule)
 }
 
-func ComposeGRPCServiceNameWithRule(namespace, name string, rule string) string {
-	return ComposeServicesNameWithScheme(namespace, name, rule, "grpc")
+func ComposeGRPCServiceNameWithRule(kind, namespace, name, rule string) string {
+	return ComposeServicesNameWithScheme(kind, namespace, name, rule, "grpc")
 }
 
-func ComposeServicesNameWithScheme(namespace, name string, rule string, scheme string) string {
-	var p []byte
-	plen := len(namespace) + len(name) + len(rule) + len(scheme) + 3
-
-	p = make([]byte, 0, plen)
-	buf := bytes.NewBuffer(p)
-	buf.WriteString(namespace)
-	buf.WriteByte('_')
-	buf.WriteString(name)
-	buf.WriteByte('_')
-	buf.WriteString(rule)
-	buf.WriteByte('_')
-	buf.WriteString(scheme)
-
-	return buf.String()
+func ComposeServicesNameWithScheme(kind, namespace, name, rule, scheme string) string {
+	return composeName(kind, namespace, name, rule, scheme)
 }
 
-func ComposeServiceNameWithStream(namespace, name string, rule, typ string) string {
-	return ComposeServicesNameWithScheme(namespace, name, rule, typ)
+func ComposeServiceNameWithStream(kind, namespace, name, rule, typ string) string {
+	return ComposeServicesNameWithScheme(kind, namespace, name, rule, typ)
 }
 
 func ComposeConsumerName(namespace, name string) string {

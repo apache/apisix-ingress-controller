@@ -34,11 +34,11 @@ import (
 	"github.com/apache/apisix-ingress-controller/api/adc"
 	apiv2 "github.com/apache/apisix-ingress-controller/api/v2"
 	"github.com/apache/apisix-ingress-controller/internal/controller/label"
+	"github.com/apache/apisix-ingress-controller/internal/id"
 	"github.com/apache/apisix-ingress-controller/internal/provider"
 	sslutils "github.com/apache/apisix-ingress-controller/internal/ssl"
 	internaltypes "github.com/apache/apisix-ingress-controller/internal/types"
 	"github.com/apache/apisix-ingress-controller/internal/utils"
-	"github.com/apache/apisix-ingress-controller/pkg/id"
 	pkgutils "github.com/apache/apisix-ingress-controller/pkg/utils"
 )
 
@@ -212,7 +212,7 @@ func (t *Translator) addAuthenticationPlugins(rule apiv2.ApisixRouteHTTP, plugin
 
 func (t *Translator) buildRoute(ar *apiv2.ApisixRoute, service *adc.Service, rule apiv2.ApisixRouteHTTP, plugins adc.Plugins, timeout *adc.Timeout, vars adc.Vars, enableWebsocket **bool) {
 	route := adc.NewDefaultRoute()
-	route.Name = adc.ComposeRouteName(ar.Namespace, ar.Name, rule.Name)
+	route.Name = adc.ComposeRouteName(internaltypes.KindApisixRoute, ar.Namespace, ar.Name, rule.Name)
 	route.ID = id.GenID(route.Name)
 	route.Desc = "Created by apisix-ingress-controller, DO NOT modify it manually"
 	route.Labels = label.GenLabelWithObjectLabels(ar)
@@ -332,7 +332,7 @@ func (t *Translator) buildUpstream(tctx *provider.TranslateContext, service *adc
 
 func (t *Translator) buildService(ar *apiv2.ApisixRoute, rule apiv2.ApisixRouteHTTP, ruleIndex int) *adc.Service {
 	service := adc.NewDefaultService()
-	service.Name = adc.ComposeServiceNameWithRule(ar.Namespace, ar.Name, fmt.Sprintf("%d", ruleIndex))
+	service.Name = adc.ComposeServiceNameWithRule(internaltypes.KindApisixRoute, ar.Namespace, ar.Name, fmt.Sprintf("%d", ruleIndex))
 	service.ID = id.GenID(service.Name)
 	service.Labels = label.GenLabel(ar)
 	service.Hosts = sslutils.NormalizeHosts(rule.Match.Hosts)
@@ -510,14 +510,14 @@ func (t *Translator) translateStreamRule(tctx *provider.TranslateContext, ar *ap
 	}
 
 	sr := adc.NewDefaultStreamRoute()
-	sr.Name = adc.ComposeStreamRouteName(ar.Namespace, ar.Name, part.Name, part.Protocol)
+	sr.Name = adc.ComposeStreamRouteName(internaltypes.KindApisixRoute, ar.Namespace, ar.Name, part.Name, part.Protocol)
 	sr.ID = id.GenID(sr.Name)
 	sr.ServerPort = part.Match.IngressPort
 	sr.SNI = part.Match.Host
 	sr.Plugins = plugins
 
 	svc := adc.NewDefaultService()
-	svc.Name = adc.ComposeServiceNameWithStream(ar.Namespace, ar.Name, part.Name, part.Protocol)
+	svc.Name = adc.ComposeServiceNameWithStream(internaltypes.KindApisixRoute, ar.Namespace, ar.Name, part.Name, part.Protocol)
 	svc.ID = id.GenID(svc.Name)
 	svc.StreamRoutes = append(svc.StreamRoutes, sr)
 	svc.Labels = label.GenLabel(ar)

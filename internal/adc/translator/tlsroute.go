@@ -39,7 +39,7 @@ func (t *Translator) TranslateTLSRoute(tctx *provider.TranslateContext, tlsRoute
 	for ruleIndex, rule := range rules {
 		service := adctypes.NewDefaultService()
 		service.Labels = labels
-		service.Name = adctypes.ComposeServiceNameWithStream(tlsRoute.Namespace, tlsRoute.Name, fmt.Sprintf("%d", ruleIndex), "TLS")
+		service.Name = adctypes.ComposeServiceNameWithStream(types.KindTLSRoute, tlsRoute.Namespace, tlsRoute.Name, fmt.Sprintf("%d", ruleIndex), "TLS")
 		service.ID = id.GenID(service.Name)
 		var (
 			upstreams         = make([]*adctypes.Upstream, 0)

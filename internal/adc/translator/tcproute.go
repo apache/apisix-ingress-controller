@@ -91,7 +91,7 @@ func (t *Translator) buildL4StreamRoutes(tctx *provider.TranslateContext, namesp
 			ruleKey = fmt.Sprintf("%d-%d", ruleIndex, port)
 			streamRoute.ServerPort = port
 		}
-		streamRouteName := adctypes.ComposeStreamRouteName(namespace, name, ruleKey, typ)
+		streamRouteName := adctypes.ComposeStreamRouteName(routeKind, namespace, name, ruleKey, typ)
 		streamRoute.Name = streamRouteName
 		streamRoute.ID = id.GenID(streamRouteName)
 		streamRoute.Labels = labels
@@ -113,7 +113,7 @@ func (t *Translator) TranslateTCPRoute(tctx *provider.TranslateContext, tcpRoute
 	for ruleIndex, rule := range rules {
 		service := adctypes.NewDefaultService()
 		service.Labels = labels
-		service.Name = adctypes.ComposeServiceNameWithStream(tcpRoute.Namespace, tcpRoute.Name, fmt.Sprintf("%d", ruleIndex), "TCP")
+		service.Name = adctypes.ComposeServiceNameWithStream(types.KindTCPRoute, tcpRoute.Namespace, tcpRoute.Name, fmt.Sprintf("%d", ruleIndex), "TCP")
 		service.ID = id.GenID(service.Name)
 		var (
 			upstreams         = make([]*adctypes.Upstream, 0)

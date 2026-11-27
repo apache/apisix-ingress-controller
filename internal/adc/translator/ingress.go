@@ -160,7 +160,7 @@ func (t *Translator) buildServiceFromIngressPath(
 
 	service := adctypes.NewDefaultService()
 	service.Labels = labels
-	service.Name = adctypes.ComposeServiceNameWithRule(obj.Namespace, obj.Name, index)
+	service.Name = adctypes.ComposeServiceNameWithRule(internaltypes.KindIngress, obj.Namespace, obj.Name, index)
 	service.ID = id.GenID(service.Name)
 	service.Hosts = hosts
 
@@ -271,7 +271,7 @@ func (t *Translator) buildRouteFromIngressPath(
 	labels map[string]string,
 ) (*adctypes.Route, error) {
 	route := adctypes.NewDefaultRoute()
-	route.Name = adctypes.ComposeRouteName(obj.Namespace, obj.Name, index)
+	route.Name = adctypes.ComposeRouteName(internaltypes.KindIngress, obj.Namespace, obj.Name, index)
 	route.ID = id.GenID(route.Name)
 	route.Labels = labels
 

@@ -716,7 +716,7 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 		service := adctypes.NewDefaultService()
 		service.Labels = labels
 
-		service.Name = adctypes.ComposeServiceNameWithRule(httpRoute.Namespace, httpRoute.Name, fmt.Sprintf("%d", ruleIndex))
+		service.Name = adctypes.ComposeServiceNameWithRule(internaltypes.KindHTTPRoute, httpRoute.Namespace, httpRoute.Name, fmt.Sprintf("%d", ruleIndex))
 		service.ID = id.GenID(service.Name)
 		service.Hosts = hosts
 
@@ -752,7 +752,7 @@ func (t *Translator) TranslateHTTPRoute(tctx *provider.TranslateContext, httpRou
 				return nil, err
 			}
 
-			name := adctypes.ComposeRouteName(httpRoute.Namespace, httpRoute.Name, fmt.Sprintf("%d-%d", ruleIndex, j))
+			name := adctypes.ComposeRouteName(internaltypes.KindHTTPRoute, httpRoute.Namespace, httpRoute.Name, fmt.Sprintf("%d-%d", ruleIndex, j))
 			route.Name = name
 			route.ID = id.GenID(name)
 			route.Labels = labels

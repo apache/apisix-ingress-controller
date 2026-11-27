@@ -18,18 +18,16 @@
 package id
 
 import (
-	"fmt"
-	"hash/crc32"
-	"unsafe"
+	"crypto/sha256"
+	"encoding/hex"
 )
 
-// GenID generates an ID according to the raw material.
+// GenID generates an ID according to the raw material. The ID is the first 128 bits
+// of the SHA-256 digest, so distinct names do not share an ID in practice.
 func GenID(raw string) string {
 	if raw == "" {
 		return ""
 	}
-	p := unsafe.Slice(unsafe.StringData(raw), len(raw))
-
-	res := crc32.ChecksumIEEE(p)
-	return fmt.Sprintf("%x", res)
+	sum := sha256.Sum256([]byte(raw))
+	return hex.EncodeToString(sum[:16])
 }
